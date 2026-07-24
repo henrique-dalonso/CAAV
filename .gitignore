@@ -2,29 +2,30 @@
 .venv/
 __pycache__/
 *.pyc
+.pytest_cache/
 
 # Segredos
 .env
-config/config.json
+app/ferramentas/extratus/config/config.json
 
 # Dados reais de clientes / processos - nunca versionar
-entrada_pdfs/*
-!entrada_pdfs/.gitkeep
-processados/*
-!processados/.gitkeep
-erros/*
-!erros/.gitkeep
-revisao/*
-!revisao/.gitkeep
-relatorios_prontos/*
-!relatorios_prontos/.gitkeep
+app/ferramentas/extratus/dados/entrada_pdfs/*
+!app/ferramentas/extratus/dados/entrada_pdfs/.gitkeep
+app/ferramentas/extratus/dados/processados/*
+!app/ferramentas/extratus/dados/processados/.gitkeep
+app/ferramentas/extratus/dados/erros/*
+!app/ferramentas/extratus/dados/erros/.gitkeep
+app/ferramentas/extratus/dados/revisao/*
+!app/ferramentas/extratus/dados/revisao/.gitkeep
+app/ferramentas/extratus/dados/relatorios_prontos/*
+!app/ferramentas/extratus/dados/relatorios_prontos/.gitkeep
 
-# Histórico e logs (contêm dados reais de processos)
-historico/*
-!historico/.gitkeep
-logs/*
-!logs/.gitkeep
+# Logs (contêm dado real de processamento)
+app/ferramentas/extratus/logs/*
+!app/ferramentas/extratus/logs/.gitkeep
 
-# Banco local (fase futura)
+# Banco local (histórico + usuários — dado real)
+banco/*
+!banco/.gitkeep
 *.db
 *.sqlite3

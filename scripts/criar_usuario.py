@@ -16,14 +16,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import app.core.env  # noqa: E402, F401 — carrega o .env
+import app.plataforma.env  # noqa: E402, F401 — carrega o .env
 
 from sqlmodel import select  # noqa: E402
 
-from app.core.auth import gerar_hash_senha  # noqa: E402
-from app.db.models import Ferramenta, Usuario, UsuarioFerramenta  # noqa: E402
-from app.db.seed import garantir_ferramentas_padrao  # noqa: E402
-from app.db.session import obter_sessao  # noqa: E402
+from app.plataforma.auth import gerar_hash_senha  # noqa: E402
+from app.plataforma.db.models import Ferramenta, Usuario, UsuarioFerramenta  # noqa: E402
+from app.plataforma.db.seed import garantir_ferramentas_padrao  # noqa: E402
+from app.plataforma.db.session import obter_sessao  # noqa: E402
 
 
 def pedir_senha():
