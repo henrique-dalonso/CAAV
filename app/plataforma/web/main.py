@@ -13,6 +13,7 @@ from app.plataforma.db.seed import garantir_ferramentas_padrao
 from app.plataforma.web.auth import NaoAutenticado
 from app.plataforma.web.routes import admin, auth, home
 from app.ferramentas.extratus.web.routes import historico, inbox
+from app.ferramentas.leitor_publicacoes.web.routes import home as leitor_publicacoes_home
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -40,6 +41,7 @@ app.include_router(home.router)
 app.include_router(admin.router)
 app.include_router(inbox.router, prefix="/extratus")
 app.include_router(historico.router, prefix="/extratus")
+app.include_router(leitor_publicacoes_home.router, prefix="/leitor-publicacoes")
 
 
 @app.exception_handler(NaoAutenticado)

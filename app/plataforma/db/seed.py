@@ -11,6 +11,12 @@ FERRAMENTAS_PADRAO = [
         "descricao": "Resumo automático de processos judiciais em relatório curto com parecer.",
         "url": "/extratus/",
     },
+    {
+        "nome": "Leitor de Publicações",
+        "slug": "leitor-publicacoes",
+        "descricao": "Pré-análise por IA de publicações, com sugestão de agendamento para revisão do advogado.",
+        "url": "/leitor-publicacoes/",
+    },
 ]
 
 

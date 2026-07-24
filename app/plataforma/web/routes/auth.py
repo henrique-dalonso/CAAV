@@ -35,7 +35,7 @@ def processar_login(
         return templates.TemplateResponse(
             request,
             "login.html",
-            {"erro": "E-mail ou senha incorretos."},
+            {"erro": "Usuário ou senha incorretos."},
             status_code=401,
         )
 
