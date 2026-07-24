@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Centro de Experiência do Colaborador — Alonso & Verdiani</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <h1>Centro de Experiência do Colaborador</h1>
+        <p class="aviso">
+            Alonso &amp; Verdiani — logado como {{ usuario.nome }}
+            {% if usuario.eh_admin %}
+            · <a href="/admin">administração</a>
+            {% endif %}
+            <form action="/logout" method="post" style="display:inline">
+                <button type="submit" class="botao-link">sair</button>
+            </form>
+        </p>
+    </header>
+
+    <section class="cartao">
+        <h2>Ferramentas</h2>
+        <div class="lista-ferramentas">
+            {% for ferramenta in ferramentas %}
+            <a class="ferramenta" href="{{ ferramenta.url }}">
+                <strong>{{ ferramenta.nome }}</strong>
+                <span>{{ ferramenta.descricao }}</span>
+            </a>
+            {% else %}
+            <p class="vazio">Nenhuma ferramenta liberada pra você ainda. Fale com um administrador.</p>
+            {% endfor %}
+            <div class="ferramenta ferramenta-desabilitada">
+                <strong>Mais ferramentas em breve</strong>
+                <span>Novas ferramentas do escritório vão aparecer aqui.</span>
+            </div>
+        </div>
+    </section>
+</body>
+</html>

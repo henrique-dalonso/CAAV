@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Entrar — Centro de Experiência do Colaborador</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <h1>Centro de Experiência do Colaborador</h1>
+        <p class="aviso">Alonso &amp; Verdiani</p>
+    </header>
+
+    <section class="cartao">
+        <h2>Entrar</h2>
+
+        {% if erro %}
+        <p class="erro-login">{{ erro }}</p>
+        {% endif %}
+
+        <form action="/login" method="post">
+            <label>
+                Usuário
+                <input type="text" name="usuario_login" required autofocus>
+            </label>
+            <label>
+                Senha
+                <input type="password" name="senha" required>
+            </label>
+            <button type="submit">Entrar</button>
+        </form>
+    </section>
+</body>
+</html>

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Administração — Centro de Experiência do Colaborador</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <p><a href="/">&larr; Centro de Experiência do Colaborador</a></p>
+        <h1>Administração</h1>
+    </header>
+
+    {% if erro %}
+    <p class="erro-login">{{ erro }}</p>
+    {% endif %}
+
+    <section class="cartao">
+        <h2>Métricas</h2>
+        <div class="lista-ferramentas">
+            <div class="ferramenta"><strong>{{ metricas.sucesso }}</strong><span>processados com sucesso</span></div>
+            <div class="ferramenta"><strong>{{ metricas.revisao }}</strong><span>aguardando revisão</span></div>
+            <div class="ferramenta"><strong>{{ metricas.erro }}</strong><span>com erro</span></div>
+        </div>
+    </section>
+
+    <section class="cartao">
+        <h2>Configuração de pastas (Extratus)</h2>
+        <table>
+            <tbody>
+                <tr><td>Entrada</td><td>{{ config.pasta_entrada }}</td></tr>
+                <tr><td>Saída (relatórios)</td><td>{{ config.pasta_saida }}</td></tr>
+                <tr><td>Processados</td><td>{{ config.pasta_processados }}</td></tr>
+                <tr><td>Revisão</td><td>{{ config.pasta_revisao }}</td></tr>
+                <tr><td>Erros</td><td>{{ config.pasta_erros }}</td></tr>
+            </tbody>
+        </table>
+        <p class="motivo">Edição por aqui ainda não existe — por enquanto, mude direto em config/config.json.</p>
+    </section>
+
+    <section class="cartao">
+        <h2>Novo usuário</h2>
+        <form action="/admin/usuarios" method="post">
+            <label>Nome<input type="text" name="nome" required></label>
+            <label>Usuário (login)<input type="text" name="nome_usuario" required></label>
+            <label>E-mail<input type="email" name="email" required></label>
+            <label>Senha<input type="password" name="senha" required></label>
+            <label><input type="checkbox" name="eh_admin" value="true" style="width:auto;display:inline"> Administrador</label>
+
+            {% if ferramentas %}
+            <p>Ferramentas liberadas (ignorado se administrador):</p>
+            {% for ferramenta in ferramentas %}
+            <label style="display:inline-block;margin-right:1rem">
+                <input type="checkbox" name="ferramenta_ids" value="{{ ferramenta.id }}" style="width:auto;display:inline">
+                {{ ferramenta.nome }}
+            </label>
+            {% endfor %}
+            {% endif %}
+
+            <button type="submit">Criar usuário</button>
+        </form>
+    </section>
+
+    <section class="cartao">
+        <h2>Usuários</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Usuário</th>
+                    <th>E-mail</th>
+                    <th>Admin</th>
+                    <th>Ativo</th>
+                    <th>Ferramentas</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for usuario in usuarios %}
+                <tr>
+                    <td>{{ usuario.nome }}</td>
+                    <td>{{ usuario.nome_usuario }}</td>
+                    <td>{{ usuario.email }}</td>
+                    <td>{{ "sim" if usuario.eh_admin else "não" }}</td>
+                    <td>{{ "sim" if usuario.ativo else "não" }}</td>
+                    <td>
+                        {% if usuario.eh_admin %}
+                        todas (admin)
+                        {% else %}
+                        <form action="/admin/usuarios/{{ usuario.id }}/ferramentas" method="post">
+                            {% for ferramenta in ferramentas %}
+                            <label style="display:block;font-size:0.85rem">
+                                <input type="checkbox" name="ferramenta_ids" value="{{ ferramenta.id }}"
+                                    style="width:auto;display:inline"
+                                    {% if ferramenta.id in ferramentas_por_usuario.get(usuario.id, []) %}checked{% endif %}>
+                                {{ ferramenta.nome }}
+                            </label>
+                            {% endfor %}
+                            <button type="submit">Salvar</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form action="/admin/usuarios/{{ usuario.id }}/alternar-ativo" method="post">
+                            <button type="submit" class="botao-link">{{ "desativar" if usuario.ativo else "ativar" }}</button>
+                        </form>
+                        <form action="/admin/usuarios/{{ usuario.id }}/alternar-admin" method="post">
+                            <button type="submit" class="botao-link">{{ "remover admin" if usuario.eh_admin else "tornar admin" }}</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</body>
+</html>

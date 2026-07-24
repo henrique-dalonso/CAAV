@@ -1,0 +1,30 @@
+# Ambiente Python
+.venv/
+__pycache__/
+*.pyc
+
+# Segredos
+.env
+config/config.json
+
+# Dados reais de clientes / processos - nunca versionar
+entrada_pdfs/*
+!entrada_pdfs/.gitkeep
+processados/*
+!processados/.gitkeep
+erros/*
+!erros/.gitkeep
+revisao/*
+!revisao/.gitkeep
+relatorios_prontos/*
+!relatorios_prontos/.gitkeep
+
+# Histórico e logs (contêm dados reais de processos)
+historico/*
+!historico/.gitkeep
+logs/*
+!logs/.gitkeep
+
+# Banco local (fase futura)
+*.db
+*.sqlite3

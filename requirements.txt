@@ -1,0 +1,12 @@
+pypdf
+python-docx
+fastapi
+uvicorn
+jinja2
+python-multipart
+sqlmodel
+docxtpl
+bcrypt
+itsdangerous
+python-dotenv
+pytest
