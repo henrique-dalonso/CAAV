@@ -13,6 +13,8 @@
     --cor-fundo: #f4f5f7;
     --cor-fundo-blob-1: #c7d2fe;
     --cor-fundo-blob-2: #a5f3fc;
+    --cor-degrade-1: #f4f2fb;
+    --cor-degrade-2: #eef4f6;
     --cor-cartao: #ffffff;
     --cor-texto: #111827;
     --cor-texto-suave: #6b7280;
@@ -34,6 +36,8 @@
         --cor-fundo: #0b0f19;
         --cor-fundo-blob-1: #312e81;
         --cor-fundo-blob-2: #164e63;
+        --cor-degrade-1: #11142b;
+        --cor-degrade-2: #0a1520;
         --cor-cartao: #151a27;
         --cor-texto: #f3f4f6;
         --cor-texto-suave: #9ca3af;
@@ -116,41 +120,24 @@ a {
     }
 }
 
-/* Degradê estático — mesma família visual do .fundo-vivo (o login), mas
-   parado e mais discreto: dá vida pro fundo sem competir com o conteúdo.
-   Pra telas que se visitam várias vezes por dia (home, e no futuro outras
-   telas de uso frequente), onde não cabe um efeito chamativo toda hora. */
+/* Degradê estático — bem diferente do .fundo-vivo (o login) de propósito:
+   nada de manchas/círculos visíveis, só um gradiente único e contínuo,
+   quase imperceptível, cobrindo a tela inteira. Dá uma leve vida ao
+   fundo sem nunca competir com o conteúdo. Pra telas de uso frequente
+   (home, e no futuro outras), onde um efeito chamativo cansaria. */
 .fundo-degrade {
-    position: relative;
+    background: linear-gradient(
+        160deg,
+        var(--cor-degrade-1) 0%,
+        var(--cor-fundo) 45%,
+        var(--cor-degrade-2) 100%
+    );
+    background-attachment: fixed;
 }
 
-.fundo-degrade::before,
-.fundo-degrade::after {
-    content: "";
-    position: fixed;
-    width: 60vmax;
-    height: 60vmax;
-    border-radius: 50%;
-    filter: blur(110px);
-    opacity: 0.22;
-    z-index: -1;
-    pointer-events: none;
-}
-
-.fundo-degrade::before {
-    background: var(--cor-fundo-blob-1);
-    top: -25%;
-    left: -15%;
-}
-
-.fundo-degrade::after {
-    background: var(--cor-fundo-blob-2);
-    bottom: -25%;
-    right: -15%;
-}
-
-/* Emblema/monograma reaproveitável (login usa "AV", cada ferramenta
-   pode usar sua própria inicial) */
+/* Emblema/monograma reaproveitável — pra iniciais de usuário e de
+   ferramenta (essas não são a marca do escritório, só identificação
+   visual funcional, cabe cor de destaque). */
 .emblema {
     display: flex;
     align-items: center;
@@ -161,6 +148,25 @@ a {
     font-weight: 700;
     letter-spacing: 0.02em;
     flex-shrink: 0;
+}
+
+/* Selo neutro pra logo de verdade do escritório — fundo de "cartão"
+   (não a cor de destaque), garante contraste pra marca cinza/branca
+   tanto no modo claro quanto no escuro. */
+.selo-marca {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--raio-pequeno);
+    background: var(--cor-cartao);
+    border: 1px solid var(--cor-borda);
+    flex-shrink: 0;
+}
+
+.selo-marca img {
+    display: block;
+    height: 60%;
+    width: auto;
 }
 
 .botao-link {
