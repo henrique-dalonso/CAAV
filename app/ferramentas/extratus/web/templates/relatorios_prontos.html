@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block titulo %}Relatórios — Extratus{% endblock %}
+{% block nome_pagina %}Extratus{% endblock %}
+{% block css_pagina %}<link rel="stylesheet" href="/extratus/static/extratus.css">{% endblock %}
+
+{% block conteudo %}
+<div class="cabecalho-ferramenta">
+    <div>
+        <h1>Extratus</h1>
+        <p>Relatórios de processos já gerados, prontos pra revisão e envio.</p>
+    </div>
+</div>
+
+<nav class="abas-extratus">
+    <a href="/extratus/" class="aba">Gerar relatórios <span class="contagem-aba">{{ total_pendentes }}</span></a>
+    <a href="/extratus/relatorios" class="aba aba-ativa">Relatórios</a>
+    {% if usuario.eh_admin %}
+    <a href="/extratus/historico" class="aba aba-admin">Custos (admin)</a>
+    {% endif %}
+</nav>
+
+<section class="cartao-secao">
+    {% if jobs %}
+    <div class="barra-filtros">
+        <input type="search" class="campo-busca" placeholder="Buscar por processo ou arquivo...">
+        <div class="chips-filtro">
+            <button type="button" class="chip chip-ativo" data-status="todos">Todos</button>
+            <button type="button" class="chip" data-status="sucesso">Sucesso</button>
+            <button type="button" class="chip" data-status="revisao">Revisão</button>
+            <button type="button" class="chip" data-status="erro">Erro</button>
+        </div>
+    </div>
+    <div class="filtro-meus-linha">
+        <label class="filtro-meus">
+            <input type="checkbox" id="check-meus-relatorios" class="check-input" data-usuario-id="{{ usuario.id }}">
+            <span class="check-caixa"></span>
+            Solicitados por mim
+        </label>
+    </div>
+    <ul class="lista-relatorios">
+        {% for job in jobs %}
+        <li class="relatorio-item" data-status="{{ job.status }}" data-usuario-id="{{ job.usuario_id or '' }}" data-busca="{{ ((job.processo or '') ~ ' ' ~ job.arquivo_pdf) | lower }}">
+            <span class="status status-{{ job.status }}">{{ job.status | rotulo_status }}</span>
+            <div class="relatorio-info">
+                {% if job.processo %}
+                <strong class="truncavel" title="{{ job.processo }}">{{ job.processo }}</strong>
+                <span class="relatorio-meta truncavel" title="{{ job.arquivo_pdf }} · {{ job.criado_em.strftime('%d/%m/%Y %H:%M') }}">{{ job.arquivo_pdf }} · {{ job.criado_em.strftime("%d/%m/%Y %H:%M") }}</span>
+                {% else %}
+                <strong class="truncavel" title="{{ job.arquivo_pdf }}">{{ job.arquivo_pdf }}</strong>
+                <span class="relatorio-meta truncavel" title="{{ job.criado_em.strftime('%d/%m/%Y %H:%M') }}">{{ job.criado_em.strftime("%d/%m/%Y %H:%M") }}</span>
+                {% endif %}
+                {% if job.status == "revisao" and job.motivo_confianca %}
+                <span class="motivo" title="{{ job.motivo_confianca }}">{{ job.motivo_confianca }}</span>
+                {% elif job.status == "erro" and job.erro_mensagem %}
+                <span class="motivo" title="{{ job.erro_mensagem }}">{{ job.tipo_erro | rotulo_erro }}</span>
+                {% endif %}
+            </div>
+            <div class="relatorio-solicitante">
+                <span class="divisor-vertical" aria-hidden="true"></span>
+                {% set nome_solicitante = "Solicitante: " ~ nomes_por_id.get(job.usuario_id, "Motor automático") %}
+                <span class="solicitante-texto truncavel" title="{{ nome_solicitante }}">{{ nome_solicitante }}</span>
+            </div>
+            {% if job.relatorio_path %}
+            <a href="download/{{ job.relatorio_path.split('\\')[-1].split('/')[-1] }}" class="botao">Baixar</a>
+            {% else %}
+            <span class="botao botao-fantasma" aria-hidden="true">Baixar</span>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    <p class="vazio filtro-vazio" hidden>Nenhum relatório encontrado com esse filtro.</p>
+    {% else %}
+    <p class="vazio">Nenhum processamento registrado ainda.</p>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block js_pagina %}<script src="/extratus/static/relatorios_prontos.js" defer></script>{% endblock %}

@@ -1,0 +1,36 @@
+/* Tela do Leitor de Publicações — cabeçalho/layout de página,
+   cabecalho-ferramenta e cartao-secao já vêm de base.css (compartilhados
+   com outras ferramentas). Aqui só entra o que é específico dessa tela. */
+
+.selo-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.selo-status::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: currentColor;
+}
+
+.selo-status.construcao {
+    background: var(--cor-acento-fraco);
+    color: var(--cor-acento);
+}
+
+.cartao-secao p {
+    line-height: 1.55;
+    color: var(--cor-texto);
+}
+
+.cartao-secao .vazio {
+    margin: 1rem 0 0;
+}

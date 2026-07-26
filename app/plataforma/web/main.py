@@ -11,8 +11,8 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.plataforma.db.seed import garantir_ferramentas_padrao
 from app.plataforma.web.auth import NaoAutenticado
-from app.plataforma.web.routes import admin, auth, home
-from app.ferramentas.extratus.web.routes import historico, inbox
+from app.plataforma.web.routes import admin, auth, home, perfil
+from app.ferramentas.extratus.web.routes import historico, inbox, relatorios_prontos
 from app.ferramentas.leitor_publicacoes.web.routes import home as leitor_publicacoes_home
 
 
@@ -48,10 +48,21 @@ app.mount(
     name="extratus-static",
 )
 
+LEITOR_PUBLICACOES_STATIC_DIR = (
+    BASE_DIR.parent.parent / "ferramentas" / "leitor_publicacoes" / "web" / "static"
+)
+app.mount(
+    "/leitor-publicacoes/static",
+    StaticFiles(directory=LEITOR_PUBLICACOES_STATIC_DIR),
+    name="leitor-publicacoes-static",
+)
+
 app.include_router(auth.router)
 app.include_router(home.router)
 app.include_router(admin.router)
+app.include_router(perfil.router)
 app.include_router(inbox.router, prefix="/extratus")
+app.include_router(relatorios_prontos.router, prefix="/extratus")
 app.include_router(historico.router, prefix="/extratus")
 app.include_router(leitor_publicacoes_home.router, prefix="/leitor-publicacoes")
 

@@ -2,17 +2,17 @@ from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.templating import Jinja2Templates
 
 from app.plataforma.db.models import Usuario
 from app.plataforma.db.usuarios import listar_ferramentas_do_usuario
 from app.plataforma.web.auth import exigir_login
+from app.plataforma.web.templates_util import criar_templates
 
 
 router = APIRouter()
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
-templates = Jinja2Templates(directory=TEMPLATES_DIR)
+templates = criar_templates(TEMPLATES_DIR)
 
 
 def obter_saudacao():

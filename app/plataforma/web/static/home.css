@@ -9,7 +9,6 @@
 
 .saudacao {
     margin-bottom: 2.5rem;
-    animation: entrada 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.05s backwards;
 }
 
 .saudacao h1 {
@@ -32,7 +31,6 @@
     letter-spacing: 0.06em;
     color: var(--cor-texto-suave);
     margin: 0 0 1rem;
-    animation: entrada 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.1s backwards;
 }
 
 .grade-ferramentas {
@@ -55,7 +53,6 @@
     transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
                 box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
                 border-color 0.2s ease;
-    animation: entrada 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
 
 .cartao-ferramenta:hover {

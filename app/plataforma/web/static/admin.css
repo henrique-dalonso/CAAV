@@ -1,0 +1,199 @@
+/* Tela de administração — cabeçalho/layout de página, cabecalho-ferramenta,
+   cartao-secao, tabela, selo, lista-dados e checkbox estilizado já vêm de
+   base.css (compartilhados). Aqui só entra o que é específico desta tela. */
+
+.contagem {
+    font-weight: 500;
+    color: var(--cor-texto-suave);
+    font-size: 0.82rem;
+}
+
+.aviso-discreto {
+    font-size: 0.82rem;
+    color: var(--cor-texto-suave);
+    margin: 1rem 0 0;
+}
+
+/* Visão geral — grade de números grandes. */
+.admin-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+}
+
+.admin-stat {
+    padding: 1rem;
+    background: var(--cor-fundo);
+    border-radius: var(--raio-pequeno);
+}
+
+.admin-stat strong {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.admin-stat span {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--cor-texto-suave);
+    margin-top: 0.2rem;
+}
+
+.admin-stat span a {
+    color: var(--cor-acento);
+    text-decoration: none;
+    margin-left: 0.3rem;
+}
+
+.admin-stat span a:hover {
+    text-decoration: underline;
+}
+
+/* Campo/botão de formulário — mesmo padrão visual usado em login/perfil. */
+.campo {
+    margin-bottom: 1.1rem;
+}
+
+.campo label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--cor-texto-suave);
+    margin-bottom: 0.4rem;
+}
+
+.campo input {
+    width: 100%;
+    padding: 0.65rem 0.85rem;
+    font-size: 0.92rem;
+    font-family: inherit;
+    color: var(--cor-texto);
+    background: var(--cor-fundo);
+    border: 1.5px solid var(--cor-borda);
+    border-radius: var(--raio-pequeno);
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.campo input:focus {
+    border-color: var(--cor-acento);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--cor-acento) 18%, transparent);
+}
+
+.botao {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.6rem 1.1rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    font-family: inherit;
+    color: white;
+    background: var(--cor-acento);
+    border: none;
+    border-radius: var(--raio-pequeno);
+    cursor: pointer;
+    transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+.botao:hover {
+    background: var(--cor-acento-hover);
+    box-shadow: 0 8px 20px -6px color-mix(in srgb, var(--cor-acento) 60%, transparent);
+}
+
+.botao:active {
+    transform: scale(0.98);
+}
+
+.botao-pequeno {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.78rem;
+}
+
+.admin-form-usuario {
+    max-width: 380px;
+}
+
+.admin-check-linha {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    user-select: none;
+    margin-bottom: 0.5rem;
+}
+
+.admin-form-legenda {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--cor-texto-suave);
+    margin: 1rem 0 0.5rem;
+}
+
+.admin-checks-ferramentas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+/* Tabela de usuários — colunas com largura pensada pro conteúdo. */
+.admin-tabela-usuarios th:nth-child(1), .admin-tabela-usuarios td:nth-child(1) { width: 16%; }
+.admin-tabela-usuarios th:nth-child(2), .admin-tabela-usuarios td:nth-child(2) { width: 12%; }
+.admin-tabela-usuarios th:nth-child(3), .admin-tabela-usuarios td:nth-child(3) { width: 20%; }
+.admin-tabela-usuarios th:nth-child(4), .admin-tabela-usuarios td:nth-child(4) { width: 70px; }
+.admin-tabela-usuarios th:nth-child(5), .admin-tabela-usuarios td:nth-child(5) { width: 70px; }
+
+.admin-ferramentas-editor summary,
+.admin-senha-editor summary {
+    cursor: pointer;
+    font-size: 0.82rem;
+    color: var(--cor-acento);
+}
+
+.admin-ferramentas-editor summary:hover,
+.admin-senha-editor summary:hover {
+    text-decoration: underline;
+}
+
+.admin-ferramentas-editor form {
+    margin-top: 0.6rem;
+    padding: 0.75rem;
+    background: var(--cor-fundo);
+    border-radius: var(--raio-pequeno);
+}
+
+.admin-check-linha-pequena {
+    font-size: 0.8rem;
+}
+
+.admin-acoes {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+}
+
+.admin-form-senha {
+    display: flex;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+}
+
+.admin-form-senha input {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
+    font-family: inherit;
+    color: var(--cor-texto);
+    background: var(--cor-fundo);
+    border: 1.5px solid var(--cor-borda);
+    border-radius: var(--raio-pequeno);
+    outline: none;
+}
+
+.admin-form-senha input:focus {
+    border-color: var(--cor-acento);
+}

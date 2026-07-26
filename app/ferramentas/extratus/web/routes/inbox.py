@@ -3,13 +3,13 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Request, UploadFile, File
 from fastapi.responses import RedirectResponse, FileResponse
-from fastapi.templating import Jinja2Templates
 
 from app.ferramentas.extratus.core.config_manager import carregar_config
 from app.ferramentas.extratus.core.pdf_manager import listar_pdfs
 from app.ferramentas.extratus.core.pipeline import processar_pdf
 from app.plataforma.db.models import Usuario
 from app.plataforma.web.auth import exigir_acesso_ferramenta
+from app.plataforma.web.templates_util import criar_templates
 
 
 router = APIRouter(dependencies=[Depends(exigir_acesso_ferramenta("extratus"))])
@@ -22,7 +22,7 @@ PLATAFORMA_TEMPLATES_DIR = (
 )
 # Duas pastas de busca: a própria (inbox.html) e a da plataforma (base.html,
 # de onde essa tela herda o cabeçalho/layout compartilhado).
-templates = Jinja2Templates(directory=[TEMPLATES_DIR, PLATAFORMA_TEMPLATES_DIR])
+templates = criar_templates([TEMPLATES_DIR, PLATAFORMA_TEMPLATES_DIR])
 
 
 def listar_relatorios_prontos(pasta_saida):
@@ -59,9 +59,10 @@ def pagina_inicial(
             "usuario": usuario,
             "pendentes": [pdf.name for pdf in pendentes],
             "total_pendentes": len(pendentes),
-            "relatorios": relatorios,
+            "total_relatorios": len(relatorios),
             "ia_provider": config.get("ia_provider", "simulado"),
             "erro": erro,
+            "aba_ativa": "gerar",
         },
     )
 
@@ -98,7 +99,7 @@ async def enviar_pdf(arquivo: UploadFile = File(...)):
 
 
 @router.post("/processar-tudo")
-def processar_tudo():
+def processar_tudo(usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus"))):
     config = carregar_config()
 
     pasta_entrada = config.get("pasta_entrada", "entrada_pdfs")
@@ -110,7 +111,13 @@ def processar_tudo():
 
     for pdf in listar_pdfs(pasta_entrada):
         processar_pdf(
-            pdf, pasta_saida, pasta_processados, pasta_erros, pasta_revisao, ia_provider
+            pdf,
+            pasta_saida,
+            pasta_processados,
+            pasta_erros,
+            pasta_revisao,
+            ia_provider,
+            usuario_id=usuario.id,
         )
 
     return RedirectResponse(url="/extratus/", status_code=303)

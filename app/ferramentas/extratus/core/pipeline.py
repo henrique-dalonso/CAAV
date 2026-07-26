@@ -29,7 +29,7 @@ def obter_dados_deteccao(caminho_pdf):
     return processo, confianca
 
 
-def _tratar_erro(pdf, processo, tipo_erro, erro, pasta_erros):
+def _tratar_erro(pdf, processo, tipo_erro, erro, pasta_erros, usuario_id=None):
     registrar_log(f"Erro ({tipo_erro}) ao processar {Path(pdf).name}: {erro}")
 
     destino_pdf = None
@@ -45,7 +45,8 @@ def _tratar_erro(pdf, processo, tipo_erro, erro, pasta_erros):
         processo=processo,
         tipo_erro=tipo_erro,
         erro_mensagem=erro,
-        destino_pdf=destino_pdf
+        destino_pdf=destino_pdf,
+        usuario_id=usuario_id,
     )
 
     return {
@@ -62,7 +63,8 @@ def processar_pdf(
     pasta_processados,
     pasta_erros,
     pasta_revisao,
-    ia_provider="simulado"
+    ia_provider="simulado",
+    usuario_id=None,
 ):
     """Processa um único PDF: detecta o processo, gera o relatório, move o
     arquivo conforme a confiança da detecção e registra o resultado.
@@ -80,12 +82,12 @@ def processar_pdf(
     try:
         processo, confianca = obter_dados_deteccao(pdf)
     except Exception as erro:
-        return _tratar_erro(pdf, None, "erro_pdf", erro, pasta_erros)
+        return _tratar_erro(pdf, None, "erro_pdf", erro, pasta_erros, usuario_id)
 
     try:
         dados_relatorio, uso_ia = gerar_relatorio(pdf, processo, ia_provider)
     except Exception as erro:
-        return _tratar_erro(pdf, processo, "erro_ia", erro, pasta_erros)
+        return _tratar_erro(pdf, processo, "erro_ia", erro, pasta_erros, usuario_id)
 
     try:
         nome_relatorio = gerar_nome_relatorio(processo)
@@ -94,7 +96,7 @@ def processar_pdf(
 
         salvar_relatorio_docx(dados_relatorio, caminho_saida)
     except Exception as erro:
-        return _tratar_erro(pdf, processo, "erro_docx", erro, pasta_erros)
+        return _tratar_erro(pdf, processo, "erro_docx", erro, pasta_erros, usuario_id)
 
     try:
         destino_pdf = mover_por_confianca(
@@ -104,7 +106,7 @@ def processar_pdf(
             pasta_revisao
         )
     except Exception as erro:
-        return _tratar_erro(pdf, processo, "erro_movimentacao", erro, pasta_erros)
+        return _tratar_erro(pdf, processo, "erro_movimentacao", erro, pasta_erros, usuario_id)
 
     registrar_log(
         f"Relatório gerado (confiança {confianca.get('nivel')}): {caminho_saida}"
@@ -119,6 +121,7 @@ def processar_pdf(
         confianca=confianca.get("nivel"),
         motivo_confianca=confianca.get("motivo"),
         uso_ia=uso_ia,
+        usuario_id=usuario_id,
     )
 
     return {

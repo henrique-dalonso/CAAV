@@ -8,7 +8,7 @@
 <div class="cabecalho-ferramenta">
     <div>
         <h1>Extratus</h1>
-        <p>Resumo automático de processos judiciais em relatório curto com parecer.</p>
+        <p>Geração de relatórios de processos judiciais pra cliente, com parecer.</p>
     </div>
     {% if ia_provider == "claude" %}
     <span class="selo-status real">IA real ativada</span>
@@ -16,6 +16,14 @@
     <span class="selo-status simulado">Modo simulado</span>
     {% endif %}
 </div>
+
+<nav class="abas-extratus">
+    <a href="/extratus/" class="aba aba-ativa">Gerar relatórios</a>
+    <a href="/extratus/relatorios" class="aba">Relatórios <span class="contagem-aba">{{ total_relatorios }}</span></a>
+    {% if usuario.eh_admin %}
+    <a href="/extratus/historico" class="aba aba-admin">Custos (admin)</a>
+    {% endif %}
+</nav>
 
 {% if erro %}
 <p class="banner-erro">⚠ {{ erro }}</p>
@@ -42,19 +50,6 @@
     </form>
     {% else %}
     <p class="vazio">Nenhum PDF pendente no momento.</p>
-    {% endif %}
-</section>
-
-<section class="cartao-secao">
-    <h2>Relatórios prontos <a href="historico" style="font-size: 0.8rem; font-weight: 500;">ver histórico &rarr;</a></h2>
-    {% if relatorios %}
-    <ul class="lista-arquivos">
-        {% for nome in relatorios %}
-        <li><a href="download/{{ nome }}">{{ nome }}</a></li>
-        {% endfor %}
-    </ul>
-    {% else %}
-    <p class="vazio">Nenhum relatório gerado ainda.</p>
     {% endif %}
 </section>
 {% endblock %}

@@ -19,7 +19,6 @@ CONFIG_PADRAO = {
     "limite_padrao": 0,
 
     "ia_provider": "simulado",
-    "modelo_ia": "claude-sonnet-4"
 }
 
 PASTAS_CONFIGURAVEIS = [

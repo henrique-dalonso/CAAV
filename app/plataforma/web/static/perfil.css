@@ -1,0 +1,153 @@
+/* Tela de perfil — cabeçalho/layout de página, cabecalho-ferramenta e
+   cartao-secao já vêm de base.css. Aqui só entra o que é específico:
+   abas laterais, lista de dados, formulário de senha. */
+
+.perfil-layout {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+}
+
+.perfil-abas-laterais {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    width: 170px;
+    flex-shrink: 0;
+}
+
+.perfil-aba {
+    padding: 0.6rem 0.85rem;
+    border-radius: var(--raio-pequeno);
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--cor-texto-suave);
+    text-decoration: none;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.perfil-aba:hover {
+    background: var(--cor-fundo);
+    color: var(--cor-texto);
+}
+
+.perfil-aba-ativa,
+.perfil-aba-ativa:hover {
+    background: var(--cor-acento-fraco);
+    color: var(--cor-acento);
+}
+
+.perfil-conteudo {
+    flex: 1;
+    min-width: 0;
+}
+
+.perfil-dados-lista {
+    margin: 0 0 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.perfil-dados-lista div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--cor-borda);
+    font-size: 0.9rem;
+}
+
+.perfil-dados-lista div:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.perfil-dados-lista dt {
+    color: var(--cor-texto-suave);
+    font-weight: 600;
+}
+
+.perfil-dados-lista dd {
+    margin: 0;
+    color: var(--cor-texto);
+    text-align: right;
+}
+
+.perfil-form {
+    max-width: 340px;
+}
+
+.campo {
+    margin-bottom: 1.1rem;
+}
+
+.campo label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--cor-texto-suave);
+    margin-bottom: 0.4rem;
+}
+
+.campo input {
+    width: 100%;
+    padding: 0.65rem 0.85rem;
+    font-size: 0.92rem;
+    font-family: inherit;
+    color: var(--cor-texto);
+    background: var(--cor-fundo);
+    border: 1.5px solid var(--cor-borda);
+    border-radius: var(--raio-pequeno);
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.campo input:focus {
+    border-color: var(--cor-acento);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--cor-acento) 18%, transparent);
+}
+
+.botao {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.6rem 1.1rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    font-family: inherit;
+    color: white;
+    background: var(--cor-acento);
+    border: none;
+    border-radius: var(--raio-pequeno);
+    cursor: pointer;
+    transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+.botao:hover {
+    background: var(--cor-acento-hover);
+    box-shadow: 0 8px 20px -6px color-mix(in srgb, var(--cor-acento) 60%, transparent);
+}
+
+.botao:active {
+    transform: scale(0.98);
+}
+
+.aviso-discreto {
+    font-size: 0.82rem;
+    color: var(--cor-texto-suave);
+    margin: 0;
+}
+
+@media (max-width: 640px) {
+    .perfil-layout {
+        flex-direction: column;
+    }
+
+    .perfil-abas-laterais {
+        flex-direction: row;
+        width: 100%;
+        overflow-x: auto;
+    }
+}

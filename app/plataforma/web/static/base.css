@@ -89,9 +89,15 @@ a {
     filter: blur(70px);
     opacity: 0.35;
     z-index: 0;
-    animation: flutuar 18s ease-in-out infinite alternate;
+    animation: flutuar 18s ease-in-out infinite alternate,
+               fundo-entrada 0.8s ease-out backwards;
     transition: translate 1.1s cubic-bezier(0.16, 1, 0.3, 1);
     pointer-events: none;
+}
+
+@keyframes fundo-entrada {
+    from { opacity: 0; }
+    to { opacity: 0.35; }
 }
 
 .fundo-vivo::before {
@@ -209,6 +215,29 @@ a {
     80% { transform: translateX(3px); }
 }
 
+/* Contraparte positiva do banner-erro — confirmação de ação (senha
+   alterada, usuário criado, etc). */
+.banner-sucesso {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #dcfce7;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+    border-radius: var(--raio-pequeno);
+    padding: 0.65rem 0.9rem;
+    font-size: 0.85rem;
+    margin-bottom: 1.25rem;
+}
+
+@media (prefers-color-scheme: dark) {
+    .banner-sucesso {
+        background: #113321;
+        color: #86efac;
+        border-color: #1e4d2e;
+    }
+}
+
 /* Animação de entrada suave e reaproveitável — qualquer elemento novo
    na tela pode usar isso pra não simplesmente "pipocar". */
 @keyframes entrada {
@@ -216,10 +245,211 @@ a {
     to { opacity: 1; transform: translateY(0); }
 }
 
-@media (prefers-reduced-motion: reduce) {
-    * {
-        animation-duration: 0.001s !important;
+/* Nota: aqui a gente NÃO zera animação-duration pra tudo (* { ... }) com
+   "movimento reduzido" ligado no Windows/navegador. O único efeito
+   realmente contínuo/ambiente (o "flutuar" do fundo do login) já é
+   desligado especificamente ali em cima. Os fades de entrada (login,
+   erro) são únicos, curtos, e o pedido explícito foi ter eles — travar
+   tudo por causa de uma opção de sistema que às vezes nem foi ligada
+   de propósito tirava o efeito pedido sem necessidade. */
+
+/* Cabeçalho de página + cartão de seção — padrão repetido em toda tela
+   de ferramenta (Extratus, Leitor de Publicações, Perfil...). Cada tela
+   ainda pode ter seu próprio CSS por cima disso, mas o formato base
+   (título, subtítulo, cartão com borda arredondada) é o mesmo em todo
+   canto, então mora aqui em vez de ser copiado em cada arquivo. */
+.cabecalho-ferramenta {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.cabecalho-ferramenta h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.3rem;
+}
+
+.cabecalho-ferramenta p {
+    color: var(--cor-texto-suave);
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.cartao-secao {
+    background: var(--cor-cartao);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio);
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 1.25rem;
+}
+
+.cartao-secao h2 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin: 0 0 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Checkbox estilizado, reaproveitável — esconde o quadradinho padrão do
+   navegador (que não tem cara nenhuma do site) e desenha uma "caixinha"
+   no tom do tema, que preenche com a cor de destaque quando marcada.
+   Usado em filtros do Extratus, seletor de colaborador e formulários
+   de admin — mora aqui por ser usado em mais de um lugar. */
+.check-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.check-caixa {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    border: 1.5px solid var(--cor-borda);
+    background: var(--cor-fundo);
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.check-caixa::after {
+    content: "";
+    width: 4px;
+    height: 8px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg) translate(-1px, -1px);
+    opacity: 0;
+    transition: opacity 0.1s ease;
+}
+
+.check-input:checked + .check-caixa {
+    background: var(--cor-acento);
+    border-color: var(--cor-acento);
+}
+
+.check-input:checked + .check-caixa::after {
+    opacity: 1;
+}
+
+.check-input:focus-visible + .check-caixa {
+    outline: 2px solid var(--cor-acento);
+    outline-offset: 2px;
+}
+
+label:hover .check-caixa {
+    border-color: var(--cor-acento);
+}
+
+/* Selo simples (Sim/Não, ativo/inativo, etc) — pra não mostrar texto cru
+   tipo "sim"/"não" numa tabela. Neutro por padrão, cores só quando faz
+   sentido reforçar (positivo/negativo). */
+.selo {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    background: var(--cor-fundo);
+    color: var(--cor-texto-suave);
+}
+
+.selo-positivo {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.selo-negativo {
+    background: var(--cor-erro-fundo);
+    color: var(--cor-erro-texto);
+}
+
+@media (prefers-color-scheme: dark) {
+    .selo-positivo {
+        background: #113321;
+        color: #86efac;
     }
+}
+
+/* Tabela genérica reaproveitável — qualquer tela com dado tabular (admin,
+   histórico) usa isso em vez de reinventar zebra/hover/espaçamento. */
+.tabela {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.tabela th {
+    text-align: left;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--cor-texto-suave);
+    padding: 0 0.6rem 0.6rem;
+    border-bottom: 1px solid var(--cor-borda);
+}
+
+.tabela td {
+    padding: 0.7rem 0.6rem;
+    border-bottom: 1px solid var(--cor-borda);
+    vertical-align: top;
+}
+
+.tabela tr:last-child td {
+    border-bottom: none;
+}
+
+.tabela tbody tr:hover {
+    background: var(--cor-fundo);
+}
+
+/* Lista de dados chave/valor (dt/dd), reaproveitável — perfil, admin,
+   qualquer tela que precise mostrar "campo: valor" em linhas. */
+.lista-dados {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.lista-dados div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--cor-borda);
+    font-size: 0.9rem;
+}
+
+.lista-dados div:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.lista-dados dt {
+    color: var(--cor-texto-suave);
+    font-weight: 600;
+}
+
+.lista-dados dd {
+    margin: 0;
+    color: var(--cor-texto);
+    text-align: right;
 }
 
 /* Layout de página compartilhado por toda tela logada (base.html) */
@@ -237,7 +467,9 @@ a {
     justify-content: space-between;
     gap: 1rem;
     margin-bottom: 3rem;
-    animation: entrada 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    /* Sem animação de entrada aqui de propósito — essa barra aparece em
+       toda navegação, várias vezes por dia. Efeito de "revelar" só cabe
+       em tela que se vê 1x por sessão (login), senão vira demora chata. */
 }
 
 .marca-sistema {
@@ -282,11 +514,283 @@ a {
     color: var(--cor-acento);
 }
 
+/* Ícones do cabeçalho (admin, sair) — mesmo tratamento visual do botão
+   de apps: sem borda, vira uma bolha suave no hover. Título/aria-label
+   seguram o texto ("Administração", "Sair") pra tooltip e leitor de tela,
+   já que o ícone sozinho não é sempre autoexplicativo. */
+.icone-menu {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: 999px;
+    color: var(--cor-texto-suave);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.icone-menu:hover {
+    background: var(--cor-acento-fraco);
+    color: var(--cor-acento);
+}
+
 .avatar {
     width: 30px;
     height: 30px;
     font-size: 0.75rem;
     border-radius: 999px;
+}
+
+/* Seletor de apps no cabeçalho — mesma ideia do "Google Apps": grade de
+   pontinhos que abre uma bandeja com ícone + nome de cada ferramenta
+   liberada pro usuário. Existe em toda tela logada (base.html), pra
+   trocar de ferramenta de qualquer lugar sem voltar pra home. */
+.seletor-apps {
+    position: relative;
+}
+
+.botao-apps {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.botao-apps:hover,
+.botao-apps[aria-expanded="true"] {
+    background: var(--cor-acento-fraco);
+}
+
+.grade-pontos {
+    display: grid;
+    grid-template-columns: repeat(3, 4px);
+    grid-template-rows: repeat(3, 4px);
+    gap: 3px;
+}
+
+.grade-pontos span {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--cor-texto-suave);
+    transition: background 0.15s ease;
+}
+
+.botao-apps:hover .grade-pontos span,
+.botao-apps[aria-expanded="true"] .grade-pontos span {
+    background: var(--cor-acento);
+}
+
+.bandeja-apps {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    z-index: 20;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.25rem;
+    width: 240px;
+    padding: 0.75rem;
+    background: var(--cor-cartao);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio);
+    box-shadow: var(--sombra);
+}
+
+/* "display: grid" acima é regra de autor e vence a regra padrão do
+   navegador pra [hidden] (mesmo problema já visto nos filtros do
+   Extratus) — sem isso aqui, a bandeja ficava sempre visível. */
+.bandeja-apps[hidden] {
+    display: none;
+}
+
+/* Especificidade reforçada (".bandeja-apps .bandeja-apps-item" em vez de
+   só ".bandeja-apps-item") de propósito — precisa vencer ".menu-usuario a",
+   que já define cor/hover pros outros links do cabeçalho e ia sobrescrever
+   isso aqui por ser mais específico (classe + tag). */
+.bandeja-apps .bandeja-apps-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.65rem 0.4rem;
+    border-radius: var(--raio-pequeno);
+    text-decoration: none;
+    color: var(--cor-texto);
+    text-align: center;
+    transition: background 0.15s ease;
+}
+
+.bandeja-apps .bandeja-apps-item:hover {
+    background: var(--cor-fundo);
+    color: var(--cor-texto);
+}
+
+.bandeja-apps-item .emblema {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+}
+
+.bandeja-apps-item span {
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.2;
+    overflow-wrap: break-word;
+}
+
+.bandeja-apps-vazio {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 0.5rem;
+    margin: 0;
+}
+
+/* Avatar sozinho no cabeçalho (sem nome do lado, pra economizar espaço) —
+   passa o mouse mostra o nome (title=""), clica abre o card de perfil. */
+.seletor-perfil {
+    position: relative;
+}
+
+.botao-perfil {
+    display: flex;
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.card-perfil {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    z-index: 20;
+    width: 240px;
+    padding: 1rem;
+    background: var(--cor-cartao);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio);
+    box-shadow: var(--sombra);
+}
+
+/* Mesma pegadinha do [hidden] vs regra de display de autor — ver nota
+   em .bandeja-apps[hidden] acima. */
+.card-perfil[hidden] {
+    display: none;
+}
+
+/* Clicando no e-mail (cortado com "...") o card cresce pro lado pra
+   caber a linha inteira — não quebra em várias linhas porque e-mail
+   nunca é tão maior assim, cabe numa linha só se der o espaço certo. */
+.card-perfil.expandido {
+    width: max-content;
+    max-width: min(420px, 90vw);
+}
+
+.card-perfil-email {
+    cursor: pointer;
+}
+
+.card-perfil-email:hover {
+    color: var(--cor-texto);
+    text-decoration: underline;
+}
+
+.card-perfil.expandido .card-perfil-email {
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+}
+
+.avatar-grande-link {
+    display: block;
+    border-radius: 999px;
+    transition: transform 0.15s ease;
+}
+
+.avatar-grande-link:hover {
+    transform: scale(1.06);
+}
+
+.card-perfil-cabecalho {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.9rem;
+    padding-bottom: 0.9rem;
+    border-bottom: 1px solid var(--cor-borda);
+}
+
+.avatar-grande {
+    width: 44px;
+    height: 44px;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.card-perfil-cabecalho > div {
+    min-width: 0;
+}
+
+.card-perfil-cabecalho strong {
+    display: block;
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--cor-texto);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.card-perfil-cabecalho span {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--cor-texto-suave);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.card-perfil-dados {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.card-perfil-dados div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-size: 0.82rem;
+}
+
+.card-perfil-dados dt {
+    color: var(--cor-texto-suave);
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.card-perfil-dados dd {
+    margin: 0;
+    color: var(--cor-texto);
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .vazio {

@@ -1,30 +1,41 @@
 # Centro de Experiência do Colaborador — Alonso & Verdiani
 
-Plataforma interna do escritório. Hoje abriga uma ferramenta, o **Extratus**
-(transforma processos judiciais grandes em relatórios curtos com parecer);
-mais ferramentas entram depois, seguindo a mesma base de login e permissão.
+Plataforma interna do escritório, com login único e permissão por
+ferramenta. Hoje tem duas ferramentas:
 
-> Status atual: a geração de relatório do Extratus ainda usa um texto de
-> exemplo — a integração real com IA (Claude/GPT/Gemini) ainda não foi
-> ligada. Tudo em volta (fila de PDFs, triagem por confiança, histórico,
-> login, administração) já está funcionando de verdade.
+- **Extratus** — transforma processos judiciais grandes em relatórios
+  curtos com parecer. Funcional de ponta a ponta.
+- **Leitor de Publicações** — pré-análise de publicações do NPJUR. Ainda
+  em construção, só a casca existe.
+
+> Status atual do Extratus: a integração real de IA (Claude) já existe e
+> foi testada com sucesso, mas o modo padrão ainda é "simulado"
+> (`ia_provider` em `config.json`) — ligar o modo real é uma decisão
+> consciente, não um bug pendente. Fila de PDFs, triagem por confiança,
+> geração de relatório, custo por usuário, login e administração já
+> funcionam de verdade nos dois modos.
 
 ## Estrutura do projeto
 
 ```
 app/
-├── plataforma/            ← o "sistema": login, usuários, permissão, admin
-│   ├── db/                   (Usuario, Ferramenta, UsuarioFerramenta)
-│   └── web/                   (site raiz, login, home, administração)
+├── plataforma/                ← o "sistema": login, usuários, permissão, admin
+│   ├── db/                       (Usuario, Ferramenta, UsuarioFerramenta)
+│   └── web/                       (login, home, administração, perfil do usuário)
+│       ├── routes/                   (auth, home, admin, perfil)
+│       ├── templates/                 (base.html — layout/cabeçalho compartilhado)
+│       ├── static/                    (base.css/js, perfil, admin, login, marca/)
+│       └── templates_util.py         (Jinja2Templates com os globals compartilhados)
 └── ferramentas/
-    └── extratus/           ← tudo específico do Extratus
-        ├── core/               (lógica: detectar processo, gerar docx...)
-        ├── db/                  (Job — histórico de processamento)
-        ├── web/                 (páginas do Extratus dentro do site)
-        ├── config/              (prompt, template Word, config.json)
-        ├── dados/               (entrada_pdfs, processados, erros...)
-        ├── logs/
-        └── scripts/
+    ├── extratus/                ← tudo específico do Extratus
+    │   ├── core/                    (lógica: detectar processo, gerar docx...)
+    │   ├── db/                       (Job — histórico de processamento)
+    │   ├── web/                      (páginas do Extratus dentro do site)
+    │   ├── config/                   (prompt, template Word, config.json)
+    │   ├── dados/                    (entrada_pdfs, processados, erros...)
+    │   ├── logs/
+    │   └── scripts/
+    └── leitor_publicacoes/      ← 2ª ferramenta, ainda em construção
 
 banco/plataforma.db        ← banco único, compartilhado entre sistema e ferramentas
 scripts/criar_usuario.py   ← script de sistema (bootstrap do primeiro admin)
@@ -32,7 +43,23 @@ tests/                      (espelha a estrutura acima: plataforma/ e ferramenta
 ```
 
 Cada ferramenta nova entra como uma pasta nova dentro de `app/ferramentas/`,
-reaproveitando login/permissão/admin de `app/plataforma/` — sem duplicar nada.
+reaproveitando login/permissão/admin/layout de `app/plataforma/` — sem duplicar
+nada. Toda tela logada (de qualquer ferramenta) estende `base.html`, que já
+traz o cabeçalho, o seletor de ferramentas (ícone de grade) e o card de
+perfil prontos — não precisa recriar nada disso numa ferramenta nova.
+
+### Rotas principais
+
+| Rota | O que é |
+|---|---|
+| `/` | Home — lista as ferramentas que o usuário tem acesso |
+| `/login`, `/logout` | Autenticação |
+| `/perfil/dados`, `/perfil/senha`, `/perfil/preferencias` | Perfil do usuário logado (trocar a própria senha, etc.) |
+| `/admin` | Administração — usuários, permissões, visão geral, custo de IA (só admin) |
+| `/extratus/` | Extratus — enviar PDF e processar |
+| `/extratus/relatorios` | Extratus — relatórios já gerados (todo mundo com acesso vê) |
+| `/extratus/historico` | Extratus — histórico técnico com custo de IA por usuário (só admin) |
+| `/leitor-publicacoes/` | Leitor de Publicações — em construção |
 
 ## Como rodar (modo desenvolvimento, no seu próprio computador)
 

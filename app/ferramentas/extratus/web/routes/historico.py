@@ -1,31 +1,77 @@
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Request
-from fastapi.templating import Jinja2Templates
+from fastapi import APIRouter, Depends, HTTPException, Request
 
-from app.ferramentas.extratus.db.jobs import listar_jobs
+from app.ferramentas.extratus.db.jobs import listar_jobs, somar_custo_por_usuario
+from app.ferramentas.extratus.web.rotulos import rotulo_erro, rotulo_status
 from app.plataforma.db.models import Usuario
+from app.plataforma.db.usuarios import listar_todos_usuarios
 from app.plataforma.web.auth import exigir_acesso_ferramenta
+from app.plataforma.web.templates_util import criar_templates
 
 
-router = APIRouter(dependencies=[Depends(exigir_acesso_ferramenta("extratus"))])
+def exigir_admin_extratus(
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
+) -> Usuario:
+    if not usuario.eh_admin:
+        raise HTTPException(
+            status_code=403,
+            detail="Acesso restrito a administradores.",
+        )
+
+    return usuario
+
+
+router = APIRouter(dependencies=[Depends(exigir_admin_extratus)])
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 PLATAFORMA_TEMPLATES_DIR = (
     Path(__file__).resolve().parents[4] / "plataforma" / "web" / "templates"
 )
-templates = Jinja2Templates(directory=[TEMPLATES_DIR, PLATAFORMA_TEMPLATES_DIR])
+templates = criar_templates([TEMPLATES_DIR, PLATAFORMA_TEMPLATES_DIR])
+templates.env.filters["rotulo_status"] = rotulo_status
+templates.env.filters["rotulo_erro"] = rotulo_erro
 
 
 @router.get("/historico")
 def pagina_historico(
     request: Request,
-    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
+    usuario: Usuario = Depends(exigir_admin_extratus),
 ):
     jobs = listar_jobs()
+    info_por_id = {u.id: {"nome": u.nome, "login": u.nome_usuario} for u in listar_todos_usuarios()}
+    custo_por_usuario = somar_custo_por_usuario()
+
+    custo_motor = custo_por_usuario.get(None, 0.0)
+    custo_colaboradores = sum(
+        custo for usuario_id, custo in custo_por_usuario.items() if usuario_id is not None
+    )
+    custo_total = custo_motor + custo_colaboradores
+
+    colaboradores = sorted(
+        (
+            {
+                "id": usuario_id,
+                "nome": info_por_id.get(usuario_id, {}).get("nome", f"Usuário #{usuario_id}"),
+                "login": info_por_id.get(usuario_id, {}).get("login", ""),
+                "custo": custo,
+            }
+            for usuario_id, custo in custo_por_usuario.items()
+            if usuario_id is not None
+        ),
+        key=lambda item: item["nome"].lower(),
+    )
 
     return templates.TemplateResponse(
         request,
         "historico.html",
-        {"usuario": usuario, "jobs": jobs},
+        {
+            "usuario": usuario,
+            "jobs": jobs,
+            "info_por_id": info_por_id,
+            "colaboradores": colaboradores,
+            "custo_colaboradores": custo_colaboradores,
+            "custo_motor": custo_motor,
+            "custo_total": custo_total,
+        },
     )

@@ -1,118 +1,196 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Administração — Centro de Experiência do Colaborador</title>
-    <link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
-    <header>
-        <p><a href="/">&larr; Centro de Experiência do Colaborador</a></p>
+{% extends "base.html" %}
+
+{% block titulo %}Administração — Centro de Experiência do Colaborador{% endblock %}
+{% block nome_pagina %}Centro de Experiência{% endblock %}
+{% block css_pagina %}<link rel="stylesheet" href="/static/admin.css">{% endblock %}
+
+{% block conteudo %}
+<div class="cabecalho-ferramenta">
+    <div>
         <h1>Administração</h1>
-    </header>
+        <p>Usuários, permissões e visão geral da plataforma.</p>
+    </div>
+</div>
 
-    {% if erro %}
-    <p class="erro-login">{{ erro }}</p>
-    {% endif %}
+{% if erro %}
+<p class="banner-erro">⚠ {{ erro }}</p>
+{% endif %}
+{% if sucesso %}
+<p class="banner-sucesso">✓ {{ sucesso }}</p>
+{% endif %}
 
-    <section class="cartao">
-        <h2>Métricas</h2>
-        <div class="lista-ferramentas">
-            <div class="ferramenta"><strong>{{ metricas.sucesso }}</strong><span>processados com sucesso</span></div>
-            <div class="ferramenta"><strong>{{ metricas.revisao }}</strong><span>aguardando revisão</span></div>
-            <div class="ferramenta"><strong>{{ metricas.erro }}</strong><span>com erro</span></div>
+<section class="cartao-secao">
+    <h2>Visão geral</h2>
+    <div class="admin-stats">
+        <div class="admin-stat">
+            <strong>{{ total_usuarios_ativos }}</strong>
+            <span>usuário(s) ativo(s)</span>
         </div>
-    </section>
+        <div class="admin-stat">
+            <strong>{{ metricas.sucesso }}</strong>
+            <span>relatórios com sucesso</span>
+        </div>
+        <div class="admin-stat">
+            <strong>{{ metricas.revisao }}</strong>
+            <span>aguardando revisão</span>
+        </div>
+        <div class="admin-stat">
+            <strong>{{ metricas.erro }}</strong>
+            <span>processamentos com erro</span>
+        </div>
+        <div class="admin-stat">
+            <strong>US$ {{ "%.2f"|format(custo_total) }}</strong>
+            <span>custo de IA (total) <a href="/extratus/historico">ver por colaborador &rarr;</a></span>
+        </div>
+    </div>
+</section>
 
-    <section class="cartao">
-        <h2>Configuração de pastas (Extratus)</h2>
-        <table>
-            <tbody>
-                <tr><td>Entrada</td><td>{{ config.pasta_entrada }}</td></tr>
-                <tr><td>Saída (relatórios)</td><td>{{ config.pasta_saida }}</td></tr>
-                <tr><td>Processados</td><td>{{ config.pasta_processados }}</td></tr>
-                <tr><td>Revisão</td><td>{{ config.pasta_revisao }}</td></tr>
-                <tr><td>Erros</td><td>{{ config.pasta_erros }}</td></tr>
-            </tbody>
-        </table>
-        <p class="motivo">Edição por aqui ainda não existe — por enquanto, mude direto em config/config.json.</p>
-    </section>
-
-    <section class="cartao">
-        <h2>Novo usuário</h2>
-        <form action="/admin/usuarios" method="post">
-            <label>Nome<input type="text" name="nome" required></label>
-            <label>Usuário (login)<input type="text" name="nome_usuario" required></label>
-            <label>E-mail<input type="email" name="email" required></label>
-            <label>Senha<input type="password" name="senha" required></label>
-            <label><input type="checkbox" name="eh_admin" value="true" style="width:auto;display:inline"> Administrador</label>
-
-            {% if ferramentas %}
-            <p>Ferramentas liberadas (ignorado se administrador):</p>
+<section class="cartao-secao">
+    <h2>Ferramentas <span class="contagem">{{ ferramentas|length }}</span></h2>
+    <table class="tabela">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Descrição</th>
+            </tr>
+        </thead>
+        <tbody>
             {% for ferramenta in ferramentas %}
-            <label style="display:inline-block;margin-right:1rem">
-                <input type="checkbox" name="ferramenta_ids" value="{{ ferramenta.id }}" style="width:auto;display:inline">
+            <tr>
+                <td><strong>{{ ferramenta.nome }}</strong></td>
+                <td>{{ ferramenta.descricao or "—" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<section class="cartao-secao">
+    <h2>Configuração do Extratus</h2>
+    <dl class="lista-dados">
+        <div><dt>Entrada</dt><dd>{{ config.pasta_entrada }}</dd></div>
+        <div><dt>Saída (relatórios)</dt><dd>{{ config.pasta_saida }}</dd></div>
+        <div><dt>Processados</dt><dd>{{ config.pasta_processados }}</dd></div>
+        <div><dt>Revisão</dt><dd>{{ config.pasta_revisao }}</dd></div>
+        <div><dt>Erros</dt><dd>{{ config.pasta_erros }}</dd></div>
+    </dl>
+    <p class="aviso-discreto">Edição por aqui ainda não existe — por enquanto, mude direto em config/config.json.</p>
+</section>
+
+<section class="cartao-secao">
+    <h2>Novo usuário</h2>
+    <form action="/admin/usuarios" method="post" class="admin-form-usuario">
+        <div class="campo">
+            <label for="nome">Nome</label>
+            <input id="nome" type="text" name="nome" required>
+        </div>
+        <div class="campo">
+            <label for="nome_usuario">Usuário (login)</label>
+            <input id="nome_usuario" type="text" name="nome_usuario" required>
+        </div>
+        <div class="campo">
+            <label for="email">E-mail</label>
+            <input id="email" type="email" name="email" required>
+        </div>
+        <div class="campo">
+            <label for="senha">Senha</label>
+            <input id="senha" type="password" name="senha" required minlength="8">
+        </div>
+        <label class="admin-check-linha">
+            <input type="checkbox" name="eh_admin" value="true" class="check-input">
+            <span class="check-caixa"></span>
+            Administrador
+        </label>
+
+        {% if ferramentas %}
+        <p class="admin-form-legenda">Ferramentas liberadas (ignorado se administrador):</p>
+        <div class="admin-checks-ferramentas">
+            {% for ferramenta in ferramentas %}
+            <label class="admin-check-linha">
+                <input type="checkbox" name="ferramenta_ids" value="{{ ferramenta.id }}" class="check-input">
+                <span class="check-caixa"></span>
                 {{ ferramenta.nome }}
             </label>
             {% endfor %}
-            {% endif %}
+        </div>
+        {% endif %}
 
-            <button type="submit">Criar usuário</button>
-        </form>
-    </section>
+        <button type="submit" class="botao">Criar usuário</button>
+    </form>
+</section>
 
-    <section class="cartao">
-        <h2>Usuários</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Nome</th>
-                    <th>Usuário</th>
-                    <th>E-mail</th>
-                    <th>Admin</th>
-                    <th>Ativo</th>
-                    <th>Ferramentas</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for usuario in usuarios %}
-                <tr>
-                    <td>{{ usuario.nome }}</td>
-                    <td>{{ usuario.nome_usuario }}</td>
-                    <td>{{ usuario.email }}</td>
-                    <td>{{ "sim" if usuario.eh_admin else "não" }}</td>
-                    <td>{{ "sim" if usuario.ativo else "não" }}</td>
-                    <td>
-                        {% if usuario.eh_admin %}
-                        todas (admin)
-                        {% else %}
-                        <form action="/admin/usuarios/{{ usuario.id }}/ferramentas" method="post">
+<section class="cartao-secao">
+    <h2>Usuários <span class="contagem">{{ usuarios|length }}</span></h2>
+    <table class="tabela admin-tabela-usuarios">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Usuário</th>
+                <th>E-mail</th>
+                <th>Admin</th>
+                <th>Ativo</th>
+                <th>Ferramentas</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for usuario_linha in usuarios %}
+            <tr>
+                <td>{{ usuario_linha.nome }}</td>
+                <td>{{ usuario_linha.nome_usuario }}</td>
+                <td>{{ usuario_linha.email }}</td>
+                <td>
+                    {% if usuario_linha.eh_admin %}
+                    <span class="selo selo-positivo">Sim</span>
+                    {% else %}
+                    <span class="selo">Não</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if usuario_linha.ativo %}
+                    <span class="selo selo-positivo">Sim</span>
+                    {% else %}
+                    <span class="selo selo-negativo">Não</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if usuario_linha.eh_admin %}
+                    todas (admin)
+                    {% else %}
+                    <details class="admin-ferramentas-editor">
+                        <summary>{{ ferramentas_por_usuario.get(usuario_linha.id, [])|length }} liberada(s)</summary>
+                        <form action="/admin/usuarios/{{ usuario_linha.id }}/ferramentas" method="post">
                             {% for ferramenta in ferramentas %}
-                            <label style="display:block;font-size:0.85rem">
-                                <input type="checkbox" name="ferramenta_ids" value="{{ ferramenta.id }}"
-                                    style="width:auto;display:inline"
-                                    {% if ferramenta.id in ferramentas_por_usuario.get(usuario.id, []) %}checked{% endif %}>
+                            <label class="admin-check-linha admin-check-linha-pequena">
+                                <input type="checkbox" name="ferramenta_ids" value="{{ ferramenta.id }}" class="check-input"
+                                    {% if ferramenta.id in ferramentas_por_usuario.get(usuario_linha.id, []) %}checked{% endif %}>
+                                <span class="check-caixa"></span>
                                 {{ ferramenta.nome }}
                             </label>
                             {% endfor %}
-                            <button type="submit">Salvar</button>
+                            <button type="submit" class="botao botao-pequeno">Salvar</button>
                         </form>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <form action="/admin/usuarios/{{ usuario.id }}/alternar-ativo" method="post">
-                            <button type="submit" class="botao-link">{{ "desativar" if usuario.ativo else "ativar" }}</button>
+                    </details>
+                    {% endif %}
+                </td>
+                <td class="admin-acoes">
+                    <form action="/admin/usuarios/{{ usuario_linha.id }}/alternar-ativo" method="post">
+                        <button type="submit" class="botao-link">{{ "desativar" if usuario_linha.ativo else "ativar" }}</button>
+                    </form>
+                    <form action="/admin/usuarios/{{ usuario_linha.id }}/alternar-admin" method="post">
+                        <button type="submit" class="botao-link">{{ "remover admin" if usuario_linha.eh_admin else "tornar admin" }}</button>
+                    </form>
+                    <details class="admin-senha-editor">
+                        <summary>redefinir senha</summary>
+                        <form action="/admin/usuarios/{{ usuario_linha.id }}/redefinir-senha" method="post" class="admin-form-senha">
+                            <input type="password" name="nova_senha" placeholder="nova senha" required minlength="8">
+                            <button type="submit" class="botao botao-pequeno">Salvar</button>
                         </form>
-                        <form action="/admin/usuarios/{{ usuario.id }}/alternar-admin" method="post">
-                            <button type="submit" class="botao-link">{{ "remover admin" if usuario.eh_admin else "tornar admin" }}</button>
-                        </form>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </section>
-</body>
-</html>
+                    </details>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

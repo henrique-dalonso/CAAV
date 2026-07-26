@@ -132,3 +132,11 @@ def alternar_admin(usuario_id):
         sessao.add(usuario)
         sessao.commit()
         return usuario.eh_admin
+
+
+def atualizar_senha(usuario_id, nova_senha_hash):
+    with obter_sessao() as sessao:
+        usuario = sessao.get(Usuario, usuario_id)
+        usuario.senha_hash = nova_senha_hash
+        sessao.add(usuario)
+        sessao.commit()

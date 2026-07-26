@@ -1,29 +1,7 @@
-/* Telas do Extratus (inbox + histórico) — o cabeçalho/layout de página
-   já vem de base.css (base.html). Aqui só entra o que é específico
-   dessas telas: cabeçalho da ferramenta, cartões de conteúdo, listas,
-   tabela do histórico. */
-
-.cabecalho-ferramenta {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-    margin-bottom: 2rem;
-    animation: entrada 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.05s backwards;
-}
-
-.cabecalho-ferramenta h1 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    margin: 0 0 0.3rem;
-}
-
-.cabecalho-ferramenta p {
-    color: var(--cor-texto-suave);
-    margin: 0;
-    font-size: 0.9rem;
-}
+/* Telas do Extratus (gerar relatórios + relatórios) — o cabeçalho/layout
+   de página, cabeçalho-ferramenta e cartao-secao já vêm de base.css
+   (compartilhados com outras ferramentas). Aqui só entra o que é
+   específico dessas telas: status, listas, abas e a lista de relatórios. */
 
 .selo-status {
     display: inline-flex;
@@ -61,22 +39,73 @@
     }
 }
 
-.cartao-secao {
-    background: var(--cor-cartao);
-    border: 1px solid var(--cor-borda);
-    border-radius: var(--raio);
-    padding: 1.5rem 1.75rem;
-    margin-bottom: 1.25rem;
-    animation: entrada 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.1s backwards;
+/* Abas do Extratus (Gerar relatórios / Relatórios) — navegação entre
+   duas páginas de verdade, só desenhada como se fosse uma coisa só. */
+.abas-extratus {
+    display: flex;
+    gap: 0.25rem;
+    border-bottom: 1px solid var(--cor-borda);
+    margin-bottom: 1.5rem;
 }
 
-.cartao-secao h2 {
-    font-size: 0.95rem;
-    font-weight: 700;
-    margin: 0 0 1rem;
+.aba {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 0.4rem;
+    padding: 0.65rem 1rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--cor-texto-suave);
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.aba:hover {
+    color: var(--cor-texto);
+}
+
+.aba-ativa,
+.aba-ativa:hover {
+    color: var(--cor-acento);
+    border-bottom-color: var(--cor-acento);
+}
+
+.aba .contagem-aba {
+    background: var(--cor-acento-fraco);
+    color: var(--cor-acento);
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+}
+
+/* Aba de custos: só admin vê, então marca com uma cor diferente da aba
+   normal — sinaliza visualmente "isso aqui é outra categoria de tela".
+   A borda amarela embaixo só pode aparecer quando essa aba estiver
+   realmente ativa (.aba-ativa) — senão fica parecendo ativa sempre. */
+.aba-admin,
+.aba-admin:hover {
+    color: #b45309;
+    margin-left: auto;
+}
+
+.aba-admin.aba-ativa,
+.aba-admin.aba-ativa:hover {
+    border-bottom-color: #b45309;
+}
+
+@media (prefers-color-scheme: dark) {
+    .aba-admin,
+    .aba-admin:hover {
+        color: #fbbf24;
+    }
+
+    .aba-admin.aba-ativa,
+    .aba-admin.aba-ativa:hover {
+        border-bottom-color: #fbbf24;
+    }
 }
 
 .cartao-secao h2 .contagem {
@@ -188,46 +217,214 @@
     text-decoration: underline;
 }
 
-/* Histórico */
-.aviso-discreto {
-    font-size: 0.82rem;
-    color: var(--cor-texto-suave);
-    margin: -0.5rem 0 1.25rem;
+/* Relatórios (histórico) */
+.barra-filtros {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
 }
 
-.tabela-historico {
-    width: 100%;
-    border-collapse: collapse;
+.campo-busca {
+    flex: 1;
+    min-width: 220px;
+    padding: 0.55rem 0.85rem;
     font-size: 0.85rem;
+    font-family: inherit;
+    color: var(--cor-texto);
+    background: var(--cor-fundo);
+    border: 1.5px solid var(--cor-borda);
+    border-radius: var(--raio-pequeno);
+    outline: none;
+    transition: border-color 0.15s ease;
 }
 
-.tabela-historico th {
-    text-align: left;
-    font-size: 0.72rem;
+.campo-busca:focus {
+    border-color: var(--cor-acento);
+}
+
+.chips-filtro {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.chip {
+    padding: 0.4rem 0.85rem;
+    font-size: 0.8rem;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    font-family: inherit;
     color: var(--cor-texto-suave);
-    padding: 0 0.6rem 0.6rem;
-    border-bottom: 1px solid var(--cor-borda);
+    background: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
 
-.tabela-historico td {
-    padding: 0.7rem 0.6rem;
-    border-bottom: 1px solid var(--cor-borda);
-    vertical-align: top;
+.chip:hover {
+    border-color: var(--cor-acento);
+    color: var(--cor-texto);
 }
 
-.tabela-historico tr:last-child td {
-    border-bottom: none;
+.chip-ativo,
+.chip-ativo:hover {
+    background: var(--cor-acento);
+    border-color: var(--cor-acento);
+    color: white;
+}
+
+.filtro-meus-linha {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 1rem;
+}
+
+.filtro-meus {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--cor-texto-suave);
+    cursor: pointer;
+    user-select: none;
+}
+
+.lista-relatorios {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.relatorio-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.85rem 1rem;
+    background: var(--cor-fundo);
+    border-radius: var(--raio-pequeno);
+    transition: background 0.15s ease;
+}
+
+.relatorio-item:hover {
+    background: var(--cor-acento-fraco);
+}
+
+.relatorio-item .status {
+    flex-shrink: 0;
+    min-width: 68px;
+    text-align: center;
+}
+
+.relatorio-item .botao {
+    flex-shrink: 0;
+}
+
+/* Divisor discreto que fica DENTRO da pílula (não toca o topo/base) —
+   separa a informação do processo do "quem pediu isso", que fica coladinho
+   no botão de baixar. */
+.relatorio-solicitante {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
+    max-width: 170px;
+}
+
+.divisor-vertical {
+    width: 1px;
+    height: 26px;
+    background: var(--cor-borda);
+    flex-shrink: 0;
+}
+
+.solicitante-texto {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    color: var(--cor-texto-suave);
+    font-size: 0.78rem;
+    cursor: pointer;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 150px;
+}
+
+/* Placeholder invisível: quando não há botão Baixar (status erro), mantém
+   o mesmo espaço reservado que o botão real ocupa — senão o bloco
+   "Solicitante" flutua pra posições diferentes linha a linha, porque
+   .relatorio-info (flex: 1) cresce pra preencher o espaço que sobra. */
+.botao-fantasma {
+    visibility: hidden;
+    pointer-events: none;
+}
+
+/* Qualquer texto que pode ser cortado com "..." usa essa classe: cursor
+   de clique, sublinha no hover, e a versão .expandido desfaz o corte
+   (quebra em várias linhas em vez de esconder). O atributo title="" no
+   HTML já cobre o "passar o mouse e parar" — tooltip nativa do navegador. */
+.truncavel {
+    cursor: pointer;
+}
+
+.truncavel:hover {
+    text-decoration: underline;
+}
+
+.truncavel.expandido {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    word-break: break-word;
+}
+
+.relatorio-solicitante:has(.truncavel.expandido) {
+    max-width: none;
+}
+
+.relatorio-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.relatorio-info strong {
+    font-size: 0.92rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.relatorio-meta {
+    font-size: 0.78rem;
+    color: var(--cor-texto-suave);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .status {
     display: inline-block;
     padding: 0.15rem 0.55rem;
     border-radius: 999px;
-    font-size: 0.75rem;
-    font-weight: 600;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
 }
 
 .status-sucesso {
@@ -251,8 +448,144 @@
 }
 
 .motivo {
-    display: block;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
     color: var(--cor-texto-suave);
     font-size: 0.78rem;
     margin-top: 0.2rem;
+}
+
+/* Histórico (admin) — tabela técnica com custo de IA, só pra quem
+   administra a ferramenta. */
+.aviso-discreto {
+    font-size: 0.82rem;
+    color: var(--cor-texto-suave);
+    margin: -0.5rem 0 1.25rem;
+}
+
+.tabela-historico {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 0.85rem;
+}
+
+.tabela-historico th {
+    text-align: left;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--cor-texto-suave);
+    padding: 0 0.6rem 0.6rem;
+    border-bottom: 1px solid var(--cor-borda);
+}
+
+.tabela-historico td {
+    padding: 0.7rem 0.6rem;
+    border-bottom: 1px solid var(--cor-borda);
+    vertical-align: top;
+    overflow-wrap: break-word;
+}
+
+.tabela-historico tr:last-child td {
+    border-bottom: none;
+}
+
+.tabela-historico tbody tr:hover {
+    background: var(--cor-fundo);
+}
+
+.tabela-historico th:nth-child(1), .tabela-historico td:nth-child(1) { width: 100px; }
+.tabela-historico th:nth-child(2), .tabela-historico td:nth-child(2) { width: 14%; }
+.tabela-historico th:nth-child(3), .tabela-historico td:nth-child(3) { width: 18%; }
+.tabela-historico th:nth-child(4), .tabela-historico td:nth-child(4) { width: 13%; }
+.tabela-historico th:nth-child(5), .tabela-historico td:nth-child(5) { width: 85px; }
+.tabela-historico th:nth-child(6), .tabela-historico td:nth-child(6) { width: 130px; }
+.tabela-historico th:nth-child(7), .tabela-historico td:nth-child(7) { width: auto; }
+
+/* Glossário/seletor de colaboradores — busca por nome + checkbox que
+   filtra a tabela de baixo. Existe pra não precisar decorar login de
+   ninguém, e pra não listar 70 nomes soltos no resumo de custo. */
+.campo-busca-colaborador {
+    width: 100%;
+    margin-bottom: 0.9rem;
+}
+
+.lista-colaboradores {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.colaborador-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.55rem 0.75rem;
+    background: var(--cor-fundo);
+    border-radius: var(--raio-pequeno);
+    font-size: 0.87rem;
+}
+
+.colaborador-item label {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    cursor: pointer;
+    min-width: 0;
+}
+
+.colaborador-nome {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.colaborador-login {
+    color: var(--cor-texto-suave);
+    font-size: 0.78rem;
+    white-space: nowrap;
+}
+
+.colaborador-item strong {
+    flex-shrink: 0;
+}
+
+/* Resumo de gasto por usuário — acima da tabela detalhada. */
+.lista-custos {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.lista-custos li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.55rem 0.75rem;
+    background: var(--cor-fundo);
+    border-radius: var(--raio-pequeno);
+    font-size: 0.87rem;
+}
+
+.lista-custos-total {
+    border-top: 1px dashed var(--cor-borda);
+    margin-top: 0.3rem;
+    padding-top: 0.75rem !important;
+    background: transparent !important;
+    font-weight: 700;
 }

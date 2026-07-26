@@ -1,27 +1,26 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Leitor de Publicações</title>
-    <link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
-    <header>
-        <p><a href="/">&larr; Centro de Experiência do Colaborador</a></p>
-        <h1>Leitor de Publicações</h1>
-        <p class="aviso">Em construção — ainda não processa nada de verdade.</p>
-    </header>
+{% extends "base.html" %}
 
-    <section class="cartao">
-        <h2>O que vem por aí</h2>
-        <p>
-            Pré-análise por IA de publicações do NPJUR: leitura automática,
-            sugestão do tipo de ato necessário (manifestação, recurso, etc.),
-            prazo provável e equipe responsável — sempre com um advogado
-            conferindo antes de qualquer agendamento ser criado de verdade.
-        </p>
-        <p class="vazio">Nada aqui ainda. Voltando em breve.</p>
-    </section>
-</body>
-</html>
+{% block titulo %}Leitor de Publicações{% endblock %}
+{% block nome_pagina %}Leitor de Publicações{% endblock %}
+{% block css_pagina %}<link rel="stylesheet" href="/leitor-publicacoes/static/leitor_publicacoes.css">{% endblock %}
+
+{% block conteudo %}
+<div class="cabecalho-ferramenta">
+    <div>
+        <h1>Leitor de Publicações</h1>
+        <p>Pré-análise por IA de publicações do NPJUR, pra agilizar o agendamento.</p>
+    </div>
+    <span class="selo-status construcao">Em construção</span>
+</div>
+
+<section class="cartao-secao">
+    <h2>O que vem por aí</h2>
+    <p>
+        Leitura automática de publicações do NPJUR, com sugestão do tipo de
+        ato necessário (manifestação, recurso, etc.), prazo provável e
+        equipe responsável — sempre com um advogado conferindo antes de
+        qualquer agendamento ser criado de verdade.
+    </p>
+    <p class="vazio">Nada aqui ainda. Voltando em breve.</p>
+</section>
+{% endblock %}
