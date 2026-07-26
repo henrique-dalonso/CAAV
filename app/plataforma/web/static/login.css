@@ -1,111 +1,15 @@
-/* Tela de login — protótipo de direção visual.
-   Isolado de propósito: nada aqui afeta o resto do site.
-   Tudo em variável pra quando a identidade visual do escritório chegar,
-   trocar for questão de mudar valores aqui em cima, não reescrever. */
+/* Tela de login — usa a base compartilhada (base.css) pra cor/fonte/fundo
+   vivo, e só acrescenta o que é específico dessa tela: o card centralizado
+   e o formulário. */
 
-:root {
-    --cor-fundo: #f4f5f7;
-    --cor-fundo-blob-1: #c7d2fe;
-    --cor-fundo-blob-2: #a5f3fc;
-    --cor-cartao: #ffffff;
-    --cor-texto: #111827;
-    --cor-texto-suave: #6b7280;
-    --cor-borda: #e5e7eb;
-    --cor-acento: #4f46e5;
-    --cor-acento-hover: #4338ca;
-    --cor-erro-fundo: #fef2f2;
-    --cor-erro-texto: #b91c1c;
-    --cor-erro-borda: #fecaca;
-    --raio: 16px;
-    --sombra: 0 20px 60px -15px rgb(17 24 39 / 0.15);
-}
-
-@media (prefers-color-scheme: dark) {
-    :root {
-        --cor-fundo: #0b0f19;
-        --cor-fundo-blob-1: #312e81;
-        --cor-fundo-blob-2: #164e63;
-        --cor-cartao: #151a27;
-        --cor-texto: #f3f4f6;
-        --cor-texto-suave: #9ca3af;
-        --cor-borda: #262c3d;
-        --cor-acento: #818cf8;
-        --cor-acento-hover: #a5b4fc;
-        --cor-erro-fundo: #2a1215;
-        --cor-erro-texto: #fca5a5;
-        --cor-erro-borda: #4c1d24;
-        --sombra: 0 20px 60px -15px rgb(0 0 0 / 0.6);
-    }
-}
-
-* {
-    box-sizing: border-box;
-}
-
-html, body {
-    height: 100%;
-    margin: 0;
-}
+@import url("base.css");
 
 body {
-    font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-    background: var(--cor-fundo);
-    color: var(--cor-texto);
     display: flex;
     align-items: center;
     justify-content: center;
     min-height: 100vh;
     padding: 1.5rem;
-    position: relative;
-    overflow: hidden;
-}
-
-/* Fundo com "blobs" suaves, bem discretos — dão profundidade sem virar poluição visual.
-   Dois movimentos independentes e compostos: "flutuar" (respiração lenta, sempre
-   ligada) via transform/scale, e o rastro do mouse via translate (propriedade
-   separada de transform hoje em dia) — não competem entre si. */
-body::before,
-body::after {
-    content: "";
-    position: absolute;
-    width: 50vmax;
-    height: 50vmax;
-    border-radius: 50%;
-    filter: blur(70px);
-    opacity: 0.4;
-    z-index: 0;
-    animation: flutuar 18s ease-in-out infinite alternate;
-    transition: translate 1.1s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-body::before {
-    background: var(--cor-fundo-blob-1);
-    top: -15%;
-    left: -10%;
-    translate: calc(var(--mouse-x, 0) * 1.4vw) calc(var(--mouse-y, 0) * 1.4vh);
-}
-
-body::after {
-    background: var(--cor-fundo-blob-2);
-    bottom: -15%;
-    right: -10%;
-    animation-delay: -9s;
-    /* mesma direção do outro blob, só que mais devagar — é a diferença de
-       velocidade entre as duas camadas que cria paralaxe, não direção oposta */
-    translate: calc(var(--mouse-x, 0) * 2.6vw) calc(var(--mouse-y, 0) * 2.6vh);
-}
-
-@keyframes flutuar {
-    from { transform: scale(1); }
-    to { transform: scale(1.08); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    /* Só desliga a respiração automática — o rastro do mouse continua,
-       porque é movimento causado diretamente pela pessoa, não ambiente. */
-    body::before, body::after {
-        animation: none;
-    }
 }
 
 .login-cartao {
@@ -130,15 +34,7 @@ body::after {
 .login-marca {
     width: 44px;
     height: 44px;
-    border-radius: 12px;
-    background: linear-gradient(135deg, var(--cor-acento), var(--cor-acento-hover));
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
     font-size: 1.05rem;
-    letter-spacing: 0.02em;
     margin-bottom: 1.5rem;
 }
 
@@ -175,7 +71,7 @@ body::after {
     color: var(--cor-texto);
     background: transparent;
     border: 1.5px solid var(--cor-borda);
-    border-radius: 10px;
+    border-radius: var(--raio-pequeno);
     outline: none;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
@@ -195,7 +91,7 @@ body::after {
     color: white;
     background: var(--cor-acento);
     border: none;
-    border-radius: 10px;
+    border-radius: var(--raio-pequeno);
     cursor: pointer;
     transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
 }
@@ -216,7 +112,7 @@ body::after {
     background: var(--cor-erro-fundo);
     color: var(--cor-erro-texto);
     border: 1px solid var(--cor-erro-borda);
-    border-radius: 10px;
+    border-radius: var(--raio-pequeno);
     padding: 0.65rem 0.85rem;
     font-size: 0.85rem;
     margin-bottom: 1.25rem;

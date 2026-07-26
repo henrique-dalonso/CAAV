@@ -1,0 +1,191 @@
+/* Tela inicial (index) — puxa a base compartilhada e acrescenta o
+   cabeçalho, a saudação e a grade de ferramentas. */
+
+@import url("base.css");
+
+body {
+    min-height: 100vh;
+    padding: 2.5rem 1.5rem 4rem;
+}
+
+.pagina {
+    position: relative;
+    z-index: 1;
+    max-width: 880px;
+    margin: 0 auto;
+}
+
+/* Barra superior: emblema + nome do sistema à esquerda, usuário à direita */
+.barra-superior {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 3rem;
+    animation: entrada 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.marca-sistema {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.marca-sistema .emblema {
+    width: 38px;
+    height: 38px;
+    font-size: 0.9rem;
+}
+
+.marca-sistema strong {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+.marca-sistema span {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--cor-texto-suave);
+}
+
+.menu-usuario {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.85rem;
+    color: var(--cor-texto-suave);
+}
+
+.menu-usuario a {
+    color: var(--cor-texto-suave);
+    text-decoration: none;
+}
+
+.menu-usuario a:hover {
+    color: var(--cor-acento);
+}
+
+.avatar {
+    width: 30px;
+    height: 30px;
+    font-size: 0.75rem;
+    border-radius: 999px;
+}
+
+/* Saudação */
+.saudacao {
+    margin-bottom: 2.5rem;
+    animation: entrada 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.05s backwards;
+}
+
+.saudacao h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.35rem;
+}
+
+.saudacao p {
+    color: var(--cor-texto-suave);
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+/* Grade de ferramentas */
+.secao-titulo {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--cor-texto-suave);
+    margin: 0 0 1rem;
+    animation: entrada 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.1s backwards;
+}
+
+.grade-ferramentas {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 1rem;
+}
+
+.cartao-ferramenta {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    padding: 1.5rem;
+    background: var(--cor-cartao);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio);
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+                border-color 0.2s ease;
+    animation: entrada 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+.cartao-ferramenta:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--sombra-suave);
+    border-color: var(--cor-acento);
+}
+
+.cartao-ferramenta .emblema {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+}
+
+.cartao-ferramenta strong {
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+.cartao-ferramenta span {
+    font-size: 0.85rem;
+    color: var(--cor-texto-suave);
+    line-height: 1.4;
+}
+
+.cartao-ferramenta .seta {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    color: var(--cor-texto-suave);
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.cartao-ferramenta:hover .seta {
+    opacity: 1;
+    transform: translateX(0);
+    color: var(--cor-acento);
+}
+
+.cartao-ferramenta.desabilitada {
+    border-style: dashed;
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+.vazio {
+    color: var(--cor-texto-suave);
+    font-style: italic;
+    font-size: 0.9rem;
+}
+
+@keyframes entrada {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .barra-superior, .saudacao, .secao-titulo, .cartao-ferramenta {
+        animation: none;
+    }
+}

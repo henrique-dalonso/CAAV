@@ -1,0 +1,147 @@
+/* Base compartilhada — variáveis, reset, tipografia.
+   Toda tela nova do site puxa isso primeiro (@import) e só acrescenta
+   o que é específico dela. Quando a identidade visual do escritório
+   chegar, é só trocar os valores aqui embaixo — todas as telas que
+   usam essa base se ajustam sozinhas, sem precisar caçar cor em
+   arquivo nenhum.
+
+   A fonte Inter é carregada via <link> no <head> de cada página (não
+   @import aqui) — assim o navegador começa a buscar a fonte em paralelo
+   com o CSS, em vez de esperar esse arquivo carregar primeiro. */
+
+:root {
+    --cor-fundo: #f4f5f7;
+    --cor-fundo-blob-1: #c7d2fe;
+    --cor-fundo-blob-2: #a5f3fc;
+    --cor-cartao: #ffffff;
+    --cor-texto: #111827;
+    --cor-texto-suave: #6b7280;
+    --cor-borda: #e5e7eb;
+    --cor-acento: #4f46e5;
+    --cor-acento-hover: #4338ca;
+    --cor-acento-fraco: #eef2ff;
+    --cor-erro-fundo: #fef2f2;
+    --cor-erro-texto: #b91c1c;
+    --cor-erro-borda: #fecaca;
+    --raio: 16px;
+    --raio-pequeno: 10px;
+    --sombra: 0 20px 60px -15px rgb(17 24 39 / 0.15);
+    --sombra-suave: 0 8px 24px -8px rgb(17 24 39 / 0.12);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --cor-fundo: #0b0f19;
+        --cor-fundo-blob-1: #312e81;
+        --cor-fundo-blob-2: #164e63;
+        --cor-cartao: #151a27;
+        --cor-texto: #f3f4f6;
+        --cor-texto-suave: #9ca3af;
+        --cor-borda: #262c3d;
+        --cor-acento: #818cf8;
+        --cor-acento-hover: #a5b4fc;
+        --cor-acento-fraco: #1e2247;
+        --cor-erro-fundo: #2a1215;
+        --cor-erro-texto: #fca5a5;
+        --cor-erro-borda: #4c1d24;
+        --sombra: 0 20px 60px -15px rgb(0 0 0 / 0.6);
+        --sombra-suave: 0 8px 24px -8px rgb(0 0 0 / 0.5);
+    }
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    min-height: 100%;
+    margin: 0;
+}
+
+body {
+    font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--cor-fundo);
+    color: var(--cor-texto);
+}
+
+a {
+    color: var(--cor-acento);
+}
+
+/* "Blobs" de fundo suaves e reaproveitáveis — qualquer tela pode ligar
+   isso só adicionando a classe .fundo-vivo no <body>. */
+.fundo-vivo {
+    position: relative;
+    overflow: hidden;
+}
+
+.fundo-vivo::before,
+.fundo-vivo::after {
+    content: "";
+    position: absolute;
+    width: 50vmax;
+    height: 50vmax;
+    border-radius: 50%;
+    filter: blur(70px);
+    opacity: 0.35;
+    z-index: 0;
+    animation: flutuar 18s ease-in-out infinite alternate;
+    transition: translate 1.1s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+}
+
+.fundo-vivo::before {
+    background: var(--cor-fundo-blob-1);
+    top: -15%;
+    left: -10%;
+    translate: calc(var(--mouse-x, 0) * 1.4vw) calc(var(--mouse-y, 0) * 1.4vh);
+}
+
+.fundo-vivo::after {
+    background: var(--cor-fundo-blob-2);
+    bottom: -15%;
+    right: -10%;
+    animation-delay: -9s;
+    translate: calc(var(--mouse-x, 0) * 2.6vw) calc(var(--mouse-y, 0) * 2.6vh);
+}
+
+@keyframes flutuar {
+    from { transform: scale(1); }
+    to { transform: scale(1.08); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fundo-vivo::before, .fundo-vivo::after {
+        animation: none;
+    }
+}
+
+/* Emblema/monograma reaproveitável (login usa "AV", cada ferramenta
+   pode usar sua própria inicial) */
+.emblema {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--raio-pequeno);
+    background: linear-gradient(135deg, var(--cor-acento), var(--cor-acento-hover));
+    color: white;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    flex-shrink: 0;
+}
+
+.botao-link {
+    background: none;
+    border: none;
+    color: var(--cor-texto-suave);
+    cursor: pointer;
+    font-size: inherit;
+    font-family: inherit;
+    padding: 0;
+    margin: 0;
+    text-decoration: underline;
+}
+
+.botao-link:hover {
+    color: var(--cor-texto);
+}

@@ -3,39 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Centro de Experiência do Colaborador — Alonso & Verdiani</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <title>Centro de Experiência do Colaborador</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/home.css">
 </head>
-<body>
-    <header>
-        <h1>Centro de Experiência do Colaborador</h1>
-        <p class="aviso">
-            Alonso &amp; Verdiani — logado como {{ usuario.nome }}
-            {% if usuario.eh_admin %}
-            · <a href="/admin">administração</a>
-            {% endif %}
-            <form action="/logout" method="post" style="display:inline">
-                <button type="submit" class="botao-link">sair</button>
-            </form>
-        </p>
-    </header>
+<body class="fundo-vivo">
+    <div class="pagina">
+        <header class="barra-superior">
+            <div class="marca-sistema">
+                <div class="emblema">AV</div>
+                <div>
+                    <strong>Centro de Experiência</strong>
+                    <span>Alonso &amp; Verdiani</span>
+                </div>
+            </div>
 
-    <section class="cartao">
-        <h2>Ferramentas</h2>
-        <div class="lista-ferramentas">
+            <div class="menu-usuario">
+                <div class="emblema avatar">{{ primeiro_nome[0]|upper }}</div>
+                <span>{{ usuario.nome }}</span>
+                {% if usuario.eh_admin %}
+                <a href="/admin">administração</a>
+                {% endif %}
+                <form action="/logout" method="post">
+                    <button type="submit" class="botao-link">sair</button>
+                </form>
+            </div>
+        </header>
+
+        <section class="saudacao">
+            <h1>{{ saudacao }}, {{ primeiro_nome }}.</h1>
+            <p>Escolha uma ferramenta pra começar.</p>
+        </section>
+
+        <h2 class="secao-titulo">Ferramentas</h2>
+        <div class="grade-ferramentas">
             {% for ferramenta in ferramentas %}
-            <a class="ferramenta" href="{{ ferramenta.url }}">
-                <strong>{{ ferramenta.nome }}</strong>
-                <span>{{ ferramenta.descricao }}</span>
+            <a class="cartao-ferramenta" href="{{ ferramenta.url }}" style="animation-delay: {{ 0.15 + loop.index0 * 0.05 }}s">
+                <div class="emblema">{{ ferramenta.nome[0]|upper }}</div>
+                <div>
+                    <strong>{{ ferramenta.nome }}</strong><br>
+                    <span>{{ ferramenta.descricao }}</span>
+                </div>
+                <span class="seta">&rarr;</span>
             </a>
             {% else %}
             <p class="vazio">Nenhuma ferramenta liberada pra você ainda. Fale com um administrador.</p>
             {% endfor %}
-            <div class="ferramenta ferramenta-desabilitada">
-                <strong>Mais ferramentas em breve</strong>
-                <span>Novas ferramentas do escritório vão aparecer aqui.</span>
+            <div class="cartao-ferramenta desabilitada">
+                <div class="emblema">+</div>
+                <div>
+                    <strong>Mais ferramentas em breve</strong><br>
+                    <span>Novas ferramentas do escritório vão aparecer aqui.</span>
+                </div>
             </div>
         </div>
-    </section>
+    </div>
 </body>
 </html>
