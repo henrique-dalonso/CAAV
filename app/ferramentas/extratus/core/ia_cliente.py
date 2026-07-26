@@ -8,10 +8,22 @@ from app.ferramentas.extratus.core.prompt_manager import carregar_instrucoes_rel
 
 MODELO_PADRAO = "claude-sonnet-5"
 
-# Preço aproximado por milhão de tokens (jul/2026) — é só uma estimativa
-# pra acompanhar gasto, não uma fatura oficial. Ajustar se o preço mudar.
-PRECO_ENTRADA_POR_MILHAO_USD = 3.00
-PRECO_SAIDA_POR_MILHAO_USD = 15.00
+# Preço promocional por milhão de tokens, válido até 31/08/2026 (depois
+# disso sobe pra $3/$15 — lembrar de atualizar). Isso é só uma ESTIMATIVA
+# pra acompanhar gasto dentro do sistema — a fatura real da Anthropic é
+# que vale de verdade. Testado em 25/07/2026: o cálculo aqui deu US$ 0,64
+# pra uma chamada que a fatura real cobrou US$ 0,85 — ainda não sabemos
+# a causa exata da diferença (possível custo extra de processar PDF/imagem
+# não refletido em usage.input_tokens). Tratar este número como piso, não teto.
+PRECO_ENTRADA_POR_MILHAO_USD = 2.00
+PRECO_SAIDA_POR_MILHAO_USD = 10.00
+
+# Cache de prompt: escrita (primeira vez) custa 1,25x o preço normal de
+# entrada; leitura (reaproveitando o que já foi escrito, dentro de ~5min)
+# custa só 10% do preço normal. Só a instrução do Max entra em cache — o
+# PDF de cada processo é sempre diferente, não tem o que reaproveitar ali.
+PRECO_CACHE_ESCRITA_POR_MILHAO_USD = PRECO_ENTRADA_POR_MILHAO_USD * 1.25
+PRECO_CACHE_LEITURA_POR_MILHAO_USD = PRECO_ENTRADA_POR_MILHAO_USD * 0.10
 
 
 FERRAMENTA_RELATORIO = {
@@ -150,7 +162,15 @@ def gerar_relatorio_claude(caminho_pdf, processo_detectado):
     resposta = cliente.messages.create(
         model=MODELO_PADRAO,
         max_tokens=4096,
-        system=instrucoes + instrucao_formato,
+        system=[
+            {
+                "type": "text",
+                "text": instrucoes + instrucao_formato,
+                # Marca esse bloco pra cache — é o mesmo texto em toda
+                # chamada, independente de qual processo está sendo lido.
+                "cache_control": {"type": "ephemeral"},
+            }
+        ],
         tools=[FERRAMENTA_RELATORIO],
         tool_choice={"type": "tool", "name": "preencher_relatorio"},
         messages=[
@@ -190,17 +210,35 @@ def gerar_relatorio_claude(caminho_pdf, processo_detectado):
 
     tokens_entrada = resposta.usage.input_tokens
     tokens_saida = resposta.usage.output_tokens
+    tokens_cache_escrita = getattr(resposta.usage, "cache_creation_input_tokens", 0) or 0
+    tokens_cache_leitura = getattr(resposta.usage, "cache_read_input_tokens", 0) or 0
+
     custo_estimado = (
         tokens_entrada / 1_000_000 * PRECO_ENTRADA_POR_MILHAO_USD
         + tokens_saida / 1_000_000 * PRECO_SAIDA_POR_MILHAO_USD
+        + tokens_cache_escrita / 1_000_000 * PRECO_CACHE_ESCRITA_POR_MILHAO_USD
+        + tokens_cache_leitura / 1_000_000 * PRECO_CACHE_LEITURA_POR_MILHAO_USD
     )
 
     uso_ia = {
         "modelo": MODELO_PADRAO,
-        "tokens_entrada": tokens_entrada,
+        # tokens_entrada aqui soma tudo (normal + cache), pra manter a
+        # coluna do histórico simples de ler — o detalhe do cache fica
+        # só no log, pra quem quiser conferir se está funcionando.
+        "tokens_entrada": tokens_entrada + tokens_cache_escrita + tokens_cache_leitura,
         "tokens_saida": tokens_saida,
         "custo_estimado_usd": round(custo_estimado, 4),
     }
+
+    if tokens_cache_leitura:
+        economia_estimada = (
+            tokens_cache_leitura / 1_000_000
+            * (PRECO_ENTRADA_POR_MILHAO_USD - PRECO_CACHE_LEITURA_POR_MILHAO_USD)
+        )
+        print(
+            f"[cache] {tokens_cache_leitura} tokens vieram do cache "
+            f"(economia estimada de US$ {economia_estimada:.4f} nesta chamada)."
+        )
 
     return dados, uso_ia
 
