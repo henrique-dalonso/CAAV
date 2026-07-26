@@ -116,6 +116,39 @@ a {
     }
 }
 
+/* Degradê estático — mesma família visual do .fundo-vivo (o login), mas
+   parado e mais discreto: dá vida pro fundo sem competir com o conteúdo.
+   Pra telas que se visitam várias vezes por dia (home, e no futuro outras
+   telas de uso frequente), onde não cabe um efeito chamativo toda hora. */
+.fundo-degrade {
+    position: relative;
+}
+
+.fundo-degrade::before,
+.fundo-degrade::after {
+    content: "";
+    position: fixed;
+    width: 60vmax;
+    height: 60vmax;
+    border-radius: 50%;
+    filter: blur(110px);
+    opacity: 0.22;
+    z-index: -1;
+    pointer-events: none;
+}
+
+.fundo-degrade::before {
+    background: var(--cor-fundo-blob-1);
+    top: -25%;
+    left: -15%;
+}
+
+.fundo-degrade::after {
+    background: var(--cor-fundo-blob-2);
+    bottom: -25%;
+    right: -15%;
+}
+
 /* Emblema/monograma reaproveitável (login usa "AV", cada ferramenta
    pode usar sua própria inicial) */
 .emblema {
