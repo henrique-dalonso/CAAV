@@ -10,12 +10,17 @@ def registrar_processado(
     relatorio_path,
     destino_pdf,
     confianca,
-    motivo_confianca=None
+    motivo_confianca=None,
+    uso_ia=None,
 ):
     """Registra um PDF que gerou relatório — status "sucesso" (confiança
     alta) ou "revisao" (confiança média/baixa, precisa de olho humano).
+
+    `uso_ia`, se informado, é um dict com modelo/tokens_entrada/tokens_saida/
+    custo_estimado_usd — vem vazio quando o relatório ainda é simulado.
     """
     status = "sucesso" if str(confianca).strip().lower() == "alta" else "revisao"
+    uso_ia = uso_ia or {}
 
     with obter_sessao() as sessao:
         job = Job(
@@ -26,6 +31,10 @@ def registrar_processado(
             motivo_confianca=motivo_confianca,
             relatorio_path=str(relatorio_path) if relatorio_path else None,
             destino_pdf=str(destino_pdf) if destino_pdf else None,
+            modelo_ia=uso_ia.get("modelo"),
+            tokens_entrada=uso_ia.get("tokens_entrada"),
+            tokens_saida=uso_ia.get("tokens_saida"),
+            custo_estimado_usd=uso_ia.get("custo_estimado_usd"),
         )
 
         sessao.add(job)

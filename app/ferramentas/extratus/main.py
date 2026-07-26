@@ -39,6 +39,11 @@ def main():
         0
     )
 
+    ia_provider = config.get(
+        "ia_provider",
+        "simulado"
+    )
+
     resultado_fila = montar_fila(
         pasta_entrada=pasta_entrada,
         limite=limite
@@ -53,7 +58,9 @@ def main():
     )
 
     for pdf in resultado_fila["pdfs"]:
-        processar_pdf(pdf, pasta_saida, pasta_processados, pasta_erros, pasta_revisao)
+        processar_pdf(
+            pdf, pasta_saida, pasta_processados, pasta_erros, pasta_revisao, ia_provider
+        )
 
     registrar_log("Extratus finalizado.")
 

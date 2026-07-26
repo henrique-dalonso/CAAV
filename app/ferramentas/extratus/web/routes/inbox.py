@@ -89,9 +89,12 @@ def processar_tudo():
     pasta_processados = config.get("pasta_processados", "processados")
     pasta_erros = config.get("pasta_erros", "erros")
     pasta_revisao = config.get("pasta_revisao", "revisao")
+    ia_provider = config.get("ia_provider", "simulado")
 
     for pdf in listar_pdfs(pasta_entrada):
-        processar_pdf(pdf, pasta_saida, pasta_processados, pasta_erros, pasta_revisao)
+        processar_pdf(
+            pdf, pasta_saida, pasta_processados, pasta_erros, pasta_revisao, ia_provider
+        )
 
     return RedirectResponse(url="/", status_code=303)
 

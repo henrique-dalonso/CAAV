@@ -2,7 +2,7 @@ from pathlib import Path
 
 from app.ferramentas.extratus.core.app_logger import registrar_log
 from app.ferramentas.extratus.core.processo_detector import analisar_pdf
-from app.ferramentas.extratus.core.ia_cliente import gerar_relatorio_simulado
+from app.ferramentas.extratus.core.ia_cliente import gerar_relatorio
 from app.ferramentas.extratus.core.relatorio_manager import salvar_relatorio_docx
 from app.ferramentas.extratus.core.output_manager import (
     gerar_caminho_unico,
@@ -56,7 +56,14 @@ def _tratar_erro(pdf, processo, tipo_erro, erro, pasta_erros):
     }
 
 
-def processar_pdf(pdf, pasta_saida, pasta_processados, pasta_erros, pasta_revisao):
+def processar_pdf(
+    pdf,
+    pasta_saida,
+    pasta_processados,
+    pasta_erros,
+    pasta_revisao,
+    ia_provider="simulado"
+):
     """Processa um único PDF: detecta o processo, gera o relatório, move o
     arquivo conforme a confiança da detecção e registra o resultado.
 
@@ -76,7 +83,7 @@ def processar_pdf(pdf, pasta_saida, pasta_processados, pasta_erros, pasta_revisa
         return _tratar_erro(pdf, None, "erro_pdf", erro, pasta_erros)
 
     try:
-        dados_relatorio = gerar_relatorio_simulado(pdf, processo)
+        dados_relatorio, uso_ia = gerar_relatorio(pdf, processo, ia_provider)
     except Exception as erro:
         return _tratar_erro(pdf, processo, "erro_ia", erro, pasta_erros)
 
@@ -111,6 +118,7 @@ def processar_pdf(pdf, pasta_saida, pasta_processados, pasta_erros, pasta_revisa
         destino_pdf=destino_pdf,
         confianca=confianca.get("nivel"),
         motivo_confianca=confianca.get("motivo"),
+        uso_ia=uso_ia,
     )
 
     return {

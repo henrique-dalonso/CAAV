@@ -21,6 +21,7 @@
                     <th>Arquivo</th>
                     <th>Processo</th>
                     <th>Status</th>
+                    <th>Custo IA</th>
                     <th>Detalhe</th>
                 </tr>
             </thead>
@@ -31,6 +32,14 @@
                     <td>{{ job.arquivo_pdf }}</td>
                     <td>{{ job.processo or "—" }}</td>
                     <td><span class="status status-{{ job.status }}">{{ job.status }}</span></td>
+                    <td>
+                        {% if job.custo_estimado_usd %}
+                        US$ {{ "%.4f"|format(job.custo_estimado_usd) }}
+                        <br><span class="motivo">{{ job.modelo_ia }}</span>
+                        {% else %}
+                        <span class="motivo">simulado</span>
+                        {% endif %}
+                    </td>
                     <td>
                         {% if job.relatorio_path %}
                         <a href="/extratus/download/{{ job.relatorio_path.split('\\')[-1].split('/')[-1] }}">baixar relatório</a>

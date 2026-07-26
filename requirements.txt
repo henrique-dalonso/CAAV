@@ -10,3 +10,4 @@ bcrypt
 itsdangerous
 python-dotenv
 pytest
+anthropic

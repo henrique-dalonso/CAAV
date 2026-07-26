@@ -4,32 +4,37 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Entrar — Centro de Experiência do Colaborador</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/login.css">
 </head>
 <body>
-    <header>
-        <h1>Centro de Experiência do Colaborador</h1>
-        <p class="aviso">Alonso &amp; Verdiani</p>
-    </header>
+    <main class="login-cartao">
+        <div class="login-marca">AV</div>
 
-    <section class="cartao">
-        <h2>Entrar</h2>
+        <h1>Centro de Experiência</h1>
+        <p class="login-subtitulo">Alonso &amp; Verdiani — entre com sua conta</p>
 
         {% if erro %}
-        <p class="erro-login">{{ erro }}</p>
+        <p class="login-erro">⚠ {{ erro }}</p>
         {% endif %}
 
         <form action="/login" method="post">
-            <label>
-                Usuário
-                <input type="text" name="usuario_login" required autofocus>
-            </label>
-            <label>
-                Senha
-                <input type="password" name="senha" required>
-            </label>
-            <button type="submit">Entrar</button>
+            <div class="campo">
+                <label for="usuario_login">Usuário</label>
+                <input id="usuario_login" type="text" name="usuario_login" required autofocus autocomplete="username">
+            </div>
+            <div class="campo">
+                <label for="senha">Senha</label>
+                <input id="senha" type="password" name="senha" required autocomplete="current-password">
+            </div>
+            <button type="submit" class="botao-entrar">Entrar</button>
         </form>
-    </section>
+
+        <p class="login-rodape">Centro de Experiência do Colaborador</p>
+    </main>
+
+    <script src="/static/login.js" defer></script>
 </body>
 </html>
