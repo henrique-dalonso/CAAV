@@ -1,65 +1,64 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Histórico — Extratus</title>
-    <link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
-    <header>
-        <p><a href="/extratus/">&larr; Extratus</a></p>
-        <h1>Histórico</h1>
-    </header>
+{% extends "base.html" %}
 
-    <section class="cartao">
-        {% if jobs %}
-        <p class="motivo">Custo de IA é estimativa interna, não é a fatura oficial — confira sempre no console da Anthropic.</p>
-        <table>
-            <thead>
-                <tr>
-                    <th>Quando</th>
-                    <th>Arquivo</th>
-                    <th>Processo</th>
-                    <th>Status</th>
-                    <th>Custo IA (estimado)</th>
-                    <th>Detalhe</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for job in jobs %}
-                <tr>
-                    <td>{{ job.criado_em.strftime("%d/%m/%Y %H:%M") }}</td>
-                    <td>{{ job.arquivo_pdf }}</td>
-                    <td>{{ job.processo or "—" }}</td>
-                    <td><span class="status status-{{ job.status }}">{{ job.status }}</span></td>
-                    <td>
-                        {% if job.custo_estimado_usd %}
-                        US$ {{ "%.4f"|format(job.custo_estimado_usd) }}
-                        <br><span class="motivo">{{ job.modelo_ia }}</span>
-                        {% else %}
-                        <span class="motivo">simulado</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if job.relatorio_path %}
-                        <a href="/extratus/download/{{ job.relatorio_path.split('\\')[-1].split('/')[-1] }}">baixar relatório</a>
-                        {% if job.status == "revisao" and job.motivo_confianca %}
-                        <br><span class="motivo">{{ job.motivo_confianca }}</span>
-                        {% endif %}
-                        {% elif job.erro_mensagem %}
-                        <span class="motivo">[{{ job.tipo_erro }}] {{ job.erro_mensagem }}</span>
-                        {% else %}
-                        —
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <p class="vazio">Nenhum processamento registrado ainda.</p>
-        {% endif %}
-    </section>
-</body>
-</html>
+{% block titulo %}Histórico — Extratus{% endblock %}
+{% block nome_pagina %}Extratus{% endblock %}
+{% block css_pagina %}<link rel="stylesheet" href="/extratus/static/extratus.css">{% endblock %}
+
+{% block conteudo %}
+<div class="cabecalho-ferramenta">
+    <div>
+        <h1>Histórico</h1>
+        <p><a href="./">&larr; voltar pro Extratus</a></p>
+    </div>
+</div>
+
+<section class="cartao-secao">
+    {% if jobs %}
+    <p class="aviso-discreto">Custo de IA é estimativa interna, não é a fatura oficial — confira sempre no console da Anthropic.</p>
+    <table class="tabela-historico">
+        <thead>
+            <tr>
+                <th>Quando</th>
+                <th>Arquivo</th>
+                <th>Processo</th>
+                <th>Status</th>
+                <th>Custo IA (estimado)</th>
+                <th>Detalhe</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for job in jobs %}
+            <tr>
+                <td>{{ job.criado_em.strftime("%d/%m/%Y %H:%M") }}</td>
+                <td>{{ job.arquivo_pdf }}</td>
+                <td>{{ job.processo or "—" }}</td>
+                <td><span class="status status-{{ job.status }}">{{ job.status }}</span></td>
+                <td>
+                    {% if job.custo_estimado_usd %}
+                    US$ {{ "%.4f"|format(job.custo_estimado_usd) }}
+                    <span class="motivo">{{ job.modelo_ia }}</span>
+                    {% else %}
+                    <span class="motivo">simulado</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if job.relatorio_path %}
+                    <a href="download/{{ job.relatorio_path.split('\\')[-1].split('/')[-1] }}">baixar relatório</a>
+                    {% if job.status == "revisao" and job.motivo_confianca %}
+                    <span class="motivo">{{ job.motivo_confianca }}</span>
+                    {% endif %}
+                    {% elif job.erro_mensagem %}
+                    <span class="motivo">[{{ job.tipo_erro }}] {{ job.erro_mensagem }}</span>
+                    {% else %}
+                    —
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="vazio">Nenhum processamento registrado ainda.</p>
+    {% endif %}
+</section>
+{% endblock %}

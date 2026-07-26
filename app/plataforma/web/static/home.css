@@ -1,85 +1,12 @@
-/* Tela inicial (index) — puxa a base compartilhada e acrescenta o
-   cabeçalho, a saudação e a grade de ferramentas. */
-
-@import url("base.css");
+/* Tela inicial (index) — o cabeçalho/layout de página já vem de
+   base.css (usado por toda tela via base.html). Aqui só entra o que é
+   específico da home: saudação e grade de ferramentas. */
 
 /* Fundo liso e coerente — de propósito diferente do login. Login é uma
    tela que se vê 1x por sessão, cabe um "uau" de fundo vivo. A home se
    vê várias vezes por dia — aqui o que importa é bater o olho e achar
-   as coisas rápido, então o fundo fica quieto e a atenção vai toda pro
-   conteúdo. */
-body {
-    min-height: 100vh;
-    padding: 2.5rem 1.5rem 4rem;
-    background: var(--cor-fundo);
-}
+   as coisas rápido. */
 
-.pagina {
-    position: relative;
-    z-index: 1;
-    max-width: 880px;
-    margin: 0 auto;
-}
-
-/* Barra superior: emblema + nome do sistema à esquerda, usuário à direita */
-.barra-superior {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    margin-bottom: 3rem;
-    animation: entrada 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.marca-sistema {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.marca-sistema-logo {
-    width: 72px;
-    height: 38px;
-}
-
-.marca-sistema strong {
-    display: block;
-    font-size: 0.95rem;
-    font-weight: 700;
-    letter-spacing: -0.01em;
-}
-
-.marca-sistema span {
-    display: block;
-    font-size: 0.78rem;
-    color: var(--cor-texto-suave);
-}
-
-.menu-usuario {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    font-size: 0.85rem;
-    color: var(--cor-texto-suave);
-}
-
-.menu-usuario a {
-    color: var(--cor-texto-suave);
-    text-decoration: none;
-}
-
-.menu-usuario a:hover {
-    color: var(--cor-acento);
-}
-
-.avatar {
-    width: 30px;
-    height: 30px;
-    font-size: 0.75rem;
-    border-radius: 999px;
-}
-
-/* Saudação */
 .saudacao {
     margin-bottom: 2.5rem;
     animation: entrada 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.05s backwards;
@@ -98,7 +25,6 @@ body {
     font-size: 0.95rem;
 }
 
-/* Grade de ferramentas */
 .secao-titulo {
     font-size: 0.8rem;
     font-weight: 600;
@@ -176,21 +102,4 @@ body {
     border-style: dashed;
     opacity: 0.55;
     pointer-events: none;
-}
-
-.vazio {
-    color: var(--cor-texto-suave);
-    font-style: italic;
-    font-size: 0.9rem;
-}
-
-@keyframes entrada {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .barra-superior, .saudacao, .secao-titulo, .cartao-ferramenta {
-        animation: none;
-    }
 }

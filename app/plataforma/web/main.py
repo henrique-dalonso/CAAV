@@ -36,6 +36,18 @@ app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
+# Cada ferramenta pode ter seus próprios arquivos estáticos (CSS/JS),
+# servidos sob /extratus/static/... — mantém a separação sistema x
+# ferramenta também nos assets, não só no código Python.
+EXTRATUS_STATIC_DIR = (
+    BASE_DIR.parent.parent / "ferramentas" / "extratus" / "web" / "static"
+)
+app.mount(
+    "/extratus/static",
+    StaticFiles(directory=EXTRATUS_STATIC_DIR),
+    name="extratus-static",
+)
+
 app.include_router(auth.router)
 app.include_router(home.router)
 app.include_router(admin.router)

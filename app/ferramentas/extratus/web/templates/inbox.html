@@ -1,54 +1,56 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Extratus</title>
-    <link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
-    <header>
-        <p><a href="/">&larr; Centro de Experiência do Colaborador</a></p>
+{% extends "base.html" %}
+
+{% block titulo %}Extratus{% endblock %}
+{% block nome_pagina %}Extratus{% endblock %}
+{% block css_pagina %}<link rel="stylesheet" href="/extratus/static/extratus.css">{% endblock %}
+
+{% block conteudo %}
+<div class="cabecalho-ferramenta">
+    <div>
         <h1>Extratus</h1>
-        <p class="aviso">Versão de teste — a geração de relatório ainda usa um texto de exemplo, a IA de verdade ainda não está ligada.</p>
-        <p><a href="/extratus/historico">Ver histórico &rarr;</a></p>
-    </header>
+        <p>Resumo automático de processos judiciais em relatório curto com parecer.</p>
+    </div>
+    {% if ia_provider == "claude" %}
+    <span class="selo-status real">IA real ativada</span>
+    {% else %}
+    <span class="selo-status simulado">Modo simulado</span>
+    {% endif %}
+</div>
 
-    <section class="cartao">
-        <h2>Enviar um processo</h2>
-        <form action="upload" method="post" enctype="multipart/form-data">
-            <input type="file" name="arquivo" accept=".pdf" required>
-            <button type="submit">Enviar PDF</button>
-        </form>
-    </section>
+<section class="cartao-secao">
+    <h2>Enviar um processo</h2>
+    <form action="upload" method="post" enctype="multipart/form-data" class="linha-upload">
+        <input type="file" name="arquivo" accept=".pdf" required>
+        <button type="submit" class="botao">Enviar PDF</button>
+    </form>
+</section>
 
-    <section class="cartao">
-        <h2>Pendentes ({{ total_pendentes }})</h2>
-        {% if pendentes %}
-        <ul>
-            {% for nome in pendentes %}
-            <li>{{ nome }}</li>
-            {% endfor %}
-        </ul>
-        <form action="processar-tudo" method="post">
-            <button type="submit">Processar tudo</button>
-        </form>
-        {% else %}
-        <p class="vazio">Nenhum PDF pendente no momento.</p>
-        {% endif %}
-    </section>
+<section class="cartao-secao">
+    <h2>Pendentes <span class="contagem">{{ total_pendentes }}</span></h2>
+    {% if pendentes %}
+    <ul class="lista-arquivos">
+        {% for nome in pendentes %}
+        <li>{{ nome }}</li>
+        {% endfor %}
+    </ul>
+    <form action="processar-tudo" method="post">
+        <button type="submit" class="botao">Processar tudo</button>
+    </form>
+    {% else %}
+    <p class="vazio">Nenhum PDF pendente no momento.</p>
+    {% endif %}
+</section>
 
-    <section class="cartao">
-        <h2>Relatórios prontos</h2>
-        {% if relatorios %}
-        <ul>
-            {% for nome in relatorios %}
-            <li><a href="download/{{ nome }}">{{ nome }}</a></li>
-            {% endfor %}
-        </ul>
-        {% else %}
-        <p class="vazio">Nenhum relatório gerado ainda.</p>
-        {% endif %}
-    </section>
-</body>
-</html>
+<section class="cartao-secao">
+    <h2>Relatórios prontos <a href="historico" style="font-size: 0.8rem; font-weight: 500;">ver histórico &rarr;</a></h2>
+    {% if relatorios %}
+    <ul class="lista-arquivos">
+        {% for nome in relatorios %}
+        <li><a href="download/{{ nome }}">{{ nome }}</a></li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="vazio">Nenhum relatório gerado ainda.</p>
+    {% endif %}
+</section>
+{% endblock %}

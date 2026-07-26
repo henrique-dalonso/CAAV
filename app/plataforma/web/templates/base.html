@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block titulo %}Centro de Experiência do Colaborador{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/base.css">
+    {% block css_pagina %}{% endblock %}
+</head>
+<body class="{% block corpo_classe %}fundo-degrade{% endblock %}">
+    <div class="pagina">
+        <header class="barra-superior">
+            <div class="marca-sistema">
+                <a href="/" class="selo-marca marca-sistema-logo">
+                    <img src="/static/marca/logo-av-marca.png" alt="Alonso &amp; Verdiani">
+                </a>
+                <div>
+                    <strong>{% block nome_pagina %}Centro de Experiência{% endblock %}</strong>
+                    <span>Alonso &amp; Verdiani</span>
+                </div>
+            </div>
+
+            <div class="menu-usuario">
+                <div class="emblema avatar">{{ usuario.nome[0]|upper }}</div>
+                <span>{{ usuario.nome }}</span>
+                {% if usuario.eh_admin %}
+                <a href="/admin">administração</a>
+                {% endif %}
+                <form action="/logout" method="post">
+                    <button type="submit" class="botao-link">sair</button>
+                </form>
+            </div>
+        </header>
+
+        {% block conteudo %}{% endblock %}
+    </div>
+</body>
+</html>

@@ -1,0 +1,258 @@
+/* Telas do Extratus (inbox + histórico) — o cabeçalho/layout de página
+   já vem de base.css (base.html). Aqui só entra o que é específico
+   dessas telas: cabeçalho da ferramenta, cartões de conteúdo, listas,
+   tabela do histórico. */
+
+.cabecalho-ferramenta {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    animation: entrada 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.05s backwards;
+}
+
+.cabecalho-ferramenta h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.3rem;
+}
+
+.cabecalho-ferramenta p {
+    color: var(--cor-texto-suave);
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.selo-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.selo-status::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: currentColor;
+}
+
+.selo-status.simulado {
+    background: var(--cor-erro-fundo);
+    color: var(--cor-erro-texto);
+}
+
+.selo-status.real {
+    background: #dcfce7;
+    color: #166534;
+}
+
+@media (prefers-color-scheme: dark) {
+    .selo-status.real {
+        background: #113321;
+        color: #86efac;
+    }
+}
+
+.cartao-secao {
+    background: var(--cor-cartao);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio);
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 1.25rem;
+    animation: entrada 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.1s backwards;
+}
+
+.cartao-secao h2 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin: 0 0 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.cartao-secao h2 .contagem {
+    font-weight: 500;
+    color: var(--cor-texto-suave);
+    font-size: 0.82rem;
+}
+
+.linha-upload {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.linha-upload input[type="file"] {
+    flex: 1;
+    min-width: 200px;
+    font-size: 0.85rem;
+    color: var(--cor-texto-suave);
+}
+
+.linha-upload input[type="file"]::file-selector-button {
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.5rem 0.9rem;
+    border-radius: var(--raio-pequeno);
+    border: 1px solid var(--cor-borda);
+    background: var(--cor-fundo);
+    color: var(--cor-texto);
+    cursor: pointer;
+    margin-right: 0.75rem;
+    transition: border-color 0.15s ease;
+}
+
+.linha-upload input[type="file"]::file-selector-button:hover {
+    border-color: var(--cor-acento);
+}
+
+.botao {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.6rem 1.1rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    font-family: inherit;
+    color: white;
+    background: var(--cor-acento);
+    border: none;
+    border-radius: var(--raio-pequeno);
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+    white-space: nowrap;
+}
+
+.botao:hover {
+    background: var(--cor-acento-hover);
+    box-shadow: 0 8px 20px -6px color-mix(in srgb, var(--cor-acento) 60%, transparent);
+}
+
+.botao:active {
+    transform: scale(0.98);
+}
+
+.botao:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.lista-arquivos {
+    list-style: none;
+    margin: 0 0 1.1rem;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.lista-arquivos li {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.55rem 0.75rem;
+    background: var(--cor-fundo);
+    border-radius: var(--raio-pequeno);
+    font-size: 0.87rem;
+}
+
+.lista-arquivos li::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    background: var(--cor-acento);
+    opacity: 0.5;
+    flex-shrink: 0;
+}
+
+.lista-arquivos a {
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.lista-arquivos a:hover {
+    text-decoration: underline;
+}
+
+/* Histórico */
+.aviso-discreto {
+    font-size: 0.82rem;
+    color: var(--cor-texto-suave);
+    margin: -0.5rem 0 1.25rem;
+}
+
+.tabela-historico {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.tabela-historico th {
+    text-align: left;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--cor-texto-suave);
+    padding: 0 0.6rem 0.6rem;
+    border-bottom: 1px solid var(--cor-borda);
+}
+
+.tabela-historico td {
+    padding: 0.7rem 0.6rem;
+    border-bottom: 1px solid var(--cor-borda);
+    vertical-align: top;
+}
+
+.tabela-historico tr:last-child td {
+    border-bottom: none;
+}
+
+.status {
+    display: inline-block;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.status-sucesso {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-revisao {
+    background: #fef9c3;
+    color: #854d0e;
+}
+
+.status-erro {
+    background: var(--cor-erro-fundo);
+    color: var(--cor-erro-texto);
+}
+
+@media (prefers-color-scheme: dark) {
+    .status-sucesso { background: #113321; color: #86efac; }
+    .status-revisao { background: #332b0f; color: #fde68a; }
+}
+
+.motivo {
+    display: block;
+    color: var(--cor-texto-suave);
+    font-size: 0.78rem;
+    margin-top: 0.2rem;
+}

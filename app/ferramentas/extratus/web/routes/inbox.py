@@ -7,6 +7,7 @@ from fastapi.templating import Jinja2Templates
 from app.ferramentas.extratus.core.config_manager import carregar_config
 from app.ferramentas.extratus.core.pdf_manager import listar_pdfs
 from app.ferramentas.extratus.core.pipeline import processar_pdf
+from app.plataforma.db.models import Usuario
 from app.plataforma.web.auth import exigir_acesso_ferramenta
 
 
@@ -15,7 +16,12 @@ router = APIRouter(dependencies=[Depends(exigir_acesso_ferramenta("extratus"))])
 TAMANHO_MAXIMO_UPLOAD = 100 * 1024 * 1024  # 100 MB
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
-templates = Jinja2Templates(directory=TEMPLATES_DIR)
+PLATAFORMA_TEMPLATES_DIR = (
+    Path(__file__).resolve().parents[4] / "plataforma" / "web" / "templates"
+)
+# Duas pastas de busca: a própria (inbox.html) e a da plataforma (base.html,
+# de onde essa tela herda o cabeçalho/layout compartilhado).
+templates = Jinja2Templates(directory=[TEMPLATES_DIR, PLATAFORMA_TEMPLATES_DIR])
 
 
 def listar_relatorios_prontos(pasta_saida):
@@ -31,7 +37,10 @@ def listar_relatorios_prontos(pasta_saida):
 
 
 @router.get("/")
-def pagina_inicial(request: Request):
+def pagina_inicial(
+    request: Request,
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
+):
     config = carregar_config()
 
     pendentes = listar_pdfs(config.get("pasta_entrada", "entrada_pdfs"))
@@ -41,9 +50,11 @@ def pagina_inicial(request: Request):
         request,
         "inbox.html",
         {
+            "usuario": usuario,
             "pendentes": [pdf.name for pdf in pendentes],
             "total_pendentes": len(pendentes),
             "relatorios": relatorios,
+            "ia_provider": config.get("ia_provider", "simulado"),
         },
     )
 
@@ -77,7 +88,7 @@ async def enviar_pdf(arquivo: UploadFile = File(...)):
     destino = pasta_entrada / nome_seguro
     destino.write_bytes(conteudo)
 
-    return RedirectResponse(url="/", status_code=303)
+    return RedirectResponse(url="/extratus/", status_code=303)
 
 
 @router.post("/processar-tudo")
@@ -96,7 +107,7 @@ def processar_tudo():
             pdf, pasta_saida, pasta_processados, pasta_erros, pasta_revisao, ia_provider
         )
 
-    return RedirectResponse(url="/", status_code=303)
+    return RedirectResponse(url="/extratus/", status_code=303)
 
 
 @router.get("/download/{nome_arquivo}")
