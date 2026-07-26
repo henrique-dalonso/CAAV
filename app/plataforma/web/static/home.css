@@ -3,9 +3,15 @@
 
 @import url("base.css");
 
+/* Fundo liso e coerente — de propósito diferente do login. Login é uma
+   tela que se vê 1x por sessão, cabe um "uau" de fundo vivo. A home se
+   vê várias vezes por dia — aqui o que importa é bater o olho e achar
+   as coisas rápido, então o fundo fica quieto e a atenção vai toda pro
+   conteúdo. */
 body {
     min-height: 100vh;
     padding: 2.5rem 1.5rem 4rem;
+    background: var(--cor-fundo);
 }
 
 .pagina {
