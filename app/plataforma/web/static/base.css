@@ -185,6 +185,30 @@ a {
     color: var(--cor-texto);
 }
 
+/* Aviso de erro reaproveitável — pra qualquer tela logada mostrar um
+   erro sem sair pro JSON cru do FastAPI. */
+.banner-erro {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--cor-erro-fundo);
+    color: var(--cor-erro-texto);
+    border: 1px solid var(--cor-erro-borda);
+    border-radius: var(--raio-pequeno);
+    padding: 0.65rem 0.9rem;
+    font-size: 0.85rem;
+    margin-bottom: 1.25rem;
+    animation: chacoalhar 0.4s ease;
+}
+
+@keyframes chacoalhar {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-4px); }
+    40% { transform: translateX(4px); }
+    60% { transform: translateX(-3px); }
+    80% { transform: translateX(3px); }
+}
+
 /* Animação de entrada suave e reaproveitável — qualquer elemento novo
    na tela pode usar isso pra não simplesmente "pipocar". */
 @keyframes entrada {

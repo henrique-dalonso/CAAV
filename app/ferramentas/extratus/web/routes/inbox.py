@@ -1,6 +1,7 @@
 from pathlib import Path
+from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
+from fastapi import APIRouter, Depends, Request, UploadFile, File
 from fastapi.responses import RedirectResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 
@@ -36,10 +37,15 @@ def listar_relatorios_prontos(pasta_saida):
     )
 
 
+def _redirecionar_com_erro(mensagem):
+    return RedirectResponse(url=f"/extratus/?erro={quote(mensagem)}", status_code=303)
+
+
 @router.get("/")
 def pagina_inicial(
     request: Request,
     usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
+    erro: str | None = None,
 ):
     config = carregar_config()
 
@@ -55,6 +61,7 @@ def pagina_inicial(
             "total_pendentes": len(pendentes),
             "relatorios": relatorios,
             "ia_provider": config.get("ia_provider", "simulado"),
+            "erro": erro,
         },
     )
 
@@ -64,20 +71,19 @@ async def enviar_pdf(arquivo: UploadFile = File(...)):
     nome_seguro = Path(arquivo.filename).name
 
     if not nome_seguro.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Só é permitido enviar arquivos .pdf.")
+        return _redirecionar_com_erro("Só é permitido enviar arquivos .pdf.")
 
     conteudo = await arquivo.read()
 
     if len(conteudo) > TAMANHO_MAXIMO_UPLOAD:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Arquivo maior que o limite de {TAMANHO_MAXIMO_UPLOAD // (1024 * 1024)} MB.",
+        return _redirecionar_com_erro(
+            f"\"{nome_seguro}\" tem mais de {TAMANHO_MAXIMO_UPLOAD // (1024 * 1024)} MB "
+            "— esse é o limite atual de upload."
         )
 
     if not conteudo.startswith(b"%PDF"):
-        raise HTTPException(
-            status_code=400,
-            detail="O conteúdo do arquivo não parece ser um PDF válido.",
+        return _redirecionar_com_erro(
+            f"\"{nome_seguro}\" não parece ser um PDF válido."
         )
 
     config = carregar_config()

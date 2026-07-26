@@ -17,6 +17,10 @@
     {% endif %}
 </div>
 
+{% if erro %}
+<p class="banner-erro">⚠ {{ erro }}</p>
+{% endif %}
+
 <section class="cartao-secao">
     <h2>Enviar um processo</h2>
     <form action="upload" method="post" enctype="multipart/form-data" class="linha-upload">
