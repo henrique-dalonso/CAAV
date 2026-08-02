@@ -1,7 +1,9 @@
 import app.plataforma.env  # noqa: F401 — carrega o .env antes de qualquer coisa
 
+import asyncio
 import os
 import secrets
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -12,7 +14,8 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.plataforma.db.seed import garantir_ferramentas_padrao
 from app.plataforma.web.auth import NaoAutenticado
 from app.plataforma.web.routes import admin, auth, home, perfil
-from app.ferramentas.extratus.web.routes import historico, inbox, relatorios_prontos
+from app.ferramentas.extratus.core.motor_watcher import loop_motor
+from app.ferramentas.extratus.web.routes import fila, historico, inbox, motor, relatorios_prontos
 from app.ferramentas.leitor_publicacoes.web.routes import home as leitor_publicacoes_home
 
 
@@ -30,7 +33,24 @@ if not SECRET_KEY:
 
 garantir_ferramentas_padrao()
 
-app = FastAPI(title="Centro de Experiência do Colaborador — Alonso & Verdiani")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # O vigia do Motor só faz alguma coisa quando "motor_ativo" estiver
+    # ligado (ver motor_lote.rodar_ciclo_motor) — aqui só garantimos que
+    # ele existe rodando em segundo plano enquanto o servidor estiver de
+    # pé, prontinho pra agir assim que alguém ligar o interruptor.
+    tarefa_motor = asyncio.create_task(loop_motor())
+
+    yield
+
+    tarefa_motor.cancel()
+
+
+app = FastAPI(
+    title="Centro de Experiência do Colaborador — Alonso & Verdiani",
+    lifespan=lifespan,
+)
 
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
@@ -64,6 +84,8 @@ app.include_router(perfil.router)
 app.include_router(inbox.router, prefix="/extratus")
 app.include_router(relatorios_prontos.router, prefix="/extratus")
 app.include_router(historico.router, prefix="/extratus")
+app.include_router(motor.router, prefix="/extratus")
+app.include_router(fila.router, prefix="/extratus")
 app.include_router(leitor_publicacoes_home.router, prefix="/leitor-publicacoes")
 
 

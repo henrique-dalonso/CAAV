@@ -34,9 +34,14 @@
                     </button>
                     <div class="bandeja-apps" id="bandeja-apps" hidden>
                         {% for ferramenta in ferramentas_do_usuario(usuario) %}
-                        <a href="{{ ferramenta.url }}" class="bandeja-apps-item">
+                        <a href="{{ ferramenta.url }}" class="bandeja-apps-item" data-slug="{{ ferramenta.slug }}" data-nome="{{ ferramenta.nome }}">
+                            <span class="bandeja-apps-favorito" role="button" tabindex="0" title="Fixar nos favoritos" aria-label="Fixar nos favoritos">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                                </svg>
+                            </span>
                             <div class="emblema">{{ ferramenta.nome[0]|upper }}</div>
-                            <span>{{ ferramenta.nome }}</span>
+                            <span class="bandeja-apps-item-nome" title="{{ ferramenta.nome }}">{{ ferramenta.nome }}</span>
                         </a>
                         {% else %}
                         <p class="vazio bandeja-apps-vazio">Nenhuma ferramenta liberada ainda.</p>
@@ -62,12 +67,10 @@
                                 <dt>Usuário</dt>
                                 <dd>{{ usuario.nome_usuario }}</dd>
                             </div>
-                            {% if usuario.eh_admin %}
                             <div>
                                 <dt>Perfil</dt>
-                                <dd>Administrador</dd>
+                                <dd>{{ rotulo_perfil(usuario) }}</dd>
                             </div>
-                            {% endif %}
                         </dl>
                     </div>
                 </div>
@@ -92,6 +95,17 @@
 
         {% block conteudo %}{% endblock %}
     </div>
+
+    <div class="modal-confirmacao" id="modal-confirmacao" hidden>
+        <div class="modal-confirmacao-caixa">
+            <p class="modal-confirmacao-mensagem" id="modal-confirmacao-mensagem"></p>
+            <div class="modal-confirmacao-acoes">
+                <button type="button" class="modal-confirmacao-cancelar" id="modal-confirmacao-cancelar">Cancelar</button>
+                <button type="button" class="modal-confirmacao-confirmar" id="modal-confirmacao-confirmar">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
     <script src="/static/base.js" defer></script>
     {% block js_pagina %}{% endblock %}
 </body>

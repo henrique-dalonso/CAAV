@@ -9,7 +9,28 @@ body {
     align-items: center;
     justify-content: center;
     min-height: 100vh;
+    /* dvh = altura "de verdade" descontando teclado/barra do navegador
+       no celular. 100vh sozinho conta a tela inteira mesmo com o teclado
+       aberto, o que empurrava o botão de entrar pra fora da área visível.
+       Navegador sem suporte a dvh usa o vh de cima mesmo (sem quebrar). */
+    min-height: 100dvh;
     padding: 1.5rem;
+}
+
+@media (max-width: 480px) {
+    /* No celular abandona a centralização vertical rígida — com o
+       teclado aberto (Safari do iPhone principalmente, mas vale pra
+       qualquer um), depender de dvh pra recalcular o centro é frágil.
+       Alinhado no topo, a página sempre pode rolar normal pra revelar
+       o botão de entrar, sem depender de nenhuma conta de viewport. */
+    body {
+        align-items: flex-start;
+        padding-top: 3rem;
+    }
+
+    .login-cartao {
+        padding: 2rem 1.5rem;
+    }
 }
 
 .login-cartao {

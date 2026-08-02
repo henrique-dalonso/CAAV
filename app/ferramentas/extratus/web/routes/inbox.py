@@ -7,6 +7,11 @@ from fastapi.responses import RedirectResponse, FileResponse
 from app.ferramentas.extratus.core.config_manager import carregar_config
 from app.ferramentas.extratus.core.pdf_manager import listar_pdfs
 from app.ferramentas.extratus.core.pipeline import processar_pdf
+from app.ferramentas.extratus.db.pendentes import (
+    listar_nomes_pendentes_do_usuario,
+    registrar_pendente,
+    remover_pendente,
+)
 from app.plataforma.db.models import Usuario
 from app.plataforma.web.auth import exigir_acesso_ferramenta
 from app.plataforma.web.templates_util import criar_templates
@@ -49,7 +54,14 @@ def pagina_inicial(
 ):
     config = carregar_config()
 
-    pendentes = listar_pdfs(config.get("pasta_entrada", "entrada_pdfs"))
+    # pasta_entrada é compartilhada no disco entre todo mundo — a fila
+    # aqui é "individual" só na exibição: cada um só vê os PDFs que ele
+    # mesmo enviou, filtrando pelo rastreio em ArquivoPendente.
+    nomes_do_usuario = listar_nomes_pendentes_do_usuario(usuario.id)
+    pendentes = [
+        pdf for pdf in listar_pdfs(config.get("pasta_entrada", "entrada_pdfs"))
+        if pdf.name in nomes_do_usuario
+    ]
     relatorios = listar_relatorios_prontos(config.get("pasta_saida", "relatorios_prontos"))
 
     return templates.TemplateResponse(
@@ -68,7 +80,10 @@ def pagina_inicial(
 
 
 @router.post("/upload")
-async def enviar_pdf(arquivo: UploadFile = File(...)):
+async def enviar_pdf(
+    arquivo: UploadFile = File(...),
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
+):
     nome_seguro = Path(arquivo.filename).name
 
     if not nome_seguro.lower().endswith(".pdf"):
@@ -94,6 +109,7 @@ async def enviar_pdf(arquivo: UploadFile = File(...)):
 
     destino = pasta_entrada / nome_seguro
     destino.write_bytes(conteudo)
+    registrar_pendente(nome_seguro, usuario.id)
 
     return RedirectResponse(url="/extratus/", status_code=303)
 
@@ -109,7 +125,15 @@ def processar_tudo(usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus
     pasta_revisao = config.get("pasta_revisao", "revisao")
     ia_provider = config.get("ia_provider", "simulado")
 
+    # Só processa os PDFs que o próprio usuário enviou — a pasta é
+    # compartilhada, mas "processar tudo" não pode varrer os PDFs de
+    # outra pessoa que também usa a ferramenta ao mesmo tempo.
+    nomes_do_usuario = listar_nomes_pendentes_do_usuario(usuario.id)
+
     for pdf in listar_pdfs(pasta_entrada):
+        if pdf.name not in nomes_do_usuario:
+            continue
+
         processar_pdf(
             pdf,
             pasta_saida,
@@ -119,6 +143,7 @@ def processar_tudo(usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus
             ia_provider,
             usuario_id=usuario.id,
         )
+        remover_pendente(pdf.name, usuario.id)
 
     return RedirectResponse(url="/extratus/", status_code=303)
 

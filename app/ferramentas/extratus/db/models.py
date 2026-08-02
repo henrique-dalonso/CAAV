@@ -35,3 +35,54 @@ class Job(SQLModel, table=True):
     custo_estimado_usd: Optional[float] = None
 
     criado_em: datetime = Field(default_factory=datetime.now)
+
+
+class LoteMotor(SQLModel, table=True):
+    """Um lote enviado ao Batch API da Anthropic pelo Motor — cada lote
+    pode conter vários PDFs (um item por PDF, ver `ItemLoteMotor`). Só o
+    Motor usa Batch API; a fila manual continua em tempo real."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+    batch_id: str  # id do lote devolvido pela Anthropic (ex: "msgbatch_...")
+    status: str  # "enviado" ou "concluido"
+
+    criado_em: datetime = Field(default_factory=datetime.now)
+    finalizado_em: Optional[datetime] = None
+
+
+class ItemLoteMotor(SQLModel, table=True):
+    """Um PDF dentro de um lote do Motor — liga o `custom_id` usado na
+    chamada ao Batch API de volta ao arquivo/detecção original, pra quando
+    o resultado do lote chegar (segundos, minutos ou até 24h depois) dar
+    pra terminar o processamento (gerar .docx, mover PDF, registrar Job)."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+    lote_id: int = Field(foreign_key="lotemotor.id")
+    custom_id: str
+
+    arquivo_pdf: str  # nome do arquivo em motor_pasta_entrada
+    processo_detectado: Optional[str] = None
+    confianca_nivel: Optional[str] = None
+    confianca_motivo: Optional[str] = None
+
+    status: str = "pendente"  # "pendente", "sucesso" ou "erro"
+
+    criado_em: datetime = Field(default_factory=datetime.now)
+
+
+class ArquivoPendente(SQLModel, table=True):
+    """Rastreia quem enviou cada PDF que está esperando na fila manual
+    (pasta_entrada) — a pasta em si é uma única compartilhada no disco,
+    mas cada usuário só deve ver/processar os PDFs que ele mesmo enviou
+    ali (fila "individual"). Não tem relação com a fila do motor
+    (motor_pasta_entrada), que é universal e não é filtrada por dono.
+    """
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+    nome_arquivo: str
+    usuario_id: int = Field(foreign_key="usuario.id")
+
+    enviado_em: datetime = Field(default_factory=datetime.now)

@@ -55,14 +55,5 @@
             aplicarFiltros();
         });
     });
-
-    // Delegação: um único listener cobre todo .truncavel da lista, mesmo
-    // os que ainda vão existir se a lista for re-renderizada no futuro.
-    document.querySelector(".lista-relatorios").addEventListener("click", function (evento) {
-        var alvo = evento.target.closest(".truncavel");
-
-        if (alvo) {
-            alvo.classList.toggle("expandido");
-        }
-    });
+    // .truncavel agora é tratado globalmente em base.js.
 })();

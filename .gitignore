@@ -19,6 +19,8 @@ app/ferramentas/extratus/dados/revisao/*
 !app/ferramentas/extratus/dados/revisao/.gitkeep
 app/ferramentas/extratus/dados/relatorios_prontos/*
 !app/ferramentas/extratus/dados/relatorios_prontos/.gitkeep
+app/ferramentas/extratus/dados/motor_entrada_pdfs/*
+!app/ferramentas/extratus/dados/motor_entrada_pdfs/.gitkeep
 
 # Logs (contêm dado real de processamento)
 app/ferramentas/extratus/logs/*

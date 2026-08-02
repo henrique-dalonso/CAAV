@@ -20,7 +20,11 @@
 <nav class="abas-extratus">
     <a href="/extratus/" class="aba aba-ativa">Gerar relatórios</a>
     <a href="/extratus/relatorios" class="aba">Relatórios <span class="contagem-aba">{{ total_relatorios }}</span></a>
-    {% if usuario.eh_admin %}
+    {% if usuario_tem_acesso_fila_motor(usuario, "extratus") %}
+    <a href="/extratus/fila" class="aba aba-motor">Fila do motor</a>
+    {% endif %}
+    {% if usuario_eh_admin_da_ferramenta(usuario, "extratus") %}
+    <a href="/extratus/motor" class="aba aba-motor">Motor</a>
     <a href="/extratus/historico" class="aba aba-admin">Custos (admin)</a>
     {% endif %}
 </nav>
@@ -32,8 +36,8 @@
 <section class="cartao-secao">
     <h2>Enviar um processo</h2>
     <form action="upload" method="post" enctype="multipart/form-data" class="linha-upload">
-        <input type="file" name="arquivo" accept=".pdf" required>
-        <button type="submit" class="botao">Enviar PDF</button>
+        <input type="file" name="arquivo" accept=".pdf" id="campo-pdf-manual" required>
+        <button type="submit" class="botao" id="botao-enviar-pdf-manual" disabled>Enviar PDF</button>
     </form>
 </section>
 
@@ -52,4 +56,12 @@
     <p class="vazio">Nenhum PDF pendente no momento.</p>
     {% endif %}
 </section>
+{% endblock %}
+
+{% block js_pagina %}
+<script>
+document.getElementById("campo-pdf-manual").addEventListener("change", function () {
+    document.getElementById("botao-enviar-pdf-manual").disabled = this.files.length === 0;
+});
+</script>
 {% endblock %}

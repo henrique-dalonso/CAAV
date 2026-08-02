@@ -60,16 +60,127 @@
 html, body {
     min-height: 100%;
     margin: 0;
+    background: var(--cor-fundo);
+}
+
+html {
+    /* Desliga o "elástico" do Safari/Chrome no celular (aquele efeito
+       de esticar e voltar ao rolar até o fim da página) — é isso que
+       revelava uma faixa da cor de fundo do <html>, que nunca vai bater
+       perfeitamente com o degradê da página (por isso parecia um bloco
+       de cor diferente, tipo uma borda). Sem o elástico, não tem faixa
+       nenhuma pra aparecer. Efeito puramente cosmético, não afeta rolar
+       a página normalmente. */
+    overscroll-behavior-y: none;
 }
 
 body {
     font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-    background: var(--cor-fundo);
     color: var(--cor-texto);
+    /* Trava de segurança: nada na página deve forçar rolagem lateral do
+       corpo todo — só listas/tabelas específicas (.tabela-scroll etc.)
+       podem rolar internamente. */
+    overflow-x: hidden;
 }
 
 a {
     color: var(--cor-acento);
+}
+
+/* Link "cru" (herda só a cor base) tem cara de link solto, destoando do
+   resto do visual — essa classe é o padrão pra qualquer link de texto
+   que precise se encaixar como se fosse parte do design, não um <a>
+   default do navegador. */
+.link-suave {
+    color: var(--cor-acento);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.link-suave:hover {
+    text-decoration: underline;
+}
+
+/* Modal de confirmação — substitui o confirm() cru do navegador em
+   qualquer form[data-confirm] (ver base.js). Um só, reaproveitado pela
+   página inteira, não um por form. */
+.modal-confirmacao {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.45);
+    padding: 1rem;
+}
+
+.modal-confirmacao[hidden] {
+    display: none;
+}
+
+.modal-confirmacao-caixa {
+    width: min(380px, 100%);
+    padding: 1.5rem;
+    background: var(--cor-cartao);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio);
+    box-shadow: var(--sombra);
+}
+
+.modal-confirmacao-mensagem {
+    margin: 0 0 1.25rem;
+    font-size: 0.92rem;
+    color: var(--cor-texto);
+    line-height: 1.45;
+}
+
+.modal-confirmacao-acoes {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.6rem;
+}
+
+.modal-confirmacao-cancelar,
+.modal-confirmacao-confirmar {
+    padding: 0.55rem 1.1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    font-family: inherit;
+    border-radius: var(--raio-pequeno);
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.modal-confirmacao-cancelar {
+    color: var(--cor-texto-suave);
+    background: none;
+    border: 1px solid var(--cor-borda);
+}
+
+.modal-confirmacao-cancelar:hover {
+    border-color: var(--cor-acento);
+    color: var(--cor-texto);
+}
+
+.modal-confirmacao-confirmar {
+    color: white;
+    background: var(--cor-acento);
+    border: none;
+}
+
+.modal-confirmacao-confirmar:hover {
+    background: var(--cor-acento-hover);
+}
+
+/* Ações irreversíveis (excluir) — vermelho em vez da cor de acento
+   normal, pra deixar claro que é diferente de um "tornar admin" comum. */
+.modal-confirmacao-confirmar-perigo {
+    background: var(--cor-erro-texto);
+}
+
+.modal-confirmacao-confirmar-perigo:hover {
+    background: #991b1b;
 }
 
 /* "Blobs" de fundo suaves e reaproveitáveis — qualquer tela pode ligar
@@ -175,22 +286,6 @@ a {
     width: auto;
 }
 
-.botao-link {
-    background: none;
-    border: none;
-    color: var(--cor-texto-suave);
-    cursor: pointer;
-    font-size: inherit;
-    font-family: inherit;
-    padding: 0;
-    margin: 0;
-    text-decoration: underline;
-}
-
-.botao-link:hover {
-    color: var(--cor-texto);
-}
-
 /* Aviso de erro reaproveitável — pra qualquer tela logada mostrar um
    erro sem sair pro JSON cru do FastAPI. */
 .banner-erro {
@@ -230,7 +325,64 @@ a {
     margin-bottom: 1.25rem;
 }
 
+/* Contador (5)(4)...(1) + botão de fechar — injetados via JS (base.js)
+   em qualquer .banner-sucesso/.banner-erro da página, não precisa mexer
+   em template nenhum pra ganhar isso. */
+.banner-acoes {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.banner-contador {
+    font-variant-numeric: tabular-nums;
+    font-size: 0.8rem;
+    opacity: 0.7;
+}
+
+.banner-fechar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: 999px;
+    color: inherit;
+    font-size: 1.05rem;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.12s ease, background 0.12s ease;
+}
+
+.banner-fechar:hover {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.08);
+}
+
+/* Separador reaproveitável pra "botão inerente, sem coluna própria" —
+   um item extra que anda junto de uma célula/grupo de ações, mas não é
+   parte do conteúdo/propósito principal dela (ex: baixar relatório
+   junto da célula de Detalhe, ferramentas junto das Ações). Uma linha
+   fina à esquerda marca visualmente que é "outro grupo". */
+.separador-acoes {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 0.5rem;
+    padding-left: 0.6rem;
+    border-left: 1px solid var(--cor-borda);
+}
+
 @media (prefers-color-scheme: dark) {
+    .banner-fechar:hover {
+        background: rgba(255, 255, 255, 0.12);
+    }
+
     .banner-sucesso {
         background: #113321;
         color: #86efac;
@@ -285,6 +437,36 @@ a {
     border-radius: var(--raio);
     padding: 1.5rem 1.75rem;
     margin-bottom: 1.25rem;
+}
+
+/* Rede de segurança pra tabela larga (histórico, admin) em tela estreita
+   — rola só a tabela de lado em vez de espremer/quebrar o layout da
+   página. Fica só em volta da <table> mesmo (não no cartao-secao inteiro
+   como antes) — colocar overflow no card inteiro cortava qualquer painel
+   flutuante (tipo o seletor de ferramentas) que precisasse ultrapassar a
+   borda do card. */
+.tabela-scroll {
+    overflow-x: auto;
+}
+
+/* Regra sitewide: qualquer texto que possa ficar grande demais pro
+   espaço dele usa essa classe (junto de overflow:hidden;text-overflow:
+   ellipsis;white-space:nowrap; no próprio elemento) — cursor de clique,
+   sublinha no hover, e clicar desfaz o corte (quebra em várias linhas
+   em vez de continuar escondendo). Delegado globalmente em base.js. */
+.truncavel {
+    cursor: pointer;
+}
+
+.truncavel:hover {
+    text-decoration: underline;
+}
+
+.truncavel.expandido {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    word-break: break-word;
 }
 
 .cartao-secao h2 {
@@ -351,6 +533,19 @@ label:hover .check-caixa {
     border-color: var(--cor-acento);
 }
 
+/* Variante pequena — usada em espaços apertados (tile de ferramenta). */
+.check-caixa-pequena {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+}
+
+.check-caixa-pequena::after {
+    width: 3px;
+    height: 6px;
+    border-width: 0 1.5px 1.5px 0;
+}
+
 /* Selo simples (Sim/Não, ativo/inativo, etc) — pra não mostrar texto cru
    tipo "sim"/"não" numa tabela. Neutro por padrão, cores só quando faz
    sentido reforçar (positivo/negativo). */
@@ -377,10 +572,30 @@ label:hover .check-caixa {
     color: var(--cor-erro-texto);
 }
 
+.selo-azul {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.selo-roxo {
+    background: #ede9fe;
+    color: #5b21b6;
+}
+
 @media (prefers-color-scheme: dark) {
     .selo-positivo {
         background: #113321;
         color: #86efac;
+    }
+
+    .selo-azul {
+        background: #1e3a5f;
+        color: #93c5fd;
+    }
+
+    .selo-roxo {
+        background: #3b2a6b;
+        color: #c4b5fd;
     }
 }
 
@@ -393,7 +608,7 @@ label:hover .check-caixa {
 }
 
 .tabela th {
-    text-align: left;
+    text-align: center;
     font-size: 0.72rem;
     font-weight: 600;
     text-transform: uppercase;
@@ -406,7 +621,11 @@ label:hover .check-caixa {
 .tabela td {
     padding: 0.7rem 0.6rem;
     border-bottom: 1px solid var(--cor-borda);
-    vertical-align: top;
+    /* middle (não top) — com badges, ícones e texto simples misturados
+       na mesma linha, top-align deixava cada célula "flutuando" numa
+       altura diferente em vez de tudo respirar no mesmo eixo. */
+    vertical-align: middle;
+    text-align: center;
 }
 
 .tabela tr:last-child td {
@@ -598,7 +817,7 @@ label:hover .check-caixa {
     right: 0;
     z-index: 20;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
     gap: 0.25rem;
     width: 240px;
     padding: 0.75rem;
@@ -620,11 +839,18 @@ label:hover .check-caixa {
    que já define cor/hover pros outros links do cabeçalho e ia sobrescrever
    isso aqui por ser mais específico (classe + tag). */
 .bandeja-apps .bandeja-apps-item {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
+    /* flex-start (não center) de propósito — o emblema fica sempre na
+       mesma altura entre os tiles de uma linha, não importa se o nome
+       de um deles precisa de 1 ou 2 linhas embaixo. */
+    justify-content: flex-start;
     gap: 0.4rem;
-    padding: 0.65rem 0.4rem;
+    min-width: 0;
+    height: 98px;
+    padding: 0.7rem 0.4rem 0.4rem;
     border-radius: var(--raio-pequeno);
     text-decoration: none;
     color: var(--cor-texto);
@@ -643,11 +869,57 @@ label:hover .check-caixa {
     font-size: 1rem;
 }
 
-.bandeja-apps-item span {
+.bandeja-apps-item-nome {
+    width: 100%;
     font-size: 0.75rem;
     font-weight: 600;
     line-height: 1.2;
-    overflow-wrap: break-word;
+    /* Deixa quebrar até 2 linhas — só corta com "..." se ainda sobrar
+       texto depois disso (nome de 1-2 palavras nunca é afetado). */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Estrela de favorito — só aparece no hover do tile (ou sempre, se já
+   estiver marcado); fica no canto superior direito do quadradinho. */
+.bandeja-apps-favorito {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    left: auto;
+    bottom: auto;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    color: var(--cor-texto-suave);
+    opacity: 0;
+    cursor: pointer;
+    transition: opacity 0.12s ease, color 0.12s ease;
+}
+
+.bandeja-apps-item:hover .bandeja-apps-favorito,
+.bandeja-apps-favorito:focus-visible {
+    opacity: 1;
+}
+
+.bandeja-apps-favorito:hover {
+    color: var(--cor-acento);
+}
+
+.bandeja-apps-favorito.favorito-ativo {
+    opacity: 1;
+    color: #f59e0b;
+}
+
+.bandeja-apps-favorito.favorito-ativo svg {
+    fill: currentColor;
 }
 
 .bandeja-apps-vazio {
@@ -797,4 +1069,43 @@ label:hover .check-caixa {
     color: var(--cor-texto-suave);
     font-style: italic;
     font-size: 0.9rem;
+}
+
+/* Celular — deixa a tela mais enxuta, tipo app, em vez de site desktop
+   encolhido. Vale pra toda tela logada, porque mora aqui (base.css). */
+@media (max-width: 600px) {
+    .pagina {
+        padding: 1.25rem 1rem 3rem;
+    }
+
+    .barra-superior {
+        margin-bottom: 1.75rem;
+    }
+
+    /* "Alonso & Verdiani" embaixo do nome da tela some no celular —
+       cabeçalho fica só com o essencial (logo + nome da tela + ações). */
+    .marca-sistema span {
+        display: none;
+    }
+
+    .marca-sistema-logo {
+        width: 56px;
+        height: 30px;
+    }
+
+    .menu-usuario {
+        gap: 0.6rem;
+    }
+
+    .cabecalho-ferramenta {
+        margin-bottom: 1.5rem;
+    }
+
+    .cabecalho-ferramenta h1 {
+        font-size: 1.3rem;
+    }
+
+    .cartao-secao {
+        padding: 1.1rem 1.1rem;
+    }
 }

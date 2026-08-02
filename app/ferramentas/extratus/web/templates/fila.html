@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block titulo %}Fila do motor — Extratus{% endblock %}
+{% block nome_pagina %}Extratus{% endblock %}
+{% block css_pagina %}<link rel="stylesheet" href="/extratus/static/extratus.css">{% endblock %}
+
+{% block conteudo %}
+<div class="cabecalho-ferramenta">
+    <div>
+        <h1>Fila do motor</h1>
+        <p>Envie PDFs em lote pra pasta universal do motor — sem precisar mexer em pasta nenhuma.</p>
+    </div>
+</div>
+
+<nav class="abas-extratus">
+    <a href="/extratus/" class="aba">Gerar relatórios</a>
+    <a href="/extratus/relatorios" class="aba">Relatórios</a>
+    <a href="/extratus/fila" class="aba aba-motor aba-ativa">Fila do motor</a>
+    {% if usuario_eh_admin_da_ferramenta(usuario, "extratus") %}
+    <a href="/extratus/motor" class="aba aba-motor">Motor</a>
+    <a href="/extratus/historico" class="aba aba-admin">Custos (admin)</a>
+    {% endif %}
+</nav>
+
+{% if erro %}
+<p class="banner-erro">⚠ {{ erro }}</p>
+{% endif %}
+{% if sucesso %}
+<p class="banner-sucesso">✓ {{ sucesso }}</p>
+{% endif %}
+
+<section class="cartao-secao">
+    <h2>Enviar PDFs</h2>
+    <p class="aviso-discreto">Essa fila é a do motor — universal, compartilhada com quem mais tiver acesso aqui. Não é a sua fila pessoal de "Gerar relatórios".</p>
+    <form action="/extratus/fila/upload" method="post" enctype="multipart/form-data" class="linha-upload">
+        <input type="file" name="arquivos" accept=".pdf" id="campo-pdfs-fila" multiple required>
+        <button type="submit" class="botao" id="botao-enviar-fila" disabled>Enviar pra fila</button>
+    </form>
+</section>
+
+<section class="cartao-secao">
+    <h2>Esperando o motor <span class="contagem">{{ total_pendentes }}</span></h2>
+    {% if pendentes %}
+    <div class="fila-barra-selecao">
+        <div class="fila-acoes-selecao" id="fila-acoes-selecao" hidden>
+            <label class="fila-selecionar-todos">
+                <input type="checkbox" id="check-selecionar-todos-fila" class="check-input">
+                <span class="check-caixa check-caixa-pequena"></span>
+                Selecionar todos
+            </label>
+            <button type="submit" form="form-remover-varios" class="botao botao-pequeno botao-remover-selecionados" id="botao-remover-selecionados" disabled>Remover</button>
+            <button type="button" class="botao-remover-fila" id="botao-cancelar-selecao-fila">Cancelar</button>
+        </div>
+        <button type="button" class="botao-minimal" id="botao-selecionar-fila">Selecionar</button>
+    </div>
+    <form action="/extratus/fila/remover-varios" method="post" id="form-remover-varios">
+        <ul class="lista-arquivos lista-fila">
+            {% for nome in pendentes %}
+            <li>
+                {% if nome in em_processamento %}
+                <span class="fila-item-nome">{{ nome }}</span>
+                <span class="selo selo-positivo">Em processamento pelo motor</span>
+                {% else %}
+                <label class="fila-item-checkbox" hidden>
+                    <input type="checkbox" name="nomes" value="{{ nome }}" class="check-input fila-item-check">
+                    <span class="check-caixa check-caixa-pequena"></span>
+                </label>
+                <span class="fila-item-nome">{{ nome }}</span>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </form>
+    {% else %}
+    <p class="vazio">Nenhum PDF esperando na fila do motor.</p>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block js_pagina %}<script src="/extratus/static/fila.js" defer></script>{% endblock %}

@@ -12,13 +12,17 @@ from app.ferramentas.extratus.core.config_manager import carregar_config
 from app.ferramentas.extratus.db.jobs import contar_por_status, somar_custo_por_usuario
 from app.plataforma.auth import gerar_hash_senha
 from app.plataforma.db.session import obter_sessao
-from app.plataforma.db.models import Ferramenta, Usuario
+from app.plataforma.db.models import CARGO_COLABORADOR, CARGOS_VALIDOS, Ferramenta, Usuario
 from app.plataforma.db.usuarios import (
     alternar_admin,
     alternar_ativo,
     atualizar_senha,
     criar_usuario,
+    definir_cargo,
     definir_ferramentas,
+    excluir_usuario,
+    listar_ferramentas_admin_ids,
+    listar_ferramentas_fila_ids,
     listar_ferramentas_liberadas_ids,
     listar_todos_usuarios,
 )
@@ -40,7 +44,7 @@ def _listar_ferramentas():
         return sessao.exec(select(Ferramenta)).all()
 
 
-def _redirecionar_admin(erro=None, sucesso=None):
+def _redirecionar(destino, erro=None, sucesso=None):
     partes = []
 
     if erro:
@@ -51,11 +55,84 @@ def _redirecionar_admin(erro=None, sucesso=None):
 
     query = f"?{'&'.join(partes)}" if partes else ""
 
-    return RedirectResponse(url=f"/admin{query}", status_code=303)
+    return RedirectResponse(url=f"{destino}{query}", status_code=303)
+
+
+def _contexto_base(usuario):
+    """Dados que a barra lateral usa em toda aba (contagem de usuários e
+    ferramentas nos emblemas) — computados sempre, independente de qual
+    aba está ativa, mesmo padrão das abas do Extratus."""
+    return {
+        "usuario": usuario,
+        "total_usuarios": len(listar_todos_usuarios()),
+        "total_ferramentas": len(_listar_ferramentas()),
+    }
 
 
 @router.get("/admin")
-def pagina_admin(
+def admin_raiz():
+    return RedirectResponse(url="/admin/custos", status_code=303)
+
+
+@router.get("/admin/custos")
+def pagina_custos(
+    request: Request,
+    usuario: Usuario = Depends(exigir_admin),
+    erro: str | None = None,
+    sucesso: str | None = None,
+):
+    usuarios = listar_todos_usuarios()
+    custo_por_usuario = somar_custo_por_usuario()
+
+    return templates.TemplateResponse(
+        request,
+        "admin.html",
+        {
+            **_contexto_base(usuario),
+            "aba_ativa": "custos",
+            "total_usuarios_ativos": sum(1 for u in usuarios if u.ativo),
+            "metricas": contar_por_status(),
+            "custo_total": sum(custo_por_usuario.values()),
+            "erro": erro,
+            "sucesso": sucesso,
+        },
+    )
+
+
+@router.get("/admin/ferramentas")
+def pagina_ferramentas(request: Request, usuario: Usuario = Depends(exigir_admin)):
+    return templates.TemplateResponse(
+        request,
+        "admin.html",
+        {
+            **_contexto_base(usuario),
+            "aba_ativa": "ferramentas",
+            "ferramentas": _listar_ferramentas(),
+            "config": carregar_config(),
+        },
+    )
+
+
+@router.get("/admin/usuarios/novo")
+def pagina_novo_usuario(
+    request: Request,
+    usuario: Usuario = Depends(exigir_admin),
+    erro: str | None = None,
+):
+    return templates.TemplateResponse(
+        request,
+        "admin.html",
+        {
+            **_contexto_base(usuario),
+            "aba_ativa": "novo-usuario",
+            "ferramentas": _listar_ferramentas(),
+            "erro": erro,
+        },
+    )
+
+
+@router.get("/admin/usuarios")
+def pagina_usuarios(
     request: Request,
     usuario: Usuario = Depends(exigir_admin),
     erro: str | None = None,
@@ -65,25 +142,26 @@ def pagina_admin(
     ferramentas = _listar_ferramentas()
 
     ferramentas_por_usuario = {
-        usuario.id: listar_ferramentas_liberadas_ids(usuario.id)
-        for usuario in usuarios
+        u.id: listar_ferramentas_liberadas_ids(u.id) for u in usuarios
     }
-
-    custo_por_usuario = somar_custo_por_usuario()
-    custo_total = sum(custo_por_usuario.values())
+    ferramentas_admin_por_usuario = {
+        u.id: listar_ferramentas_admin_ids(u.id) for u in usuarios
+    }
+    ferramentas_fila_por_usuario = {
+        u.id: listar_ferramentas_fila_ids(u.id) for u in usuarios
+    }
 
     return templates.TemplateResponse(
         request,
         "admin.html",
         {
-            "usuario": usuario,
+            **_contexto_base(usuario),
+            "aba_ativa": "usuarios",
             "usuarios": usuarios,
             "ferramentas": ferramentas,
             "ferramentas_por_usuario": ferramentas_por_usuario,
-            "total_usuarios_ativos": sum(1 for u in usuarios if u.ativo),
-            "metricas": contar_por_status(),
-            "custo_total": custo_total,
-            "config": carregar_config(),
+            "ferramentas_admin_por_usuario": ferramentas_admin_por_usuario,
+            "ferramentas_fila_por_usuario": ferramentas_fila_por_usuario,
             "erro": erro,
             "sucesso": sucesso,
         },
@@ -97,7 +175,10 @@ def criar_usuario_route(
     email: str = Form(...),
     senha: str = Form(...),
     eh_admin: bool = Form(False),
+    cargo: str = Form(CARGO_COLABORADOR),
     ferramenta_ids: list[int] = Form([]),
+    ferramentas_admin_ids: list[int] = Form([]),
+    ferramentas_fila_ids: list[int] = Form([]),
 ):
     try:
         criar_usuario(
@@ -106,39 +187,82 @@ def criar_usuario_route(
             email=email.strip().lower(),
             senha=senha,
             eh_admin=eh_admin,
+            cargo=cargo,
             ferramenta_ids=ferramenta_ids,
+            ferramentas_admin_ids=ferramentas_admin_ids,
+            ferramentas_fila_ids=ferramentas_fila_ids,
         )
     except ValueError as erro:
-        return _redirecionar_admin(erro=str(erro))
+        return _redirecionar("/admin/usuarios/novo", erro=str(erro))
 
-    return _redirecionar_admin(sucesso=f'Usuário "{nome.strip()}" criado.')
+    return _redirecionar("/admin/usuarios", sucesso=f'Usuário "{nome.strip()}" criado.')
+
+
+@router.post("/admin/usuarios/{usuario_id}/cargo")
+def definir_cargo_route(usuario_id: int, cargo: str = Form(...), usuario: Usuario = Depends(exigir_admin)):
+    if usuario_id == usuario.id:
+        return _redirecionar("/admin/usuarios", erro="Não é possível alterar o cargo do próprio usuário.")
+
+    if cargo not in CARGOS_VALIDOS:
+        return _redirecionar("/admin/usuarios", erro="Cargo inválido.")
+
+    definir_cargo(usuario_id, cargo)
+    return _redirecionar("/admin/usuarios", sucesso="Cargo atualizado.")
 
 
 @router.post("/admin/usuarios/{usuario_id}/ferramentas")
-def atualizar_ferramentas_route(usuario_id: int, ferramenta_ids: list[int] = Form([])):
-    definir_ferramentas(usuario_id, ferramenta_ids)
-    return _redirecionar_admin(sucesso="Ferramentas atualizadas.")
+def atualizar_ferramentas_route(
+    usuario_id: int,
+    ferramenta_ids: list[int] = Form([]),
+    ferramentas_admin_ids: list[int] = Form([]),
+    ferramentas_fila_ids: list[int] = Form([]),
+):
+    definir_ferramentas(usuario_id, ferramenta_ids, ferramentas_admin_ids, ferramentas_fila_ids)
+    return _redirecionar("/admin/usuarios", sucesso="Ferramentas atualizadas.")
 
 
 @router.post("/admin/usuarios/{usuario_id}/alternar-ativo")
-def alternar_ativo_route(usuario_id: int):
+def alternar_ativo_route(usuario_id: int, usuario: Usuario = Depends(exigir_admin)):
+    if usuario_id == usuario.id:
+        return _redirecionar("/admin/usuarios", erro="Não é possível desativar o próprio usuário.")
+
     alternar_ativo(usuario_id)
-    return _redirecionar_admin()
+    return _redirecionar("/admin/usuarios")
 
 
 @router.post("/admin/usuarios/{usuario_id}/alternar-admin")
-def alternar_admin_route(usuario_id: int):
+def alternar_admin_route(usuario_id: int, usuario: Usuario = Depends(exigir_admin)):
+    if usuario_id == usuario.id:
+        return _redirecionar("/admin/usuarios", erro="Não é possível alterar o admin do próprio usuário.")
+
     alternar_admin(usuario_id)
-    return _redirecionar_admin()
+    return _redirecionar("/admin/usuarios")
+
+
+@router.post("/admin/usuarios/{usuario_id}/excluir")
+def excluir_usuario_route(usuario_id: int, usuario: Usuario = Depends(exigir_admin)):
+    if usuario_id == usuario.id:
+        return _redirecionar("/admin/usuarios", erro="Não é possível excluir o próprio usuário.")
+
+    excluir_usuario(usuario_id)
+    return _redirecionar("/admin/usuarios", sucesso="Usuário excluído.")
 
 
 @router.post("/admin/usuarios/{usuario_id}/redefinir-senha")
-def redefinir_senha_route(usuario_id: int, nova_senha: str = Form(...)):
+def redefinir_senha_route(
+    usuario_id: int,
+    nova_senha: str = Form(...),
+    confirmar_senha: str = Form(...),
+):
     if len(nova_senha) < TAMANHO_MINIMO_SENHA:
-        return _redirecionar_admin(
-            erro=f"A nova senha precisa ter pelo menos {TAMANHO_MINIMO_SENHA} caracteres."
+        return _redirecionar(
+            "/admin/usuarios",
+            erro=f"A nova senha precisa ter pelo menos {TAMANHO_MINIMO_SENHA} caracteres.",
         )
+
+    if nova_senha != confirmar_senha:
+        return _redirecionar("/admin/usuarios", erro="As senhas não coincidem.")
 
     atualizar_senha(usuario_id, gerar_hash_senha(nova_senha))
 
-    return _redirecionar_admin(sucesso="Senha redefinida.")
+    return _redirecionar("/admin/usuarios", sucesso="Senha redefinida.")

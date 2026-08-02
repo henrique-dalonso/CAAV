@@ -55,12 +55,39 @@ def cliente_admin_logado():
         sessao.commit()
 
 
-def test_pagina_admin_carrega_para_administrador(cliente_admin_logado):
-    resp = cliente_admin_logado.get("/admin")
+def test_admin_raiz_redireciona_pra_aba_custos(cliente_admin_logado):
+    resp = cliente_admin_logado.get("/admin", follow_redirects=False)
+
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/admin/custos"
+
+
+def test_aba_custos_carrega_visao_geral(cliente_admin_logado):
+    resp = cliente_admin_logado.get("/admin/custos")
 
     assert resp.status_code == 200
     assert "Visão geral" in resp.text
+
+
+def test_aba_ferramentas_carrega(cliente_admin_logado):
+    resp = cliente_admin_logado.get("/admin/ferramentas")
+
+    assert resp.status_code == 200
+    assert "Configuração do Extratus" in resp.text
+
+
+def test_aba_novo_usuario_carrega_formulario(cliente_admin_logado):
+    resp = cliente_admin_logado.get("/admin/usuarios/novo")
+
+    assert resp.status_code == 200
     assert "Novo usuário" in resp.text
+
+
+def test_aba_usuarios_carrega_tabela(cliente_admin_logado):
+    resp = cliente_admin_logado.get("/admin/usuarios")
+
+    assert resp.status_code == 200
+    assert NOME_ALVO_TESTE in resp.text
 
 
 def test_redefinir_senha_de_outro_usuario_atualiza_hash(cliente_admin_logado):
@@ -68,7 +95,7 @@ def test_redefinir_senha_de_outro_usuario_atualiza_hash(cliente_admin_logado):
 
     resp = cliente_admin_logado.post(
         f"/admin/usuarios/{alvo.id}/redefinir-senha",
-        data={"nova_senha": "senhaRedefinida123"},
+        data={"nova_senha": "senhaRedefinida123", "confirmar_senha": "senhaRedefinida123"},
         follow_redirects=False,
     )
 
@@ -86,7 +113,24 @@ def test_redefinir_senha_muito_curta_nao_atualiza(cliente_admin_logado):
 
     resp = cliente_admin_logado.post(
         f"/admin/usuarios/{alvo.id}/redefinir-senha",
-        data={"nova_senha": "curta"},
+        data={"nova_senha": "curta", "confirmar_senha": "curta"},
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 303
+    assert "erro=" in resp.headers["location"]
+
+    alvo_atualizado = buscar_usuario_por_nome_usuario(NOME_ALVO_TESTE)
+    assert alvo_atualizado.senha_hash == hash_antes
+
+
+def test_redefinir_senha_com_confirmacao_diferente_nao_atualiza(cliente_admin_logado):
+    alvo = buscar_usuario_por_nome_usuario(NOME_ALVO_TESTE)
+    hash_antes = alvo.senha_hash
+
+    resp = cliente_admin_logado.post(
+        f"/admin/usuarios/{alvo.id}/redefinir-senha",
+        data={"nova_senha": "senhaRedefinida123", "confirmar_senha": "outraSenha456"},
         follow_redirects=False,
     )
 

@@ -108,6 +108,249 @@
     }
 }
 
+/* Aba do Motor — outra categoria de novo (admin + coordenador liberado),
+   cor diferente da de Custos (âmbar) pra não confundir as duas: laranja. */
+.aba-motor,
+.aba-motor:hover {
+    color: #c2410c;
+}
+
+.aba-motor.aba-ativa,
+.aba-motor.aba-ativa:hover {
+    border-bottom-color: #c2410c;
+}
+
+@media (prefers-color-scheme: dark) {
+    .aba-motor,
+    .aba-motor:hover {
+        color: #fb923c;
+    }
+
+    .aba-motor.aba-ativa,
+    .aba-motor.aba-ativa:hover {
+        border-bottom-color: #fb923c;
+    }
+}
+
+/* Lista da fila do motor — mesma .lista-arquivos, só com o nome ocupando
+   o espaço todo pra empurrar o botão de remover pra direita. */
+.lista-fila .fila-item-nome {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.botao-remover-fila {
+    background: none;
+    border: none;
+    color: var(--cor-erro-texto);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.2rem 0.4rem;
+    flex-shrink: 0;
+}
+
+.botao-remover-fila:hover {
+    text-decoration: underline;
+}
+
+.fila-barra-selecao {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.fila-acoes-selecao {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+}
+
+.fila-acoes-selecao[hidden] {
+    display: none;
+}
+
+.fila-selecionar-todos {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--cor-texto-suave);
+    cursor: pointer;
+}
+
+/* Botão "Selecionar" — minimalista (contorno fino, sem preenchimento),
+   fica esmaecido enquanto o modo de seleção está ativo, sem sumir.
+   margin-left:auto (não justify-content:space-between no pai) pra
+   continuar grudado à direita mesmo quando .fila-acoes-selecao some
+   (hidden) — com space-between, sobrando 1 item só, ele ia pra esquerda. */
+.botao-minimal {
+    margin-left: auto;
+    background: none;
+    border: 1px solid var(--cor-borda);
+    color: var(--cor-texto-suave);
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.35rem 0.8rem;
+    border-radius: var(--raio-pequeno);
+    cursor: pointer;
+    transition: border-color 0.12s ease, color 0.12s ease, opacity 0.12s ease;
+}
+
+.botao-minimal:hover {
+    border-color: var(--cor-acento);
+    color: var(--cor-texto);
+}
+
+.botao-minimal:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.botao-minimal:disabled:hover {
+    border-color: var(--cor-borda);
+    color: var(--cor-texto-suave);
+}
+
+.fila-item-checkbox {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.fila-item-checkbox[hidden] {
+    display: none;
+}
+
+/* Campo de formulário simples (usado nas Configurações do Motor) — mesmo
+   padrão visual do .campo de admin.css, duplicado aqui porque essa
+   página carrega extratus.css, não admin.css. */
+.campo {
+    margin-bottom: 1.1rem;
+}
+
+.campo label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--cor-texto-suave);
+    margin-bottom: 0.4rem;
+}
+
+.campo input,
+.campo select {
+    width: 100%;
+    max-width: 420px;
+    padding: 0.65rem 0.85rem;
+    font-size: 0.92rem;
+    font-family: inherit;
+    color: var(--cor-texto);
+    background: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-pequeno);
+}
+
+.campo input:focus,
+.campo select:focus {
+    border-color: var(--cor-acento);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--cor-acento) 18%, transparent);
+}
+
+.botao-pequeno {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.78rem;
+}
+
+.linha-campo-pasta {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.linha-campo-pasta input {
+    flex: 1;
+}
+
+.linha-campo-pasta .botao {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+/* Navegador de pastas do servidor — só existe pro admin escolher a pasta
+   do motor sem precisar digitar o caminho à mão. */
+.navegador-pastas {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.navegador-pastas[hidden] {
+    display: none;
+}
+
+.navegador-pastas-caixa {
+    width: min(480px, 90vw);
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--cor-cartao);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio);
+    box-shadow: var(--sombra);
+    padding: 1rem;
+}
+
+.navegador-pastas-atual {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--cor-texto-suave);
+    margin: 0 0 0.6rem;
+    word-break: break-all;
+}
+
+.navegador-pastas-lista {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    margin-bottom: 0.75rem;
+}
+
+.navegador-pastas-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 0.5rem 0.6rem;
+    font-size: 0.85rem;
+    border-radius: var(--raio-pequeno);
+    background: none;
+    border: none;
+    color: var(--cor-texto);
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.navegador-pastas-item:hover {
+    background: var(--cor-fundo);
+}
+
+.navegador-pastas-acoes {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+}
+
 .cartao-secao h2 .contagem {
     font-weight: 500;
     color: var(--cor-texto-suave);
@@ -177,6 +420,15 @@
     opacity: 0.5;
     cursor: not-allowed;
     box-shadow: none;
+}
+
+/* :hover e :disabled têm a mesma especificidade — sem isso aqui, passar
+   o mouse num botão desativado ainda troca o background/sombra do
+   :hover normal, dando a impressão errada de que ele reage/funciona. */
+.botao:disabled:hover {
+    background: var(--cor-acento);
+    box-shadow: none;
+    transform: none;
 }
 
 .lista-arquivos {
@@ -323,8 +575,48 @@
     text-align: center;
 }
 
-.relatorio-item .botao {
+.relatorio-item .botao-download {
     flex-shrink: 0;
+}
+
+/* Ícone de baixar — clean, sem texto, mas mantém o peso visual (fundo
+   sólido na cor de acento) por ser a ação principal de cada linha. */
+.botao-download {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 999px;
+    background: var(--cor-acento);
+    color: white;
+    text-decoration: none;
+    transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+.botao-download:hover {
+    background: var(--cor-acento-hover);
+    box-shadow: 0 8px 20px -6px color-mix(in srgb, var(--cor-acento) 60%, transparent);
+}
+
+.botao-download:active {
+    transform: scale(0.94);
+}
+
+/* Versão menor pra caber dentro de célula de tabela (histórico). */
+.botao-download-pequeno {
+    width: 28px;
+    height: 28px;
+}
+
+/* Sem relatório pra baixar (ex: job com erro) — o botão continua no
+   lugar (mesma posição em toda linha), só esmaecido e sem poder clicar.
+   É um <span>, não <a>, então não tem link nenhum pra desativar de
+   verdade — cursor:default + sem hover já deixa isso claro visualmente. */
+.botao-download-desativado {
+    opacity: 0.3;
+    cursor: default;
+    pointer-events: none;
 }
 
 /* Divisor discreto que fica DENTRO da pílula (não toca o topo/base) —
@@ -370,25 +662,8 @@
     pointer-events: none;
 }
 
-/* Qualquer texto que pode ser cortado com "..." usa essa classe: cursor
-   de clique, sublinha no hover, e a versão .expandido desfaz o corte
-   (quebra em várias linhas em vez de esconder). O atributo title="" no
-   HTML já cobre o "passar o mouse e parar" — tooltip nativa do navegador. */
-.truncavel {
-    cursor: pointer;
-}
-
-.truncavel:hover {
-    text-decoration: underline;
-}
-
-.truncavel.expandido {
-    white-space: normal !important;
-    overflow: visible !important;
-    text-overflow: clip !important;
-    word-break: break-word;
-}
-
+/* .truncavel/.expandido agora são globais (base.css) — regra específica
+   dessa tela: o bloco do solicitante cresce quando o texto expande. */
 .relatorio-solicitante:has(.truncavel.expandido) {
     max-width: none;
 }
@@ -457,6 +732,26 @@
     margin-top: 0.2rem;
 }
 
+/* Célula de Detalhe do histórico: texto + botão de baixar sempre na
+   mesma linha, sem o botão cair pra baixo quando o texto é longo — o
+   texto trunca com "..." (clique expande, .truncavel global) em vez de
+   quebrar linha e empurrar o botão. Mesmo estilo discreto do .motivo
+   (cor/tamanho), inclusive quando é só o "—" de "nada a mostrar". */
+/* Texto da coluna Detalhe — mesmo estilo discreto do .motivo (cor/
+   tamanho), truncando com "..." (clique expande, .truncavel global)
+   em vez de quebrar linha. inline-block pra max-width fazer efeito
+   (span solto não obedece largura pra fins de corte de texto). */
+.detalhe-texto {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+    color: var(--cor-texto-suave);
+    font-size: 0.78rem;
+}
+
 /* Histórico (admin) — tabela técnica com custo de IA, só pra quem
    administra a ferramenta. */
 .aviso-discreto {
@@ -473,7 +768,7 @@
 }
 
 .tabela-historico th {
-    text-align: left;
+    text-align: center;
     font-size: 0.72rem;
     font-weight: 600;
     text-transform: uppercase;
@@ -486,7 +781,10 @@
 .tabela-historico td {
     padding: 0.7rem 0.6rem;
     border-bottom: 1px solid var(--cor-borda);
-    vertical-align: top;
+    /* middle, mesmo motivo do .tabela td em base.css — mesma linha,
+       mesmo eixo, independente do tipo de conteúdo de cada célula. */
+    vertical-align: middle;
+    text-align: center;
     overflow-wrap: break-word;
 }
 
@@ -500,11 +798,29 @@
 
 .tabela-historico th:nth-child(1), .tabela-historico td:nth-child(1) { width: 100px; }
 .tabela-historico th:nth-child(2), .tabela-historico td:nth-child(2) { width: 14%; }
-.tabela-historico th:nth-child(3), .tabela-historico td:nth-child(3) { width: 18%; }
-.tabela-historico th:nth-child(4), .tabela-historico td:nth-child(4) { width: 13%; }
-.tabela-historico th:nth-child(5), .tabela-historico td:nth-child(5) { width: 85px; }
-.tabela-historico th:nth-child(6), .tabela-historico td:nth-child(6) { width: 130px; }
-.tabela-historico th:nth-child(7), .tabela-historico td:nth-child(7) { width: auto; }
+.tabela-historico th:nth-child(3), .tabela-historico td:nth-child(3) { width: 16%; }
+.tabela-historico th:nth-child(4), .tabela-historico td:nth-child(4) { width: 12%; }
+.tabela-historico th:nth-child(5), .tabela-historico td:nth-child(5) { width: 80px; }
+.tabela-historico th:nth-child(6), .tabela-historico td:nth-child(6) { width: 100px; }
+.tabela-historico th:nth-child(7), .tabela-historico td:nth-child(7) { width: 140px; }
+/* Coluna própria pro botão de baixar, sem título — posição sempre fixa
+   no fim da linha, não muda mais dependendo do tamanho do texto de
+   Detalhe do lado (era isso que fazia o botão "pular" de lugar). */
+.tabela-historico th:nth-child(8), .tabela-historico td:nth-child(8) { width: 52px; }
+
+/* Arquivo e Processo são identificadores usados pra conferência — não
+   podem centralizar. A tabela é table-layout:fixed, então nowrap sem
+   overflow:hidden vazava visualmente por cima da célula vizinha (bug
+   visto na prática); com ellipsis, corta certinho dentro da própria
+   coluna e o clique (.truncavel, aplicado no HTML) expande pra ver o
+   valor inteiro, quebrando linha dentro da célula em vez de vazar. */
+.tabela-historico td:nth-child(3),
+.tabela-historico td:nth-child(4) {
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 
 /* Glossário/seletor de colaboradores — busca por nome + checkbox que
    filtra a tabela de baixo. Existe pra não precisar decorar login de
@@ -588,4 +904,59 @@
     padding-top: 0.75rem !important;
     background: transparent !important;
     font-weight: 700;
+}
+
+/* Celular — a linha de relatório tem status + texto + solicitante +
+   botão, aperta demais numa tela estreita. Deixa quebrar em duas linhas
+   em vez de espremer ou vazar da tela. */
+@media (max-width: 600px) {
+    .relatorio-item {
+        flex-wrap: wrap;
+    }
+
+    .relatorio-info {
+        flex-basis: 100%;
+        order: 1;
+    }
+
+    .relatorio-solicitante {
+        order: 2;
+        max-width: none;
+    }
+
+    .relatorio-item .botao-download {
+        order: 3;
+        margin-left: auto;
+    }
+
+    .barra-filtros {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .abas-extratus {
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+}
+
+/* Tela do Motor. */
+.motor-status {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.motor-descricao {
+    max-width: 480px;
+    margin: 0;
+}
+
+.botao-motor-desligar {
+    background: var(--cor-erro-texto);
+}
+
+.botao-motor-desligar:hover {
+    background: #991b1b;
 }

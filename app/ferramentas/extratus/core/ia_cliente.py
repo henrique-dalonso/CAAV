@@ -4,9 +4,35 @@ from datetime import datetime
 from pathlib import Path
 
 from app.ferramentas.extratus.core.prompt_manager import carregar_instrucoes_relatorio
+from app.ferramentas.extratus.core.texto_manager import extrair_texto_pdf_com_diagnostico
 
 
 MODELO_PADRAO = "claude-sonnet-5"
+
+# --- Limites de segurança para a análise via texto extraído localmente ---
+# (ver memória de redução de custo — validados com testes reais em 2026-07-29)
+#
+# Se mais que essa proporção das páginas vier sem texto de verdade, tratamos
+# o PDF como digitalizado (escaneado) — nesse caso a extração de texto não
+# serve, e caímos de volta pro envio do PDF nativo (visão), que ao menos
+# consegue "ler" a imagem.
+LIMITE_PROPORCAO_PAGINAS_SEM_TEXTO = 0.15
+
+# Estimativa de tokens por caractere do texto extraído, calibrada com dois
+# testes reais pagos (0,53 e 0,58 tokens/caractere) — usamos 0,6 pra ter
+# margem de segurança pra cima, já que subestimar aqui é o que pode causar
+# um erro de "excedeu a janela de contexto" no meio do processamento.
+TOKENS_POR_CARACTERE_ESTIMADO = 0.6
+
+# Deixamos uma folga generosa da janela de 200 mil tokens do modelo, porque
+# ainda entram o prompt do Max, o schema da ferramenta e a resposta.
+LIMITE_TOKENS_TEXTO_EXTRAIDO = 150_000
+
+# A Anthropic rejeita (HTTP 413) requisições acima de 32MB. Um PDF em
+# base64 fica ~1,33x maior que o arquivo original — por isso o teto aqui
+# é mais conservador que 32MB. Confirmado com teste real em 2026-07-29:
+# um PDF de 34,2MB (979 páginas) foi rejeitado de fato com esse erro.
+LIMITE_MB_ARQUIVO_PARA_PDF_NATIVO = 24
 
 # Preço promocional por milhão de tokens, válido até 31/08/2026 (depois
 # disso sobe pra $3/$15 — lembrar de atualizar). Isso é só uma ESTIMATIVA
@@ -24,6 +50,11 @@ PRECO_SAIDA_POR_MILHAO_USD = 10.00
 # PDF de cada processo é sempre diferente, não tem o que reaproveitar ali.
 PRECO_CACHE_ESCRITA_POR_MILHAO_USD = PRECO_ENTRADA_POR_MILHAO_USD * 1.25
 PRECO_CACHE_LEITURA_POR_MILHAO_USD = PRECO_ENTRADA_POR_MILHAO_USD * 0.10
+
+# Batch API (usado só pelo Motor, ver motor_lote.py): 50% de desconto em
+# cima de TODOS os preços acima — entrada, saída e cache. Confirmado com
+# teste real em 2026-07-29.
+DESCONTO_BATCH_API = 0.5
 
 
 FERRAMENTA_RELATORIO = {
@@ -124,32 +155,27 @@ def gerar_relatorio_simulado(caminho_pdf, processo_detectado):
     return dados, {}
 
 
-def gerar_relatorio_claude(caminho_pdf, processo_detectado):
-    """Envia o PDF pra Claude e devolve os dados do relatório já
-    estruturados nos mesmos campos que o template Word espera.
+def parece_digitalizado(total_paginas, paginas_sem_texto):
+    """True quando a proporção de páginas sem texto real sugere que o PDF
+    é escaneado/digitalizado (sem camada de texto), não um PDF nativo do
+    sistema do tribunal."""
+    if total_paginas <= 0:
+        return True
 
-    Usa "tool use" da API (não texto livre) — o modelo é obrigado a
-    preencher exatamente os campos do schema, sem a gente precisar
-    adivinhar onde cada informação começa/termina numa resposta solta.
-    """
-    import anthropic
+    return (paginas_sem_texto / total_paginas) > LIMITE_PROPORCAO_PAGINAS_SEM_TEXTO
 
-    caminho_pdf = Path(caminho_pdf)
-    instrucoes = carregar_instrucoes_relatorio()
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
+def estimar_tokens_texto(texto):
+    return int(len(texto) * TOKENS_POR_CARACTERE_ESTIMADO)
 
-    if not api_key:
-        raise RuntimeError(
-            "ANTHROPIC_API_KEY não configurada no .env. Configure a chave "
-            "antes de usar ia_provider = \"claude\"."
-        )
 
-    cliente = anthropic.Anthropic(api_key=api_key)
+def cabe_no_limite_pdf_nativo(caminho_pdf):
+    tamanho_mb = Path(caminho_pdf).stat().st_size / 1_000_000
+    return tamanho_mb <= LIMITE_MB_ARQUIVO_PARA_PDF_NATIVO
 
-    pdf_base64 = base64.standard_b64encode(caminho_pdf.read_bytes()).decode("utf-8")
 
-    instrucao_formato = (
+def _instrucao_formato():
+    return (
         "\n\nIMPORTANTE SOBRE O FORMATO DE RESPOSTA: você não vai gerar um "
         "arquivo Word diretamente nem responder em texto livre — preencha a "
         "ferramenta \"preencher_relatorio\" com o conteúdo do relatório, "
@@ -159,45 +185,11 @@ def gerar_relatorio_claude(caminho_pdf, processo_detectado):
         "qualidade) continua valendo integralmente."
     )
 
-    resposta = cliente.messages.create(
-        model=MODELO_PADRAO,
-        max_tokens=4096,
-        system=[
-            {
-                "type": "text",
-                "text": instrucoes + instrucao_formato,
-                # Marca esse bloco pra cache — é o mesmo texto em toda
-                # chamada, independente de qual processo está sendo lido.
-                "cache_control": {"type": "ephemeral"},
-            }
-        ],
-        tools=[FERRAMENTA_RELATORIO],
-        tool_choice={"type": "tool", "name": "preencher_relatorio"},
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "document",
-                        "source": {
-                            "type": "base64",
-                            "media_type": "application/pdf",
-                            "data": pdf_base64,
-                        },
-                    },
-                    {
-                        "type": "text",
-                        "text": (
-                            "Analise este processo (número detectado no nome "
-                            f"do arquivo: {processo_detectado or 'não identificado'}) "
-                            "e preencha o relatório."
-                        ),
-                    },
-                ],
-            }
-        ],
-    )
 
+def extrair_dados_e_uso(resposta, via_batch=False):
+    """`via_batch=True` quando `resposta` veio de um resultado do Batch API
+    (Motor) — aplica os 50% de desconto da Anthropic nesse caso; chamadas
+    em tempo real (fila manual) usam o preço cheio normalmente."""
     bloco_ferramenta = next(
         (bloco for bloco in resposta.content if bloco.type == "tool_use"),
         None,
@@ -213,7 +205,9 @@ def gerar_relatorio_claude(caminho_pdf, processo_detectado):
     tokens_cache_escrita = getattr(resposta.usage, "cache_creation_input_tokens", 0) or 0
     tokens_cache_leitura = getattr(resposta.usage, "cache_read_input_tokens", 0) or 0
 
-    custo_estimado = (
+    multiplicador = (1 - DESCONTO_BATCH_API) if via_batch else 1
+
+    custo_estimado = multiplicador * (
         tokens_entrada / 1_000_000 * PRECO_ENTRADA_POR_MILHAO_USD
         + tokens_saida / 1_000_000 * PRECO_SAIDA_POR_MILHAO_USD
         + tokens_cache_escrita / 1_000_000 * PRECO_CACHE_ESCRITA_POR_MILHAO_USD
@@ -241,6 +235,129 @@ def gerar_relatorio_claude(caminho_pdf, processo_detectado):
         )
 
     return dados, uso_ia
+
+
+def montar_parametros_mensagem(caminho_pdf, processo_detectado, instrucoes):
+    """Monta o dict de parâmetros pra uma chamada `messages.create` (sem
+    disparar a chamada) — usado tanto pelo fluxo em tempo real (fila
+    manual) quanto pelo Batch API (Motor), que só diferem em COMO essa
+    chamada é despachada (na hora vs. dentro de um lote).
+
+    Extrai o texto do PDF localmente (de graça) e manda só o texto — muito
+    mais barato que mandar o PDF inteiro (que a Anthropic processa como se
+    fosse foto de cada página). Dois casos de segurança, validados com
+    testes reais em 2026-07-29:
+    - Se o PDF parecer digitalizado (sem texto de verdade), cai de volta
+      pro envio do PDF nativo — só quando o arquivo couber no limite de
+      tamanho da API (32MB); senão, erro claro pedindo revisão manual.
+    - Se o texto extraído for grande demais pra caber numa única chamada
+      (processos muito extensos), erro claro pedindo revisão manual — em
+      vez de tentar e estourar a janela de contexto do modelo no meio do
+      processamento.
+    """
+    caminho_pdf = Path(caminho_pdf)
+    diagnostico = extrair_texto_pdf_com_diagnostico(caminho_pdf)
+
+    pedido_analise = (
+        "Analise este processo (número detectado no nome do arquivo: "
+        f"{processo_detectado or 'não identificado'}) e preencha o relatório."
+    )
+
+    if parece_digitalizado(diagnostico["total_paginas"], diagnostico["paginas_sem_texto"]):
+        if not cabe_no_limite_pdf_nativo(caminho_pdf):
+            tamanho_mb = caminho_pdf.stat().st_size / 1_000_000
+            raise RuntimeError(
+                f"'{caminho_pdf.name}' parece ser um PDF digitalizado (sem "
+                f"camada de texto legível — {diagnostico['paginas_sem_texto']} de "
+                f"{diagnostico['total_paginas']} páginas sem texto) e também é "
+                f"grande demais ({tamanho_mb:.1f}MB) para ser enviado à IA como "
+                "imagem (limite da Anthropic é 32MB). Precisa de revisão manual."
+            )
+
+        pdf_base64 = base64.standard_b64encode(caminho_pdf.read_bytes()).decode("utf-8")
+        conteudo_usuario = [
+            {
+                "type": "document",
+                "source": {
+                    "type": "base64",
+                    "media_type": "application/pdf",
+                    "data": pdf_base64,
+                },
+            },
+            {"type": "text", "text": pedido_analise},
+        ]
+    else:
+        tokens_estimados = estimar_tokens_texto(diagnostico["texto"])
+
+        if tokens_estimados > LIMITE_TOKENS_TEXTO_EXTRAIDO:
+            raise RuntimeError(
+                f"'{caminho_pdf.name}' tem {diagnostico['total_paginas']} páginas "
+                f"(~{tokens_estimados} tokens estimados) — processo grande demais "
+                "para ser analisado em uma única chamada de IA hoje. Precisa da "
+                "funcionalidade de divisão em partes (ainda não implementada) ou "
+                "de revisão manual."
+            )
+
+        conteudo_usuario = [
+            {
+                "type": "text",
+                "text": (
+                    "Segue o texto integral do processo judicial, extraído "
+                    "automaticamente do PDF original (com marcadores de "
+                    f"página):\n\n{diagnostico['texto']}"
+                ),
+            },
+            {"type": "text", "text": pedido_analise},
+        ]
+
+    return {
+        "model": MODELO_PADRAO,
+        # 4096 já foi visto batendo no teto em processo real (risco de
+        # resposta cortada no meio) — 8192 dá folga, e o custo de saída é
+        # uma fração pequena do custo total mesmo assim.
+        "max_tokens": 8192,
+        "system": [
+            {
+                "type": "text",
+                "text": instrucoes + _instrucao_formato(),
+                # Marca esse bloco pra cache — é o mesmo texto em toda
+                # chamada, independente de qual processo está sendo lido.
+                "cache_control": {"type": "ephemeral"},
+            }
+        ],
+        "tools": [FERRAMENTA_RELATORIO],
+        "tool_choice": {"type": "tool", "name": "preencher_relatorio"},
+        "messages": [{"role": "user", "content": conteudo_usuario}],
+    }
+
+
+def gerar_relatorio_claude(caminho_pdf, processo_detectado):
+    """Envia o processo pra Claude em tempo real (fluxo manual) e devolve
+    os dados do relatório já estruturados nos mesmos campos que o template
+    Word espera.
+
+    Usa "tool use" da API (não texto livre) — o modelo é obrigado a
+    preencher exatamente os campos do schema, sem a gente precisar
+    adivinhar onde cada informação começa/termina numa resposta solta.
+    """
+    import anthropic
+
+    instrucoes = carregar_instrucoes_relatorio()
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+
+    if not api_key:
+        raise RuntimeError(
+            "ANTHROPIC_API_KEY não configurada no .env. Configure a chave "
+            "antes de usar ia_provider = \"claude\"."
+        )
+
+    cliente = anthropic.Anthropic(api_key=api_key)
+
+    parametros = montar_parametros_mensagem(caminho_pdf, processo_detectado, instrucoes)
+    resposta = cliente.messages.create(**parametros)
+
+    return extrair_dados_e_uso(resposta)
 
 
 def gerar_relatorio(caminho_pdf, processo_detectado, ia_provider):

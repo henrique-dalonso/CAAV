@@ -25,7 +25,7 @@
             <div><dt>Nome</dt><dd>{{ usuario.nome }}</dd></div>
             <div><dt>Usuário</dt><dd>{{ usuario.nome_usuario }}</dd></div>
             <div><dt>E-mail</dt><dd>{{ usuario.email }}</dd></div>
-            <div><dt>Perfil</dt><dd>{{ "Administrador" if usuario.eh_admin else "Colaborador" }}</dd></div>
+            <div><dt>Perfil</dt><dd>{{ rotulo_perfil(usuario) }}</dd></div>
             <div><dt>Na plataforma desde</dt><dd>{{ usuario.criado_em.strftime("%d/%m/%Y") }}</dd></div>
         </dl>
         <p class="aviso-discreto">Edição de dados ainda não existe por aqui — fale com um administrador se precisar corrigir alguma coisa.</p>

@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block titulo %}Motor — Extratus{% endblock %}
+{% block nome_pagina %}Extratus{% endblock %}
+{% block css_pagina %}<link rel="stylesheet" href="/extratus/static/extratus.css">{% endblock %}
+
+{% block conteudo %}
+<div class="cabecalho-ferramenta">
+    <div>
+        <h1>Motor</h1>
+        <p>Controle do processamento automático — liga/desliga e configurações.</p>
+    </div>
+</div>
+
+<nav class="abas-extratus">
+    <a href="/extratus/" class="aba">Gerar relatórios</a>
+    <a href="/extratus/relatorios" class="aba">Relatórios</a>
+    <a href="/extratus/fila" class="aba aba-motor">Fila do motor</a>
+    <a href="/extratus/motor" class="aba aba-motor aba-ativa">Motor</a>
+    <a href="/extratus/historico" class="aba aba-admin">Custos (admin)</a>
+</nav>
+
+{% if erro %}
+<p class="banner-erro">⚠ {{ erro }}</p>
+{% endif %}
+{% if sucesso %}
+<p class="banner-sucesso">✓ {{ sucesso }}</p>
+{% endif %}
+
+<section class="cartao-secao">
+    <h2>Status</h2>
+    <div class="motor-status">
+        <span class="selo{{ ' selo-positivo' if motor_ativo }}">{{ "Ligado" if motor_ativo else "Desligado" }}</span>
+        <p class="aviso-discreto motor-descricao">
+            {% if motor_ativo %}
+            O motor está ligado: a cada poucos minutos, ele confere a pasta "Fila do motor" sozinho e
+            manda os PDFs novos em lote pra IA (Batch API — mais barato, mas pode levar de minutos até
+            24h pra voltar). Enquanto estiver desligado, ele não olha a pasta nem processa nada.
+            {% else %}
+            Desligado — o motor não olha a pasta nem processa nada enquanto isso. Use "Processar tudo" na aba
+            Gerar relatórios pra continuar disparando manualmente (esse fluxo é sempre em tempo real, nunca em lote).
+            {% endif %}
+        </p>
+        <form action="/extratus/motor/alternar" method="post">
+            <button type="submit" class="botao{{ ' botao-motor-desligar' if motor_ativo }}">
+                {{ "Desligar motor" if motor_ativo else "Ligar motor" }}
+            </button>
+        </form>
+    </div>
+    {% if lotes_em_andamento %}
+    <div class="motor-lotes">
+        <h3>Lote(s) em processamento</h3>
+        <ul class="lista-arquivos">
+            {% for entrada in lotes_em_andamento %}
+            <li>
+                Lote enviado em {{ entrada.lote.criado_em.strftime("%d/%m/%Y %H:%M") }} —
+                {{ entrada.total_itens }} arquivo(s), aguardando a Anthropic terminar.
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% elif motor_ativo %}
+    <p class="aviso-discreto">Nenhum lote em processamento no momento.</p>
+    {% endif %}
+</section>
+
+{% if usuario.eh_admin %}
+<section class="cartao-secao">
+    <h2>Configurações</h2>
+    <p class="aviso-discreto">Essa é a pasta PRÓPRIA do motor — separada da fila manual/individual de "Gerar relatórios". É nela que a aba "Fila do motor" deposita os PDFs. Restrito a administradores da plataforma.</p>
+    <form action="/extratus/motor/config" method="post">
+        <div class="campo">
+            <label for="pasta_entrada">Pasta de entrada do motor</label>
+            <div class="linha-campo-pasta">
+                <input id="pasta_entrada" type="text" name="pasta_entrada" value="{{ config.motor_pasta_entrada }}" required>
+                <button type="button" class="botao" id="botao-escolher-pasta">Escolher no disco</button>
+            </div>
+        </div>
+        <div class="campo">
+            <label for="ia_provider">Modo de IA</label>
+            <select id="ia_provider" name="ia_provider">
+                {% for provedor in provedores_ia %}
+                <option value="{{ provedor }}"{{ ' selected' if config.ia_provider == provedor }}>{{ provedor }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="botao">Salvar configurações</button>
+    </form>
+    <p class="aviso-discreto">O motor sempre usa o Batch API da Anthropic (mais barato, até 24h de espera) — a fila manual de "Gerar relatórios" continua em tempo real, os dois nunca se misturam.</p>
+</section>
+
+<div class="navegador-pastas" id="navegador-pastas" hidden>
+    <div class="navegador-pastas-caixa">
+        <p class="navegador-pastas-atual" id="navegador-pastas-atual"></p>
+        <div class="navegador-pastas-lista" id="navegador-pastas-lista"></div>
+        <div class="navegador-pastas-acoes">
+            <button type="button" class="botao botao-pequeno" id="navegador-pastas-usar">Usar esta pasta</button>
+            <button type="button" class="botao-remover-fila" id="navegador-pastas-fechar">Cancelar</button>
+        </div>
+    </div>
+</div>
+{% else %}
+<section class="cartao-secao">
+    <h2>Configurações</h2>
+    <p class="aviso-discreto">A pasta e o modo de IA do motor só podem ser alterados por um administrador da plataforma.</p>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block js_pagina %}<script src="/extratus/static/motor.js" defer></script>{% endblock %}

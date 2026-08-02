@@ -15,7 +15,11 @@
 <nav class="abas-extratus">
     <a href="/extratus/" class="aba">Gerar relatórios <span class="contagem-aba">{{ total_pendentes }}</span></a>
     <a href="/extratus/relatorios" class="aba aba-ativa">Relatórios</a>
-    {% if usuario.eh_admin %}
+    {% if usuario_tem_acesso_fila_motor(usuario, "extratus") %}
+    <a href="/extratus/fila" class="aba aba-motor">Fila do motor</a>
+    {% endif %}
+    {% if usuario_eh_admin_da_ferramenta(usuario, "extratus") %}
+    <a href="/extratus/motor" class="aba aba-motor">Motor</a>
     <a href="/extratus/historico" class="aba aba-admin">Custos (admin)</a>
     {% endif %}
 </nav>
@@ -62,9 +66,15 @@
                 <span class="solicitante-texto truncavel" title="{{ nome_solicitante }}">{{ nome_solicitante }}</span>
             </div>
             {% if job.relatorio_path %}
-            <a href="download/{{ job.relatorio_path.split('\\')[-1].split('/')[-1] }}" class="botao">Baixar</a>
+            <a href="download/{{ job.relatorio_path.split('\\')[-1].split('/')[-1] }}" class="botao-download" title="Baixar relatório" aria-label="Baixar relatório">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+            </a>
             {% else %}
-            <span class="botao botao-fantasma" aria-hidden="true">Baixar</span>
+            <span class="botao-download botao-fantasma" aria-hidden="true"></span>
             {% endif %}
         </li>
         {% endfor %}

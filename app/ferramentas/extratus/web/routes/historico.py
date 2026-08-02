@@ -1,28 +1,16 @@
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 
 from app.ferramentas.extratus.db.jobs import listar_jobs, somar_custo_por_usuario
 from app.ferramentas.extratus.web.rotulos import rotulo_erro, rotulo_status
 from app.plataforma.db.models import Usuario
 from app.plataforma.db.usuarios import listar_todos_usuarios
-from app.plataforma.web.auth import exigir_acesso_ferramenta
+from app.plataforma.web.auth import exigir_admin_ferramenta
 from app.plataforma.web.templates_util import criar_templates
 
 
-def exigir_admin_extratus(
-    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
-) -> Usuario:
-    if not usuario.eh_admin:
-        raise HTTPException(
-            status_code=403,
-            detail="Acesso restrito a administradores.",
-        )
-
-    return usuario
-
-
-router = APIRouter(dependencies=[Depends(exigir_admin_extratus)])
+router = APIRouter(dependencies=[Depends(exigir_admin_ferramenta("extratus"))])
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 PLATAFORMA_TEMPLATES_DIR = (
@@ -36,7 +24,7 @@ templates.env.filters["rotulo_erro"] = rotulo_erro
 @router.get("/historico")
 def pagina_historico(
     request: Request,
-    usuario: Usuario = Depends(exigir_admin_extratus),
+    usuario: Usuario = Depends(exigir_admin_ferramenta("extratus")),
 ):
     jobs = listar_jobs()
     info_por_id = {u.id: {"nome": u.nome, "login": u.nome_usuario} for u in listar_todos_usuarios()}

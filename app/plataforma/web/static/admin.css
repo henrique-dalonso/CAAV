@@ -8,6 +8,104 @@
     font-size: 0.82rem;
 }
 
+/* Layout de abas laterais da administração — mesma ideia estrutural do
+   Perfil (menu à esquerda, conteúdo à direita), mas com tratamento visual
+   diferente de propósito: ícone em cada item e a aba ativa vira um bloco
+   preenchido com a cor de destaque, em vez de só mudar a cor do texto
+   como no Perfil. São áreas conceitualmente diferentes (uma é "meus
+   dados", a outra é "painel de controle"), então não deviam parecer a
+   mesma coisa. */
+/* A área de admin tem tabela com bastante coluna — os 880px padrão da
+   página (bons pra leitura de texto) apertavam demais e forçavam rolagem
+   de lado. Só aqui a página ganha mais respiro. */
+.pagina:has(.admin-layout) {
+    max-width: 1200px;
+}
+
+.admin-layout {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+}
+
+.admin-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    width: 210px;
+    flex-shrink: 0;
+}
+
+.admin-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.7rem 0.9rem;
+    border-radius: var(--raio-pequeno);
+    font-size: 0.87rem;
+    font-weight: 600;
+    color: var(--cor-texto-suave);
+    text-decoration: none;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.admin-nav-item svg {
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+
+.admin-nav-item:hover {
+    background: var(--cor-fundo);
+    color: var(--cor-texto);
+}
+
+.admin-nav-item-ativo,
+.admin-nav-item-ativo:hover {
+    background: var(--cor-acento);
+    color: white;
+}
+
+.admin-nav-item-ativo svg {
+    opacity: 1;
+}
+
+.admin-nav-contagem {
+    margin-left: auto;
+    background: var(--cor-fundo);
+    color: var(--cor-texto-suave);
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+}
+
+.admin-nav-item-ativo .admin-nav-contagem {
+    background: rgba(255, 255, 255, 0.25);
+    color: white;
+}
+
+.admin-conteudo {
+    flex: 1;
+    min-width: 0;
+}
+
+@media (max-width: 640px) {
+    .admin-layout {
+        flex-direction: column;
+    }
+
+    .admin-nav {
+        flex-direction: row;
+        width: 100%;
+        overflow-x: auto;
+        gap: 0.4rem;
+    }
+
+    .admin-nav-item {
+        flex-shrink: 0;
+    }
+}
+
 .aviso-discreto {
     font-size: 0.82rem;
     color: var(--cor-texto-suave);
@@ -113,17 +211,7 @@
 }
 
 .admin-form-usuario {
-    max-width: 380px;
-}
-
-.admin-check-linha {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.85rem;
-    cursor: pointer;
-    user-select: none;
-    margin-bottom: 0.5rem;
+    max-width: 420px;
 }
 
 .admin-form-legenda {
@@ -133,58 +221,486 @@
     margin: 1rem 0 0.5rem;
 }
 
-.admin-checks-ferramentas {
+/* Controle segmentado (dois botões grudados, um vira "ativo") — usado
+   pro "Administrador? Sim/Não" e pro Cargo, em vez de radio button cru
+   empilhado. */
+.segmento {
+    /* "flex" (não "inline-flex") de propósito — precisa ocupar a linha
+       inteira sozinho. Com inline-flex, quando #bloco-cargo-ferramentas
+       ficava escondido (Administrador = Sim), esse controle e o botão
+       "Criar usuário" (também inline-flex) ficavam lado a lado na mesma
+       linha, sem nada bloco entre os dois pra forçar a quebra. */
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem 1.25rem;
-    margin-bottom: 1.25rem;
-}
-
-/* Tabela de usuários — colunas com largura pensada pro conteúdo. */
-.admin-tabela-usuarios th:nth-child(1), .admin-tabela-usuarios td:nth-child(1) { width: 16%; }
-.admin-tabela-usuarios th:nth-child(2), .admin-tabela-usuarios td:nth-child(2) { width: 12%; }
-.admin-tabela-usuarios th:nth-child(3), .admin-tabela-usuarios td:nth-child(3) { width: 20%; }
-.admin-tabela-usuarios th:nth-child(4), .admin-tabela-usuarios td:nth-child(4) { width: 70px; }
-.admin-tabela-usuarios th:nth-child(5), .admin-tabela-usuarios td:nth-child(5) { width: 70px; }
-
-.admin-ferramentas-editor summary,
-.admin-senha-editor summary {
-    cursor: pointer;
-    font-size: 0.82rem;
-    color: var(--cor-acento);
-}
-
-.admin-ferramentas-editor summary:hover,
-.admin-senha-editor summary:hover {
-    text-decoration: underline;
-}
-
-.admin-ferramentas-editor form {
-    margin-top: 0.6rem;
-    padding: 0.75rem;
+    width: fit-content;
     background: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-pequeno);
+    padding: 3px;
+    gap: 3px;
+    margin-bottom: 0.35rem;
+    flex-shrink: 0;
+}
+
+.segmento-opcao {
+    position: relative;
+    cursor: pointer;
+}
+
+.segmento-opcao input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.segmento-opcao span {
+    display: block;
+    padding: 0.45rem 0.9rem;
+    font-size: 0.83rem;
+    font-weight: 600;
+    color: var(--cor-texto-suave);
+    border-radius: calc(var(--raio-pequeno) - 3px);
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.segmento-opcao input:checked + span {
+    background: var(--cor-acento);
+    color: white;
+}
+
+/* Bloco de cargo + seletor de ferramentas — some inteiro quando
+   "Administrador? Sim" é escolhido (via admin.js). */
+#bloco-cargo-ferramentas[hidden] {
+    display: none;
+}
+
+.linha-cargo-ferramentas {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.35rem;
+}
+
+.linha-cargo-ferramentas .seletor-ferramentas {
+    margin-top: 3px;
+}
+
+.admin-form-nota {
+    font-size: 0.78rem;
+    color: var(--cor-texto-suave);
+    margin: 0 0 1.1rem;
+}
+
+/* Seletor de ferramentas — botão que abre uma "gaveta" com as ferramentas
+   como blocos selecionáveis (tipo escolher fotos), mesma ideia visual do
+   seletor de apps do cabeçalho. Serve tanto pro formulário de criar
+   usuário (botão com texto) quanto pra cada linha da tabela (só ícone). */
+.seletor-ferramentas {
+    position: relative;
+    display: inline-block;
+}
+
+.botao-selecionar-ferramentas,
+.botao-icone-ferramentas {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: inherit;
+    color: var(--cor-texto);
+    background: var(--cor-fundo);
+    border: 1.5px solid var(--cor-borda);
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+}
+
+.botao-selecionar-ferramentas {
+    padding: 0.55rem 0.9rem;
+    font-size: 0.85rem;
+    font-weight: 600;
     border-radius: var(--raio-pequeno);
 }
 
-.admin-check-linha-pequena {
-    font-size: 0.8rem;
+.botao-icone-ferramentas {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 999px;
+}
+
+.botao-selecionar-ferramentas:hover,
+.botao-icone-ferramentas:hover {
+    border-color: var(--cor-acento);
+}
+
+.seletor-ferramentas-contagem {
+    background: var(--cor-acento);
+    color: white;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 0.05rem 0.4rem;
+    border-radius: 999px;
+    min-width: 1.05rem;
+    text-align: center;
+    line-height: 1.4;
+}
+
+.botao-icone-ferramentas .seletor-ferramentas-contagem {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+}
+
+/* Painel de seleção de ferramentas — position:fixed (não absolute) de
+   propósito: dentro da tabela de Usuários, um ancestral tem overflow-x:
+   auto (.tabela-scroll), e por uma regra do CSS isso também vira
+   overflow-y:auto implícito — um painel "absolute" ficaria PRESO dentro
+   dessa caixa, gerando a rolagem extra que não devia existir. "fixed"
+   escapa de qualquer clipping de ancestral; top/left são calculados em
+   JS (admin.js) na hora de abrir, com base na posição real do botão. */
+.painel-ferramentas {
+    position: fixed;
+    z-index: 40;
+    width: min(480px, 90vw);
+    min-height: 380px;
+    max-height: 80vh;
+    overflow-y: auto;
+    padding: 1.25rem;
+    background: var(--cor-cartao);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio);
+    box-shadow: var(--sombra);
+}
+
+/* Mesma pegadinha do [hidden] vs display de autor de sempre. */
+.painel-ferramentas[hidden] {
+    display: none;
+}
+
+.botao-marcar-todas {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 0.3rem 0.3rem 0.6rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    font-family: inherit;
+    color: var(--cor-acento);
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--cor-borda);
+    cursor: pointer;
+}
+
+.botao-marcar-todas:hover {
+    text-decoration: underline;
+}
+
+.grade-ferramentas-selecao {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.6rem;
+}
+
+/* .ferramenta-tile é o quadradinho inteiro (moldura); dentro dele tem
+   dois controles independentes que NÃO podem ser o mesmo <label> (senão
+   clicar num aciona o outro): a seleção principal (ferramenta-tile-selecao)
+   e, só quando faz sentido (coordenador), o "admin desta ferramenta". */
+.ferramenta-tile {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.6rem 0.3rem;
+    border-radius: var(--raio-pequeno);
+    border: 1.5px solid var(--cor-borda);
+    text-align: center;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.ferramenta-tile:hover {
+    border-color: var(--cor-acento);
+}
+
+.ferramenta-tile:has(.ferramenta-tile-input:checked) {
+    border-color: var(--cor-acento);
+    background: var(--cor-acento-fraco);
+}
+
+.ferramenta-tile-selecao {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    cursor: pointer;
+    width: 100%;
+}
+
+.ferramenta-tile-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.ferramenta-tile-admin {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.15rem;
+    padding-top: 0.3rem;
+    border-top: 1px dashed var(--cor-borda);
+    width: 100%;
+    justify-content: flex-start;
+    text-align: left;
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: var(--cor-texto-suave);
+    cursor: pointer;
+}
+
+/* "display: flex" acima é regra de autor e vence [hidden] do navegador —
+   mesma pegadinha já vista antes (bandeja de apps, painel de ferramentas). */
+.ferramenta-tile-admin[hidden] {
+    display: none;
+}
+
+.ferramenta-tile-admin span:last-child,
+.ferramenta-tile-fila span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Fila do motor — mesmo esquema do "Admin da ferramenta", mas nunca
+   escondida (faz sentido pra colaborador também, não só coordenador) e
+   com o laranja do Motor em vez do cinza neutro, pra dar pra distinguir
+   rapidamente qual checkbox é qual quando os dois aparecem juntos. */
+.ferramenta-tile-fila {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.15rem;
+    padding-top: 0.3rem;
+    border-top: 1px dashed var(--cor-borda);
+    width: 100%;
+    justify-content: flex-start;
+    text-align: left;
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: #c2410c;
+    cursor: pointer;
+}
+
+.ferramenta-tile-fila .check-input:checked + .check-caixa {
+    background: #c2410c;
+    border-color: #c2410c;
+}
+
+@media (prefers-color-scheme: dark) {
+    .ferramenta-tile-fila {
+        color: #fb923c;
+    }
+
+    .ferramenta-tile-fila .check-input:checked + .check-caixa {
+        background: #fb923c;
+        border-color: #fb923c;
+    }
+}
+
+.ferramenta-tile-emblema {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--cor-acento), var(--cor-acento-hover));
+    color: white;
+    font-weight: 700;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.ferramenta-tile-nome {
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.25;
+    overflow-wrap: break-word;
+}
+
+.ferramenta-tile-check {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--cor-acento);
+    color: white;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.ferramenta-tile-input:checked ~ .ferramenta-tile-check {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.painel-ferramentas form {
+    display: contents;
+}
+
+.painel-ferramentas .botao {
+    width: 100%;
+    justify-content: center;
+    margin-top: 0.75rem;
+}
+
+/* Tabela de usuários — largura fixa em % pra sempre caber no card sem
+   rolagem lateral; Nome/Usuário/E-mail truncam com "..." em vez de
+   esticar a tabela (title="" no HTML mostra o valor completo no hover). */
+.admin-tabela-usuarios {
+    table-layout: fixed;
+}
+
+.admin-tabela-usuarios th:nth-child(1) { width: 18%; }
+.admin-tabela-usuarios th:nth-child(2) { width: 13%; }
+.admin-tabela-usuarios th:nth-child(3) { width: 20%; }
+.admin-tabela-usuarios th:nth-child(4) { width: 14%; }
+.admin-tabela-usuarios th:nth-child(5) { width: 6%; }
+.admin-tabela-usuarios th:nth-child(6) { width: 29%; }
+
+.admin-tabela-usuarios td:nth-child(1),
+.admin-tabela-usuarios td:nth-child(2),
+.admin-tabela-usuarios td:nth-child(3) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Perfil — o corte precisa ser no PRÓPRIO selo (não na td), senão
+   text-overflow:ellipsis não funciona direito em cima de um filho
+   inline-flex e o "..." aparece solto do lado de fora do badge. Na
+   prática os 3 rótulos possíveis sempre cabem; isso é só uma rede de
+   segurança. */
+.admin-tabela-usuarios td:nth-child(4) .selo {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
 }
 
 .admin-acoes {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.35rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    white-space: nowrap;
+}
+
+/* .separador-acoes (base.css) faz a linha divisória; aqui só a trava de
+   altura (30px, igual aos outros ícones da linha) específica dessa
+   tabela — o wrapper .seletor-ferramentas é inline-block por padrão e
+   não deve crescer além do botão de dentro, mas isso garante sem
+   depender de auto-size. */
+.admin-acoes .separador-acoes,
+.admin-acoes .separador-acoes .seletor-ferramentas {
+    display: inline-flex;
+    align-items: center;
+    height: 30px;
+}
+
+/* Ícones de ação (ativar/desativar, admin, cargo) — mesmo tratamento
+   visual dos ícones do cabeçalho (bolha suave no hover). */
+.admin-icone-acao {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: 999px;
+    color: var(--cor-texto-suave);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+    list-style: none;
+}
+
+.admin-icone-acao::-webkit-details-marker {
+    display: none;
+}
+
+.admin-icone-acao:hover {
+    background: var(--cor-fundo);
+    color: var(--cor-texto);
+}
+
+.admin-icone-acao:disabled,
+.botao-icone-ferramentas:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.botao-icone-ferramentas:disabled:hover {
+    border-color: var(--cor-borda);
+}
+
+.admin-icone-acao:disabled:hover {
+    background: none;
+    color: var(--cor-texto-suave);
+}
+
+/* Excluir é destrutivo — vermelho, não a cor neutra dos outros ícones. */
+.admin-icone-acao-perigo {
+    color: var(--cor-erro-texto);
+}
+
+.admin-icone-acao-perigo:hover {
+    background: var(--cor-erro-fundo);
+    color: var(--cor-erro-texto);
+}
+
+.admin-icone-acao-perigo:disabled {
+    color: var(--cor-texto-suave);
+}
+
+.admin-icone-acao-ativa {
+    color: var(--cor-acento);
+}
+
+.admin-senha-editor {
+    position: relative;
 }
 
 .admin-form-senha {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 30;
     display: flex;
     gap: 0.4rem;
-    margin-top: 0.5rem;
+    padding: 0.75rem;
+    background: var(--cor-cartao);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio);
+    box-shadow: var(--sombra);
 }
 
 .admin-form-senha input {
-    padding: 0.4rem 0.6rem;
+    padding: 0.45rem 0.6rem;
     font-size: 0.8rem;
     font-family: inherit;
     color: var(--cor-texto);
@@ -192,6 +708,7 @@
     border: 1.5px solid var(--cor-borda);
     border-radius: var(--raio-pequeno);
     outline: none;
+    width: 150px;
 }
 
 .admin-form-senha input:focus {
