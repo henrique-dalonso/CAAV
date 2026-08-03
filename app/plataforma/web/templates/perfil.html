@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block titulo %}Meu perfil{% endblock %}
-{% block css_pagina %}<link rel="stylesheet" href="/static/perfil.css">{% endblock %}
+{% block css_pagina %}<link rel="stylesheet" href="/static/perfil.css?v={{ v }}">{% endblock %}
 
 {% block conteudo %}
 <div class="cabecalho-ferramenta">
@@ -56,8 +56,117 @@
 
         {% elif aba_ativa == "preferencias" %}
         <h2>Preferências</h2>
-        <p class="vazio">Nada por aqui ainda — em breve, opções como tema claro/escuro manual.</p>
+        <div class="grupo-config">
+            <div class="grupo-config-cabecalho">
+                <span class="grupo-config-icone">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </span>
+                <div>
+                    <h3>Tema</h3>
+                    <p>"Automático" segue o sistema operacional. Escolha "Claro" ou "Escuro" pra fixar, independente do sistema.</p>
+                </div>
+            </div>
+            <form action="/perfil/preferencias/tema" method="post" id="form-tema">
+                <div class="opcoes-tema">
+                    <label class="opcao-tema">
+                        <input type="radio" name="tema" value="sistema" {{ "checked" if usuario.tema == "sistema" or not usuario.tema }}>
+                        <span class="opcao-tema-icone">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                                <line x1="8" y1="21" x2="16" y2="21"></line>
+                                <line x1="12" y1="17" x2="12" y2="21"></line>
+                            </svg>
+                        </span>
+                        <span class="opcao-tema-nome">Automático</span>
+                    </label>
+                    <label class="opcao-tema">
+                        <input type="radio" name="tema" value="claro" {{ "checked" if usuario.tema == "claro" }}>
+                        <span class="opcao-tema-icone">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <circle cx="12" cy="12" r="5"></circle>
+                                <line x1="12" y1="1" x2="12" y2="3"></line>
+                                <line x1="12" y1="21" x2="12" y2="23"></line>
+                                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                                <line x1="1" y1="12" x2="3" y2="12"></line>
+                                <line x1="21" y1="12" x2="23" y2="12"></line>
+                                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                            </svg>
+                        </span>
+                        <span class="opcao-tema-nome">Claro</span>
+                    </label>
+                    <label class="opcao-tema">
+                        <input type="radio" name="tema" value="escuro" {{ "checked" if usuario.tema == "escuro" }}>
+                        <span class="opcao-tema-icone">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                            </svg>
+                        </span>
+                        <span class="opcao-tema-nome">Escuro</span>
+                    </label>
+                </div>
+            </form>
+        </div>
+
+        <div class="grupo-config">
+            <div class="grupo-config-cabecalho">
+                <span class="grupo-config-icone">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="13.5" cy="6.5" r=".5"></circle>
+                        <circle cx="17.5" cy="10.5" r=".5"></circle>
+                        <circle cx="8.5" cy="7.5" r=".5"></circle>
+                        <circle cx="6.5" cy="12.5" r=".5"></circle>
+                        <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"></path>
+                    </svg>
+                </span>
+                <div>
+                    <h3>Cor do perfil</h3>
+                    <p>Escolha a cor da bolinha com sua inicial, no canto superior direito da tela.</p>
+                </div>
+            </div>
+            <form action="/perfil/preferencias/cor" method="post" id="form-cor-perfil">
+                <div class="opcoes-cor-perfil">
+                    {% for cor in cores_perfil %}
+                    <label class="opcao-cor" style="--cor-opcao: {{ cor }};">
+                        <input type="radio" name="cor" value="{{ cor }}" {{ "checked" if usuario.cor_perfil == cor or (not usuario.cor_perfil and loop.first) }}>
+                        <span class="opcao-cor-check" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                        </span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </form>
+        </div>
         {% endif %}
     </div>
 </div>
+{% endblock %}
+
+{% block js_pagina %}
+<script>
+document.querySelectorAll('#form-tema input[name="tema"]').forEach(function (input) {
+    input.addEventListener("change", function () {
+        document.getElementById("form-tema").submit();
+    });
+});
+
+document.querySelectorAll('#form-cor-perfil input[name="cor"]').forEach(function (input) {
+    input.addEventListener("change", function () {
+        document.getElementById("form-cor-perfil").submit();
+    });
+});
+</script>
 {% endblock %}

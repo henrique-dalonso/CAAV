@@ -7,6 +7,12 @@ __pycache__/
 # Segredos
 .env
 app/ferramentas/extratus/config/config.json
+app/ferramentas/extratus_aburesi/config/config.json
+
+# Prompt de instruções sobrescrito pela tela do Motor - histórico local,
+# não versionado (cada backup é um arquivo com carimbo de data/hora)
+app/ferramentas/extratus/config/historico_prompts/
+app/ferramentas/extratus_aburesi/config/historico_prompts/
 
 # Dados reais de clientes / processos - nunca versionar
 app/ferramentas/extratus/dados/entrada_pdfs/*
@@ -22,9 +28,26 @@ app/ferramentas/extratus/dados/relatorios_prontos/*
 app/ferramentas/extratus/dados/motor_entrada_pdfs/*
 !app/ferramentas/extratus/dados/motor_entrada_pdfs/.gitkeep
 
+# Mesma regra acima, espelhada pro módulo Extratus - Aburesi (pastas
+# completamente separadas, mesmo cuidado com dado real de cliente)
+app/ferramentas/extratus_aburesi/dados/entrada_pdfs/*
+!app/ferramentas/extratus_aburesi/dados/entrada_pdfs/.gitkeep
+app/ferramentas/extratus_aburesi/dados/processados/*
+!app/ferramentas/extratus_aburesi/dados/processados/.gitkeep
+app/ferramentas/extratus_aburesi/dados/erros/*
+!app/ferramentas/extratus_aburesi/dados/erros/.gitkeep
+app/ferramentas/extratus_aburesi/dados/revisao/*
+!app/ferramentas/extratus_aburesi/dados/revisao/.gitkeep
+app/ferramentas/extratus_aburesi/dados/relatorios_prontos/*
+!app/ferramentas/extratus_aburesi/dados/relatorios_prontos/.gitkeep
+app/ferramentas/extratus_aburesi/dados/motor_entrada_pdfs/*
+!app/ferramentas/extratus_aburesi/dados/motor_entrada_pdfs/.gitkeep
+
 # Logs (contêm dado real de processamento)
 app/ferramentas/extratus/logs/*
 !app/ferramentas/extratus/logs/.gitkeep
+app/ferramentas/extratus_aburesi/logs/*
+!app/ferramentas/extratus_aburesi/logs/.gitkeep
 
 # Banco local (histórico + usuários — dado real)
 banco/*

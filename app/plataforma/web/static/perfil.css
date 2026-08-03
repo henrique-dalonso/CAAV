@@ -109,30 +109,8 @@
     box-shadow: 0 0 0 4px color-mix(in srgb, var(--cor-acento) 18%, transparent);
 }
 
-.botao {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.6rem 1.1rem;
-    font-size: 0.88rem;
-    font-weight: 600;
-    font-family: inherit;
-    color: white;
-    background: var(--cor-acento);
-    border: none;
-    border-radius: var(--raio-pequeno);
-    cursor: pointer;
-    transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
-}
-
-.botao:hover {
-    background: var(--cor-acento-hover);
-    box-shadow: 0 8px 20px -6px color-mix(in srgb, var(--cor-acento) 60%, transparent);
-}
-
-.botao:active {
-    transform: scale(0.98);
-}
+/* .botao agora mora em base.css (compartilhado por toda página logada)
+   — removida a cópia que existia só aqui. */
 
 .aviso-discreto {
     font-size: 0.82rem;
@@ -140,14 +118,122 @@
     margin: 0;
 }
 
-@media (max-width: 640px) {
-    .perfil-layout {
-        flex-direction: column;
-    }
+/* Seletor de tema — cartões com ícone (não os .segmento de texto puro
+   usados em admin) porque tema é um conceito visual, não uma escolha
+   binária de texto; um cartão com sol/lua/monitor comunica mais rápido
+   do que "Claro"/"Escuro" escrito. Mesma lógica de estado do
+   .ferramenta-tile do admin (:has(input:checked)), reaproveitada aqui. */
+.opcoes-tema {
+    display: flex;
+    gap: 0.75rem;
+}
 
-    .perfil-abas-laterais {
-        flex-direction: row;
-        width: 100%;
-        overflow-x: auto;
-    }
+.opcao-tema {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    width: 110px;
+    padding: 1rem 0.75rem;
+    border: 1.5px solid var(--cor-borda);
+    border-radius: var(--raio-pequeno);
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.opcao-tema:hover {
+    border-color: var(--cor-acento);
+}
+
+.opcao-tema:has(input:checked) {
+    border-color: var(--cor-acento);
+    background: var(--cor-acento-fraco);
+}
+
+.opcao-tema input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.opcao-tema-icone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    background: var(--cor-fundo);
+    color: var(--cor-texto-suave);
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.opcao-tema:has(input:checked) .opcao-tema-icone {
+    background: var(--cor-acento);
+    color: white;
+}
+
+.opcao-tema-nome {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--cor-texto-suave);
+}
+
+.opcao-tema:has(input:checked) .opcao-tema-nome {
+    color: var(--cor-acento);
+}
+
+/* Bolinhas de cor do avatar — anel de seleção com duas sombras (uma na
+   cor do cartão, criando um "respiro", outra na cor da própria opção,
+   formando o anel) em vez de borda, pra não brigar visualmente com o
+   fundo colorido da própria bolinha. */
+.opcoes-cor-perfil {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.85rem;
+}
+
+.opcao-cor {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    background: var(--cor-opcao);
+    cursor: pointer;
+    transition: transform 0.12s ease;
+}
+
+.opcao-cor:hover {
+    transform: scale(1.12);
+}
+
+.opcao-cor:has(input:checked) {
+    box-shadow: 0 0 0 2px var(--cor-cartao), 0 0 0 4px var(--cor-opcao);
+}
+
+.opcao-cor input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.opcao-cor-check {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    opacity: 0;
+    transform: scale(0.4);
+    transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.opcao-cor:has(input:checked) .opcao-cor-check {
+    opacity: 1;
+    transform: scale(1);
 }

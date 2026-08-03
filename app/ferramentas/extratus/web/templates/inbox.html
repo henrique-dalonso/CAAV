@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 
-{% block titulo %}Extratus{% endblock %}
-{% block nome_pagina %}Extratus{% endblock %}
-{% block css_pagina %}<link rel="stylesheet" href="/extratus/static/extratus.css">{% endblock %}
+{% block titulo %}Extratus - Relatórios{% endblock %}
+{% block nome_pagina %}Extratus - Relatórios{% endblock %}
+{% block css_pagina %}<link rel="stylesheet" href="/extratus/static/extratus.css?v={{ v }}">{% endblock %}
 
 {% block conteudo %}
 <div class="cabecalho-ferramenta">
     <div>
-        <h1>Extratus</h1>
-        <p>Geração de relatórios de processos judiciais pra cliente, com parecer.</p>
+        <h1>Extratus - Relatórios</h1>
+        <p>Geração de relatórios completos de processos judiciais pra cliente, com parecer.</p>
     </div>
     {% if ia_provider == "claude" %}
     <span class="selo-status real">IA real ativada</span>

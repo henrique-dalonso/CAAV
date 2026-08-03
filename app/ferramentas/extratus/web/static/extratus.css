@@ -1,7 +1,13 @@
-/* Telas do Extratus (gerar relatórios + relatórios) — o cabeçalho/layout
-   de página, cabeçalho-ferramenta e cartao-secao já vêm de base.css
-   (compartilhados com outras ferramentas). Aqui só entra o que é
-   específico dessas telas: status, listas, abas e a lista de relatórios. */
+/* Telas do Extratus - Relatórios — o cabeçalho/layout de página,
+   cabeçalho-ferramenta e cartao-secao já vêm de base.css (compartilhados
+   com outras ferramentas). Aqui só entra o que é específico dessas
+   telas: status, listas, abas e a lista de relatórios.
+
+   Identidade de cor: usa o azul padrão de base.css sem sobrescrever nada
+   (é a ferramenta "original") — a cópia em extratus_aburesi/ redefine
+   --cor-acento pra ter uma paleta própria (verde-azulado). Cada
+   ferramenta nova pode fazer o mesmo, só redefinindo essas variáveis no
+   topo do seu próprio CSS. */
 
 .selo-status {
     display: inline-flex;
@@ -33,10 +39,15 @@
 }
 
 @media (prefers-color-scheme: dark) {
-    .selo-status.real {
+    html:not([data-theme="claro"]) .selo-status.real {
         background: #113321;
         color: #86efac;
     }
+}
+
+html[data-theme="escuro"] .selo-status.real {
+    background: #113321;
+    color: #86efac;
 }
 
 /* Abas do Extratus (Gerar relatórios / Relatórios) — navegação entre
@@ -97,15 +108,25 @@
 }
 
 @media (prefers-color-scheme: dark) {
-    .aba-admin,
-    .aba-admin:hover {
+    html:not([data-theme="claro"]) .aba-admin,
+    html:not([data-theme="claro"]) .aba-admin:hover {
         color: #fbbf24;
     }
 
-    .aba-admin.aba-ativa,
-    .aba-admin.aba-ativa:hover {
+    html:not([data-theme="claro"]) .aba-admin.aba-ativa,
+    html:not([data-theme="claro"]) .aba-admin.aba-ativa:hover {
         border-bottom-color: #fbbf24;
     }
+}
+
+html[data-theme="escuro"] .aba-admin,
+html[data-theme="escuro"] .aba-admin:hover {
+    color: #fbbf24;
+}
+
+html[data-theme="escuro"] .aba-admin.aba-ativa,
+html[data-theme="escuro"] .aba-admin.aba-ativa:hover {
+    border-bottom-color: #fbbf24;
 }
 
 /* Aba do Motor — outra categoria de novo (admin + coordenador liberado),
@@ -121,15 +142,25 @@
 }
 
 @media (prefers-color-scheme: dark) {
-    .aba-motor,
-    .aba-motor:hover {
+    html:not([data-theme="claro"]) .aba-motor,
+    html:not([data-theme="claro"]) .aba-motor:hover {
         color: #fb923c;
     }
 
-    .aba-motor.aba-ativa,
-    .aba-motor.aba-ativa:hover {
+    html:not([data-theme="claro"]) .aba-motor.aba-ativa,
+    html:not([data-theme="claro"]) .aba-motor.aba-ativa:hover {
         border-bottom-color: #fb923c;
     }
+}
+
+html[data-theme="escuro"] .aba-motor,
+html[data-theme="escuro"] .aba-motor:hover {
+    color: #fb923c;
+}
+
+html[data-theme="escuro"] .aba-motor.aba-ativa,
+html[data-theme="escuro"] .aba-motor.aba-ativa:hover {
+    border-bottom-color: #fb923c;
 }
 
 /* Lista da fila do motor — mesma .lista-arquivos, só com o nome ocupando
@@ -262,6 +293,16 @@
     box-shadow: 0 0 0 4px color-mix(in srgb, var(--cor-acento) 18%, transparent);
 }
 
+/* Input de arquivo dentro de .campo (ex: upload do prompt) não é um
+   campo de texto — herdar padding/borda/max-width feitos pra texto
+   espremia o controle nativo do navegador e cortava o nome do arquivo. */
+.campo input[type="file"] {
+    max-width: none;
+    padding: 0.4rem 0;
+    border: none;
+    background: none;
+}
+
 .botao-pequeno {
     padding: 0.4rem 0.75rem;
     font-size: 0.78rem;
@@ -275,6 +316,11 @@
 
 .linha-campo-pasta input {
     flex: 1;
+    /* .campo input tem max-width:420px pensado pra campo de texto comum —
+       aqui o input já é controlado pelo flex (ao lado do botão "Escolher
+       no disco"), então esse teto sobrava e cortava caminhos de pasta
+       compridos. */
+    max-width: none;
 }
 
 .linha-campo-pasta .botao {
@@ -389,47 +435,7 @@
     border-color: var(--cor-acento);
 }
 
-.botao {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.6rem 1.1rem;
-    font-size: 0.88rem;
-    font-weight: 600;
-    font-family: inherit;
-    color: white;
-    background: var(--cor-acento);
-    border: none;
-    border-radius: var(--raio-pequeno);
-    cursor: pointer;
-    text-decoration: none;
-    transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
-    white-space: nowrap;
-}
-
-.botao:hover {
-    background: var(--cor-acento-hover);
-    box-shadow: 0 8px 20px -6px color-mix(in srgb, var(--cor-acento) 60%, transparent);
-}
-
-.botao:active {
-    transform: scale(0.98);
-}
-
-.botao:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    box-shadow: none;
-}
-
-/* :hover e :disabled têm a mesma especificidade — sem isso aqui, passar
-   o mouse num botão desativado ainda troca o background/sombra do
-   :hover normal, dando a impressão errada de que ele reage/funciona. */
-.botao:disabled:hover {
-    background: var(--cor-acento);
-    box-shadow: none;
-    transform: none;
-}
+/* .botao (base) agora mora em base.css. */
 
 .lista-arquivos {
     list-style: none;
@@ -676,6 +682,10 @@
     gap: 0.15rem;
 }
 
+.relatorio-info-clicavel {
+    cursor: pointer;
+}
+
 .relatorio-info strong {
     font-size: 0.92rem;
     font-weight: 600;
@@ -718,9 +728,12 @@
 }
 
 @media (prefers-color-scheme: dark) {
-    .status-sucesso { background: #113321; color: #86efac; }
-    .status-revisao { background: #332b0f; color: #fde68a; }
+    html:not([data-theme="claro"]) .status-sucesso { background: #113321; color: #86efac; }
+    html:not([data-theme="claro"]) .status-revisao { background: #332b0f; color: #fde68a; }
 }
+
+html[data-theme="escuro"] .status-sucesso { background: #113321; color: #86efac; }
+html[data-theme="escuro"] .status-revisao { background: #332b0f; color: #fde68a; }
 
 .motivo {
     display: -webkit-box;
@@ -906,41 +919,10 @@
     font-weight: 700;
 }
 
-/* Celular — a linha de relatório tem status + texto + solicitante +
-   botão, aperta demais numa tela estreita. Deixa quebrar em duas linhas
-   em vez de espremer ou vazar da tela. */
-@media (max-width: 600px) {
-    .relatorio-item {
-        flex-wrap: wrap;
-    }
-
-    .relatorio-info {
-        flex-basis: 100%;
-        order: 1;
-    }
-
-    .relatorio-solicitante {
-        order: 2;
-        max-width: none;
-    }
-
-    .relatorio-item .botao-download {
-        order: 3;
-        margin-left: auto;
-    }
-
-    .barra-filtros {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .abas-extratus {
-        overflow-x: auto;
-        white-space: nowrap;
-    }
-}
-
 /* Tela do Motor. */
+/* .grupo-config (ícone + título + descrição, usado nas Configurações do
+   Motor) agora mora em base.css — é reaproveitado em outras telas
+   também (ex: Novo usuário no admin). */
 .motor-status {
     display: flex;
     flex-direction: column;
@@ -953,10 +935,19 @@
     margin: 0;
 }
 
-.botao-motor-desligar {
-    background: var(--cor-erro-texto);
+/* Interruptor do Motor usa a mesma cor laranja já usada na aba do Motor
+   (.aba-motor) quando ligado — reforça "isso é área do Motor" sem
+   precisar pintar o resto da tela. */
+.motor-status .interruptor {
+    --cor-interruptor-ligado: #c2410c;
 }
 
-.botao-motor-desligar:hover {
-    background: #991b1b;
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme="claro"]) .motor-status .interruptor {
+        --cor-interruptor-ligado: #fb923c;
+    }
+}
+
+html[data-theme="escuro"] .motor-status .interruptor {
+    --cor-interruptor-ligado: #fb923c;
 }

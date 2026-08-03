@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block titulo %}Histórico (admin) — Extratus - Aburesi{% endblock %}
+{% block nome_pagina %}Extratus - Aburesi{% endblock %}
+{% block css_pagina %}<link rel="stylesheet" href="/extratus-aburesi/static/extratus.css?v={{ v }}">{% endblock %}
+
+{% block conteudo %}
+<div class="cabecalho-ferramenta">
+    <div>
+        <h1>Histórico (admin)</h1>
+        <p>Todo processamento, com custo de IA e detalhe técnico — visível só pra admin e coordenadores autorizados.</p>
+    </div>
+</div>
+
+<nav class="abas-extratus">
+    <a href="/extratus-aburesi/" class="aba">Gerar relatórios</a>
+    <a href="/extratus-aburesi/relatorios" class="aba">Relatórios</a>
+    {% if usuario_tem_acesso_fila_motor(usuario, "extratus-aburesi") %}
+    <a href="/extratus-aburesi/fila" class="aba aba-motor">Fila do motor</a>
+    {% endif %}
+    <a href="/extratus-aburesi/motor" class="aba aba-motor">Motor</a>
+    <a href="/extratus-aburesi/historico" class="aba aba-ativa aba-admin">Custos (admin)</a>
+</nav>
+
+<section class="cartao-secao">
+    <h2>Gasto por categoria</h2>
+    <ul class="lista-custos">
+        <li>
+            <span>Colaboradores</span>
+            <strong>US$ {{ "%.4f"|format(custo_colaboradores) }}</strong>
+        </li>
+        <li>
+            <span>Motor automático</span>
+            <strong>US$ {{ "%.4f"|format(custo_motor) }}</strong>
+        </li>
+        <li class="lista-custos-total">
+            <span>Total do sistema</span>
+            <strong>US$ {{ "%.4f"|format(custo_total) }}</strong>
+        </li>
+    </ul>
+</section>
+
+{% if colaboradores %}
+<section class="cartao-secao">
+    <h2>Colaboradores</h2>
+    <p class="aviso-discreto">Busque por nome e marque quem quiser destacar na tabela abaixo — também serve de glossário, ninguém precisa decorar login de ninguém.</p>
+    <input type="search" class="campo-busca campo-busca-colaborador" placeholder="Buscar colaborador por nome...">
+    <ul class="lista-colaboradores">
+        {% for pessoa in colaboradores %}
+        <li class="colaborador-item" data-busca="{{ pessoa.nome | lower }}">
+            <label>
+                <input type="checkbox" class="colaborador-check check-input" value="{{ pessoa.id }}">
+                <span class="check-caixa"></span>
+                <span class="colaborador-nome">{{ pessoa.nome }}</span>
+                <span class="colaborador-login">{{ pessoa.login }}</span>
+            </label>
+            <strong>US$ {{ "%.4f"|format(pessoa.custo) }}</strong>
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+
+<section class="cartao-secao">
+    <h2>Todos os processamentos</h2>
+    {% if jobs %}
+    <p class="aviso-discreto">Custo de IA é uma estimativa interna, não a fatura oficial. Marque colaboradores acima pra filtrar a tabela.</p>
+    <div class="tabela-scroll">
+    <table class="tabela-historico">
+        <thead>
+            <tr>
+                <th>Quando</th>
+                <th>Usuário</th>
+                <th>Arquivo</th>
+                <th>Processo</th>
+                <th>Status</th>
+                <th>Custo IA (estimado)</th>
+                <th>Detalhe</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for job in jobs %}
+            <tr data-usuario-id="{{ job.usuario_id or '' }}">
+                <td>{{ job.criado_em.strftime("%d/%m/%Y %H:%M") }}</td>
+                <td>
+                    {% if job.usuario_id and info_por_id.get(job.usuario_id) %}
+                    {{ info_por_id[job.usuario_id].nome }}
+                    <span class="motivo">{{ info_por_id[job.usuario_id].login }}</span>
+                    {% else %}
+                    Motor automático
+                    {% endif %}
+                </td>
+                <td class="truncavel" title="{{ job.arquivo_pdf }}">{{ job.arquivo_pdf }}</td>
+                <td class="truncavel" title="{{ job.processo or '—' }}">{{ job.processo or "—" }}</td>
+                <td><span class="status status-{{ job.status }}">{{ job.status | rotulo_status }}</span></td>
+                <td>
+                    {% if job.custo_estimado_usd %}
+                    US$ {{ "%.4f"|format(job.custo_estimado_usd) }}
+                    <span class="motivo">{{ job.modelo_ia }}</span>
+                    {% else %}
+                    <span class="motivo">simulado</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if job.status == "revisao" and job.motivo_confianca %}
+                    <span class="detalhe-texto truncavel" title="{{ job.motivo_confianca }}">{{ job.motivo_confianca }}</span>
+                    {% elif job.status == "erro" and job.erro_mensagem %}
+                    <span class="detalhe-texto truncavel" title="{{ job.erro_mensagem }}">[{{ job.tipo_erro }}] {{ job.erro_mensagem }}</span>
+                    {% else %}
+                    <span class="detalhe-texto">—</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if job.relatorio_path %}
+                    <a href="download/{{ job.relatorio_path.split('\\')[-1].split('/')[-1] }}" class="botao-download botao-download-pequeno" title="Baixar relatório" aria-label="Baixar relatório">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                    </a>
+                    {% else %}
+                    <span class="botao-download botao-download-pequeno botao-download-desativado" title="Sem relatório disponível" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                    </span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="vazio">Nenhum processamento registrado ainda.</p>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block js_pagina %}<script src="/extratus-aburesi/static/historico.js?v={{ v }}" defer></script>{% endblock %}

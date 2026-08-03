@@ -2,16 +2,16 @@ from pathlib import Path
 
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
 
 from app.plataforma.auth import verificar_senha
 from app.plataforma.db.usuarios import buscar_usuario_por_nome_usuario
+from app.plataforma.web.templates_util import criar_templates
 
 
 router = APIRouter()
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
-templates = Jinja2Templates(directory=TEMPLATES_DIR)
+templates = criar_templates(TEMPLATES_DIR)
 
 
 @router.get("/login")

@@ -1,19 +1,27 @@
 # Centro de Experiência do Colaborador — Alonso & Verdiani
 
 Plataforma interna do escritório, com login único e permissão por
-ferramenta. Hoje tem duas ferramentas:
+ferramenta. Hoje tem três ferramentas:
 
-- **Extratus** — transforma processos judiciais grandes em relatórios
-  curtos com parecer. Funcional de ponta a ponta.
+- **Extratus - Relatórios** — transforma processos judiciais grandes em
+  relatórios completos com parecer, pro cliente. Funcional de ponta a
+  ponta, com IA real (Claude) ligada por padrão.
+- **Extratus - Aburesi** — resumo rápido de processo pra uso interno no
+  atendimento do cliente Aburesi. Mesma base técnica do Extratus -
+  Relatórios (pastas, banco e Motor completamente separados), com IA real
+  ligada — mas ainda usando o prompt de instruções provisório (cópia do
+  Relatórios); o prompt definitivo (Max) ainda não foi enviado. Pode ser
+  trocado a qualquer momento pela tela do Motor, sem precisar de deploy.
 - **Leitor de Publicações** — pré-análise de publicações do NPJUR. Ainda
-  em construção, só a casca existe.
+  em construção, só a casca existe (aparece no site marcado como "Em
+  construção").
 
-> Status atual do Extratus: a integração real de IA (Claude) já existe e
-> foi testada com sucesso, mas o modo padrão ainda é "simulado"
-> (`ia_provider` em `config.json`) — ligar o modo real é uma decisão
-> consciente, não um bug pendente. Fila de PDFs, triagem por confiança,
-> geração de relatório, custo por usuário, login e administração já
-> funcionam de verdade nos dois modos.
+> Cada Extratus tem dois jeitos de processar: a fila manual (tempo real,
+> sempre síncrona) e o Motor (automático, via Batch API da Anthropic —
+> mais barato, mas assíncrono; só liga quando alguém ativa o interruptor
+> na aba Motor). Os dois usam IA real por padrão hoje
+> (`ia_provider: "claude"` em cada `config.json`) — trocar pra
+> `"simulado"` é útil só pra testar sem gastar crédito da API.
 
 ## Estrutura do projeto
 
@@ -27,15 +35,18 @@ app/
 │       ├── static/                    (base.css/js, perfil, admin, login, marca/)
 │       └── templates_util.py         (Jinja2Templates com os globals compartilhados)
 └── ferramentas/
-    ├── extratus/                ← tudo específico do Extratus
-    │   ├── core/                    (lógica: detectar processo, gerar docx...)
-    │   ├── db/                       (Job — histórico de processamento)
+    ├── extratus/                ← "Extratus - Relatórios"
+    │   ├── core/                    (lógica: detectar processo, gerar docx, Motor/lote...)
+    │   ├── db/                       (Job, LoteMotor — histórico de processamento)
     │   ├── web/                      (páginas do Extratus dentro do site)
     │   ├── config/                   (prompt, template Word, config.json)
     │   ├── dados/                    (entrada_pdfs, processados, erros...)
     │   ├── logs/
     │   └── scripts/
-    └── leitor_publicacoes/      ← 2ª ferramenta, ainda em construção
+    ├── extratus_aburesi/        ← "Extratus - Aburesi" — cópia independente do
+    │   │                            Extratus acima (pastas/banco/Motor 100% separados),
+    │   │                            mesmo padrão interno, prompt de IA diferente
+    └── leitor_publicacoes/      ← 3ª ferramenta, ainda em construção
 
 banco/plataforma.db        ← banco único, compartilhado entre sistema e ferramentas
 scripts/criar_usuario.py   ← script de sistema (bootstrap do primeiro admin)
@@ -56,9 +67,12 @@ perfil prontos — não precisa recriar nada disso numa ferramenta nova.
 | `/login`, `/logout` | Autenticação |
 | `/perfil/dados`, `/perfil/senha`, `/perfil/preferencias` | Perfil do usuário logado (trocar a própria senha, etc.) |
 | `/admin` | Administração — usuários, permissões, visão geral, custo de IA (só admin) |
-| `/extratus/` | Extratus — enviar PDF e processar |
-| `/extratus/relatorios` | Extratus — relatórios já gerados (todo mundo com acesso vê) |
-| `/extratus/historico` | Extratus — histórico técnico com custo de IA por usuário (só admin) |
+| `/extratus/` | Extratus - Relatórios — enviar PDF e processar (fila manual) |
+| `/extratus/relatorios` | Extratus - Relatórios — relatórios já gerados (todo mundo com acesso vê) |
+| `/extratus/fila` | Extratus - Relatórios — fila do Motor (upload em lote) |
+| `/extratus/motor` | Extratus - Relatórios — liga/desliga o Motor, configurações, prompt |
+| `/extratus/historico` | Extratus - Relatórios — histórico técnico com custo de IA por usuário (só admin) |
+| `/extratus-aburesi/...` | Extratus - Aburesi — mesmas rotas acima, módulo separado |
 | `/leitor-publicacoes/` | Leitor de Publicações — em construção |
 
 ## Como rodar (modo desenvolvimento, no seu próprio computador)

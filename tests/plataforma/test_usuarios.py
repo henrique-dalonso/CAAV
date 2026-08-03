@@ -2,6 +2,7 @@ import pytest
 from sqlmodel import delete, select
 
 from app.plataforma.db.models import (
+    AcessoFerramenta,
     CARGO_COLABORADOR,
     CARGO_COORDENADOR,
     Ferramenta,
@@ -19,10 +20,12 @@ from app.plataforma.db.usuarios import (
     listar_ferramentas_admin_ids,
     listar_ferramentas_fila_ids,
     listar_ferramentas_liberadas_ids,
+    listar_ferramentas_mais_usadas,
+    registrar_acesso_ferramenta,
     usuario_eh_admin_da_ferramenta,
     usuario_tem_acesso_fila_motor,
 )
-from app.plataforma.web.rotulos import rotulo_perfil
+from app.plataforma.web.rotulos import emblema_ferramenta, rotulo_perfil
 
 
 NOME_COORDENADOR_TESTE = "teste_usuarios_coord"
@@ -52,6 +55,7 @@ def _apagar_usuarios_teste_e_vinculos():
         # "herdar" ferramentas de um usuário de teste já apagado.
         if ids:
             sessao.exec(delete(UsuarioFerramenta).where(UsuarioFerramenta.usuario_id.in_(ids)))
+            sessao.exec(delete(AcessoFerramenta).where(AcessoFerramenta.usuario_id.in_(ids)))
 
         sessao.exec(
             delete(Usuario).where(
@@ -181,6 +185,19 @@ def test_rotulo_perfil_coordenador():
 
 def test_rotulo_perfil_colaborador():
     assert rotulo_perfil(_UsuarioFalso(eh_admin=False, cargo=CARGO_COLABORADOR)) == "Colaborador"
+
+
+def test_emblema_ferramenta_com_hifen_pega_uma_letra_de_cada_lado():
+    assert emblema_ferramenta("Extratus - Aburesi") == "EA"
+    assert emblema_ferramenta("Extratus - Relatórios") == "ER"
+
+
+def test_emblema_ferramenta_sem_hifen_pega_so_a_primeira_letra():
+    assert emblema_ferramenta("Leitor de Publicações") == "L"
+
+
+def test_emblema_ferramenta_vazio():
+    assert emblema_ferramenta("") == ""
 
 
 def test_criar_coordenador_com_admin_ferramenta_marca_o_flag(limpar_usuarios_teste):
@@ -408,3 +425,68 @@ def test_admin_ferramenta_tambem_tem_acesso_a_fila_motor(limpar_usuarios_teste):
     )
 
     assert usuario_tem_acesso_fila_motor(usuario, "extratus") is True
+
+
+def test_registrar_acesso_incrementa_contagem(limpar_usuarios_teste):
+    extratus_id = _buscar_ferramenta_id_por_slug("extratus")
+    usuario = criar_usuario(
+        nome="Teste Coordenador",
+        nome_usuario=NOME_COORDENADOR_TESTE,
+        email="teste_usuarios_coord@example.com",
+        senha="senhaTeste123",
+        eh_admin=False,
+        cargo=CARGO_COORDENADOR,
+        ferramenta_ids=[extratus_id],
+    )
+
+    registrar_acesso_ferramenta(usuario.id, extratus_id)
+    registrar_acesso_ferramenta(usuario.id, extratus_id)
+    registrar_acesso_ferramenta(usuario.id, extratus_id)
+
+    with obter_sessao() as sessao:
+        acesso = sessao.get(AcessoFerramenta, (usuario.id, extratus_id))
+
+    assert acesso.contagem == 3
+
+
+def test_mais_usadas_ordena_pela_contagem_e_respeita_permissao(limpar_usuarios_teste):
+    extratus_id = _buscar_ferramenta_id_por_slug("extratus")
+    aburesi_id = _buscar_ferramenta_id_por_slug("extratus-aburesi")
+    leitor_id = _buscar_ferramenta_id_por_slug("leitor-publicacoes")
+
+    usuario = criar_usuario(
+        nome="Teste Coordenador",
+        nome_usuario=NOME_COORDENADOR_TESTE,
+        email="teste_usuarios_coord@example.com",
+        senha="senhaTeste123",
+        eh_admin=False,
+        cargo=CARGO_COORDENADOR,
+        # só libera extratus e aburesi -- leitor de publicacoes fica de fora
+        ferramenta_ids=[extratus_id, aburesi_id],
+    )
+
+    registrar_acesso_ferramenta(usuario.id, aburesi_id)
+    for _ in range(3):
+        registrar_acesso_ferramenta(usuario.id, extratus_id)
+    # tenta registrar uso de uma ferramenta que ele nao tem acesso (nao
+    # deveria acontecer na pratica, mas a consulta tem que ignorar mesmo assim)
+    registrar_acesso_ferramenta(usuario.id, leitor_id)
+
+    mais_usadas = listar_ferramentas_mais_usadas(usuario)
+
+    assert [f.slug for f in mais_usadas] == ["extratus", "extratus-aburesi"]
+
+
+def test_mais_usadas_vazio_para_quem_nunca_usou(limpar_usuarios_teste):
+    extratus_id = _buscar_ferramenta_id_por_slug("extratus")
+    usuario = criar_usuario(
+        nome="Teste Coordenador",
+        nome_usuario=NOME_COORDENADOR_TESTE,
+        email="teste_usuarios_coord@example.com",
+        senha="senhaTeste123",
+        eh_admin=False,
+        cargo=CARGO_COORDENADOR,
+        ferramenta_ids=[extratus_id],
+    )
+
+    assert listar_ferramentas_mais_usadas(usuario) == []

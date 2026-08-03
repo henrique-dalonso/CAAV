@@ -2,12 +2,17 @@ from typing import Optional
 
 from sqlmodel import delete, select
 
+from datetime import datetime
+
 from app.plataforma.auth import gerar_hash_senha
 from app.plataforma.db.models import (
+    AcessoFerramenta,
     CARGO_COLABORADOR,
     CARGO_COORDENADOR,
     CARGOS_VALIDOS,
+    CORES_PERFIL_VALIDAS,
     Ferramenta,
+    TEMAS_VALIDOS,
     Usuario,
     UsuarioFerramenta,
 )
@@ -160,14 +165,61 @@ def listar_ferramentas_fila_ids(usuario_id: int):
 
 
 def listar_ferramentas_do_usuario(usuario: Usuario):
+    """Devolve as ferramentas do usuário em ordem alfabética por nome —
+    mesma fonte usada pela home e pela bandeja de apps do cabeçalho, então
+    as duas sempre mostram a mesma ordem (a bandeja ainda pode reordenar
+    favoritos pra frente disso, por cima, via JS)."""
     with obter_sessao() as sessao:
         if usuario.eh_admin:
-            return sessao.exec(select(Ferramenta)).all()
+            return sessao.exec(select(Ferramenta).order_by(Ferramenta.nome)).all()
 
         consulta = (
             select(Ferramenta)
             .join(UsuarioFerramenta, UsuarioFerramenta.ferramenta_id == Ferramenta.id)
             .where(UsuarioFerramenta.usuario_id == usuario.id)
+            .order_by(Ferramenta.nome)
+        )
+        return sessao.exec(consulta).all()
+
+
+def registrar_acesso_ferramenta(usuario_id, ferramenta_id):
+    """Soma 1 no contador de uso dessa ferramenta pra esse usuário —
+    chamado uma vez por visita à página principal de qualquer ferramenta
+    (ver middleware em app/plataforma/web/main.py). Alimenta o bloco "Mais
+    utilizadas" da home."""
+    with obter_sessao() as sessao:
+        acesso = sessao.get(AcessoFerramenta, (usuario_id, ferramenta_id))
+
+        if acesso:
+            acesso.contagem += 1
+            acesso.ultimo_acesso = datetime.now()
+        else:
+            acesso = AcessoFerramenta(usuario_id=usuario_id, ferramenta_id=ferramenta_id, contagem=1)
+
+        sessao.add(acesso)
+        sessao.commit()
+
+
+def listar_ferramentas_mais_usadas(usuario: Usuario, limite=6):
+    """As ferramentas que esse usuário mais abriu, mais usada primeiro —
+    só entre as que ele ainda tem acesso (se o acesso foi revogado depois
+    de usar, some daqui também). Devolve lista vazia pra quem ainda não
+    usou nada (conta nova, ou só favoritos sem uso real)."""
+    permitidas = {f.id for f in listar_ferramentas_do_usuario(usuario)}
+
+    if not permitidas:
+        return []
+
+    with obter_sessao() as sessao:
+        consulta = (
+            select(Ferramenta)
+            .join(AcessoFerramenta, AcessoFerramenta.ferramenta_id == Ferramenta.id)
+            .where(
+                AcessoFerramenta.usuario_id == usuario.id,
+                Ferramenta.id.in_(permitidas),
+            )
+            .order_by(AcessoFerramenta.contagem.desc(), AcessoFerramenta.ultimo_acesso.desc())
+            .limit(limite)
         )
         return sessao.exec(consulta).all()
 
@@ -341,6 +393,28 @@ def atualizar_senha(usuario_id, nova_senha_hash):
     with obter_sessao() as sessao:
         usuario = sessao.get(Usuario, usuario_id)
         usuario.senha_hash = nova_senha_hash
+        sessao.add(usuario)
+        sessao.commit()
+
+
+def atualizar_tema(usuario_id, tema):
+    if tema not in TEMAS_VALIDOS:
+        raise ValueError(f"Tema inválido: {tema!r}")
+
+    with obter_sessao() as sessao:
+        usuario = sessao.get(Usuario, usuario_id)
+        usuario.tema = tema
+        sessao.add(usuario)
+        sessao.commit()
+
+
+def atualizar_cor_perfil(usuario_id, cor):
+    if cor not in CORES_PERFIL_VALIDAS:
+        raise ValueError(f"Cor de perfil inválida: {cor!r}")
+
+    with obter_sessao() as sessao:
+        usuario = sessao.get(Usuario, usuario_id)
+        usuario.cor_perfil = cor
         sessao.add(usuario)
         sessao.commit()
 

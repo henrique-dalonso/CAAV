@@ -1,7 +1,7 @@
 from pathlib import Path
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import RedirectResponse
 
 from app.ferramentas.extratus.core.config_manager import (
@@ -10,6 +10,10 @@ from app.ferramentas.extratus.core.config_manager import (
     carregar_config,
     carregar_config_bruto,
     definir_motor_ativo,
+)
+from app.ferramentas.extratus.core.prompt_manager import (
+    extensao_esperada_prompt,
+    substituir_instrucoes_relatorio,
 )
 from app.ferramentas.extratus.db.lotes import listar_itens_do_lote, listar_lotes_em_andamento
 from app.plataforma.db.models import Usuario
@@ -51,6 +55,7 @@ def pagina_motor(
             "config": config_form,
             "provedores_ia": PROVEDORES_IA_VALIDOS,
             "lotes_em_andamento": lotes_em_andamento,
+            "extensao_prompt": extensao_esperada_prompt(),
             "sucesso": sucesso,
             "erro": erro,
         },
@@ -114,5 +119,42 @@ def atualizar_config_motor_route(
 
     return RedirectResponse(
         url="/extratus/motor?sucesso=" + quote("Configurações do motor salvas."),
+        status_code=303,
+    )
+
+
+@router.post("/motor/prompt")
+async def atualizar_prompt_motor_route(
+    arquivo: UploadFile = File(...),
+    usuario: Usuario = Depends(exigir_admin_ferramenta("extratus")),
+):
+    # Mesma regra das outras configs do motor (pasta, modo de IA): só
+    # admin da plataforma, mesmo que o coordenador tenha acesso à página.
+    if not usuario.eh_admin:
+        raise HTTPException(status_code=403, detail="Acesso restrito a administradores.")
+
+    extensao_esperada = extensao_esperada_prompt()
+    nome_seguro = Path(arquivo.filename).name
+
+    if not nome_seguro.lower().endswith(extensao_esperada):
+        return RedirectResponse(
+            url="/extratus/motor?erro=" + quote(
+                f'"{nome_seguro}" não é um arquivo {extensao_esperada} — '
+                f"só é permitido enviar o prompt nesse formato."
+            ),
+            status_code=303,
+        )
+
+    conteudo = await arquivo.read()
+
+    try:
+        substituir_instrucoes_relatorio(conteudo)
+    except ValueError as erro:
+        return RedirectResponse(
+            url=f"/extratus/motor?erro={quote(str(erro))}", status_code=303
+        )
+
+    return RedirectResponse(
+        url="/extratus/motor?sucesso=" + quote("Prompt de instruções atualizado."),
         status_code=303,
     )

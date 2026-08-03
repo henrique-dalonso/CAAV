@@ -169,16 +169,23 @@ def _submeter_lote(cliente, itens):
 
 def rodar_ciclo_motor():
     """Um "tick" do vigia do Motor — chamado periodicamente pelo
-    `motor_watcher.py`. Só faz alguma coisa se `motor_ativo` estiver
-    ligado; senão, não olha a pasta nem mexe em nada."""
+    `motor_watcher.py`. Fecha lote(s) já enviados pra Anthropic SEMPRE,
+    mesmo com `motor_ativo` desligado — um lote, uma vez enviado, continua
+    rodando do lado da Anthropic independente do interruptor local; se a
+    coleta só acontecesse com o motor ligado, um lote que terminou depois
+    de alguém desligar a chave ficava preso pra sempre (nunca virava
+    relatório, nunca saía da tela como "em andamento"). Só abrir lote NOVO
+    é que respeita `motor_ativo`."""
     config = carregar_config()
+
+    algum_lote_em_andamento = False
+
+    if listar_lotes_em_andamento():
+        cliente = _obter_cliente()
+        algum_lote_em_andamento = _coletar_lotes_pendentes(cliente, config)
 
     if not config.get("motor_ativo"):
         return
-
-    cliente = _obter_cliente()
-
-    algum_lote_em_andamento = _coletar_lotes_pendentes(cliente, config)
 
     if algum_lote_em_andamento:
         return  # só um lote em voo por vez
@@ -186,4 +193,5 @@ def rodar_ciclo_motor():
     itens = _preparar_novo_lote(config)
 
     if itens:
+        cliente = _obter_cliente()
         _submeter_lote(cliente, itens)

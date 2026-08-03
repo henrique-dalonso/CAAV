@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block titulo %}Motor — Extratus - Aburesi{% endblock %}
+{% block nome_pagina %}Extratus - Aburesi{% endblock %}
+{% block css_pagina %}<link rel="stylesheet" href="/extratus-aburesi/static/extratus.css?v={{ v }}">{% endblock %}
+
+{% block conteudo %}
+<div class="cabecalho-ferramenta">
+    <div>
+        <h1>Motor</h1>
+        <p>Controle do processamento automático — liga/desliga e configurações.</p>
+    </div>
+</div>
+
+<nav class="abas-extratus">
+    <a href="/extratus-aburesi/" class="aba">Gerar relatórios</a>
+    <a href="/extratus-aburesi/relatorios" class="aba">Relatórios</a>
+    <a href="/extratus-aburesi/fila" class="aba aba-motor">Fila do motor</a>
+    <a href="/extratus-aburesi/motor" class="aba aba-motor aba-ativa">Motor</a>
+    <a href="/extratus-aburesi/historico" class="aba aba-admin">Custos (admin)</a>
+</nav>
+
+{% if erro %}
+<p class="banner-erro">⚠ {{ erro }}</p>
+{% endif %}
+{% if sucesso %}
+<p class="banner-sucesso">✓ {{ sucesso }}</p>
+{% endif %}
+
+<section class="cartao-secao">
+    <h2>Status</h2>
+    <div class="motor-status">
+        <form action="/extratus-aburesi/motor/alternar" method="post" id="form-interruptor-motor">
+            <label class="interruptor">
+                <input type="checkbox" id="interruptor-motor" {% if motor_ativo %}checked{% endif %}>
+                <span class="interruptor-trilha"></span>
+                <span class="interruptor-rotulo">{{ "Ligado" if motor_ativo else "Desligado" }}</span>
+            </label>
+        </form>
+        <p class="aviso-discreto motor-descricao">
+            {% if motor_ativo %}
+            O motor está ligado: a cada poucos minutos, ele confere a pasta "Fila do motor" sozinho e
+            manda os PDFs novos em lote pra IA (mais barato, mas pode levar de minutos até 24h pra voltar).
+            {% else %}
+            Desligado — o motor não olha a pasta nem processa nada enquanto isso. Use "Processar tudo" na aba
+            Gerar relatórios pra continuar disparando manualmente (esse fluxo é sempre em tempo real, nunca em lote).
+            {% endif %}
+        </p>
+    </div>
+    {% if lotes_em_andamento %}
+    <div class="motor-lotes">
+        <h3>Lote(s) em processamento</h3>
+        <ul class="lista-arquivos">
+            {% for entrada in lotes_em_andamento %}
+            <li>
+                Lote enviado em {{ entrada.lote.criado_em.strftime("%d/%m/%Y %H:%M") }} —
+                {{ entrada.total_itens }} arquivo(s), aguardando a Anthropic terminar.
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% elif motor_ativo %}
+    <p class="aviso-discreto">Nenhum lote em processamento no momento.</p>
+    {% endif %}
+</section>
+
+{% if usuario.eh_admin %}
+<section class="cartao-secao">
+    <h2>Configurações</h2>
+
+    <div class="grupo-config">
+        <div class="grupo-config-cabecalho">
+            <span class="grupo-config-icone">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="4" y1="21" x2="4" y2="14"></line>
+                    <line x1="4" y1="10" x2="4" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12" y2="3"></line>
+                    <line x1="20" y1="21" x2="20" y2="16"></line>
+                    <line x1="20" y1="12" x2="20" y2="3"></line>
+                    <line x1="1" y1="14" x2="7" y2="14"></line>
+                    <line x1="9" y1="8" x2="15" y2="8"></line>
+                    <line x1="17" y1="16" x2="23" y2="16"></line>
+                </svg>
+            </span>
+            <div>
+                <h3>Pasta e modo de IA</h3>
+                <p>Pasta que a "Fila do motor" usa pra depositar PDFs. Processamento é sempre em lote (mais barato, até 24h), nunca se mistura com a fila manual em tempo real.</p>
+            </div>
+        </div>
+        <form action="/extratus-aburesi/motor/config" method="post">
+            <div class="campo">
+                <label for="pasta_entrada">Pasta de entrada do motor</label>
+                <div class="linha-campo-pasta">
+                    <input id="pasta_entrada" type="text" name="pasta_entrada" value="{{ config.motor_pasta_entrada }}" required>
+                    <button type="button" class="botao-secundario" id="botao-escolher-pasta">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                        Escolher no disco
+                    </button>
+                </div>
+            </div>
+            <div class="campo">
+                <label for="ia_provider">Modo de IA</label>
+                <select id="ia_provider" name="ia_provider">
+                    {% for provedor in provedores_ia %}
+                    <option value="{{ provedor }}"{{ ' selected' if config.ia_provider == provedor }}>{{ provedor }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="botao">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M20 6 9 17l-5-5"></path>
+                </svg>
+                Salvar configurações
+            </button>
+        </form>
+    </div>
+
+    <div class="grupo-config">
+        <div class="grupo-config-cabecalho">
+            <span class="grupo-config-icone">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="17 8 12 3 7 8"></polyline>
+                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+            </span>
+            <div>
+                <h3>Prompt de instruções</h3>
+                <p>Texto que a IA usa pra montar o relatório. Precisa ser {{ extensao_prompt }} — a versão anterior fica guardada automaticamente, caso precise voltar atrás.</p>
+            </div>
+        </div>
+        <form action="/extratus-aburesi/motor/prompt" method="post" enctype="multipart/form-data" class="linha-upload">
+            <div class="campo">
+                <label for="arquivo-prompt">Arquivo {{ extensao_prompt }}</label>
+                <input id="arquivo-prompt" type="file" name="arquivo" accept="{{ extensao_prompt }}" required>
+            </div>
+            <button type="submit" class="botao">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="17 8 12 3 7 8"></polyline>
+                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                Enviar novo prompt
+            </button>
+        </form>
+    </div>
+</section>
+
+<div class="navegador-pastas" id="navegador-pastas" hidden>
+    <div class="navegador-pastas-caixa">
+        <p class="navegador-pastas-atual" id="navegador-pastas-atual"></p>
+        <div class="navegador-pastas-lista" id="navegador-pastas-lista"></div>
+        <div class="navegador-pastas-acoes">
+            <button type="button" class="botao botao-pequeno" id="navegador-pastas-usar">Usar esta pasta</button>
+            <button type="button" class="botao-remover-fila" id="navegador-pastas-fechar">Cancelar</button>
+        </div>
+    </div>
+</div>
+{% else %}
+<section class="cartao-secao">
+    <h2>Configurações</h2>
+    <p class="aviso-discreto">A pasta e o modo de IA do motor só podem ser alterados por um administrador da plataforma.</p>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block js_pagina %}<script src="/extratus-aburesi/static/motor.js?v={{ v }}" defer></script>{% endblock %}

@@ -8,6 +8,28 @@ CARGO_COORDENADOR = "coordenador"
 CARGO_COLABORADOR = "colaborador"
 CARGOS_VALIDOS = (CARGO_COORDENADOR, CARGO_COLABORADOR)
 
+TEMA_SISTEMA = "sistema"
+TEMA_CLARO = "claro"
+TEMA_ESCURO = "escuro"
+TEMAS_VALIDOS = (TEMA_SISTEMA, TEMA_CLARO, TEMA_ESCURO)
+
+# Paleta fechada pra cor do avatar (aba Preferências) — nunca aceita cor
+# livre do usuário (a escolha vira `background` inline no HTML; uma lista
+# fechada evita qualquer possibilidade de injeção via esse campo).
+CORES_PERFIL_VALIDAS = (
+    "#4f46e5",  # índigo (cor padrão do site)
+    "#2563eb",  # azul
+    "#0ea5e9",  # céu
+    "#0d9488",  # verde-azulado
+    "#16a34a",  # verde
+    "#d97706",  # âmbar
+    "#ea580c",  # laranja
+    "#e11d48",  # rosa-vermelho
+    "#7c3aed",  # roxo
+    "#475569",  # grafite
+)
+COR_PERFIL_PADRAO = CORES_PERFIL_VALIDAS[0]
+
 
 class Usuario(SQLModel, table=True):
     """Um colaborador com acesso ao Centro de Experiência do Colaborador.
@@ -36,11 +58,30 @@ class Usuario(SQLModel, table=True):
     cargo: str = Field(default=CARGO_COLABORADOR)
     ativo: bool = True
 
+    # "sistema" segue o tema do sistema operacional (padrão); "claro"/
+    # "escuro" força a escolha independente do sistema. Por usuário, não
+    # por navegador — segue a pessoa entre computadores do escritório.
+    tema: str = Field(default=TEMA_SISTEMA)
+
+    # Cor do avatar (bolinha com a inicial do nome) — escolha pessoal,
+    # não depende mais da cor de destaque da ferramenta aberta.
+    cor_perfil: str = Field(default=COR_PERFIL_PADRAO)
+
     criado_em: datetime = Field(default_factory=datetime.now)
 
 
 class Ferramenta(SQLModel, table=True):
-    """Uma ferramenta disponível no Centro de Experiência (ex: Extratus)."""
+    """Uma ferramenta disponível no Centro de Experiência (ex: Extratus).
+
+    suporta_fila_motor diz se essa ferramenta TEM o conceito de "fila do
+    motor" pra começo de conversa (ex: os módulos do Extratus têm; Leitor
+    de Publicações, por enquanto, não) — controla se a opção "Fila do
+    motor" aparece pra conceder no painel de usuários. Não confundir com
+    `UsuarioFerramenta.fila_motor` (se UM usuário específico tem esse
+    acesso) — este campo aqui é sobre a ferramenta em si oferecer ou não
+    essa possibilidade. `admin_ferramenta` não precisa do equivalente:
+    faz sentido em qualquer ferramenta.
+    """
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
@@ -48,6 +89,7 @@ class Ferramenta(SQLModel, table=True):
     slug: str = Field(unique=True, index=True)
     descricao: Optional[str] = None
     url: str
+    suporta_fila_motor: bool = Field(default=False)
 
 
 class UsuarioFerramenta(SQLModel, table=True):
@@ -74,3 +116,18 @@ class UsuarioFerramenta(SQLModel, table=True):
     )
     admin_ferramenta: bool = Field(default=False)
     fila_motor: bool = Field(default=False)
+
+
+class AcessoFerramenta(SQLModel, table=True):
+    """Contador de uso — quantas vezes cada usuário abriu a página
+    principal de cada ferramenta. Alimenta o bloco "Mais utilizadas" da
+    home; puramente informativo, não afeta permissão nenhuma."""
+
+    usuario_id: Optional[int] = Field(
+        default=None, foreign_key="usuario.id", primary_key=True
+    )
+    ferramenta_id: Optional[int] = Field(
+        default=None, foreign_key="ferramenta.id", primary_key=True
+    )
+    contagem: int = Field(default=0)
+    ultimo_acesso: datetime = Field(default_factory=datetime.now)

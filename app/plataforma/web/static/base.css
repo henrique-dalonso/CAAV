@@ -10,15 +10,23 @@
    com o CSS, em vez de esperar esse arquivo carregar primeiro. */
 
 :root {
-    --cor-fundo: #f4f5f7;
+    /* --cor-fundo/--cor-borda um pouco mais escuros que o "quase branco"
+       original de propósito: no modo escuro, fundo/cartão/borda têm um
+       salto relativo grande (mesmo com diferença pequena em RGB, o olho
+       percebe mais contraste em tons baixos — Weber-Fechner). No claro, a
+       mesma diferença pequena em RGB perto de 255 é quase invisível — daí
+       cartão, bloco e borda pareciam a mesma cor, botão sem preenchimento
+       sumia e texto suave ficava fraco demais. Valores abaixo dão o mesmo
+       contraste PERCEBIDO nos dois temas, não o mesmo delta numérico. */
+    --cor-fundo: #e9ebf0;
     --cor-fundo-blob-1: #c7d2fe;
     --cor-fundo-blob-2: #a5f3fc;
     --cor-degrade-1: #f4f2fb;
     --cor-degrade-2: #eef4f6;
     --cor-cartao: #ffffff;
     --cor-texto: #111827;
-    --cor-texto-suave: #6b7280;
-    --cor-borda: #e5e7eb;
+    --cor-texto-suave: #525b68;
+    --cor-borda: #d4d8e0;
     --cor-acento: #4f46e5;
     --cor-acento-hover: #4338ca;
     --cor-acento-fraco: #eef2ff;
@@ -32,7 +40,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme="claro"]) {
         --cor-fundo: #0b0f19;
         --cor-fundo-blob-1: #312e81;
         --cor-fundo-blob-2: #164e63;
@@ -53,12 +61,46 @@
     }
 }
 
+/* Escolha manual (aba Preferências) — vale por cima do sistema
+   operacional nos dois sentidos: escuro forçado mesmo com SO claro, e
+   claro forçado mesmo com SO escuro (o ":not([data-theme=claro])" acima
+   já cobre esse segundo caso, sem precisar repetir os valores claros
+   aqui de novo). Sem media query — é opt-in, não depende do SO. */
+:root[data-theme="escuro"] {
+    --cor-fundo: #0b0f19;
+    --cor-fundo-blob-1: #312e81;
+    --cor-fundo-blob-2: #164e63;
+    --cor-degrade-1: #11142b;
+    --cor-degrade-2: #0a1520;
+    --cor-cartao: #151a27;
+    --cor-texto: #f3f4f6;
+    --cor-texto-suave: #9ca3af;
+    --cor-borda: #262c3d;
+    --cor-acento: #818cf8;
+    --cor-acento-hover: #a5b4fc;
+    --cor-acento-fraco: #1e2247;
+    --cor-erro-fundo: #2a1215;
+    --cor-erro-texto: #fca5a5;
+    --cor-erro-borda: #4c1d24;
+    --sombra: 0 20px 60px -15px rgb(0 0 0 / 0.6);
+    --sombra-suave: 0 8px 24px -8px rgb(0 0 0 / 0.5);
+}
+
 * {
     box-sizing: border-box;
 }
 
 html, body {
-    min-height: 100%;
+    /* "100%" (não "100vh") é a causa real do "bloco duro" no rodapé de
+       página curta: min-height:100% de <body> resolve contra a altura de
+       <html>, que por sua vez só cresce pelo conteúdo — em página curta,
+       os dois ficam menores que a janela, e sobra área abaixo do <body>
+       mostrando só a cor sólida do <html> (sem o gradiente, que está
+       em .fundo-degrade, uma classe do <body>). "100vh" é relativo à
+       janela direto, sem essa dependência circular — <body> (e o
+       gradiente nele) sempre cobre a janela inteira, mesmo com pouco
+       conteúdo. */
+    min-height: 100vh;
     margin: 0;
     background: var(--cor-fundo);
 }
@@ -183,6 +225,173 @@ a {
     background: #991b1b;
 }
 
+/* Botões — hierarquia visual comum ao site inteiro (antes vivia duplicada
+   em admin.css, perfil.css e extratus.css; consolidado aqui pra um ajuste
+   valer em toda página de uma vez).
+   .botao        = ação PRINCIPAL de uma tela/seção (idealmente só uma),
+                   preenchido com a cor de acento.
+   .botao-secundario = ação de apoio (contorno, sem preenchimento) — não
+                   compete visualmente com a principal.
+   .botao-perigo = ação destrutiva ou que desliga algo, mesmo vermelho já
+                   usado no modal de confirmação de exclusão (só um
+                   vermelho no site inteiro). Combina com .botao
+                   (class="botao botao-perigo"), não substitui. */
+.botao {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.6rem 1.1rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    font-family: inherit;
+    color: white;
+    background: var(--cor-acento);
+    border: none;
+    border-radius: var(--raio-pequeno);
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+    white-space: nowrap;
+}
+
+.botao:hover {
+    background: var(--cor-acento-hover);
+    box-shadow: 0 8px 20px -6px color-mix(in srgb, var(--cor-acento) 60%, transparent);
+}
+
+.botao:active {
+    transform: scale(0.98);
+}
+
+.botao:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* :hover e :disabled têm a mesma especificidade — sem isso aqui, passar o
+   mouse num botão desativado ainda troca o background/sombra do :hover
+   normal, dando a impressão errada de que ele reage/funciona. */
+.botao:disabled:hover {
+    background: var(--cor-acento);
+    box-shadow: none;
+    transform: none;
+}
+
+.botao-pequeno {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.78rem;
+}
+
+.botao-secundario {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.6rem 1.1rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    font-family: inherit;
+    color: var(--cor-texto);
+    background: none;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-pequeno);
+    cursor: pointer;
+    text-decoration: none;
+    transition: border-color 0.15s ease, color 0.15s ease;
+    white-space: nowrap;
+}
+
+.botao-secundario:hover {
+    border-color: var(--cor-acento);
+    color: var(--cor-acento);
+}
+
+.botao-secundario:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.botao-perigo {
+    background: var(--cor-erro-texto);
+}
+
+.botao-perigo:hover {
+    background: #991b1b;
+    box-shadow: 0 8px 20px -6px color-mix(in srgb, var(--cor-erro-texto) 60%, transparent);
+}
+
+.botao-perigo:disabled:hover {
+    background: var(--cor-erro-texto);
+}
+
+/* Interruptor (switch) — pra estados liga/desliga de verdade (ex: Motor),
+   em vez de um botão cujo texto troca. Checkbox real por baixo (funciona
+   com teclado/leitor de tela), trilha+bolinha desenhadas em CSS. A cor
+   "ligado" é passada por fora via --cor-interruptor-ligado (cada tela
+   define a cor da sua categoria — ex: laranja pro Motor); sem isso,
+   cai na cor de acento padrão. */
+.interruptor {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.interruptor input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.interruptor-trilha {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+    background: var(--cor-borda);
+    border-radius: 999px;
+    transition: background 0.2s ease;
+}
+
+.interruptor-trilha::before {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+    transition: translate 0.2s ease;
+}
+
+.interruptor input:checked ~ .interruptor-trilha {
+    background: var(--cor-interruptor-ligado, var(--cor-acento));
+}
+
+.interruptor input:checked ~ .interruptor-trilha::before {
+    translate: 20px 0;
+}
+
+.interruptor input:focus-visible ~ .interruptor-trilha {
+    outline: 2px solid var(--cor-acento);
+    outline-offset: 2px;
+}
+
+.interruptor-rotulo {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--cor-texto-suave);
+}
+
+.interruptor input:checked ~ .interruptor-rotulo {
+    color: var(--cor-texto);
+}
+
 /* "Blobs" de fundo suaves e reaproveitáveis — qualquer tela pode ligar
    isso só adicionando a classe .fundo-vivo no <body>. */
 .fundo-vivo {
@@ -243,12 +452,19 @@ a {
    fundo sem nunca competir com o conteúdo. Pra telas de uso frequente
    (home, e no futuro outras), onde um efeito chamativo cansaria. */
 .fundo-degrade {
-    background: linear-gradient(
+    background-image: linear-gradient(
         160deg,
         var(--cor-degrade-1) 0%,
         var(--cor-fundo) 45%,
         var(--cor-degrade-2) 100%
     );
+    /* background-attachment:fixed dimensiona/posiciona o fundo em relação
+       à JANELA (viewport), não à altura real da página — sem "no-repeat"
+       ele ficava se repetindo a cada altura de tela em páginas com
+       rolagem, criando um corte/linha dura visível a cada repetição.
+       "cover" garante um gradiente só, esticado, sem costura nenhuma. */
+    background-repeat: no-repeat;
+    background-size: cover;
     background-attachment: fixed;
 }
 
@@ -379,15 +595,25 @@ a {
 }
 
 @media (prefers-color-scheme: dark) {
-    .banner-fechar:hover {
+    html:not([data-theme="claro"]) .banner-fechar:hover {
         background: rgba(255, 255, 255, 0.12);
     }
 
-    .banner-sucesso {
+    html:not([data-theme="claro"]) .banner-sucesso {
         background: #113321;
         color: #86efac;
         border-color: #1e4d2e;
     }
+}
+
+html[data-theme="escuro"] .banner-fechar:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+html[data-theme="escuro"] .banner-sucesso {
+    background: #113321;
+    color: #86efac;
+    border-color: #1e4d2e;
 }
 
 /* Animação de entrada suave e reaproveitável — qualquer elemento novo
@@ -435,6 +661,7 @@ a {
     background: var(--cor-cartao);
     border: 1px solid var(--cor-borda);
     border-radius: var(--raio);
+    box-shadow: var(--sombra-suave);
     padding: 1.5rem 1.75rem;
     margin-bottom: 1.25rem;
 }
@@ -476,6 +703,64 @@ a {
     display: flex;
     align-items: center;
     justify-content: space-between;
+}
+
+/* Sub-bloco dentro de um cartao-secao — ícone + título + descrição no
+   topo, conteúdo (formulário, controles) embaixo. Separa visualmente
+   vários assuntos independentes empilhados no mesmo cartão (ex:
+   Configurações do Motor, Novo usuário no admin) — sem isso, texto
+   explicativo solto entre um bloco e outro cria corte/sobreposição
+   visual quando o texto é grande. Compartilhado (não só do Extratus),
+   por isso mora aqui em vez de duplicado em cada CSS de ferramenta. */
+.grupo-config {
+    padding: 1.1rem 1.25rem;
+    background: var(--cor-fundo);
+    border-radius: var(--raio);
+    margin-bottom: 1rem;
+}
+
+.grupo-config:last-child {
+    margin-bottom: 0;
+}
+
+.grupo-config-cabecalho {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    margin-bottom: 1.1rem;
+}
+
+.grupo-config-icone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--cor-acento-fraco);
+    color: var(--cor-acento);
+}
+
+.grupo-config-cabecalho h3 {
+    font-size: 0.92rem;
+    font-weight: 700;
+    margin: 0 0 0.2rem;
+}
+
+.grupo-config-cabecalho p {
+    font-size: 0.82rem;
+    color: var(--cor-texto-suave);
+    margin: 0;
+    max-width: 520px;
+}
+
+.grupo-config form {
+    margin: 0;
+}
+
+.grupo-config .campo:last-of-type {
+    margin-bottom: 1rem;
 }
 
 /* Checkbox estilizado, reaproveitável — esconde o quadradinho padrão do
@@ -583,20 +868,35 @@ label:hover .check-caixa {
 }
 
 @media (prefers-color-scheme: dark) {
-    .selo-positivo {
+    html:not([data-theme="claro"]) .selo-positivo {
         background: #113321;
         color: #86efac;
     }
 
-    .selo-azul {
+    html:not([data-theme="claro"]) .selo-azul {
         background: #1e3a5f;
         color: #93c5fd;
     }
 
-    .selo-roxo {
+    html:not([data-theme="claro"]) .selo-roxo {
         background: #3b2a6b;
         color: #c4b5fd;
     }
+}
+
+html[data-theme="escuro"] .selo-positivo {
+    background: #113321;
+    color: #86efac;
+}
+
+html[data-theme="escuro"] .selo-azul {
+    background: #1e3a5f;
+    color: #93c5fd;
+}
+
+html[data-theme="escuro"] .selo-roxo {
+    background: #3b2a6b;
+    color: #c4b5fd;
 }
 
 /* Tabela genérica reaproveitável — qualquer tela com dado tabular (admin,
@@ -1069,43 +1369,4 @@ label:hover .check-caixa {
     color: var(--cor-texto-suave);
     font-style: italic;
     font-size: 0.9rem;
-}
-
-/* Celular — deixa a tela mais enxuta, tipo app, em vez de site desktop
-   encolhido. Vale pra toda tela logada, porque mora aqui (base.css). */
-@media (max-width: 600px) {
-    .pagina {
-        padding: 1.25rem 1rem 3rem;
-    }
-
-    .barra-superior {
-        margin-bottom: 1.75rem;
-    }
-
-    /* "Alonso & Verdiani" embaixo do nome da tela some no celular —
-       cabeçalho fica só com o essencial (logo + nome da tela + ações). */
-    .marca-sistema span {
-        display: none;
-    }
-
-    .marca-sistema-logo {
-        width: 56px;
-        height: 30px;
-    }
-
-    .menu-usuario {
-        gap: 0.6rem;
-    }
-
-    .cabecalho-ferramenta {
-        margin-bottom: 1.5rem;
-    }
-
-    .cabecalho-ferramenta h1 {
-        font-size: 1.3rem;
-    }
-
-    .cartao-secao {
-        padding: 1.1rem 1.1rem;
-    }
 }

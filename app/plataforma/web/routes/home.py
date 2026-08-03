@@ -4,7 +4,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, Request
 
 from app.plataforma.db.models import Usuario
-from app.plataforma.db.usuarios import listar_ferramentas_do_usuario
+from app.plataforma.db.usuarios import listar_ferramentas_do_usuario, listar_ferramentas_mais_usadas
 from app.plataforma.web.auth import exigir_login
 from app.plataforma.web.templates_util import criar_templates
 
@@ -30,6 +30,7 @@ def obter_saudacao():
 @router.get("/")
 def pagina_inicial(request: Request, usuario: Usuario = Depends(exigir_login)):
     ferramentas = listar_ferramentas_do_usuario(usuario)
+    mais_usadas = listar_ferramentas_mais_usadas(usuario)
     primeiro_nome = usuario.nome.split(" ")[0]
 
     return templates.TemplateResponse(
@@ -40,5 +41,6 @@ def pagina_inicial(request: Request, usuario: Usuario = Depends(exigir_login)):
             "primeiro_nome": primeiro_nome,
             "saudacao": obter_saudacao(),
             "ferramentas": ferramentas,
+            "mais_usadas": mais_usadas,
         },
     )

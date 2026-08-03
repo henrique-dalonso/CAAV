@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block titulo %}Centro de Experiência do Colaborador{% endblock %}
-{% block css_pagina %}<link rel="stylesheet" href="/static/home.css">{% endblock %}
+{% block css_pagina %}<link rel="stylesheet" href="/static/home.css?v={{ v }}">{% endblock %}
 
 {% block conteudo %}
 <section class="saudacao">
@@ -9,11 +9,23 @@
     <p>Escolha uma ferramenta pra começar.</p>
 </section>
 
+{% if mais_usadas %}
+<h2 class="secao-titulo">Mais utilizadas</h2>
+<div class="grade-ferramentas-compacta">
+    {% for ferramenta in mais_usadas %}
+    <a class="cartao-ferramenta cartao-ferramenta-compacto" href="{{ ferramenta.url }}" title="{{ ferramenta.descricao }}">
+        <div class="emblema">{{ ferramenta.nome|emblema_ferramenta }}</div>
+        <strong>{{ ferramenta.nome }}</strong>
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+
 <h2 class="secao-titulo">Ferramentas</h2>
 <div class="grade-ferramentas">
     {% for ferramenta in ferramentas %}
     <a class="cartao-ferramenta" href="{{ ferramenta.url }}">
-        <div class="emblema">{{ ferramenta.nome[0]|upper }}</div>
+        <div class="emblema">{{ ferramenta.nome|emblema_ferramenta }}</div>
         <div>
             <strong>{{ ferramenta.nome }}</strong><br>
             <span>{{ ferramenta.descricao }}</span>

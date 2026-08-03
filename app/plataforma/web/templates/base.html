@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br"{% if usuario.tema and usuario.tema != "sistema" %} data-theme="{{ usuario.tema }}"{% endif %}>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/base.css">
+    <link rel="stylesheet" href="/static/base.css?v={{ v }}">
     {% block css_pagina %}{% endblock %}
 </head>
 <body class="{% block corpo_classe %}fundo-degrade{% endblock %}">
@@ -40,7 +40,7 @@
                                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                                 </svg>
                             </span>
-                            <div class="emblema">{{ ferramenta.nome[0]|upper }}</div>
+                            <div class="emblema">{{ ferramenta.nome|emblema_ferramenta }}</div>
                             <span class="bandeja-apps-item-nome" title="{{ ferramenta.nome }}">{{ ferramenta.nome }}</span>
                         </a>
                         {% else %}
@@ -50,12 +50,12 @@
                 </div>
                 <div class="seletor-perfil">
                     <button type="button" class="botao-perfil" id="botao-perfil" aria-haspopup="true" aria-expanded="false" title="{{ usuario.nome }}">
-                        <div class="emblema avatar">{{ usuario.nome[0]|upper }}</div>
+                        <div class="emblema avatar" style="background: {{ usuario.cor_perfil or "#4f46e5" }};">{{ usuario.nome[0]|upper }}</div>
                     </button>
                     <div class="card-perfil" id="card-perfil" hidden>
                         <div class="card-perfil-cabecalho">
                             <a href="/perfil" class="avatar-grande-link" title="Ir ao perfil">
-                                <div class="emblema avatar-grande">{{ usuario.nome[0]|upper }}</div>
+                                <div class="emblema avatar-grande" style="background: {{ usuario.cor_perfil or "#4f46e5" }};">{{ usuario.nome[0]|upper }}</div>
                             </a>
                             <div>
                                 <strong>{{ usuario.nome }}</strong>
@@ -106,7 +106,7 @@
         </div>
     </div>
 
-    <script src="/static/base.js" defer></script>
+    <script src="/static/base.js?v={{ v }}" defer></script>
     {% block js_pagina %}{% endblock %}
 </body>
 </html>

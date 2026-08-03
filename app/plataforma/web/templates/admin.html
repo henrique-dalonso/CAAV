@@ -2,7 +2,7 @@
 
 {% block titulo %}Administração — Centro de Experiência do Colaborador{% endblock %}
 {% block nome_pagina %}Centro de Experiência{% endblock %}
-{% block css_pagina %}<link rel="stylesheet" href="/static/admin.css">{% endblock %}
+{% block css_pagina %}<link rel="stylesheet" href="/static/admin.css?v={{ v }}">{% endblock %}
 
 {% block conteudo %}
 <div class="cabecalho-ferramenta">
@@ -116,44 +116,81 @@
                 <div><dt>Revisão</dt><dd>{{ config.pasta_revisao }}</dd></div>
                 <div><dt>Erros</dt><dd>{{ config.pasta_erros }}</dd></div>
             </dl>
-            <p class="aviso-discreto">Edição por aqui ainda não existe — por enquanto, mude direto em config/config.json.</p>
+            <p class="aviso-discreto">Essas pastas são as da fila manual de "Gerar relatórios" — pra ajustar a pasta do Motor, use a aba Motor dentro do Extratus.</p>
         </section>
 
         {% elif aba_ativa == "novo-usuario" %}
         <section class="cartao-secao">
             <h2>Novo usuário</h2>
             <form action="/admin/usuarios" method="post" class="admin-form-usuario">
-                <div class="campo">
-                    <label for="nome">Nome</label>
-                    <input id="nome" type="text" name="nome" required>
-                </div>
-                <div class="campo">
-                    <label for="email">E-mail</label>
-                    <input id="email" type="email" name="email" required>
-                </div>
-                <div class="campo">
-                    <label for="nome_usuario">Usuário (login)</label>
-                    <input id="nome_usuario" type="text" name="nome_usuario" required>
-                </div>
-                <div class="campo">
-                    <label for="senha">Senha</label>
-                    <input id="senha" type="password" name="senha" required minlength="8">
+                <div class="grupo-config">
+                    <div class="grupo-config-cabecalho">
+                        <span class="grupo-config-icone">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                        </span>
+                        <div>
+                            <h3>Dados de acesso</h3>
+                            <p>Nome, contato e credenciais de login do novo usuário.</p>
+                        </div>
+                    </div>
+                    <div class="campo">
+                        <label for="nome">Nome</label>
+                        <input id="nome" type="text" name="nome" required>
+                    </div>
+                    <div class="campo">
+                        <label for="email">E-mail</label>
+                        <input id="email" type="email" name="email" required>
+                    </div>
+                    <div class="campo">
+                        <label for="nome_usuario">Usuário (login)</label>
+                        <input id="nome_usuario" type="text" name="nome_usuario" required>
+                    </div>
+                    <div class="campo">
+                        <label for="senha">Senha</label>
+                        <input id="senha" type="password" name="senha" required minlength="8">
+                    </div>
                 </div>
 
-                <p class="admin-form-legenda">Administrador?</p>
-                <div class="segmento" id="segmento-admin">
-                    <label class="segmento-opcao">
-                        <input type="radio" name="eh_admin" value="false" checked>
-                        <span>Não</span>
-                    </label>
-                    <label class="segmento-opcao">
-                        <input type="radio" name="eh_admin" value="true">
-                        <span>Sim</span>
-                    </label>
+                <div class="grupo-config">
+                    <div class="grupo-config-cabecalho">
+                        <span class="grupo-config-icone">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                            </svg>
+                        </span>
+                        <div>
+                            <h3>Tipo de conta</h3>
+                            <p>Administrador tem acesso total à plataforma — cargo e ferramentas abaixo deixam de se aplicar.</p>
+                        </div>
+                    </div>
+                    <div class="segmento" id="segmento-admin">
+                        <label class="segmento-opcao">
+                            <input type="radio" name="eh_admin" value="false" checked>
+                            <span>Não</span>
+                        </label>
+                        <label class="segmento-opcao">
+                            <input type="radio" name="eh_admin" value="true">
+                            <span>Sim</span>
+                        </label>
+                    </div>
                 </div>
 
-                <div id="bloco-cargo-ferramentas">
-                    <p class="admin-form-legenda">Cargo</p>
+                <div id="bloco-cargo-ferramentas" class="grupo-config">
+                    <div class="grupo-config-cabecalho">
+                        <span class="grupo-config-icone">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                            </svg>
+                        </span>
+                        <div>
+                            <h3>Cargo e ferramentas</h3>
+                            <p>Coordenador já sai com todas as ferramentas liberadas. "Admin da ferramenta" libera as abas administrativas dela; "Fila do motor" libera só o upload em lote (funciona pra colaborador também).</p>
+                        </div>
+                    </div>
                     <div class="linha-cargo-ferramentas">
                         <div class="segmento">
                             <label class="segmento-opcao">
@@ -182,7 +219,7 @@
                                     <div class="ferramenta-tile">
                                         <label class="ferramenta-tile-selecao">
                                             <input type="checkbox" name="ferramenta_ids" value="{{ ferramenta.id }}" class="ferramenta-tile-input">
-                                            <span class="ferramenta-tile-emblema">{{ ferramenta.nome[0]|upper }}</span>
+                                            <span class="ferramenta-tile-emblema">{{ ferramenta.nome|emblema_ferramenta }}</span>
                                             <span class="ferramenta-tile-nome">{{ ferramenta.nome }}</span>
                                             <span class="ferramenta-tile-check" aria-hidden="true">
                                                 <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
@@ -195,11 +232,13 @@
                                             <span class="check-caixa check-caixa-pequena"></span>
                                             <span>Admin da ferramenta</span>
                                         </label>
+                                        {% if ferramenta.suporta_fila_motor %}
                                         <label class="ferramenta-tile-fila" title="Acesso à aba de fila do motor (upload em lote)">
                                             <input type="checkbox" name="ferramentas_fila_ids" value="{{ ferramenta.id }}" class="check-input">
                                             <span class="check-caixa check-caixa-pequena"></span>
                                             <span>Fila do motor</span>
                                         </label>
+                                        {% endif %}
                                     </div>
                                     {% endfor %}
                                 </div>
@@ -207,10 +246,14 @@
                         </div>
                         {% endif %}
                     </div>
-                    <p class="admin-form-nota">Coordenador já sai com todas as ferramentas liberadas. "Admin da ferramenta" dá acesso às abas administrativas dela (ex: Custos e Motor no Extratus). "Fila do motor" dá acesso só ao upload em lote pra pasta universal do motor — funciona pra colaborador também.</p>
                 </div>
 
-                <button type="submit" class="botao">Criar usuário</button>
+                <button type="submit" class="botao">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M20 6 9 17l-5-5"></path>
+                    </svg>
+                    Criar usuário
+                </button>
             </form>
         </section>
 
@@ -329,7 +372,7 @@
                                                 <label class="ferramenta-tile-selecao">
                                                     <input type="checkbox" name="ferramenta_ids" value="{{ ferramenta.id }}" class="ferramenta-tile-input"
                                                         {% if ferramenta.id in ferramentas_por_usuario.get(usuario_linha.id, []) %}checked{% endif %}>
-                                                    <span class="ferramenta-tile-emblema">{{ ferramenta.nome[0]|upper }}</span>
+                                                    <span class="ferramenta-tile-emblema">{{ ferramenta.nome|emblema_ferramenta }}</span>
                                                     <span class="ferramenta-tile-nome">{{ ferramenta.nome }}</span>
                                                     <span class="ferramenta-tile-check" aria-hidden="true">
                                                         <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
@@ -345,12 +388,14 @@
                                                     <span>Admin da ferramenta</span>
                                                 </label>
                                                 {% endif %}
+                                                {% if ferramenta.suporta_fila_motor %}
                                                 <label class="ferramenta-tile-fila" title="Acesso à aba de fila do motor (upload em lote)">
                                                     <input type="checkbox" name="ferramentas_fila_ids" value="{{ ferramenta.id }}" class="check-input"
                                                         {% if ferramenta.id in ferramentas_fila_por_usuario.get(usuario_linha.id, []) %}checked{% endif %}>
                                                     <span class="check-caixa check-caixa-pequena"></span>
                                                     <span>Fila do motor</span>
                                                 </label>
+                                                {% endif %}
                                             </div>
                                             {% endfor %}
                                         </div>
@@ -372,4 +417,4 @@
 </div>
 {% endblock %}
 
-{% block js_pagina %}<script src="/static/admin.js" defer></script>{% endblock %}
+{% block js_pagina %}<script src="/static/admin.js?v={{ v }}" defer></script>{% endblock %}

@@ -1,0 +1,973 @@
+/* Telas do Extratus - Aburesi — o cabeçalho/layout de página,
+   cabeçalho-ferramenta e cartao-secao já vêm de base.css (compartilhados
+   com outras ferramentas). Aqui só entra o que é específico dessas
+   telas: status, listas, abas e a lista de relatórios. */
+
+/* Identidade própria da Aburesi: verde-azulado, bem diferente do azul
+   padrão do Extratus - Relatórios — dá pra reconhecer de cara em qual
+   módulo está, só pela cor (botão principal, aba ativa, foco de campo,
+   contador). Sobrescreve as variáveis de app/plataforma/web/static/base.css
+   só aqui, porque só essa página carrega este arquivo depois do base.css
+   — não afeta nenhuma outra ferramenta. */
+:root {
+    --cor-acento: #0d9488;
+    --cor-acento-hover: #0f766e;
+    --cor-acento-fraco: #f0fdfa;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="claro"]) {
+        --cor-acento: #2dd4bf;
+        --cor-acento-hover: #5eead4;
+        --cor-acento-fraco: #134e4a;
+    }
+}
+
+:root[data-theme="escuro"] {
+    --cor-acento: #2dd4bf;
+    --cor-acento-hover: #5eead4;
+    --cor-acento-fraco: #134e4a;
+}
+
+.selo-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.selo-status::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: currentColor;
+}
+
+.selo-status.simulado {
+    background: var(--cor-erro-fundo);
+    color: var(--cor-erro-texto);
+}
+
+.selo-status.real {
+    background: #dcfce7;
+    color: #166534;
+}
+
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme="claro"]) .selo-status.real {
+        background: #113321;
+        color: #86efac;
+    }
+}
+
+html[data-theme="escuro"] .selo-status.real {
+    background: #113321;
+    color: #86efac;
+}
+
+/* Abas do Extratus (Gerar relatórios / Relatórios) — navegação entre
+   duas páginas de verdade, só desenhada como se fosse uma coisa só. */
+.abas-extratus {
+    display: flex;
+    gap: 0.25rem;
+    border-bottom: 1px solid var(--cor-borda);
+    margin-bottom: 1.5rem;
+}
+
+.aba {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.65rem 1rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--cor-texto-suave);
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.aba:hover {
+    color: var(--cor-texto);
+}
+
+.aba-ativa,
+.aba-ativa:hover {
+    color: var(--cor-acento);
+    border-bottom-color: var(--cor-acento);
+}
+
+.aba .contagem-aba {
+    background: var(--cor-acento-fraco);
+    color: var(--cor-acento);
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+}
+
+/* Aba de custos: só admin vê, então marca com uma cor diferente da aba
+   normal — sinaliza visualmente "isso aqui é outra categoria de tela".
+   A borda amarela embaixo só pode aparecer quando essa aba estiver
+   realmente ativa (.aba-ativa) — senão fica parecendo ativa sempre. */
+.aba-admin,
+.aba-admin:hover {
+    color: #b45309;
+    margin-left: auto;
+}
+
+.aba-admin.aba-ativa,
+.aba-admin.aba-ativa:hover {
+    border-bottom-color: #b45309;
+}
+
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme="claro"]) .aba-admin,
+    html:not([data-theme="claro"]) .aba-admin:hover {
+        color: #fbbf24;
+    }
+
+    html:not([data-theme="claro"]) .aba-admin.aba-ativa,
+    html:not([data-theme="claro"]) .aba-admin.aba-ativa:hover {
+        border-bottom-color: #fbbf24;
+    }
+}
+
+html[data-theme="escuro"] .aba-admin,
+html[data-theme="escuro"] .aba-admin:hover {
+    color: #fbbf24;
+}
+
+html[data-theme="escuro"] .aba-admin.aba-ativa,
+html[data-theme="escuro"] .aba-admin.aba-ativa:hover {
+    border-bottom-color: #fbbf24;
+}
+
+/* Aba do Motor — outra categoria de novo (admin + coordenador liberado),
+   cor diferente da de Custos (âmbar) pra não confundir as duas: laranja. */
+.aba-motor,
+.aba-motor:hover {
+    color: #c2410c;
+}
+
+.aba-motor.aba-ativa,
+.aba-motor.aba-ativa:hover {
+    border-bottom-color: #c2410c;
+}
+
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme="claro"]) .aba-motor,
+    html:not([data-theme="claro"]) .aba-motor:hover {
+        color: #fb923c;
+    }
+
+    html:not([data-theme="claro"]) .aba-motor.aba-ativa,
+    html:not([data-theme="claro"]) .aba-motor.aba-ativa:hover {
+        border-bottom-color: #fb923c;
+    }
+}
+
+html[data-theme="escuro"] .aba-motor,
+html[data-theme="escuro"] .aba-motor:hover {
+    color: #fb923c;
+}
+
+html[data-theme="escuro"] .aba-motor.aba-ativa,
+html[data-theme="escuro"] .aba-motor.aba-ativa:hover {
+    border-bottom-color: #fb923c;
+}
+
+/* Lista da fila do motor — mesma .lista-arquivos, só com o nome ocupando
+   o espaço todo pra empurrar o botão de remover pra direita. */
+.lista-fila .fila-item-nome {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.botao-remover-fila {
+    background: none;
+    border: none;
+    color: var(--cor-erro-texto);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.2rem 0.4rem;
+    flex-shrink: 0;
+}
+
+.botao-remover-fila:hover {
+    text-decoration: underline;
+}
+
+.fila-barra-selecao {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.fila-acoes-selecao {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+}
+
+.fila-acoes-selecao[hidden] {
+    display: none;
+}
+
+.fila-selecionar-todos {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--cor-texto-suave);
+    cursor: pointer;
+}
+
+/* Botão "Selecionar" — minimalista (contorno fino, sem preenchimento),
+   fica esmaecido enquanto o modo de seleção está ativo, sem sumir.
+   margin-left:auto (não justify-content:space-between no pai) pra
+   continuar grudado à direita mesmo quando .fila-acoes-selecao some
+   (hidden) — com space-between, sobrando 1 item só, ele ia pra esquerda. */
+.botao-minimal {
+    margin-left: auto;
+    background: none;
+    border: 1px solid var(--cor-borda);
+    color: var(--cor-texto-suave);
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.35rem 0.8rem;
+    border-radius: var(--raio-pequeno);
+    cursor: pointer;
+    transition: border-color 0.12s ease, color 0.12s ease, opacity 0.12s ease;
+}
+
+.botao-minimal:hover {
+    border-color: var(--cor-acento);
+    color: var(--cor-texto);
+}
+
+.botao-minimal:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.botao-minimal:disabled:hover {
+    border-color: var(--cor-borda);
+    color: var(--cor-texto-suave);
+}
+
+.fila-item-checkbox {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.fila-item-checkbox[hidden] {
+    display: none;
+}
+
+/* Campo de formulário simples (usado nas Configurações do Motor) — mesmo
+   padrão visual do .campo de admin.css, duplicado aqui porque essa
+   página carrega extratus.css, não admin.css. */
+.campo {
+    margin-bottom: 1.1rem;
+}
+
+.campo label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--cor-texto-suave);
+    margin-bottom: 0.4rem;
+}
+
+.campo input,
+.campo select {
+    width: 100%;
+    max-width: 420px;
+    padding: 0.65rem 0.85rem;
+    font-size: 0.92rem;
+    font-family: inherit;
+    color: var(--cor-texto);
+    background: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-pequeno);
+}
+
+.campo input:focus,
+.campo select:focus {
+    border-color: var(--cor-acento);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--cor-acento) 18%, transparent);
+}
+
+/* Input de arquivo dentro de .campo (ex: upload do prompt) não é um
+   campo de texto — herdar padding/borda/max-width feitos pra texto
+   espremia o controle nativo do navegador e cortava o nome do arquivo. */
+.campo input[type="file"] {
+    max-width: none;
+    padding: 0.4rem 0;
+    border: none;
+    background: none;
+}
+
+.botao-pequeno {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.78rem;
+}
+
+.linha-campo-pasta {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.linha-campo-pasta input {
+    flex: 1;
+    /* .campo input tem max-width:420px pensado pra campo de texto comum —
+       aqui o input já é controlado pelo flex (ao lado do botão "Escolher
+       no disco"), então esse teto sobrava e cortava caminhos de pasta
+       compridos. */
+    max-width: none;
+}
+
+.linha-campo-pasta .botao {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+/* Navegador de pastas do servidor — só existe pro admin escolher a pasta
+   do motor sem precisar digitar o caminho à mão. */
+.navegador-pastas {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.navegador-pastas[hidden] {
+    display: none;
+}
+
+.navegador-pastas-caixa {
+    width: min(480px, 90vw);
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--cor-cartao);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio);
+    box-shadow: var(--sombra);
+    padding: 1rem;
+}
+
+.navegador-pastas-atual {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--cor-texto-suave);
+    margin: 0 0 0.6rem;
+    word-break: break-all;
+}
+
+.navegador-pastas-lista {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    margin-bottom: 0.75rem;
+}
+
+.navegador-pastas-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 0.5rem 0.6rem;
+    font-size: 0.85rem;
+    border-radius: var(--raio-pequeno);
+    background: none;
+    border: none;
+    color: var(--cor-texto);
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.navegador-pastas-item:hover {
+    background: var(--cor-fundo);
+}
+
+.navegador-pastas-acoes {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+}
+
+.cartao-secao h2 .contagem {
+    font-weight: 500;
+    color: var(--cor-texto-suave);
+    font-size: 0.82rem;
+}
+
+.linha-upload {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.linha-upload input[type="file"] {
+    flex: 1;
+    min-width: 200px;
+    font-size: 0.85rem;
+    color: var(--cor-texto-suave);
+}
+
+.linha-upload input[type="file"]::file-selector-button {
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.5rem 0.9rem;
+    border-radius: var(--raio-pequeno);
+    border: 1px solid var(--cor-borda);
+    background: var(--cor-fundo);
+    color: var(--cor-texto);
+    cursor: pointer;
+    margin-right: 0.75rem;
+    transition: border-color 0.15s ease;
+}
+
+.linha-upload input[type="file"]::file-selector-button:hover {
+    border-color: var(--cor-acento);
+}
+
+/* .botao (base) agora mora em base.css. */
+
+.lista-arquivos {
+    list-style: none;
+    margin: 0 0 1.1rem;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.lista-arquivos li {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.55rem 0.75rem;
+    background: var(--cor-fundo);
+    border-radius: var(--raio-pequeno);
+    font-size: 0.87rem;
+}
+
+.lista-arquivos li::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    background: var(--cor-acento);
+    opacity: 0.5;
+    flex-shrink: 0;
+}
+
+.lista-arquivos a {
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.lista-arquivos a:hover {
+    text-decoration: underline;
+}
+
+/* Relatórios (histórico) */
+.barra-filtros {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.campo-busca {
+    flex: 1;
+    min-width: 220px;
+    padding: 0.55rem 0.85rem;
+    font-size: 0.85rem;
+    font-family: inherit;
+    color: var(--cor-texto);
+    background: var(--cor-fundo);
+    border: 1.5px solid var(--cor-borda);
+    border-radius: var(--raio-pequeno);
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+.campo-busca:focus {
+    border-color: var(--cor-acento);
+}
+
+.chips-filtro {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.chip {
+    padding: 0.4rem 0.85rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-family: inherit;
+    color: var(--cor-texto-suave);
+    background: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.chip:hover {
+    border-color: var(--cor-acento);
+    color: var(--cor-texto);
+}
+
+.chip-ativo,
+.chip-ativo:hover {
+    background: var(--cor-acento);
+    border-color: var(--cor-acento);
+    color: white;
+}
+
+.filtro-meus-linha {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 1rem;
+}
+
+.filtro-meus {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--cor-texto-suave);
+    cursor: pointer;
+    user-select: none;
+}
+
+.lista-relatorios {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.relatorio-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.85rem 1rem;
+    background: var(--cor-fundo);
+    border-radius: var(--raio-pequeno);
+    transition: background 0.15s ease;
+}
+
+.relatorio-item:hover {
+    background: var(--cor-acento-fraco);
+}
+
+.relatorio-item .status {
+    flex-shrink: 0;
+    min-width: 68px;
+    text-align: center;
+}
+
+.relatorio-item .botao-download {
+    flex-shrink: 0;
+}
+
+/* Ícone de baixar — clean, sem texto, mas mantém o peso visual (fundo
+   sólido na cor de acento) por ser a ação principal de cada linha. */
+.botao-download {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 999px;
+    background: var(--cor-acento);
+    color: white;
+    text-decoration: none;
+    transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+.botao-download:hover {
+    background: var(--cor-acento-hover);
+    box-shadow: 0 8px 20px -6px color-mix(in srgb, var(--cor-acento) 60%, transparent);
+}
+
+.botao-download:active {
+    transform: scale(0.94);
+}
+
+/* Versão menor pra caber dentro de célula de tabela (histórico). */
+.botao-download-pequeno {
+    width: 28px;
+    height: 28px;
+}
+
+/* Sem relatório pra baixar (ex: job com erro) — o botão continua no
+   lugar (mesma posição em toda linha), só esmaecido e sem poder clicar.
+   É um <span>, não <a>, então não tem link nenhum pra desativar de
+   verdade — cursor:default + sem hover já deixa isso claro visualmente. */
+.botao-download-desativado {
+    opacity: 0.3;
+    cursor: default;
+    pointer-events: none;
+}
+
+/* Divisor discreto que fica DENTRO da pílula (não toca o topo/base) —
+   separa a informação do processo do "quem pediu isso", que fica coladinho
+   no botão de baixar. */
+.relatorio-solicitante {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
+    max-width: 170px;
+}
+
+.divisor-vertical {
+    width: 1px;
+    height: 26px;
+    background: var(--cor-borda);
+    flex-shrink: 0;
+}
+
+.solicitante-texto {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    color: var(--cor-texto-suave);
+    font-size: 0.78rem;
+    cursor: pointer;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 150px;
+}
+
+/* Placeholder invisível: quando não há botão Baixar (status erro), mantém
+   o mesmo espaço reservado que o botão real ocupa — senão o bloco
+   "Solicitante" flutua pra posições diferentes linha a linha, porque
+   .relatorio-info (flex: 1) cresce pra preencher o espaço que sobra. */
+.botao-fantasma {
+    visibility: hidden;
+    pointer-events: none;
+}
+
+/* .truncavel/.expandido agora são globais (base.css) — regra específica
+   dessa tela: o bloco do solicitante cresce quando o texto expande. */
+.relatorio-solicitante:has(.truncavel.expandido) {
+    max-width: none;
+}
+
+.relatorio-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.relatorio-info-clicavel {
+    cursor: pointer;
+}
+
+.relatorio-info strong {
+    font-size: 0.92rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.relatorio-meta {
+    font-size: 0.78rem;
+    color: var(--cor-texto-suave);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.status {
+    display: inline-block;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.status-sucesso {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-revisao {
+    background: #fef9c3;
+    color: #854d0e;
+}
+
+.status-erro {
+    background: var(--cor-erro-fundo);
+    color: var(--cor-erro-texto);
+}
+
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme="claro"]) .status-sucesso { background: #113321; color: #86efac; }
+    html:not([data-theme="claro"]) .status-revisao { background: #332b0f; color: #fde68a; }
+}
+
+html[data-theme="escuro"] .status-sucesso { background: #113321; color: #86efac; }
+html[data-theme="escuro"] .status-revisao { background: #332b0f; color: #fde68a; }
+
+.motivo {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    color: var(--cor-texto-suave);
+    font-size: 0.78rem;
+    margin-top: 0.2rem;
+}
+
+/* Célula de Detalhe do histórico: texto + botão de baixar sempre na
+   mesma linha, sem o botão cair pra baixo quando o texto é longo — o
+   texto trunca com "..." (clique expande, .truncavel global) em vez de
+   quebrar linha e empurrar o botão. Mesmo estilo discreto do .motivo
+   (cor/tamanho), inclusive quando é só o "—" de "nada a mostrar". */
+/* Texto da coluna Detalhe — mesmo estilo discreto do .motivo (cor/
+   tamanho), truncando com "..." (clique expande, .truncavel global)
+   em vez de quebrar linha. inline-block pra max-width fazer efeito
+   (span solto não obedece largura pra fins de corte de texto). */
+.detalhe-texto {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+    color: var(--cor-texto-suave);
+    font-size: 0.78rem;
+}
+
+/* Histórico (admin) — tabela técnica com custo de IA, só pra quem
+   administra a ferramenta. */
+.aviso-discreto {
+    font-size: 0.82rem;
+    color: var(--cor-texto-suave);
+    margin: -0.5rem 0 1.25rem;
+}
+
+.tabela-historico {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 0.85rem;
+}
+
+.tabela-historico th {
+    text-align: center;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--cor-texto-suave);
+    padding: 0 0.6rem 0.6rem;
+    border-bottom: 1px solid var(--cor-borda);
+}
+
+.tabela-historico td {
+    padding: 0.7rem 0.6rem;
+    border-bottom: 1px solid var(--cor-borda);
+    /* middle, mesmo motivo do .tabela td em base.css — mesma linha,
+       mesmo eixo, independente do tipo de conteúdo de cada célula. */
+    vertical-align: middle;
+    text-align: center;
+    overflow-wrap: break-word;
+}
+
+.tabela-historico tr:last-child td {
+    border-bottom: none;
+}
+
+.tabela-historico tbody tr:hover {
+    background: var(--cor-fundo);
+}
+
+.tabela-historico th:nth-child(1), .tabela-historico td:nth-child(1) { width: 100px; }
+.tabela-historico th:nth-child(2), .tabela-historico td:nth-child(2) { width: 14%; }
+.tabela-historico th:nth-child(3), .tabela-historico td:nth-child(3) { width: 16%; }
+.tabela-historico th:nth-child(4), .tabela-historico td:nth-child(4) { width: 12%; }
+.tabela-historico th:nth-child(5), .tabela-historico td:nth-child(5) { width: 80px; }
+.tabela-historico th:nth-child(6), .tabela-historico td:nth-child(6) { width: 100px; }
+.tabela-historico th:nth-child(7), .tabela-historico td:nth-child(7) { width: 140px; }
+/* Coluna própria pro botão de baixar, sem título — posição sempre fixa
+   no fim da linha, não muda mais dependendo do tamanho do texto de
+   Detalhe do lado (era isso que fazia o botão "pular" de lugar). */
+.tabela-historico th:nth-child(8), .tabela-historico td:nth-child(8) { width: 52px; }
+
+/* Arquivo e Processo são identificadores usados pra conferência — não
+   podem centralizar. A tabela é table-layout:fixed, então nowrap sem
+   overflow:hidden vazava visualmente por cima da célula vizinha (bug
+   visto na prática); com ellipsis, corta certinho dentro da própria
+   coluna e o clique (.truncavel, aplicado no HTML) expande pra ver o
+   valor inteiro, quebrando linha dentro da célula em vez de vazar. */
+.tabela-historico td:nth-child(3),
+.tabela-historico td:nth-child(4) {
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Glossário/seletor de colaboradores — busca por nome + checkbox que
+   filtra a tabela de baixo. Existe pra não precisar decorar login de
+   ninguém, e pra não listar 70 nomes soltos no resumo de custo. */
+.campo-busca-colaborador {
+    width: 100%;
+    margin-bottom: 0.9rem;
+}
+
+.lista-colaboradores {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.colaborador-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.55rem 0.75rem;
+    background: var(--cor-fundo);
+    border-radius: var(--raio-pequeno);
+    font-size: 0.87rem;
+}
+
+.colaborador-item label {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    cursor: pointer;
+    min-width: 0;
+}
+
+.colaborador-nome {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.colaborador-login {
+    color: var(--cor-texto-suave);
+    font-size: 0.78rem;
+    white-space: nowrap;
+}
+
+.colaborador-item strong {
+    flex-shrink: 0;
+}
+
+/* Resumo de gasto por usuário — acima da tabela detalhada. */
+.lista-custos {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.lista-custos li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.55rem 0.75rem;
+    background: var(--cor-fundo);
+    border-radius: var(--raio-pequeno);
+    font-size: 0.87rem;
+}
+
+.lista-custos-total {
+    border-top: 1px dashed var(--cor-borda);
+    margin-top: 0.3rem;
+    padding-top: 0.75rem !important;
+    background: transparent !important;
+    font-weight: 700;
+}
+
+/* Tela do Motor. */
+/* .grupo-config (ícone + título + descrição, usado nas Configurações do
+   Motor) agora mora em base.css — é reaproveitado em outras telas
+   também (ex: Novo usuário no admin). */
+.motor-status {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.motor-descricao {
+    max-width: 480px;
+    margin: 0;
+}
+
+/* Mesma cor laranja da aba do Motor em qualquer módulo — "isso é área do
+   Motor" é uma categoria de função, não muda com a identidade da
+   ferramenta (essa fica só no --cor-acento lá em cima do arquivo). */
+.motor-status .interruptor {
+    --cor-interruptor-ligado: #c2410c;
+}
+
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme="claro"]) .motor-status .interruptor {
+        --cor-interruptor-ligado: #fb923c;
+    }
+}
+
+html[data-theme="escuro"] .motor-status .interruptor {
+    --cor-interruptor-ligado: #fb923c;
+}

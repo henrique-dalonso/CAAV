@@ -89,23 +89,6 @@
     min-width: 0;
 }
 
-@media (max-width: 640px) {
-    .admin-layout {
-        flex-direction: column;
-    }
-
-    .admin-nav {
-        flex-direction: row;
-        width: 100%;
-        overflow-x: auto;
-        gap: 0.4rem;
-    }
-
-    .admin-nav-item {
-        flex-shrink: 0;
-    }
-}
-
 .aviso-discreto {
     font-size: 0.82rem;
     color: var(--cor-texto-suave);
@@ -180,45 +163,11 @@
     box-shadow: 0 0 0 4px color-mix(in srgb, var(--cor-acento) 18%, transparent);
 }
 
-.botao {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.6rem 1.1rem;
-    font-size: 0.88rem;
-    font-weight: 600;
-    font-family: inherit;
-    color: white;
-    background: var(--cor-acento);
-    border: none;
-    border-radius: var(--raio-pequeno);
-    cursor: pointer;
-    transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
-}
-
-.botao:hover {
-    background: var(--cor-acento-hover);
-    box-shadow: 0 8px 20px -6px color-mix(in srgb, var(--cor-acento) 60%, transparent);
-}
-
-.botao:active {
-    transform: scale(0.98);
-}
-
-.botao-pequeno {
-    padding: 0.4rem 0.75rem;
-    font-size: 0.78rem;
-}
+/* .botao/.botao-pequeno agora moram em base.css (compartilhado por toda
+   página logada) — removida a cópia que existia só aqui. */
 
 .admin-form-usuario {
-    max-width: 420px;
-}
-
-.admin-form-legenda {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--cor-texto-suave);
-    margin: 1rem 0 0.5rem;
+    max-width: 560px;
 }
 
 /* Controle segmentado (dois botões grudados, um vira "ativo") — usado
@@ -284,12 +233,6 @@
 
 .linha-cargo-ferramentas .seletor-ferramentas {
     margin-top: 3px;
-}
-
-.admin-form-nota {
-    font-size: 0.78rem;
-    color: var(--cor-texto-suave);
-    margin: 0 0 1.1rem;
 }
 
 /* Seletor de ferramentas — botão que abre uma "gaveta" com as ferramentas
@@ -501,14 +444,23 @@
 }
 
 @media (prefers-color-scheme: dark) {
-    .ferramenta-tile-fila {
+    html:not([data-theme="claro"]) .ferramenta-tile-fila {
         color: #fb923c;
     }
 
-    .ferramenta-tile-fila .check-input:checked + .check-caixa {
+    html:not([data-theme="claro"]) .ferramenta-tile-fila .check-input:checked + .check-caixa {
         background: #fb923c;
         border-color: #fb923c;
     }
+}
+
+html[data-theme="escuro"] .ferramenta-tile-fila {
+    color: #fb923c;
+}
+
+html[data-theme="escuro"] .ferramenta-tile-fila .check-input:checked + .check-caixa {
+    background: #fb923c;
+    border-color: #fb923c;
 }
 
 .ferramenta-tile-emblema {

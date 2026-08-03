@@ -17,22 +17,6 @@ body {
     padding: 1.5rem;
 }
 
-@media (max-width: 480px) {
-    /* No celular abandona a centralização vertical rígida — com o
-       teclado aberto (Safari do iPhone principalmente, mas vale pra
-       qualquer um), depender de dvh pra recalcular o centro é frágil.
-       Alinhado no topo, a página sempre pode rolar normal pra revelar
-       o botão de entrar, sem depender de nenhuma conta de viewport. */
-    body {
-        align-items: flex-start;
-        padding-top: 3rem;
-    }
-
-    .login-cartao {
-        padding: 2rem 1.5rem;
-    }
-}
-
 .login-cartao {
     position: relative;
     z-index: 1;

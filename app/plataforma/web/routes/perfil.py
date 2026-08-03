@@ -5,8 +5,8 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 
 from app.plataforma.auth import gerar_hash_senha, verificar_senha
-from app.plataforma.db.models import Usuario
-from app.plataforma.db.usuarios import atualizar_senha
+from app.plataforma.db.models import CORES_PERFIL_VALIDAS, TEMAS_VALIDOS, Usuario
+from app.plataforma.db.usuarios import atualizar_cor_perfil, atualizar_senha, atualizar_tema
 from app.plataforma.web.auth import exigir_login
 from app.plataforma.web.templates_util import criar_templates
 
@@ -89,5 +89,35 @@ def pagina_preferencias(request: Request, usuario: Usuario = Depends(exigir_logi
     return templates.TemplateResponse(
         request,
         "perfil.html",
-        {"usuario": usuario, "aba_ativa": "preferencias"},
+        {
+            "usuario": usuario,
+            "aba_ativa": "preferencias",
+            "cores_perfil": CORES_PERFIL_VALIDAS,
+        },
     )
+
+
+@router.post("/perfil/preferencias/tema")
+def processar_tema(
+    usuario: Usuario = Depends(exigir_login),
+    tema: str = Form(...),
+):
+    if tema not in TEMAS_VALIDOS:
+        return RedirectResponse(url="/perfil/preferencias", status_code=303)
+
+    atualizar_tema(usuario.id, tema)
+
+    return RedirectResponse(url="/perfil/preferencias", status_code=303)
+
+
+@router.post("/perfil/preferencias/cor")
+def processar_cor_perfil(
+    usuario: Usuario = Depends(exigir_login),
+    cor: str = Form(...),
+):
+    if cor not in CORES_PERFIL_VALIDAS:
+        return RedirectResponse(url="/perfil/preferencias", status_code=303)
+
+    atualizar_cor_perfil(usuario.id, cor)
+
+    return RedirectResponse(url="/perfil/preferencias", status_code=303)
