@@ -8,6 +8,7 @@ from app.ferramentas.extratus_aburesi.core.app_logger import registrar_log
 from app.ferramentas.extratus_aburesi.core.config_manager import carregar_config
 from app.ferramentas.extratus_aburesi.core.ia_cliente import (
     extrair_dados_e_uso,
+    montar_diagnostico_com_triagem,
     montar_parametros_mensagem,
 )
 from app.ferramentas.extratus_aburesi.core.pdf_manager import listar_pdfs
@@ -133,10 +134,27 @@ def _preparar_novo_lote(config):
             continue
 
         try:
-            parametros = montar_parametros_mensagem(pdf, processo, instrucoes)
+            # Triagem de anexos de listagem de terceiros (ver
+            # ia_cliente.montar_diagnostico_com_triagem) roda pro Motor
+            # também — reduz custo e evita erro de "processo grande
+            # demais" quando o anexo irrelevante é a causa. Se alguma
+            # página foi removida, a confiança cai pra "revisão" na hora
+            # (mesmo princípio do fluxo manual em pipeline.py) — nunca
+            # cai em "alta confiança" sozinho depois de uma triagem.
+            diagnostico, _, paginas_excluidas_triagem = montar_diagnostico_com_triagem(pdf)
+            parametros = montar_parametros_mensagem(pdf, processo, instrucoes, diagnostico=diagnostico)
         except Exception as erro:
             tratar_erro(pdf, processo, "erro_ia", erro, pasta_erros)
             continue
+
+        if paginas_excluidas_triagem:
+            confianca = {
+                "nivel": "revisao",
+                "motivo": (
+                    f"{len(paginas_excluidas_triagem)} página(s) removida(s) automaticamente "
+                    "por parecerem um anexo de listagem de terceiros."
+                ),
+            }
 
         itens_para_lote.append({
             "custom_id": uuid.uuid4().hex,

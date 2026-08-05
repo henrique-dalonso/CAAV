@@ -38,43 +38,63 @@
     </form>
 </section>
 
-<section class="cartao-secao">
-    <h2>Esperando o motor <span class="contagem">{{ total_pendentes }}</span></h2>
-    {% if pendentes %}
-    <div class="fila-barra-selecao">
-        <div class="fila-acoes-selecao" id="fila-acoes-selecao" hidden>
-            <label class="fila-selecionar-todos">
-                <input type="checkbox" id="check-selecionar-todos-fila" class="check-input">
-                <span class="check-caixa check-caixa-pequena"></span>
-                Selecionar todos
-            </label>
-            <button type="submit" form="form-remover-varios" class="botao botao-pequeno botao-remover-selecionados" id="botao-remover-selecionados" disabled>Remover</button>
-            <button type="button" class="botao-remover-fila" id="botao-cancelar-selecao-fila">Cancelar</button>
+<div class="fila-colunas">
+    <section class="cartao-secao fila-coluna">
+        <div class="fila-coluna-cabecalho">
+            <h2>Pendentes <span class="contagem">{{ total_pendentes }}</span></h2>
+            {% if apenas_pendentes %}
+            <div class="fila-barra-selecao">
+                <div class="fila-acoes-selecao" id="fila-acoes-selecao" hidden>
+                    <label class="fila-selecionar-todos">
+                        <input type="checkbox" id="check-selecionar-todos-fila" class="check-input">
+                        <span class="check-caixa check-caixa-pequena"></span>
+                        Selecionar todos
+                    </label>
+                    <button type="submit" form="form-remover-varios" class="botao botao-pequeno botao-remover-selecionados" id="botao-remover-selecionados" disabled>Remover</button>
+                    <button type="button" class="botao-remover-fila" id="botao-cancelar-selecao-fila">Cancelar</button>
+                </div>
+                <button type="button" class="botao-minimal" id="botao-selecionar-fila">Selecionar</button>
+            </div>
+            {% endif %}
         </div>
-        <button type="button" class="botao-minimal" id="botao-selecionar-fila">Selecionar</button>
-    </div>
-    <form action="/extratus/fila/remover-varios" method="post" id="form-remover-varios">
-        <ul class="lista-arquivos lista-fila">
-            {% for nome in pendentes %}
+        {% if apenas_pendentes %}
+        <form action="/extratus/fila/remover-varios" method="post" id="form-remover-varios">
+            <ul class="lista-arquivos lista-fila fila-coluna-lista">
+                {% for nome in apenas_pendentes %}
+                <li>
+                    <span class="bolinha-status bolinha-amarela" title="Aguardando o motor"></span>
+                    <label class="fila-item-checkbox" hidden>
+                        <input type="checkbox" name="nomes" value="{{ nome }}" class="check-input fila-item-check">
+                        <span class="check-caixa check-caixa-pequena"></span>
+                    </label>
+                    <span class="fila-item-nome" title="{{ nome }}">{{ nome }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </form>
+        {% else %}
+        <p class="vazio">Nenhum PDF aguardando o motor.</p>
+        {% endif %}
+    </section>
+
+    <section class="cartao-secao fila-coluna">
+        <div class="fila-coluna-cabecalho">
+            <h2>Processando <span class="contagem">{{ total_processando }}</span></h2>
+        </div>
+        {% if apenas_processando %}
+        <ul class="lista-arquivos lista-fila fila-coluna-lista">
+            {% for nome in apenas_processando %}
             <li>
-                {% if nome in em_processamento %}
-                <span class="fila-item-nome">{{ nome }}</span>
-                <span class="selo selo-positivo">Em processamento pelo motor</span>
-                {% else %}
-                <label class="fila-item-checkbox" hidden>
-                    <input type="checkbox" name="nomes" value="{{ nome }}" class="check-input fila-item-check">
-                    <span class="check-caixa check-caixa-pequena"></span>
-                </label>
-                <span class="fila-item-nome">{{ nome }}</span>
-                {% endif %}
+                <span class="bolinha-status bolinha-verde" title="Em processamento pelo motor"></span>
+                <span class="fila-item-nome" title="{{ nome }}">{{ nome }}</span>
             </li>
             {% endfor %}
         </ul>
-    </form>
-    {% else %}
-    <p class="vazio">Nenhum PDF esperando na fila do motor.</p>
-    {% endif %}
-</section>
+        {% else %}
+        <p class="vazio">Nenhum PDF em processamento.</p>
+        {% endif %}
+    </section>
+</div>
 {% endblock %}
 
 {% block js_pagina %}<script src="/extratus/static/fila.js?v={{ v }}" defer></script>{% endblock %}

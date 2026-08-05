@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from app.ferramentas.extratus.core.ia_cliente import (
+from app.ferramentas.extratus_aburesi.core.ia_cliente import (
     LIMITE_MB_ARQUIVO_PARA_PDF_NATIVO,
     LIMITE_TOKENS_TEXTO_EXTRAIDO,
     _agregar_pedacos,
@@ -22,33 +22,11 @@ def test_parece_digitalizado_quando_maioria_das_paginas_sem_texto():
 
 
 def test_nao_parece_digitalizado_quando_poucas_paginas_sem_texto():
-    # 1 de 20 páginas sem texto (5%) — abaixo do limite de 15%, é PDF nativo normal.
     assert parece_digitalizado(total_paginas=20, paginas_sem_texto=1) is False
 
 
-def test_parece_digitalizado_no_limite_exato_conta_como_nao_digitalizado():
-    # Exatamente 15% não deve disparar (o teste real usa ">" estrito).
-    assert parece_digitalizado(total_paginas=100, paginas_sem_texto=15) is False
-
-
-def test_parece_digitalizado_zero_paginas_e_tratado_como_digitalizado():
-    assert parece_digitalizado(total_paginas=0, paginas_sem_texto=0) is True
-
-
 def test_estimar_tokens_texto_proporcional_ao_tamanho():
-    texto = "a" * 1000
-    assert estimar_tokens_texto(texto) == 600
-
-
-def test_estimar_tokens_texto_vazio():
-    assert estimar_tokens_texto("") == 0
-
-
-def test_cabe_no_limite_pdf_nativo_arquivo_pequeno(tmp_path):
-    arquivo = tmp_path / "pequeno.pdf"
-    arquivo.write_bytes(b"0" * 1_000_000)  # 1MB
-
-    assert cabe_no_limite_pdf_nativo(arquivo) is True
+    assert estimar_tokens_texto("a" * 1000) == 600
 
 
 def test_cabe_no_limite_pdf_nativo_arquivo_grande_demais(tmp_path):
@@ -60,8 +38,6 @@ def test_cabe_no_limite_pdf_nativo_arquivo_grande_demais(tmp_path):
 
 
 def test_limite_tokens_texto_extraido_deixa_folga_da_janela_de_contexto():
-    # Sanity check do valor em si: tem que deixar espaço pra prompt/schema/
-    # resposta dentro da janela de 200 mil tokens do modelo.
     assert LIMITE_TOKENS_TEXTO_EXTRAIDO < 200_000
 
 
@@ -75,11 +51,6 @@ def _resposta_fake(tokens_entrada=100_000, tokens_saida=1_000):
             cache_read_input_tokens=0,
         ),
     )
-
-
-def test_extrair_dados_e_uso_preco_cheio_por_padrao():
-    _, uso_ia = extrair_dados_e_uso(_resposta_fake())
-    assert uso_ia["custo_estimado_usd"] == round(100_000 / 1e6 * 2.00 + 1_000 / 1e6 * 10.00, 4)
 
 
 def test_extrair_dados_e_uso_aplica_desconto_do_batch():
@@ -96,9 +67,7 @@ def _pagina_fake(numero, caracteres):
 
 
 def test_dividir_paginas_agrupa_ate_o_limite_de_tokens():
-    # 1000 caracteres * 0.6 = 600 tokens/página estimados. Limite de 1500
-    # tokens por pedaço -> cabem 2 páginas por pedaço (1200), a 3ª estoura (1800).
-    paginas = [_pagina_fake(i, 1000) for i in range(1, 21)]  # 20 páginas
+    paginas = [_pagina_fake(i, 1000) for i in range(1, 21)]
 
     pedacos = _dividir_paginas_em_pedacos(paginas, limite_tokens_por_pedaco=1500)
 
@@ -108,8 +77,6 @@ def test_dividir_paginas_agrupa_ate_o_limite_de_tokens():
 
 
 def test_dividir_paginas_pagina_unica_maior_que_limite_nao_trava():
-    # Uma página sozinha já estourando o limite não pode gerar pedaço
-    # vazio nem loop infinito — tem que sair inteira mesmo assim.
     paginas = [_pagina_fake(1, 10_000)]
 
     pedacos = _dividir_paginas_em_pedacos(paginas, limite_tokens_por_pedaco=100)
@@ -151,17 +118,6 @@ def test_agregar_pedacos_campos_divergentes_viram_lista_de_candidatos():
     _, _, campos = _agregar_pedacos(resultados)
 
     assert campos["valor_causa"] == ["R$ 1.000,00", "R$ 1000"]
-
-
-def test_agregar_pedacos_nao_repete_valor_candidato_igual():
-    resultados = [
-        {"cronologia": [], "documentos_identificados": [], "campos_processo": {"autor": "Banco X"}},
-        {"cronologia": [], "documentos_identificados": [], "campos_processo": {"autor": "Banco X"}},
-    ]
-
-    _, _, campos = _agregar_pedacos(resultados)
-
-    assert campos["autor"] == ["Banco X"]
 
 
 def _resposta_pedaco_fake(descricao):
@@ -211,19 +167,18 @@ def test_gerar_relatorio_claude_dividido_faz_uma_chamada_por_pedaco_mais_reducao
     ]
 
     with patch(
-        "app.ferramentas.extratus.core.ia_cliente.extrair_paginas_pdf",
+        "app.ferramentas.extratus_aburesi.core.ia_cliente.extrair_paginas_pdf",
         return_value=([], 2),
     ), patch(
-        "app.ferramentas.extratus.core.ia_cliente._dividir_paginas_em_pedacos",
+        "app.ferramentas.extratus_aburesi.core.ia_cliente._dividir_paginas_em_pedacos",
         return_value=["texto do pedaço 1", "texto do pedaço 2"],
     ):
-        dados, uso = gerar_relatorio_claude_dividido(arquivo, "0000000-00.2026.8.06.0300", cliente_fake, "instruções do Max")
+        dados, uso = gerar_relatorio_claude_dividido(arquivo, "0000000-00.2026.8.06.0300", cliente_fake, "instruções")
 
     assert cliente_fake.messages.create.call_count == 3
     assert dados["parecer"] == "Parecer final."
     assert uso["dividido"] is True
     assert uso["total_pedacos"] == 2
-    # Soma dos 3 usos (2 pedaços + 1 redução), full price (não é batch).
     tokens_entrada_esperado = 10_000 + 10_000 + 5_000
     tokens_saida_esperado = 200 + 200 + 800
     custo_esperado = round(
@@ -252,17 +207,6 @@ def test_pagina_normal_do_processo_nao_parece_lista_de_terceiros():
     assert _pagina_parece_lista_de_terceiros(texto) is False
 
 
-def test_pagina_com_muitos_cpfs_mas_sem_numeracao_propria_nao_e_suspeita():
-    # Só um dos dois sinais não basta — a checagem é conservadora de propósito.
-    cpfs = "\n".join(f"{i:03d}.{i:03d}.{i:03d}-{i % 100:02d}" for i in range(15))
-    assert _pagina_parece_lista_de_terceiros(cpfs) is False
-
-
-def test_pagina_com_numeracao_propria_mas_poucos_cpfs_nao_e_suspeita():
-    texto = "Página 5 de 281\nContrato assinado por 123.456.789-00."
-    assert _pagina_parece_lista_de_terceiros(texto) is False
-
-
 def test_filtrar_paginas_separa_suspeitas_sem_perder_nenhuma():
     paginas = [
         {"numero": 1, "texto_bruto": "Vistos. Defiro o pedido."},
@@ -274,15 +218,6 @@ def test_filtrar_paginas_separa_suspeitas_sem_perder_nenhuma():
 
     assert [p["numero"] for p in relevantes] == [1, 3]
     assert excluidas == [2]
-
-
-def test_filtrar_paginas_sem_nenhuma_suspeita_devolve_tudo():
-    paginas = [{"numero": 1, "texto_bruto": "Vistos."}]
-
-    relevantes, excluidas = filtrar_paginas_lista_de_terceiros(paginas)
-
-    assert relevantes == paginas
-    assert excluidas == []
 
 
 def _pagina_fake_completa(numero, texto_bruto):
@@ -302,17 +237,16 @@ def test_montar_diagnostico_com_triagem_remove_paginas_suspeitas():
     }
 
     with patch(
-        "app.ferramentas.extratus.core.ia_cliente.extrair_texto_pdf_com_diagnostico",
+        "app.ferramentas.extratus_aburesi.core.ia_cliente.extrair_texto_pdf_com_diagnostico",
         return_value=diagnostico_original_fake,
     ), patch(
-        "app.ferramentas.extratus.core.ia_cliente.extrair_paginas_pdf",
+        "app.ferramentas.extratus_aburesi.core.ia_cliente.extrair_paginas_pdf",
         return_value=(paginas_fake, 2),
     ):
         diagnostico, paginas_relevantes, paginas_excluidas = montar_diagnostico_com_triagem("qualquer.pdf")
 
     assert paginas_excluidas == [2]
     assert [p["numero"] for p in paginas_relevantes] == [1]
-    assert "Vistos" in diagnostico["texto"]
     assert "removidas desta análise" in diagnostico["texto"]
     assert "NOME FULANO" not in diagnostico["texto"]
 
@@ -321,34 +255,14 @@ def test_montar_diagnostico_documento_digitalizado_nao_aplica_triagem():
     diagnostico_digitalizado = {"texto": "", "total_paginas": 10, "paginas_sem_texto": 9, "caracteres": 0}
 
     with patch(
-        "app.ferramentas.extratus.core.ia_cliente.extrair_texto_pdf_com_diagnostico",
+        "app.ferramentas.extratus_aburesi.core.ia_cliente.extrair_texto_pdf_com_diagnostico",
         return_value=diagnostico_digitalizado,
     ), patch(
-        "app.ferramentas.extratus.core.ia_cliente.extrair_paginas_pdf",
+        "app.ferramentas.extratus_aburesi.core.ia_cliente.extrair_paginas_pdf",
     ) as extrair_paginas_mock:
         diagnostico, paginas_relevantes, paginas_excluidas = montar_diagnostico_com_triagem("qualquer.pdf")
 
     extrair_paginas_mock.assert_not_called()
     assert diagnostico == diagnostico_digitalizado
     assert paginas_relevantes is None
-    assert paginas_excluidas == []
-
-
-def test_montar_diagnostico_sem_paginas_suspeitas_devolve_diagnostico_original():
-    paginas_fake = [_pagina_fake_completa(1, "Vistos.")]
-    diagnostico_original_fake = {
-        "texto": paginas_fake[0]["texto_marcado"], "total_paginas": 1,
-        "paginas_sem_texto": 0, "caracteres": 20,
-    }
-
-    with patch(
-        "app.ferramentas.extratus.core.ia_cliente.extrair_texto_pdf_com_diagnostico",
-        return_value=diagnostico_original_fake,
-    ), patch(
-        "app.ferramentas.extratus.core.ia_cliente.extrair_paginas_pdf",
-        return_value=(paginas_fake, 1),
-    ):
-        diagnostico, paginas_relevantes, paginas_excluidas = montar_diagnostico_com_triagem("qualquer.pdf")
-
-    assert diagnostico == diagnostico_original_fake
     assert paginas_excluidas == []

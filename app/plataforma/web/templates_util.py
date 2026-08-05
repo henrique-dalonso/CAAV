@@ -14,7 +14,7 @@ from app.plataforma.web.rotulos import emblema_ferramenta, rotulo_perfil
 # durante a execução) — usado como "?v=..." em CSS/JS pra forçar o
 # navegador a buscar a versão nova depois de um reinício do servidor, em
 # vez de continuar servindo do cache uma folha de estilo antiga. O
-# servidor hoje roda sem --reload (ver scripts/iniciar_servidor.bat), então
+# servidor hoje roda sem --reload (ver iniciar_servidor.bat, na raiz), então
 # trocar um arquivo CSS só tem efeito depois de reiniciar o processo —
 # isso aqui resolve a MERA parte de cache do navegador, não substitui
 # reiniciar o servidor quando o código muda.

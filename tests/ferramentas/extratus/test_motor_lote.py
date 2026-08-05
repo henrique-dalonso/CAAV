@@ -170,6 +170,7 @@ def test_preparar_novo_lote_trata_erro_de_montagem_sem_incluir_no_lote():
          patch.object(motor_lote, "listar_arquivos_ja_reivindicados", return_value=set()), \
          patch.object(motor_lote, "carregar_instrucoes_relatorio", return_value="instrucoes"), \
          patch.object(motor_lote, "obter_dados_deteccao", return_value=("123", {"nivel": "alta", "motivo": "x"})), \
+         patch.object(motor_lote, "montar_diagnostico_com_triagem", return_value=({}, None, [])), \
          patch.object(motor_lote, "montar_parametros_mensagem", side_effect=RuntimeError("grande demais")), \
          patch.object(motor_lote, "tratar_erro") as tratar_erro_mock:
         itens = motor_lote._preparar_novo_lote(CONFIG_EXEMPLO)
@@ -187,6 +188,7 @@ def test_preparar_novo_lote_inclui_arquivo_elegivel():
          patch.object(motor_lote, "listar_arquivos_ja_reivindicados", return_value=set()), \
          patch.object(motor_lote, "carregar_instrucoes_relatorio", return_value="instrucoes"), \
          patch.object(motor_lote, "obter_dados_deteccao", return_value=("123", {"nivel": "alta", "motivo": "x"})), \
+         patch.object(motor_lote, "montar_diagnostico_com_triagem", return_value=({}, None, [])), \
          patch.object(motor_lote, "montar_parametros_mensagem", return_value=parametros_fake):
         itens = motor_lote._preparar_novo_lote(CONFIG_EXEMPLO)
 
@@ -194,4 +196,22 @@ def test_preparar_novo_lote_inclui_arquivo_elegivel():
     assert itens[0]["arquivo_pdf"] == "ok.pdf"
     assert itens[0]["processo_detectado"] == "123"
     assert itens[0]["params"] == parametros_fake
+    assert itens[0]["confianca_nivel"] == "alta"
     assert isinstance(itens[0]["custom_id"], str) and len(itens[0]["custom_id"]) > 0
+
+
+def test_preparar_novo_lote_forca_revisao_quando_triagem_excluiu_paginas():
+    pdf_com_anexo = Path("/pasta/motor/tem_anexo.pdf")
+    parametros_fake = {"model": "x"}
+
+    with patch.object(motor_lote, "listar_pdfs", return_value=[pdf_com_anexo]), \
+         patch.object(motor_lote, "listar_arquivos_ja_reivindicados", return_value=set()), \
+         patch.object(motor_lote, "carregar_instrucoes_relatorio", return_value="instrucoes"), \
+         patch.object(motor_lote, "obter_dados_deteccao", return_value=("123", {"nivel": "alta", "motivo": "regex bateu"})), \
+         patch.object(motor_lote, "montar_diagnostico_com_triagem", return_value=({}, None, [33, 34, 35])), \
+         patch.object(motor_lote, "montar_parametros_mensagem", return_value=parametros_fake):
+        itens = motor_lote._preparar_novo_lote(CONFIG_EXEMPLO)
+
+    assert len(itens) == 1
+    assert itens[0]["confianca_nivel"] == "revisao"
+    assert "3 página" in itens[0]["confianca_motivo"]

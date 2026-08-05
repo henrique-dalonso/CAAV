@@ -45,19 +45,24 @@ def pagina_fila(
     sucesso: str | None = None,
 ):
     config = carregar_config()
-    pendentes = listar_pdfs(config.get("motor_pasta_entrada", "motor_entrada_pdfs"))
+    pdfs_na_pasta = [pdf.name for pdf in listar_pdfs(config.get("motor_pasta_entrada", "motor_entrada_pdfs"))]
     em_processamento = listar_arquivos_ja_reivindicados()
+
+    # Separados fisicamente em duas colunas na tela (não só uma etiqueta):
+    # quem ainda espera o motor notar o arquivo vs. quem já foi
+    # reivindicado por um lote enviado à Anthropic.
+    apenas_pendentes = [nome for nome in pdfs_na_pasta if nome not in em_processamento]
+    apenas_processando = [nome for nome in pdfs_na_pasta if nome in em_processamento]
 
     return templates.TemplateResponse(
         request,
         "fila.html",
         {
             "usuario": usuario,
-            "pendentes": [pdf.name for pdf in pendentes],
-            "total_pendentes": len(pendentes),
-            # Arquivos já enviados num lote do motor (aguardando ou sendo
-            # processados) — não fazem mais sentido remover/reenviar.
-            "em_processamento": em_processamento,
+            "apenas_pendentes": apenas_pendentes,
+            "total_pendentes": len(apenas_pendentes),
+            "apenas_processando": apenas_processando,
+            "total_processando": len(apenas_processando),
             "erro": erro,
             "sucesso": sucesso,
         },
@@ -90,7 +95,16 @@ async def enviar_pdfs(arquivos: list[UploadFile] = File(...)):
             rejeitados.append(f'"{nome_seguro}" não parece PDF válido')
             continue
 
-        (pasta_entrada / nome_seguro).write_bytes(conteudo)
+        caminho_destino = pasta_entrada / nome_seguro
+
+        # Nunca sobrescreve silenciosamente um arquivo já presente na fila
+        # (pendente ou em processamento) — antes disso, um upload com nome
+        # repetido apagava o arquivo anterior sem aviso nenhum.
+        if caminho_destino.exists():
+            rejeitados.append(f'"{nome_seguro}" já existe na fila do motor (não foi enviado de novo)')
+            continue
+
+        caminho_destino.write_bytes(conteudo)
         enviados += 1
 
     if rejeitados:

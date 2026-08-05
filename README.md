@@ -83,7 +83,7 @@ Sempre a partir da pasta principal do projeto:
 .venv\Scripts\python -m uvicorn app.plataforma.web.main:app --reload
 ```
 
-Ou clique duas vezes em `app\ferramentas\extratus\scripts\iniciar_servidor.bat`.
+Ou clique duas vezes em `iniciar_servidor.bat`, na pasta principal do projeto.
 
 Acesse `http://127.0.0.1:8000` no navegador.
 
@@ -142,7 +142,7 @@ Isso ainda **não foi instalado** — é só o guia de quando for a hora de colo
 
 1. Abra o **Agendador de Tarefas** → Criar Tarefa.
 2. Gatilho: "Ao iniciar o computador".
-3. Ação: executar `app\ferramentas\extratus\scripts\iniciar_servidor.bat`.
+3. Ação: executar `iniciar_servidor.bat` (na pasta principal do projeto).
 4. Marque "Executar mesmo se o usuário não estiver conectado".
 
 Diferença prática: o Agendador não reinicia sozinho se o programa travar no meio; o NSSM sim.

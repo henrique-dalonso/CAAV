@@ -184,12 +184,80 @@ html[data-theme="escuro"] .aba-motor.aba-ativa:hover {
 }
 
 /* Lista da fila do motor — mesma .lista-arquivos, só com o nome ocupando
-   o espaço todo pra empurrar o botão de remover pra direita. */
+   o espaço todo pra empurrar o botão de remover pra direita. min-width:0
+   é necessário pro corte com reticências funcionar dentro de um item
+   flex (sem isso o item flex nunca encolhe menos que o nome inteiro). */
 .lista-fila .fila-item-nome {
     flex: 1;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+/* Fila do motor em duas colunas lado a lado (Pendentes | Processando) —
+   site é só pra uso em computador no escritório, então não tem variante
+   estreita/empilhada: sempre lado a lado. Cada coluna rola por conta
+   própria (max-height) em vez de esticar a página quando a fila crescer
+   muito, então as duas continuam visíveis juntas. */
+.fila-colunas {
+    display: flex;
+    gap: 1.25rem;
+    align-items: flex-start;
+}
+
+.fila-coluna {
+    flex: 1;
+    min-width: 0;
+}
+
+.fila-coluna-cabecalho {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.fila-coluna-cabecalho h2 {
+    margin: 0;
+}
+
+.fila-coluna-lista {
+    max-height: 60vh;
+    overflow-y: auto;
+    margin-bottom: 0;
+}
+
+/* Bolinha de status da fila — substitui a etiqueta de texto antiga.
+   O significado de cada cor aparece ao passar o mouse (atributo title,
+   nativo do navegador, sem precisar de JavaScript). */
+.bolinha-status {
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    flex-shrink: 0;
+    cursor: default;
+}
+
+.bolinha-amarela {
+    background: #f59e0b;
+}
+
+.bolinha-verde {
+    background: #16a34a;
+}
+
+/* A lista genérica (.lista-arquivos) desenha um quadradinho decorativo
+   antes de cada item (regra .lista-arquivos li::before, mais abaixo
+   neste arquivo) — faz sentido nas outras listas do site, mas na fila
+   esse lugar já é ocupado pela bolinha de status. Precisa das DUAS
+   classes no seletor (.lista-fila.lista-arquivos, não só .lista-fila)
+   pra ganhar força de CSS suficiente e vencer a regra de baixo mesmo
+   estando declarada antes dela no arquivo — com a mesma força (uma
+   classe só), quem vem depois no arquivo venceria, que era exatamente
+   o bug: essa regra "sumia" na prática porque a de baixo pisava nela. */
+.lista-fila.lista-arquivos li::before {
+    content: none;
 }
 
 .botao-remover-fila {

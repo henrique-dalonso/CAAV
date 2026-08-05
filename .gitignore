@@ -54,3 +54,7 @@ banco/*
 !banco/.gitkeep
 *.db
 *.sqlite3
+
+# Arquivo de controle do watchdog do servidor (número do processo atual,
+# recriado a cada vez que o servidor sobe - não é algo pra versionar)
+servidor.pid

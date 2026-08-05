@@ -24,6 +24,30 @@ def extrair_texto_pdf(caminho_pdf):
 MINIMO_CARACTERES_PAGINA_COM_TEXTO = 30
 
 
+def extrair_paginas_pdf(caminho_pdf):
+    """Extrai o texto de cada página do PDF separadamente (sem juntar tudo
+    numa string só) — usado tanto pelo diagnóstico normal quanto pela
+    divisão em pedaços de processos grandes demais pra uma chamada só
+    (ver `ia_cliente._dividir_paginas_em_pedacos`). Cada página já vem
+    com seu marcador (`--- Página N de M ---`), pra IA poder referenciar
+    de onde tirou cada informação mesmo quando o texto é lido em pedaços."""
+    caminho_pdf = Path(caminho_pdf)
+    leitor = PdfReader(str(caminho_pdf))
+
+    total_paginas = len(leitor.pages)
+    paginas = []
+
+    for indice, pagina in enumerate(leitor.pages, start=1):
+        conteudo = pagina.extract_text() or ""
+        paginas.append({
+            "numero": indice,
+            "texto_bruto": conteudo,
+            "texto_marcado": f"--- Página {indice} de {total_paginas} ---\n{conteudo}",
+        })
+
+    return paginas, total_paginas
+
+
 def extrair_texto_pdf_com_diagnostico(caminho_pdf):
     """Extrai o texto de cada página do PDF (com marcador de página, pra IA
     poder referenciar de onde tirou cada informação) e devolve também um
@@ -31,22 +55,13 @@ def extrair_texto_pdf_com_diagnostico(caminho_pdf):
     de páginas vazias é o sinal de que o PDF é digitalizado (escaneado,
     sem camada de texto) — precisa ser tratado diferente do PDF nativo.
     """
-    caminho_pdf = Path(caminho_pdf)
-    leitor = PdfReader(str(caminho_pdf))
+    paginas, total_paginas = extrair_paginas_pdf(caminho_pdf)
 
-    total_paginas = len(leitor.pages)
-    paginas_sem_texto = 0
-    partes = []
-
-    for indice, pagina in enumerate(leitor.pages, start=1):
-        conteudo = pagina.extract_text() or ""
-
-        if len(conteudo.strip()) < MINIMO_CARACTERES_PAGINA_COM_TEXTO:
-            paginas_sem_texto += 1
-
-        partes.append(f"--- Página {indice} de {total_paginas} ---\n{conteudo}")
-
-    texto_completo = "\n\n".join(partes)
+    paginas_sem_texto = sum(
+        1 for pagina in paginas
+        if len(pagina["texto_bruto"].strip()) < MINIMO_CARACTERES_PAGINA_COM_TEXTO
+    )
+    texto_completo = "\n\n".join(pagina["texto_marcado"] for pagina in paginas)
 
     return {
         "texto": texto_completo,
