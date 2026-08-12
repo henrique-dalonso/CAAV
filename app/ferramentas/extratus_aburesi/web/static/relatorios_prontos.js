@@ -67,4 +67,30 @@
             window.location = bloco.dataset.download;
         });
     });
+
+    // Deep-link do botão "Ir ao relatório" (Conferências manuais,
+    // web/routes/inbox.py, ?processo=...) — pré-preenche a busca, tira
+    // "Solicitados por mim" (o relatório duplicado pode ser de outro
+    // usuário) e dá scroll+destaque no item certo.
+    var processoInicial = campoBusca.dataset.processoInicial;
+    if (processoInicial) {
+        campoBusca.value = processoInicial;
+        if (checkMeus) {
+            checkMeus.checked = false;
+        }
+    }
+
+    // "Solicitados por mim" vem marcado por padrão no HTML — sem esta
+    // chamada, a lista continuaria mostrando todo mundo até o primeiro
+    // clique/digitação disparar aplicarFiltros().
+    aplicarFiltros();
+
+    if (processoInicial) {
+        var alvo = document.querySelector('.relatorio-item[data-processo="' + CSS.escape(processoInicial) + '"]');
+        if (alvo) {
+            alvo.scrollIntoView({ behavior: "smooth", block: "center" });
+            alvo.classList.add("relatorio-item-destacado");
+            setTimeout(function () { alvo.classList.remove("relatorio-item-destacado"); }, 2400);
+        }
+    }
 })();

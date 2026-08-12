@@ -2,6 +2,7 @@ from sqlmodel import select
 
 from app.ferramentas.extratus_aburesi.db.models import Job
 from app.plataforma.db.session import obter_sessao
+from app.plataforma.web.eventos_sse import avisar_mudanca
 
 
 def registrar_processado(
@@ -18,7 +19,7 @@ def registrar_processado(
     alta) ou "revisao" (confiança média/baixa, precisa de olho humano).
 
     `uso_ia`, se informado, é um dict com modelo/tokens_entrada/tokens_saida/
-    custo_estimado_usd — vem vazio quando o relatório ainda é simulado.
+    custo_estimado_usd.
     `usuario_id` identifica quem disparou o processamento (upload/processar
     tudo) — fica None pra execuções via linha de comando/motor automático.
     """
@@ -45,6 +46,8 @@ def registrar_processado(
         sessao.commit()
         sessao.refresh(job)
 
+        avisar_mudanca()
+
         return job
 
 
@@ -66,6 +69,8 @@ def registrar_erro(
         sessao.commit()
         sessao.refresh(job)
 
+        avisar_mudanca()
+
         return job
 
 
@@ -80,6 +85,70 @@ def listar_jobs(limite=100):
         return sessao.exec(consulta).all()
 
 
+def listar_jobs_manuais(limite=100):
+    """Ver docstring equivalente em app/ferramentas/extratus/db/jobs.py
+    (Extratus - Relatórios) — mesma lógica."""
+    with obter_sessao() as sessao:
+        consulta = (
+            select(Job)
+            .where(Job.usuario_id.is_not(None))
+            .order_by(Job.criado_em.desc())
+            .limit(limite)
+        )
+
+        return sessao.exec(consulta).all()
+
+
+def listar_jobs_motor(limite=100):
+    """Ver docstring equivalente em app/ferramentas/extratus/db/jobs.py
+    (Extratus - Relatórios) — mesma lógica."""
+    with obter_sessao() as sessao:
+        consulta = (
+            select(Job)
+            .where(Job.usuario_id.is_(None))
+            .order_by(Job.criado_em.desc())
+            .limit(limite)
+        )
+
+        return sessao.exec(consulta).all()
+
+
+def obter_relatorio_existente_para_processo(processo):
+    """Ver docstring equivalente em app/ferramentas/extratus/db/jobs.py
+    (Extratus - Relatórios) — mesma lógica."""
+    with obter_sessao() as sessao:
+        consulta = (
+            select(Job)
+            .where(Job.processo == processo, Job.status.in_(["sucesso", "revisao"]))
+            .order_by(Job.criado_em.desc())
+        )
+        return sessao.exec(consulta).first()
+
+
+def existe_relatorio_gerado_para_processo(processo):
+    """Já existe um Job de verdade bem-sucedido pra esse número de
+    processo? Usado pela checagem da Fila do Motor (db/checagem_fila.py),
+    que só precisa saber se existe, não onde."""
+    return obter_relatorio_existente_para_processo(processo) is not None
+
+
+def listar_erros_nao_resolvidos_do_motor():
+    """Erros de PDF do Motor (usuario_id None — ver tratar_erro/
+    checagem_lote.py) que ainda não foram marcados como resolvidos —
+    alimenta o sininho de notificações. Não tem janela de tempo de
+    propósito (Henrique: um erro não pode sumir sozinho, alguém precisa
+    de fato tratar) — só sai daqui quando a futura tela de Erros marcar
+    `notificacao_resolvida`. Erros do fluxo manual (usuario_id
+    preenchido) não entram — a pessoa já viu o erro na hora, síncrono."""
+    with obter_sessao() as sessao:
+        consulta = select(Job).where(
+            Job.status == "erro",
+            Job.usuario_id.is_(None),
+            Job.notificacao_resolvida == False,  # noqa: E712
+        )
+        return sessao.exec(consulta).all()
+
+
 def contar_por_status():
     contagem = {"sucesso": 0, "revisao": 0, "erro": 0}
 
@@ -88,6 +157,14 @@ def contar_por_status():
             contagem[job.status] = contagem.get(job.status, 0) + 1
 
     return contagem
+
+
+def contar_jobs_manuais_do_usuario(usuario_id):
+    """Ver docstring equivalente em app/ferramentas/extratus/db/jobs.py
+    (Extratus - Relatórios) — mesma lógica."""
+    with obter_sessao() as sessao:
+        consulta = select(Job).where(Job.usuario_id == usuario_id)
+        return len(sessao.exec(consulta).all())
 
 
 def somar_custo_por_usuario():

@@ -1,67 +1,162 @@
 {% extends "base.html" %}
 
-{% block titulo %}Extratus - Aburesi{% endblock %}
+{% block titulo %}Gerar seu Relatório — Extratus - Aburesi{% endblock %}
 {% block nome_pagina %}Extratus - Aburesi{% endblock %}
 {% block css_pagina %}<link rel="stylesheet" href="/extratus-aburesi/static/extratus.css?v={{ v }}">{% endblock %}
 
 {% block conteudo %}
 <div class="cabecalho-ferramenta">
     <div>
-        <h1>Extratus - Aburesi</h1>
+        <h1>Gerar seu Relatório</h1>
         <p>Resumo rápido de processo judicial para uso interno no atendimento do cliente Aburesi.</p>
     </div>
-    {% if ia_provider == "claude" %}
     <span class="selo-status real">IA real ativada</span>
-    {% else %}
-    <span class="selo-status simulado">Modo simulado</span>
-    {% endif %}
 </div>
 
 <nav class="abas-extratus">
-    <a href="/extratus-aburesi/" class="aba aba-ativa">Gerar relatórios</a>
-    <a href="/extratus-aburesi/relatorios" class="aba">Relatórios <span class="contagem-aba">{{ total_relatorios }}</span></a>
+    <a href="/extratus-aburesi/" class="aba aba-ativa">Gerar seu Relatório <span class="contagem-aba">{{ contagem_nav_pendentes(usuario) }}</span></a>
+    <a href="/extratus-aburesi/relatorios" class="aba">Seus Relatórios <span class="contagem-aba">{{ contagem_nav_relatorios(usuario) }}</span></a>
+    <a href="/extratus-aburesi/relatorios-finalizados" class="aba aba-motor">Relatórios do Motor</a>
     {% if usuario_tem_acesso_fila_motor(usuario, "extratus-aburesi") %}
-    <a href="/extratus-aburesi/fila" class="aba aba-motor">Fila do motor</a>
+    <a href="/extratus-aburesi/fila" class="aba aba-motor">Fila do Motor</a>
     {% endif %}
     {% if usuario_eh_admin_da_ferramenta(usuario, "extratus-aburesi") %}
-    <a href="/extratus-aburesi/motor" class="aba aba-motor">Motor</a>
-    <a href="/extratus-aburesi/historico" class="aba aba-admin">Custos (admin)</a>
+    <a href="/extratus-aburesi/motor" class="aba aba-motor aba-fixa-direita" data-dica="Configurações do Motor" aria-label="Configurações do Motor">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+    </a>
     {% endif %}
 </nav>
 
 {% if erro %}
 <p class="banner-erro">⚠ {{ erro }}</p>
 {% endif %}
+{% if sucesso %}
+<p class="banner-sucesso">✓ {{ sucesso }}</p>
+{% endif %}
+
+<section class="cartao-secao secao-conferencias" id="secao-conferencias" {% if not conferencias %}hidden{% endif %}>
+    <h2><span>Conferências <span class="contagem" id="contagem-conferencias">{{ conferencias|length }}</span></span></h2>
+    <p class="aviso-discreto">Esses arquivos pararam na triagem automática e esperam uma decisão sua antes de gerar o relatório.</p>
+    <ul class="lista-conferencias" id="lista-conferencias">
+        {% for item in conferencias %}
+        <li class="conferencia-item" data-id="{{ item.id }}" data-nome="{{ item.nome }}">
+            <div class="conferencia-item-info">
+                <span class="conferencia-item-nome truncavel" data-dica="{{ item.nome }}">{{ item.nome }}</span>
+                <span class="conferencia-item-motivo"><strong>Motivo:</strong> {{ item.mensagem }}{% if item.processo_detectado %} — processo {{ item.processo_detectado }}{% endif %}</span>
+            </div>
+            <div class="conferencia-item-acoes">
+                {% if item.tipo == "duplicado_relatorio" %}
+                <a href="{{ item.link_relatorio }}?processo={{ item.processo_detectado|urlencode }}" class="botao-minimal" data-dica="Abre o relatório já existente pra esse processo">Ir ao relatório</a>
+                {% endif %}
+                {% if item.tipo == "processo_nao_encontrado" or item.tipo == "falha_leitura" %}
+                <form action="/extratus-aburesi/conferencia/{{ item.id }}/aprovar" method="post" class="form-conferencia form-conferencia-manual">
+                    <div class="conferencia-campo-processo" hidden>
+                        <input type="text" name="processo" placeholder="0000000-00.0000.0.00.0000" pattern="\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}" inputmode="numeric" autocomplete="off">
+                    </div>
+                    <button type="submit" class="botao botao-pequeno botao-conferencia-aprovar" data-dica="Libera esse arquivo pra gerar o relatório, com o número de processo informado">Aprovar</button>
+                </form>
+                {% else %}
+                <form action="/extratus-aburesi/conferencia/{{ item.id }}/aprovar" method="post" class="form-conferencia" data-confirm="Confirma que quer gerar o relatório de {{ item.nome }} mesmo assim?">
+                    <button type="submit" class="botao botao-pequeno botao-conferencia-aprovar" data-dica="Libera esse arquivo pra gerar o relatório, mesmo com a inconsistência encontrada">Aprovar</button>
+                </form>
+                {% endif %}
+                <form action="/extratus-aburesi/conferencia/{{ item.id }}/descartar" method="post" class="form-conferencia" data-confirm="Descartar {{ item.nome }}? Essa ação não pode ser desfeita." data-perigo="true">
+                    <button type="submit" class="botao-remover-fila botao-conferencia-descartar" data-dica="Descarta esse arquivo pra sempre — não pode ser desfeito">Descartar</button>
+                </form>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+</section>
 
 <section class="cartao-secao">
     <h2>Enviar um processo</h2>
-    <form action="upload" method="post" enctype="multipart/form-data" class="linha-upload">
-        <input type="file" name="arquivo" accept=".pdf" id="campo-pdf-manual" required>
-        <button type="submit" class="botao" id="botao-enviar-pdf-manual" disabled>Enviar PDF</button>
+    <p class="aviso-discreto">Até {{ maximo_arquivos }} PDFs por vez. Assim que confirmado o envio, a triagem começa sozinha — sem botão de "processar" nenhum.</p>
+    <form action="/extratus-aburesi/upload" method="post" enctype="multipart/form-data" id="form-upload-manual" data-confirm="" data-perigo="true">
+        <label class="zona-soltar" for="campo-pdfs-manual" id="zona-soltar-manual">
+            <input type="file" name="arquivos" accept=".pdf" id="campo-pdfs-manual" multiple hidden>
+            <svg class="zona-soltar-icone" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 15V4M12 4L7.5 8.5M12 4l4.5 4.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <p class="zona-soltar-titulo">Arraste seus PDFs aqui, ou clique pra selecionar</p>
+            <p class="zona-soltar-legenda">PDF, até 100MB por arquivo — máximo {{ maximo_arquivos }} de uma vez</p>
+        </label>
+
+        <div class="upload-lote" id="upload-lote-manual" hidden>
+            <div class="upload-lote-resumo">
+                <span id="upload-lote-contagem-manual"></span>
+                <button type="button" class="botao-minimal" id="botao-remover-todos-manual">Remover todos</button>
+            </div>
+            <div class="upload-cartoes" id="upload-cartoes-manual"></div>
+            <button type="submit" class="botao" id="botao-enviar-manual" disabled>
+                <svg class="botao-enviar-fila-icone" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M12 19V5M12 5L6 11M12 5l6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span id="botao-enviar-manual-texto">Enviar</span>
+            </button>
+        </div>
     </form>
 </section>
 
-<section class="cartao-secao">
-    <h2>Pendentes <span class="contagem">{{ total_pendentes }}</span></h2>
-    {% if pendentes %}
-    <ul class="lista-arquivos">
-        {% for nome in pendentes %}
-        <li>{{ nome }}</li>
-        {% endfor %}
-    </ul>
-    <form action="processar-tudo" method="post">
-        <button type="submit" class="botao">Processar tudo</button>
-    </form>
-    {% else %}
-    <p class="vazio">Nenhum PDF pendente no momento.</p>
-    {% endif %}
-</section>
+<div class="fila-colunas">
+    <section class="cartao-secao fila-coluna">
+        <div class="fila-coluna-cabecalho">
+            <h2>Pendentes <span class="contagem" id="contagem-pendentes-manual">{{ total_pendentes }}</span></h2>
+        </div>
+        <ul class="lista-arquivos lista-fila fila-coluna-lista" id="lista-pendentes-manual">
+            {% for item in pendentes %}
+            <li data-id="{{ item.id }}"{% if item.aguardando_conferencia %} class="fila-item-clicavel" data-dica="Clique para ver em 'Conferências'"{% endif %}>
+                {% if item.aguardando_conferencia %}
+                <span class="bolinha-status bolinha-vermelha" data-dica="Aguardando conferência" aria-label="Aguardando conferência"></span>
+                {% else %}
+                <span class="bolinha-status bolinha-laranja" data-dica="Em triagem" aria-label="Em triagem"></span>
+                {% endif %}
+                <span class="fila-item-nome" data-dica="{{ item.nome }}">{{ item.nome }}</span>
+                {% if item.aguardando_conferencia %}
+                <span class="fila-item-ver-conferencia" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="7"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                </span>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        <p class="vazio" id="vazio-pendentes-manual" {% if pendentes %}hidden{% endif %}>Nenhum PDF em triagem no momento.</p>
+    </section>
+
+    <section class="cartao-secao fila-coluna">
+        <div class="fila-coluna-cabecalho">
+            <h2>Processando <span class="contagem" id="contagem-processando-manual">{{ processando|length }}</span></h2>
+        </div>
+        <ul class="lista-arquivos lista-fila fila-coluna-lista" id="lista-processando-manual">
+            {% for item in processando %}
+            <li data-id="{{ item.id }}">
+                {% if item.status == "concluido" %}
+                <span class="bolinha-status bolinha-verde" data-dica="Concluído" aria-label="Concluído"></span>
+                <span class="fila-item-nome" data-dica="{{ item.nome }}">{{ item.nome }}</span>
+                <a href="/extratus-aburesi/relatorios?processo={{ item.processo_detectado|urlencode }}" class="botao-minimal">Ver relatório</a>
+                <button type="button" class="botao-remover-fila botao-dispensar-processamento" data-id="{{ item.id }}" data-dica="Tirar da lista">×</button>
+                {% elif item.status == "erro" %}
+                <span class="bolinha-status bolinha-vermelha" data-dica="{{ item.erro_mensagem or 'Falha no processamento' }}" aria-label="Erro"></span>
+                <span class="fila-item-nome" data-dica="{{ item.nome }}">{{ item.nome }}</span>
+                <span class="aviso-discreto">{{ item.erro_mensagem or "Falha no processamento." }}</span>
+                <button type="button" class="botao-remover-fila botao-dispensar-processamento" data-id="{{ item.id }}" data-dica="Tirar da lista">×</button>
+                {% else %}
+                <span class="bolinha-status bolinha-verde" data-dica="Gerando relatório" aria-label="Gerando relatório"></span>
+                <span class="fila-item-nome" data-dica="{{ item.nome }}">{{ item.nome }}</span>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        <p class="vazio" id="vazio-processando-manual" {% if processando %}hidden{% endif %}>Nenhum PDF em processamento.</p>
+    </section>
+</div>
 {% endblock %}
 
-{% block js_pagina %}
-<script>
-document.getElementById("campo-pdf-manual").addEventListener("change", function () {
-    document.getElementById("botao-enviar-pdf-manual").disabled = this.files.length === 0;
-});
-</script>
-{% endblock %}
+{% block js_pagina %}<script src="/extratus-aburesi/static/inbox.js?v={{ v }}" defer></script>{% endblock %}

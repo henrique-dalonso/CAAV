@@ -6,11 +6,16 @@ from app.ferramentas.extratus.db.jobs import listar_jobs, somar_custo_por_usuari
 from app.ferramentas.extratus.web.rotulos import rotulo_erro, rotulo_status
 from app.plataforma.db.models import Usuario
 from app.plataforma.db.usuarios import listar_todos_usuarios
-from app.plataforma.web.auth import exigir_admin_ferramenta
+from app.plataforma.web.auth import exigir_admin
 from app.plataforma.web.templates_util import criar_templates
 
 
-router = APIRouter(dependencies=[Depends(exigir_admin_ferramenta("extratus"))])
+# Henrique, 2026-08-11: Custos deixou de ser uma aba dentro do Extratus —
+# só é alcançável pelo painel de Administração (/admin/ferramentas), que
+# já exige admin da PLATAFORMA inteira. "Admin da ferramenta" (um
+# coordenador liberado só numa ferramenta específica) não abre mais essa
+# porta — só continua valendo pra Configurações do Motor (ver motor.py).
+router = APIRouter(dependencies=[Depends(exigir_admin)])
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 PLATAFORMA_TEMPLATES_DIR = (
@@ -24,7 +29,7 @@ templates.env.filters["rotulo_erro"] = rotulo_erro
 @router.get("/historico")
 def pagina_historico(
     request: Request,
-    usuario: Usuario = Depends(exigir_admin_ferramenta("extratus")),
+    usuario: Usuario = Depends(exigir_admin),
 ):
     jobs = listar_jobs()
     info_por_id = {u.id: {"nome": u.nome, "login": u.nome_usuario} for u in listar_todos_usuarios()}

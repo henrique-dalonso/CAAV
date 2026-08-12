@@ -48,11 +48,30 @@ def listar_itens_do_lote(lote_id):
 
 
 def listar_arquivos_ja_reivindicados():
-    """Nomes de arquivo que já têm um `ItemLoteMotor` (foram submetidos em
-    algum lote, em andamento ou já concluído) — usado pra não submeter o
-    mesmo PDF duas vezes."""
+    """Nomes de arquivo com um `ItemLoteMotor` num lote AINDA em andamento
+    (`LoteMotor.status == "enviado"`) — evita reenviar o mesmo PDF pra um
+    lote novo enquanto ele ainda está em voo.
+
+    Lote já concluído NÃO conta (bug real, Henrique 2026-08-11: "tem uns
+    documentos... está lá a dias processando"). Antes, esta função
+    devolvia TODO nome que já apareceu em QUALQUER lote, mesmo concluído
+    há dias — um PDF processado com sucesso é removido de
+    `motor_pasta_entrada` (`finalizar_processamento`), mas se um arquivo
+    NOVO reaparecer depois com o MESMO NOME (reenvio, teste, um caso
+    novo com nome genérico igual), ele ficava "reivindicado" pra sempre
+    por um lote que não tem nada a ver com ele — nunca mais entrava em
+    checagem nem em lote nenhum, preso como "processando" na tela pra
+    sempre. Só o lote "enviado" (em voo de verdade) precisa bloquear um
+    reenvio; um lote "concluído" já liberou seu arquivo fisicamente, o
+    nome deveria estar livre de novo (se for duplicata de um processo já
+    processado, `existe_relatorio_gerado_para_processo` pega isso na
+    checagem, de forma visível — Conferências — não silenciosa)."""
     with obter_sessao() as sessao:
-        consulta = select(ItemLoteMotor.arquivo_pdf)
+        consulta = (
+            select(ItemLoteMotor.arquivo_pdf)
+            .join(LoteMotor, LoteMotor.id == ItemLoteMotor.lote_id)
+            .where(LoteMotor.status == "enviado")
+        )
         return set(sessao.exec(consulta).all())
 
 

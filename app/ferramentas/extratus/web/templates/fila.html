@@ -1,24 +1,29 @@
 {% extends "base.html" %}
 
-{% block titulo %}Fila do motor — Extratus - Relatórios{% endblock %}
+{% block titulo %}Fila do Motor — Extratus - Relatórios{% endblock %}
 {% block nome_pagina %}Extratus - Relatórios{% endblock %}
 {% block css_pagina %}<link rel="stylesheet" href="/extratus/static/extratus.css?v={{ v }}">{% endblock %}
 
 {% block conteudo %}
 <div class="cabecalho-ferramenta">
     <div>
-        <h1>Fila do motor</h1>
-        <p>Envie PDFs em lote pra pasta universal do motor — sem precisar mexer em pasta nenhuma.</p>
+        <h1>Fila do Motor</h1>
+        <p>Envie PDFs em lote pra pasta universal do Motor — sem precisar mexer em pasta nenhuma.</p>
     </div>
 </div>
 
 <nav class="abas-extratus">
-    <a href="/extratus/" class="aba">Gerar relatórios</a>
-    <a href="/extratus/relatorios" class="aba">Relatórios</a>
-    <a href="/extratus/fila" class="aba aba-motor aba-ativa">Fila do motor</a>
+    <a href="/extratus/" class="aba">Gerar seu Relatório <span class="contagem-aba">{{ contagem_nav_pendentes(usuario) }}</span></a>
+    <a href="/extratus/relatorios" class="aba">Seus Relatórios <span class="contagem-aba">{{ contagem_nav_relatorios(usuario) }}</span></a>
+    <a href="/extratus/relatorios-finalizados" class="aba aba-motor">Relatórios do Motor</a>
+    <a href="/extratus/fila" class="aba aba-motor aba-ativa">Fila do Motor</a>
     {% if usuario_eh_admin_da_ferramenta(usuario, "extratus") %}
-    <a href="/extratus/motor" class="aba aba-motor">Motor</a>
-    <a href="/extratus/historico" class="aba aba-admin">Custos (admin)</a>
+    <a href="/extratus/motor" class="aba aba-motor aba-fixa-direita" data-dica="Configurações do Motor" aria-label="Configurações do Motor">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+    </a>
     {% endif %}
 </nav>
 
@@ -29,70 +34,171 @@
 <p class="banner-sucesso">✓ {{ sucesso }}</p>
 {% endif %}
 
+<section class="cartao-secao secao-conferencias" id="secao-conferencias" {% if not conferencias %}hidden{% endif %}>
+    <h2>
+        <span>Conferências <span class="contagem" id="contagem-conferencias">{{ conferencias|length }}</span></span>
+        <form action="/extratus/fila/conferencia/descartar-todas" method="post" class="form-conferencia" data-confirm="Descartar TODOS os arquivos aguardando conferência? Essa ação não pode ser desfeita." data-perigo="true">
+            <button type="submit" class="botao-minimal" data-dica="Remove da fila, de uma vez, todo arquivo que está aguardando uma decisão aqui">Descartar todas</button>
+        </form>
+    </h2>
+    <p class="aviso-discreto">Esses arquivos pararam na triagem automática e esperam uma decisão sua antes de seguir pro Motor.</p>
+    <ul class="lista-conferencias" id="lista-conferencias">
+        {% for item in conferencias %}
+        <li class="conferencia-item" data-id="{{ item.id }}" data-nome="{{ item.nome }}">
+            <div class="conferencia-item-info">
+                <span class="conferencia-item-nome" data-dica="{{ item.nome }}">{{ item.nome }}</span>
+                <span class="conferencia-item-motivo"><strong>Motivo:</strong> {{ item.mensagem }}{% if item.processo_detectado %} — processo {{ item.processo_detectado }}{% endif %}</span>
+            </div>
+            <div class="conferencia-item-acoes">
+                {% if item.tipo == "processo_nao_encontrado" %}
+                <form action="/extratus/fila/conferencia/{{ item.id }}/aprovar" method="post" class="form-conferencia form-conferencia-manual">
+                    {# "required" NÃO entra aqui na marcação inicial de propósito —
+                       um campo required dentro de um <div hidden> ainda reprova a
+                       validação nativa do navegador (form.checkValidity() falha),
+                       e ela roda ANTES do evento "submit" disparar — bloqueando o
+                       clique em silêncio, antes até do JS (fila.js) ter a chance de
+                       revelar o campo. "required" é ligado via JS bem na hora que o
+                       campo vira visível, não antes. Bug real achado testando ao
+                       vivo (2026-08-07). #}
+                    <div class="conferencia-campo-processo" hidden>
+                        <input type="text" name="processo" placeholder="0000000-00.0000.0.00.0000" pattern="\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}" inputmode="numeric" autocomplete="off">
+                    </div>
+                    <button type="submit" class="botao botao-pequeno botao-conferencia-aprovar" data-dica="Libera esse arquivo pra fila do Motor, com o número de processo informado">Aprovar</button>
+                </form>
+                {% else %}
+                <form action="/extratus/fila/conferencia/{{ item.id }}/aprovar" method="post" class="form-conferencia" data-confirm="Confirma que quer liberar {{ item.nome }} pra fila mesmo assim?">
+                    <button type="submit" class="botao botao-pequeno botao-conferencia-aprovar" data-dica="Libera esse arquivo pra fila do Motor, mesmo com a inconsistência encontrada">Aprovar</button>
+                </form>
+                {% endif %}
+                <form action="/extratus/fila/conferencia/{{ item.id }}/descartar" method="post" class="form-conferencia" data-confirm="Descartar {{ item.nome }} da fila? Essa ação não pode ser desfeita." data-perigo="true">
+                    <button type="submit" class="botao-remover-fila botao-conferencia-descartar" data-dica="Remove esse arquivo da fila pra sempre — não pode ser desfeito">Descartar</button>
+                </form>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+
 <section class="cartao-secao">
     <h2>Enviar PDFs</h2>
-    <p class="aviso-discreto">Essa fila é a do motor — universal, compartilhada com quem mais tiver acesso aqui. Não é a sua fila pessoal de "Gerar relatórios".</p>
-    <form action="/extratus/fila/upload" method="post" enctype="multipart/form-data" class="linha-upload">
-        <input type="file" name="arquivos" accept=".pdf" id="campo-pdfs-fila" multiple required>
-        <button type="submit" class="botao" id="botao-enviar-fila" disabled>Enviar pra fila</button>
+    <p class="aviso-discreto">Essa fila é a do Motor — universal, compartilhada com quem mais tiver acesso aqui. Não é a sua fila pessoal de "Gerar relatórios".</p>
+    <form action="/extratus/fila/upload" method="post" enctype="multipart/form-data" id="form-upload-fila">
+        <label class="zona-soltar" for="campo-pdfs-fila" id="zona-soltar-fila">
+            <input type="file" name="arquivos" accept=".pdf" id="campo-pdfs-fila" multiple hidden>
+            <svg class="zona-soltar-icone" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 15V4M12 4L7.5 8.5M12 4l4.5 4.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <p class="zona-soltar-titulo">Arraste seus PDFs aqui, ou clique pra selecionar</p>
+            <p class="zona-soltar-legenda">PDF, até 350MB por arquivo</p>
+        </label>
+
+        <div class="upload-lote" id="upload-lote" hidden>
+            <div class="upload-lote-resumo">
+                <span id="upload-lote-contagem"></span>
+                <div class="upload-lote-acoes">
+                    <button type="button" class="botao-minimal botao-minimal-icone" id="botao-desfazer-fila" disabled aria-label="Desfazer última ação" data-dica="Desfazer última ação">
+                        <svg class="botao-desfazer-icone" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M9 15L4.5 10.5L9 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M4.5 10.5H14a5 5 0 0 1 0 10h-2.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <button type="button" class="botao-minimal" id="botao-remover-todos-fila">Remover todos</button>
+                </div>
+            </div>
+
+            <div class="upload-cartoes" id="upload-cartoes">
+                <div class="upload-mais-wrap" id="upload-mais-wrap" hidden>
+                    <button type="button" class="upload-mais" id="botao-mais-arquivos" aria-expanded="false"></button>
+                    <div class="upload-mais-painel" id="painel-mais-arquivos" hidden>
+                        <ul class="upload-mais-lista" id="upload-mais-lista"></ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="upload-progresso" id="upload-progresso" hidden>
+                <div class="upload-progresso-trilha"><div class="upload-progresso-barra" id="upload-progresso-barra"></div></div>
+                <span id="upload-progresso-texto">Enviando...</span>
+            </div>
+
+            <button type="submit" class="botao" id="botao-enviar-fila" disabled>
+                <svg class="botao-enviar-fila-icone" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M12 19V5M12 5L6 11M12 5l6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span id="botao-enviar-fila-texto">Enviar pra fila</span>
+            </button>
+        </div>
     </form>
 </section>
 
 <div class="fila-colunas">
     <section class="cartao-secao fila-coluna">
         <div class="fila-coluna-cabecalho">
-            <h2>Pendentes <span class="contagem">{{ total_pendentes }}</span></h2>
-            {% if apenas_pendentes %}
-            <div class="fila-barra-selecao">
-                <div class="fila-acoes-selecao" id="fila-acoes-selecao" hidden>
-                    <label class="fila-selecionar-todos">
-                        <input type="checkbox" id="check-selecionar-todos-fila" class="check-input">
-                        <span class="check-caixa check-caixa-pequena"></span>
-                        Selecionar todos
-                    </label>
-                    <button type="submit" form="form-remover-varios" class="botao botao-pequeno botao-remover-selecionados" id="botao-remover-selecionados" disabled>Remover</button>
-                    <button type="button" class="botao-remover-fila" id="botao-cancelar-selecao-fila">Cancelar</button>
-                </div>
-                <button type="button" class="botao-minimal" id="botao-selecionar-fila">Selecionar</button>
+            <h2>
+                <span>Pendentes <span class="contagem" id="contagem-pendentes">{{ total_pendentes }}</span></span>
+                <button type="button" class="botao-minimal" id="botao-selecionar-fila" {% if not apenas_pendentes %}hidden{% endif %}>Selecionar</button>
+            </h2>
+            <button type="button" class="botao-minimal botao-desfazer-envio" id="botao-desfazer-envio" hidden>
+                <svg class="botao-desfazer-icone" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M9 15L4.5 10.5L9 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M4.5 10.5H14a5 5 0 0 1 0 10h-2.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Desfazer último envio
+            </button>
+            <div class="fila-acoes-selecao" id="fila-acoes-selecao" hidden>
+                <label class="fila-selecionar-todos">
+                    <input type="checkbox" id="check-selecionar-todos-fila" class="check-input">
+                    <span class="check-caixa check-caixa-pequena"></span>
+                    Selecionar todos
+                </label>
+                <button type="submit" form="form-remover-varios" class="botao botao-pequeno botao-remover-selecionados" id="botao-remover-selecionados" disabled>Remover</button>
+                <button type="button" class="botao-remover-fila" id="botao-cancelar-selecao-fila">Cancelar</button>
             </div>
-            {% endif %}
         </div>
-        {% if apenas_pendentes %}
         <form action="/extratus/fila/remover-varios" method="post" id="form-remover-varios">
-            <ul class="lista-arquivos lista-fila fila-coluna-lista">
-                {% for nome in apenas_pendentes %}
-                <li>
-                    <span class="bolinha-status bolinha-amarela" title="Aguardando o motor"></span>
+            <ul class="lista-arquivos lista-fila fila-coluna-lista" id="lista-pendentes">
+                {% for item in apenas_pendentes %}
+                <li data-nome="{{ item.nome }}"{% if item.aguardando_conferencia %} class="fila-item-clicavel" data-dica="Clique para ver em 'Conferências'"{% endif %}>
                     <label class="fila-item-checkbox" hidden>
-                        <input type="checkbox" name="nomes" value="{{ nome }}" class="check-input fila-item-check">
+                        <input type="checkbox" name="nomes" value="{{ item.nome }}" class="check-input fila-item-check">
                         <span class="check-caixa check-caixa-pequena"></span>
                     </label>
-                    <span class="fila-item-nome" title="{{ nome }}">{{ nome }}</span>
+                    {% if item.status == "aprovado" %}
+                    <span class="bolinha-status bolinha-amarela" data-dica="Aguardando o Motor" aria-label="Aguardando o Motor"></span>
+                    {% elif item.aguardando_conferencia %}
+                    <span class="bolinha-status bolinha-vermelha" data-dica="Aguardando conferência" aria-label="Aguardando conferência"></span>
+                    {% else %}
+                    <span class="bolinha-status bolinha-laranja" data-dica="Em checagem" aria-label="Em checagem"></span>
+                    {% endif %}
+                    <span class="fila-item-nome" data-dica="{{ item.nome }}">{{ item.nome }}</span>
+                    {% if item.aguardando_conferencia %}
+                    <span class="fila-item-ver-conferencia" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="7"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                    </span>
+                    {% endif %}
                 </li>
                 {% endfor %}
             </ul>
         </form>
-        {% else %}
-        <p class="vazio">Nenhum PDF aguardando o motor.</p>
-        {% endif %}
+        <p class="vazio" id="vazio-pendentes" {% if apenas_pendentes %}hidden{% endif %}>Nenhum PDF aguardando o Motor.</p>
     </section>
 
     <section class="cartao-secao fila-coluna">
         <div class="fila-coluna-cabecalho">
-            <h2>Processando <span class="contagem">{{ total_processando }}</span></h2>
+            <h2>Processando <span class="contagem" id="contagem-processando">{{ total_processando }}</span></h2>
         </div>
-        {% if apenas_processando %}
-        <ul class="lista-arquivos lista-fila fila-coluna-lista">
+        <ul class="lista-arquivos lista-fila fila-coluna-lista" id="lista-processando">
             {% for nome in apenas_processando %}
-            <li>
-                <span class="bolinha-status bolinha-verde" title="Em processamento pelo motor"></span>
-                <span class="fila-item-nome" title="{{ nome }}">{{ nome }}</span>
+            <li data-nome="{{ nome }}">
+                <span class="bolinha-status bolinha-verde" data-dica="Em processamento pelo Motor" aria-label="Em processamento pelo Motor"></span>
+                <span class="fila-item-nome" data-dica="{{ nome }}">{{ nome }}</span>
             </li>
             {% endfor %}
         </ul>
-        {% else %}
-        <p class="vazio">Nenhum PDF em processamento.</p>
-        {% endif %}
+        <p class="vazio" id="vazio-processando" {% if apenas_processando %}hidden{% endif %}>Nenhum PDF em processamento.</p>
     </section>
 </div>
 {% endblock %}

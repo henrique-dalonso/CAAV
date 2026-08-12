@@ -23,6 +23,7 @@ from app.plataforma.db.usuarios import (
     listar_ferramentas_mais_usadas,
     registrar_acesso_ferramenta,
     usuario_eh_admin_da_ferramenta,
+    usuario_tem_acesso_a_alguma_fila_motor,
     usuario_tem_acesso_fila_motor,
 )
 from app.plataforma.web.rotulos import emblema_ferramenta, rotulo_perfil
@@ -406,6 +407,51 @@ def test_rebaixar_de_admin_nao_ressuscita_admin_ferramenta_antigo(limpar_usuario
     assert listar_ferramentas_fila_ids(usuario.id) == set()
     assert usuario_eh_admin_da_ferramenta(atualizado, "extratus") is False
     assert usuario_tem_acesso_fila_motor(atualizado, "extratus") is False
+
+
+def test_colaborador_com_fila_motor_tem_acesso_a_alguma_fila(limpar_usuarios_teste):
+    extratus_id = _buscar_ferramenta_id_por_slug("extratus")
+
+    usuario = criar_usuario(
+        nome="Teste Colaborador",
+        nome_usuario=NOME_COLABORADOR_TESTE,
+        email="teste_usuarios_colab@example.com",
+        senha="senhaTeste123",
+        eh_admin=False,
+        cargo=CARGO_COLABORADOR,
+        ferramenta_ids=[extratus_id],
+        ferramentas_fila_ids=[extratus_id],
+    )
+
+    assert usuario_tem_acesso_a_alguma_fila_motor(usuario) is True
+
+
+def test_colaborador_sem_fila_motor_em_lugar_nenhum_nao_tem_acesso_a_alguma_fila(limpar_usuarios_teste):
+    extratus_id = _buscar_ferramenta_id_por_slug("extratus")
+
+    usuario = criar_usuario(
+        nome="Teste Colaborador",
+        nome_usuario=NOME_COLABORADOR_TESTE,
+        email="teste_usuarios_colab@example.com",
+        senha="senhaTeste123",
+        eh_admin=False,
+        cargo=CARGO_COLABORADOR,
+        ferramenta_ids=[extratus_id],
+    )
+
+    assert usuario_tem_acesso_a_alguma_fila_motor(usuario) is False
+
+
+def test_admin_da_plataforma_sempre_tem_acesso_a_alguma_fila(limpar_usuarios_teste):
+    usuario = criar_usuario(
+        nome="Teste Coordenador",
+        nome_usuario=NOME_COORDENADOR_TESTE,
+        email="teste_usuarios_coord@example.com",
+        senha="senhaTeste123",
+        eh_admin=True,
+    )
+
+    assert usuario_tem_acesso_a_alguma_fila_motor(usuario) is True
 
 
 def test_admin_ferramenta_tambem_tem_acesso_a_fila_motor(limpar_usuarios_teste):

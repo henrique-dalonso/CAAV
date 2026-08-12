@@ -3,8 +3,10 @@ import time
 from fastapi.templating import Jinja2Templates
 
 from app.plataforma.db.usuarios import (
+    ferramenta_pela_url,
     listar_ferramentas_do_usuario,
     usuario_eh_admin_da_ferramenta,
+    usuario_tem_acesso_a_alguma_fila_motor,
     usuario_tem_acesso_fila_motor,
 )
 from app.plataforma.web.rotulos import emblema_ferramenta, rotulo_perfil
@@ -21,13 +23,22 @@ from app.plataforma.web.rotulos import emblema_ferramenta, rotulo_perfil
 VERSAO_ESTATICOS = str(int(time.time()))
 
 
+def cor_ferramenta_atual(request):
+    """Ferramenta "dona" da página atual (pelo caminho da URL), se
+    alguma — base.html usa isso pra injetar a cor de identidade daquela
+    ferramenta como variável CSS, em vez de cada ferramenta precisar de
+    um bloco :root próprio fixado no seu extratus.css."""
+    return ferramenta_pela_url(request.url.path)
+
+
 def criar_templates(directory):
     """Cria um Jinja2Templates com os globals que toda tela logada precisa
     — a lista de ferramentas do usuário pro seletor de apps, o rótulo de
     hierarquia (Administrador/Coordenador/Colaborador) pro card de perfil,
-    as checagens de admin-de-ferramenta e fila-do-motor (pras abas
-    Custos/Motor/Fila dentro de cada ferramenta), e o emblema (1-2 letras)
-    de cada ferramenta. Usar isso em vez de instanciar Jinja2Templates
+    as checagens de admin-de-ferramenta (aba Configurações do Motor,
+    dentro de cada ferramenta — "Custos" não é mais uma delas, ver
+    admin.py) e fila-do-motor (aba Fila), e o emblema (1-2 letras) de
+    cada ferramenta. Usar isso em vez de instanciar Jinja2Templates
     direto garante que qualquer tela nova já sai com isso funcionando, sem
     precisar lembrar de passar nada em cada rota.
     """
@@ -36,6 +47,8 @@ def criar_templates(directory):
     templates.env.globals["rotulo_perfil"] = rotulo_perfil
     templates.env.globals["usuario_eh_admin_da_ferramenta"] = usuario_eh_admin_da_ferramenta
     templates.env.globals["usuario_tem_acesso_fila_motor"] = usuario_tem_acesso_fila_motor
+    templates.env.globals["usuario_tem_acesso_a_alguma_fila_motor"] = usuario_tem_acesso_a_alguma_fila_motor
+    templates.env.globals["cor_ferramenta_atual"] = cor_ferramenta_atual
     templates.env.filters["emblema_ferramenta"] = emblema_ferramenta
     templates.env.globals["v"] = VERSAO_ESTATICOS
 

@@ -103,11 +103,13 @@ def usuario_tem_acesso(usuario: Usuario, slug_ferramenta: str) -> bool:
 
 
 def usuario_eh_admin_da_ferramenta(usuario: Usuario, slug_ferramenta: str) -> bool:
-    """Acesso às abas administrativas DENTRO de uma ferramenta específica
-    (ex: Custos e Motor no Extratus) — não confundir com exigir_admin, que
-    é a área de Administração da plataforma inteira. Admin da plataforma
-    sempre tem isso também; coordenador só se foi liberado explicitamente
-    ferramenta por ferramenta."""
+    """Acesso à aba administrativa DENTRO de uma ferramenta específica
+    (Configurações do Motor, no Extratus — Henrique, 2026-08-11: "Custos"
+    deixou de ser uma delas, virou tela própria só pra admin da
+    plataforma, ver app/plataforma/web/routes/admin.py) — não confundir
+    com exigir_admin, que é a área de Administração da plataforma
+    inteira. Admin da plataforma sempre tem isso também; coordenador só
+    se foi liberado explicitamente ferramenta por ferramenta."""
     if usuario.eh_admin:
         return True
 
@@ -155,6 +157,34 @@ def usuario_tem_acesso_fila_motor(usuario: Usuario, slug_ferramenta: str) -> boo
         return sessao.exec(consulta).first() is not None
 
 
+def usuario_tem_acesso_a_alguma_fila_motor(usuario: Usuario) -> bool:
+    """Versão "em qualquer ferramenta" de usuario_tem_acesso_fila_motor —
+    usada só pra decidir se a aba "Conferências" do sininho de
+    notificações aparece pra alguém (Henrique, 2026-08-07: "Ela só será
+    exibida para quem tiver acesso a pelo menos uma fila de Motor").
+    Filtra por Ferramenta.suporta_fila_motor em vez de uma lista fixa de
+    slugs — assim, uma ferramenta nova que ganhe fila do motor no futuro
+    já entra automaticamente aqui, sem precisar lembrar de atualizar
+    isso também (ver REGISTRO_NOTIFICACOES em web/notificacoes.py, que é
+    uma lista fixa por um motivo diferente: lá precisa do import de cada
+    listar_notificacoes(), que não tem como descobrir sozinho)."""
+    if usuario.eh_admin:
+        return True
+
+    with obter_sessao() as sessao:
+        consulta = (
+            select(UsuarioFerramenta)
+            .join(Ferramenta, Ferramenta.id == UsuarioFerramenta.ferramenta_id)
+            .where(
+                UsuarioFerramenta.usuario_id == usuario.id,
+                Ferramenta.suporta_fila_motor == True,  # noqa: E712
+                (UsuarioFerramenta.fila_motor == True)  # noqa: E712
+                | (UsuarioFerramenta.admin_ferramenta == True),  # noqa: E712
+            )
+        )
+        return sessao.exec(consulta).first() is not None
+
+
 def listar_ferramentas_fila_ids(usuario_id: int):
     with obter_sessao() as sessao:
         consulta = select(UsuarioFerramenta.ferramenta_id).where(
@@ -180,6 +210,27 @@ def listar_ferramentas_do_usuario(usuario: Usuario):
             .order_by(Ferramenta.nome)
         )
         return sessao.exec(consulta).all()
+
+
+def ferramenta_pela_url(caminho):
+    """Qual ferramenta "dona" desse caminho de URL, se alguma — usado pra
+    saber de qual ferramenta puxar a cor de identidade (ver
+    cor_ferramenta_atual, templates_util.py) em qualquer sub-página dela
+    (não só a raiz, também funciona pra /extratus/motor, /extratus/fila
+    etc.), já que o middleware de "Mais utilizadas" só faz esse match
+    exato pra raiz, não serve pra isso."""
+    with obter_sessao() as sessao:
+        ferramentas = sessao.exec(select(Ferramenta)).all()
+
+    candidatas = [f for f in ferramentas if caminho.startswith(f.url)]
+
+    if not candidatas:
+        return None
+
+    # Prefixo mais específico (url mais longa) vence, se mais de um
+    # bater — não acontece com as URLs de hoje, mas evita ambiguidade
+    # silenciosa se um dia existir.
+    return max(candidatas, key=lambda f: len(f.url))
 
 
 def registrar_acesso_ferramenta(usuario_id, ferramenta_id):
@@ -393,6 +444,51 @@ def atualizar_senha(usuario_id, nova_senha_hash):
     with obter_sessao() as sessao:
         usuario = sessao.get(Usuario, usuario_id)
         usuario.senha_hash = nova_senha_hash
+        sessao.add(usuario)
+        sessao.commit()
+
+
+def incrementar_tentativas_falhas(usuario_id):
+    """Soma 1 nas tentativas de senha erradas SEGUIDAS e devolve o novo
+    total — quem decide se isso já é motivo de bloqueio é o chamador
+    (auth.py), que conhece o limite (LIMITE_TENTATIVAS_USUARIO)."""
+    with obter_sessao() as sessao:
+        usuario = sessao.get(Usuario, usuario_id)
+        usuario.tentativas_login_falhas += 1
+        sessao.add(usuario)
+        sessao.commit()
+        return usuario.tentativas_login_falhas
+
+
+def resetar_tentativas_falhas(usuario_id):
+    """Chamado em todo login bem-sucedido — qualquer acerto no meio zera
+    a sequência de erros (Henrique, 2026-08-11: "consecutivas, zera ao
+    acertar")."""
+    with obter_sessao() as sessao:
+        usuario = sessao.get(Usuario, usuario_id)
+        usuario.tentativas_login_falhas = 0
+        sessao.add(usuario)
+        sessao.commit()
+
+
+def bloquear_usuario_por_tentativas(usuario_id):
+    with obter_sessao() as sessao:
+        usuario = sessao.get(Usuario, usuario_id)
+        usuario.bloqueado = True
+        usuario.bloqueado_em = datetime.now()
+        sessao.add(usuario)
+        sessao.commit()
+
+
+def desbloquear_usuario(usuario_id):
+    """Ação de admin na tela de Usuários — só ela reabre uma conta
+    travada por tentativas erradas (lembrar a senha certa sozinho não é
+    suficiente, por desenho)."""
+    with obter_sessao() as sessao:
+        usuario = sessao.get(Usuario, usuario_id)
+        usuario.bloqueado = False
+        usuario.bloqueado_em = None
+        usuario.tentativas_login_falhas = 0
         sessao.add(usuario)
         sessao.commit()
 

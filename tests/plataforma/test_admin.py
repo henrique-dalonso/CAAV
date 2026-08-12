@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import delete
@@ -73,7 +75,12 @@ def test_aba_ferramentas_carrega(cliente_admin_logado):
     resp = cliente_admin_logado.get("/admin/ferramentas")
 
     assert resp.status_code == 200
-    assert "Configuração do Extratus" in resp.text
+    # Grade de ícones (2026-08-11) — cada ferramenta com tela de custos
+    # própria vira um link direto pra ela, não mais uma tabela de texto
+    # nem o bloco "Configuração do Extratus" (removido, virou redundante
+    # com Configurações do Motor dentro da própria ferramenta).
+    assert "/extratus/historico" in resp.text
+    assert "Configuração do Extratus" not in resp.text
 
 
 def test_aba_novo_usuario_carrega_formulario(cliente_admin_logado):
@@ -139,3 +146,46 @@ def test_redefinir_senha_com_confirmacao_diferente_nao_atualiza(cliente_admin_lo
 
     alvo_atualizado = buscar_usuario_por_nome_usuario(NOME_ALVO_TESTE)
     assert alvo_atualizado.senha_hash == hash_antes
+
+
+def test_desbloquear_usuario_limpa_bloqueio_e_tentativas(cliente_admin_logado):
+    alvo = buscar_usuario_por_nome_usuario(NOME_ALVO_TESTE)
+
+    with obter_sessao() as sessao:
+        usuario = sessao.get(Usuario, alvo.id)
+        usuario.bloqueado = True
+        usuario.bloqueado_em = datetime.now()
+        usuario.tentativas_login_falhas = 3
+        sessao.add(usuario)
+        sessao.commit()
+
+    resp = cliente_admin_logado.post(
+        f"/admin/usuarios/{alvo.id}/desbloquear",
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 303
+    assert "sucesso=" in resp.headers["location"]
+
+    alvo_atualizado = buscar_usuario_por_nome_usuario(NOME_ALVO_TESTE)
+    assert alvo_atualizado.bloqueado is False
+    assert alvo_atualizado.bloqueado_em is None
+    assert alvo_atualizado.tentativas_login_falhas == 0
+
+
+def test_aba_usuarios_mostra_botao_desbloquear_so_para_bloqueados(cliente_admin_logado):
+    alvo = buscar_usuario_por_nome_usuario(NOME_ALVO_TESTE)
+
+    with obter_sessao() as sessao:
+        usuario = sessao.get(Usuario, alvo.id)
+        usuario.bloqueado = True
+        sessao.add(usuario)
+        sessao.commit()
+
+    resp = cliente_admin_logado.get("/admin/usuarios")
+
+    assert resp.status_code == 200
+    assert f"/admin/usuarios/{alvo.id}/desbloquear" in resp.text
+
+    admin_logado = buscar_usuario_por_nome_usuario(NOME_ADMIN_TESTE)
+    assert f"/admin/usuarios/{admin_logado.id}/desbloquear" not in resp.text

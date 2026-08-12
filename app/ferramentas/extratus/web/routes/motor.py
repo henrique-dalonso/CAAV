@@ -16,6 +16,7 @@ from app.ferramentas.extratus.core.prompt_manager import (
     substituir_instrucoes_relatorio,
 )
 from app.ferramentas.extratus.db.lotes import listar_itens_do_lote, listar_lotes_em_andamento
+from app.ferramentas.extratus.web.rotulos import contagem_nav_pendentes, contagem_nav_relatorios
 from app.plataforma.db.models import Usuario
 from app.plataforma.paths import PROJECT_ROOT
 from app.plataforma.web.auth import exigir_admin_ferramenta
@@ -29,6 +30,10 @@ PLATAFORMA_TEMPLATES_DIR = (
     Path(__file__).resolve().parents[4] / "plataforma" / "web" / "templates"
 )
 templates = criar_templates([TEMPLATES_DIR, PLATAFORMA_TEMPLATES_DIR])
+# Contagem da aba "Gerar relatórios"/"Relatórios" — ver mesmo comentário
+# em inbox.py.
+templates.env.globals["contagem_nav_pendentes"] = contagem_nav_pendentes
+templates.env.globals["contagem_nav_relatorios"] = contagem_nav_relatorios
 
 
 @router.get("/motor")
@@ -118,7 +123,7 @@ def atualizar_config_motor_route(
         )
 
     return RedirectResponse(
-        url="/extratus/motor?sucesso=" + quote("Configurações do motor salvas."),
+        url="/extratus/motor?sucesso=" + quote("Configurações do Motor salvas."),
         status_code=303,
     )
 

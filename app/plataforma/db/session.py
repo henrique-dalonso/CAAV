@@ -12,6 +12,58 @@ from app.ferramentas.extratus_aburesi.db import models as _modelos_extratus_abur
 
 DB_PATH = PROJECT_ROOT / "banco" / "plataforma.db"
 
+# create_all() só CRIA tabela que ainda não existe — nunca adiciona
+# coluna numa tabela já existente, e esse projeto não usa uma
+# ferramenta de migração (Alembic ou parecido). Esse dicionário é o
+# registro manual de "colunas que um model ganhou depois da tabela já
+# existir de verdade": {tabela: {coluna: tipo_sql}}. _garantir_colunas
+# roda toda vez que o servidor sobe e só faz algo (ALTER TABLE) se a
+# coluna realmente ainda não existir — sem isso, todo campo novo em
+# qualquer model precisaria de um ALTER TABLE manual, uma vez, lembrado
+# por alguém (foi assim, sem registro nenhum, até esse ponto).
+COLUNAS_PENDENTES = {
+    "usuario": {
+        "tentativas_login_falhas": "INTEGER DEFAULT 0",
+        "bloqueado": "BOOLEAN DEFAULT 0",
+        "bloqueado_em": "TIMESTAMP",
+    },
+    "ferramenta": {
+        "cor_acento": "VARCHAR",
+        "cor_acento_hover": "VARCHAR",
+        "cor_acento_fraco": "VARCHAR",
+        "cor_acento_escuro": "VARCHAR",
+        "cor_acento_hover_escuro": "VARCHAR",
+        "cor_acento_fraco_escuro": "VARCHAR",
+    },
+    "job": {
+        "notificacao_resolvida": "BOOLEAN DEFAULT 0",
+    },
+    "job_aburesi": {
+        "notificacao_resolvida": "BOOLEAN DEFAULT 0",
+    },
+    "triagemmanual": {
+        "origem_duplicado": "VARCHAR",
+    },
+    "triagemmanual_aburesi": {
+        "origem_duplicado": "VARCHAR",
+    },
+}
+
+
+def _garantir_colunas(engine):
+    with engine.connect() as conexao:
+        for tabela, colunas in COLUNAS_PENDENTES.items():
+            existentes = {
+                linha[1]
+                for linha in conexao.exec_driver_sql(f"PRAGMA table_info({tabela})")
+            }
+
+            for nome, tipo in colunas.items():
+                if nome not in existentes:
+                    conexao.exec_driver_sql(f"ALTER TABLE {tabela} ADD COLUMN {nome} {tipo}")
+
+        conexao.commit()
+
 
 def _criar_engine():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -19,6 +71,7 @@ def _criar_engine():
     engine = create_engine(f"sqlite:///{DB_PATH}")
 
     SQLModel.metadata.create_all(engine)
+    _garantir_colunas(engine)
 
     return engine
 

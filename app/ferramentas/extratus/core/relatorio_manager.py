@@ -35,9 +35,8 @@ def salvar_relatorio_docx(
     com os dados do relatório e salva o resultado.
 
     `dados` é um dicionário com os campos definidos no template (ver
-    app/ferramentas/extratus/scripts/gerar_template_relatorio.py) — hoje
-    vem do relatório simulado, depois vai vir da IA real, sem precisar
-    mudar esta função.
+    app/ferramentas/extratus/scripts/gerar_template_relatorio.py), vindo
+    da IA real (ia_cliente.gerar_relatorio_claude).
     """
     caminho_saida = Path(caminho_saida)
 

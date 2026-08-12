@@ -120,6 +120,67 @@
         }
     });
 
+    // Editor de "redefinir senha" (<details> por linha, tabela de
+    // Usuários) — mesmo clipping do .painel-ferramentas acima
+    // (.tabela-scroll corta painel "absolute" perto do fim da tabela),
+    // resolvido do mesmo jeito: position:fixed no CSS, top/left
+    // calculados aqui com base na posição real do botão.
+    document.querySelectorAll(".admin-senha-editor").forEach(function (editor) {
+        var botao = editor.querySelector("summary");
+        var painel = editor.querySelector(".admin-form-senha");
+
+        if (!botao || !painel) {
+            return;
+        }
+
+        function posicionar() {
+            var margem = 8;
+            var retanguloBotao = botao.getBoundingClientRect();
+            var alturaPainel = painel.offsetHeight;
+            var larguraPainel = painel.offsetWidth;
+
+            var topo = retanguloBotao.bottom + margem;
+            if (topo + alturaPainel > window.innerHeight - margem) {
+                topo = retanguloBotao.top - alturaPainel - margem;
+            }
+            if (topo < margem) {
+                topo = margem;
+            }
+
+            // Borda direita do painel alinhada com a borda direita do
+            // botão (mesma intenção do "right: 0" que existia no CSS
+            // antes, só que calculado pra funcionar com fixed).
+            var esquerda = retanguloBotao.right - larguraPainel;
+            if (esquerda < margem) {
+                esquerda = margem;
+            }
+            if (esquerda + larguraPainel > window.innerWidth - margem) {
+                esquerda = window.innerWidth - larguraPainel - margem;
+            }
+
+            painel.style.top = topo + "px";
+            painel.style.left = esquerda + "px";
+        }
+
+        editor.addEventListener("toggle", function () {
+            if (editor.open) {
+                posicionar();
+            }
+        });
+
+        window.addEventListener("scroll", function () {
+            if (editor.open) {
+                posicionar();
+            }
+        }, true);
+
+        window.addEventListener("resize", function () {
+            if (editor.open) {
+                posicionar();
+            }
+        });
+    });
+
     // Form de criar usuário: "Administrador? Sim" esconde cargo +
     // ferramentas (não fazem sentido pra admin, que já tem acesso total).
     var segmentoAdmin = document.getElementById("segmento-admin");

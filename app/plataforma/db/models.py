@@ -58,6 +58,16 @@ class Usuario(SQLModel, table=True):
     cargo: str = Field(default=CARGO_COLABORADOR)
     ativo: bool = True
 
+    # Trava por usuário (Henrique, 2026-08-11): 3 senhas erradas SEGUIDAS
+    # (qualquer acerto no meio zera o contador, ver resetar_tentativas_falhas)
+    # bloqueia a conta até um admin desbloquear na tela de Usuários — mesmo
+    # que a pessoa lembre a senha certa depois, login continua recusado
+    # enquanto bloqueado for True. Ver também TentativaLoginFalha, a trava
+    # complementar por IP/rede.
+    tentativas_login_falhas: int = Field(default=0)
+    bloqueado: bool = Field(default=False)
+    bloqueado_em: Optional[datetime] = Field(default=None)
+
     # "sistema" segue o tema do sistema operacional (padrão); "claro"/
     # "escuro" força a escolha independente do sistema. Por usuário, não
     # por navegador — segue a pessoa entre computadores do escritório.
@@ -90,6 +100,20 @@ class Ferramenta(SQLModel, table=True):
     descricao: Optional[str] = None
     url: str
     suporta_fila_motor: bool = Field(default=False)
+
+    # Identidade visual da ferramenta (bolinha na bandeja de apps/home,
+    # tarja acima do título, botões/abas dentro dela) — None em qualquer
+    # um deles cai no azul padrão da plataforma (ver base.css). Guarda
+    # claro e escuro separados (em vez de calcular um a partir do outro)
+    # porque a paleta escura da Aburesi não é só "a clara mais clara", é
+    # uma escolha visual própria — copiado 1:1 do que já existia fixado
+    # em CSS antes disso virar campo de banco.
+    cor_acento: Optional[str] = None
+    cor_acento_hover: Optional[str] = None
+    cor_acento_fraco: Optional[str] = None
+    cor_acento_escuro: Optional[str] = None
+    cor_acento_hover_escuro: Optional[str] = None
+    cor_acento_fraco_escuro: Optional[str] = None
 
 
 class UsuarioFerramenta(SQLModel, table=True):
@@ -131,3 +155,20 @@ class AcessoFerramenta(SQLModel, table=True):
     )
     contagem: int = Field(default=0)
     ultimo_acesso: datetime = Field(default_factory=datetime.now)
+
+
+class TentativaLoginFalha(SQLModel, table=True):
+    """Trava por IP/rede (Henrique, 2026-08-11): guarda cada tentativa de
+    login que falhou (senha errada, ou nome de usuário que nem existe).
+    5 nomes de usuário DIFERENTES tentados pelo mesmo IP em 15 minutos
+    indica alguém varrendo contas, não um colega errando a própria
+    senha — isso já é pego pela trava por usuário (Usuario.bloqueado)
+    sem precisar desta tabela. Só interessam os últimos 15 minutos: cada
+    nova tentativa poda as linhas mais velhas (ver registrar_tentativa_
+    falha em db/tentativas_login.py), então a tabela nunca cresce sem
+    limite."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    ip: str = Field(index=True)
+    nome_usuario_tentado: str
+    criado_em: datetime = Field(default_factory=datetime.now)

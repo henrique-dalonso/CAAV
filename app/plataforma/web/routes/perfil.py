@@ -16,7 +16,7 @@ router = APIRouter(dependencies=[Depends(exigir_login)])
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 templates = criar_templates(TEMPLATES_DIR)
 
-TAMANHO_MINIMO_SENHA = 8
+TAMANHO_MINIMO_SENHA = 6
 
 
 def _redirecionar_senha(erro=None, sucesso=None):

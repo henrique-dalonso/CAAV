@@ -2,7 +2,13 @@
 
 {% block titulo %}Administração — Centro de Experiência do Colaborador{% endblock %}
 {% block nome_pagina %}Centro de Experiência{% endblock %}
-{% block css_pagina %}<link rel="stylesheet" href="/static/admin.css?v={{ v }}">{% endblock %}
+{% block css_pagina %}
+<link rel="stylesheet" href="/static/admin.css?v={{ v }}">
+<!-- .grade-ferramentas/.cartao-ferramenta (grade de ícones da aba Ferramentas,
+     2026-08-11) são definidas em home.css — reaproveitadas aqui em vez de
+     duplicadas, mesmo visual do menu inicial. -->
+<link rel="stylesheet" href="/static/home.css?v={{ v }}">
+{% endblock %}
 
 {% block conteudo %}
 <div class="cabecalho-ferramenta">
@@ -86,37 +92,22 @@
 
         {% elif aba_ativa == "ferramentas" %}
         <section class="cartao-secao">
-            <h2>Ferramentas <span class="contagem">{{ ferramentas|length }}</span></h2>
-            <div class="tabela-scroll">
-                <table class="tabela">
-                    <thead>
-                        <tr>
-                            <th>Nome</th>
-                            <th>Descrição</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for ferramenta in ferramentas %}
-                        <tr>
-                            <td><strong>{{ ferramenta.nome }}</strong></td>
-                            <td>{{ ferramenta.descricao or "—" }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <h2>Ferramentas <span class="contagem">{{ ferramentas_com_custos|length }}</span></h2>
+            <p class="aviso-discreto">Custos de IA e detalhe técnico de cada ferramenta — clique pra abrir a tela de custos dela.</p>
+            <div class="grade-ferramentas">
+                {% for ferramenta in ferramentas_com_custos %}
+                <a class="cartao-ferramenta" href="{{ url_custos_por_ferramenta[ferramenta.slug] }}" data-slug="{{ ferramenta.slug }}">
+                    <div class="emblema"{% if ferramenta.cor_acento %} style="--emblema-cor:{{ ferramenta.cor_acento }};--emblema-cor-hover:{{ ferramenta.cor_acento_hover }};--emblema-cor-escuro:{{ ferramenta.cor_acento_escuro }};--emblema-cor-hover-escuro:{{ ferramenta.cor_acento_hover_escuro }};"{% endif %}>{{ ferramenta.nome|emblema_ferramenta }}</div>
+                    <div>
+                        <strong>{{ ferramenta.nome }}</strong><br>
+                        <span>Custos e detalhe técnico</span>
+                    </div>
+                    <span class="seta">&rarr;</span>
+                </a>
+                {% else %}
+                <p class="vazio">Nenhuma ferramenta com tela de custos própria ainda.</p>
+                {% endfor %}
             </div>
-        </section>
-
-        <section class="cartao-secao">
-            <h2>Configuração do Extratus</h2>
-            <dl class="lista-dados">
-                <div><dt>Entrada</dt><dd>{{ config.pasta_entrada }}</dd></div>
-                <div><dt>Saída (relatórios)</dt><dd>{{ config.pasta_saida }}</dd></div>
-                <div><dt>Processados</dt><dd>{{ config.pasta_processados }}</dd></div>
-                <div><dt>Revisão</dt><dd>{{ config.pasta_revisao }}</dd></div>
-                <div><dt>Erros</dt><dd>{{ config.pasta_erros }}</dd></div>
-            </dl>
-            <p class="aviso-discreto">Essas pastas são as da fila manual de "Gerar relatórios" — pra ajustar a pasta do Motor, use a aba Motor dentro do Extratus.</p>
         </section>
 
         {% elif aba_ativa == "novo-usuario" %}
@@ -150,7 +141,7 @@
                     </div>
                     <div class="campo">
                         <label for="senha">Senha</label>
-                        <input id="senha" type="password" name="senha" required minlength="8">
+                        <input id="senha" type="password" name="senha" required minlength="6">
                     </div>
                 </div>
 
@@ -188,7 +179,7 @@
                         </span>
                         <div>
                             <h3>Cargo e ferramentas</h3>
-                            <p>Coordenador já sai com todas as ferramentas liberadas. "Admin da ferramenta" libera as abas administrativas dela; "Fila do motor" libera só o upload em lote (funciona pra colaborador também).</p>
+                            <p>Coordenador já sai com todas as ferramentas liberadas. "Admin da ferramenta" libera Configurações do Motor dela; "Fila do Motor" libera só o upload em lote (funciona pra colaborador também).</p>
                         </div>
                     </div>
                     <div class="linha-cargo-ferramentas">
@@ -227,16 +218,16 @@
                                                 </svg>
                                             </span>
                                         </label>
-                                        <label class="ferramenta-tile-admin" title="Acesso às abas de administração desta ferramenta">
+                                        <label class="ferramenta-tile-admin" data-dica="Acesso às Configurações do Motor desta ferramenta">
                                             <input type="checkbox" name="ferramentas_admin_ids" value="{{ ferramenta.id }}" class="check-input">
                                             <span class="check-caixa check-caixa-pequena"></span>
                                             <span>Admin da ferramenta</span>
                                         </label>
                                         {% if ferramenta.suporta_fila_motor %}
-                                        <label class="ferramenta-tile-fila" title="Acesso à aba de fila do motor (upload em lote)">
+                                        <label class="ferramenta-tile-fila" data-dica="Acesso à aba de fila do Motor (upload em lote)">
                                             <input type="checkbox" name="ferramentas_fila_ids" value="{{ ferramenta.id }}" class="check-input">
                                             <span class="check-caixa check-caixa-pequena"></span>
-                                            <span>Fila do motor</span>
+                                            <span>Fila do Motor</span>
                                         </label>
                                         {% endif %}
                                     </div>
@@ -269,16 +260,17 @@
                         <th>E-mail</th>
                         <th>Perfil</th>
                         <th>Ativo</th>
+                        <th>Bloqueado</th>
                         <th>Ações</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for usuario_linha in usuarios %}
                     {% set eh_proprio = usuario_linha.id == usuario.id %}
-                    <tr>
-                        <td class="truncavel" title="{{ usuario_linha.nome }}">{{ usuario_linha.nome }}</td>
-                        <td class="truncavel" title="{{ usuario_linha.nome_usuario }}">{{ usuario_linha.nome_usuario }}</td>
-                        <td class="truncavel" title="{{ usuario_linha.email }}">{{ usuario_linha.email }}</td>
+                    <tr{{ ' class="admin-linha-bloqueada"' | safe if usuario_linha.bloqueado }}>
+                        <td class="truncavel" data-dica="{{ usuario_linha.nome }}">{{ usuario_linha.nome }}</td>
+                        <td class="truncavel" data-dica="{{ usuario_linha.nome_usuario }}">{{ usuario_linha.nome_usuario }}</td>
+                        <td class="truncavel" data-dica="{{ usuario_linha.email }}">{{ usuario_linha.email }}</td>
                         <td>
                             <span class="selo{{ ' selo-positivo' if usuario_linha.eh_admin else (' selo-azul' if usuario_linha.cargo == 'colaborador' else ' selo-roxo') }}">{{ rotulo_perfil(usuario_linha) }}</span>
                         </td>
@@ -289,12 +281,31 @@
                             <span class="selo selo-negativo">Não</span>
                             {% endif %}
                         </td>
+                        <td>
+                            {% if usuario_linha.bloqueado %}
+                            <div class="admin-bloqueio">
+                                <span class="selo selo-negativo" data-dica="3 tentativas de senha erradas seguidas, em {{ usuario_linha.bloqueado_em.strftime('%d/%m %H:%M') if usuario_linha.bloqueado_em else '?' }}">Sim</span>
+                                <form action="/admin/usuarios/{{ usuario_linha.id }}/desbloquear" method="post"
+                                    data-confirm="Desbloquear {{ usuario_linha.nome }}?">
+                                    <button type="submit" class="admin-icone-acao admin-icone-acao-perigo"
+                                        data-dica="Desbloquear usuário" aria-label="Desbloquear usuário">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                            <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+                                        </svg>
+                                    </button>
+                                </form>
+                            </div>
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
                         <td class="admin-acoes">
                             <form action="/admin/usuarios/{{ usuario_linha.id }}/alternar-ativo" method="post"
                                 data-confirm="{{ ('Desativar ' ~ usuario_linha.nome ~ '?') if (usuario_linha.ativo and not eh_proprio) else '' }}">
                                 <button type="submit" class="admin-icone-acao{{ ' admin-icone-acao-ativa' if usuario_linha.ativo }}"
-                                    {% if eh_proprio %}disabled title="Não é possível desativar o próprio usuário"
-                                    {% else %}title="{{ 'Desativar usuário' if usuario_linha.ativo else 'Ativar usuário' }}"{% endif %}>
+                                    {% if eh_proprio %}disabled data-dica="Não é possível desativar o próprio usuário" aria-label="Não é possível desativar o próprio usuário"
+                                    {% else %}data-dica="{{ 'Desativar usuário' if usuario_linha.ativo else 'Ativar usuário' }}" aria-label="{{ 'Desativar usuário' if usuario_linha.ativo else 'Ativar usuário' }}"{% endif %}>
                                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                         <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
                                         <line x1="12" y1="2" x2="12" y2="12"></line>
@@ -304,8 +315,8 @@
                             <form action="/admin/usuarios/{{ usuario_linha.id }}/alternar-admin" method="post"
                                 data-confirm="{{ '' if eh_proprio else (('Remover admin de ' ~ usuario_linha.nome ~ '?') if usuario_linha.eh_admin else ('Tornar ' ~ usuario_linha.nome ~ ' administrador?')) }}">
                                 <button type="submit" class="admin-icone-acao{{ ' admin-icone-acao-ativa' if usuario_linha.eh_admin }}"
-                                    {% if eh_proprio %}disabled title="Não é possível alterar o admin do próprio usuário"
-                                    {% else %}title="{{ 'Remover admin' if usuario_linha.eh_admin else 'Tornar admin' }}"{% endif %}>
+                                    {% if eh_proprio %}disabled data-dica="Não é possível alterar o admin do próprio usuário" aria-label="Não é possível alterar o admin do próprio usuário"
+                                    {% else %}data-dica="{{ 'Remover admin' if usuario_linha.eh_admin else 'Tornar admin' }}" aria-label="{{ 'Remover admin' if usuario_linha.eh_admin else 'Tornar admin' }}"{% endif %}>
                                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                                     </svg>
@@ -315,9 +326,9 @@
                                 data-confirm="{{ '' if (eh_proprio or usuario_linha.eh_admin) else (('Tornar ' ~ usuario_linha.nome ~ ' colaborador?') if usuario_linha.cargo == 'coordenador' else ('Tornar ' ~ usuario_linha.nome ~ ' coordenador?')) }}">
                                 <input type="hidden" name="cargo" value="{{ 'colaborador' if usuario_linha.cargo == 'coordenador' else 'coordenador' }}">
                                 <button type="submit" class="admin-icone-acao{{ ' admin-icone-acao-ativa' if usuario_linha.cargo == 'coordenador' }}"
-                                    {% if eh_proprio %}disabled title="Não é possível alterar o cargo do próprio usuário"
-                                    {% elif usuario_linha.eh_admin %}disabled title="Não se aplica a administradores"
-                                    {% else %}title="{{ 'Tornar colaborador' if usuario_linha.cargo == 'coordenador' else 'Tornar coordenador' }}"{% endif %}>
+                                    {% if eh_proprio %}disabled data-dica="Não é possível alterar o cargo do próprio usuário" aria-label="Não é possível alterar o cargo do próprio usuário"
+                                    {% elif usuario_linha.eh_admin %}disabled data-dica="Não se aplica a administradores" aria-label="Não se aplica a administradores"
+                                    {% else %}data-dica="{{ 'Tornar colaborador' if usuario_linha.cargo == 'coordenador' else 'Tornar coordenador' }}" aria-label="{{ 'Tornar colaborador' if usuario_linha.cargo == 'coordenador' else 'Tornar coordenador' }}"{% endif %}>
                                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                         <circle cx="12" cy="8" r="7"></circle>
                                         <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>
@@ -325,22 +336,22 @@
                                 </button>
                             </form>
                             <details class="admin-senha-editor">
-                                <summary class="admin-icone-acao" title="Redefinir senha">
+                                <summary class="admin-icone-acao" data-dica="Redefinir senha" aria-label="Redefinir senha">
                                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                         <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
                                     </svg>
                                 </summary>
                                 <form action="/admin/usuarios/{{ usuario_linha.id }}/redefinir-senha" method="post" class="admin-form-senha">
-                                    <input type="password" name="nova_senha" class="campo-nova-senha" placeholder="nova senha" required minlength="8">
-                                    <input type="password" name="confirmar_senha" class="campo-confirmar-senha" placeholder="confirmar senha" required minlength="8">
+                                    <input type="password" name="nova_senha" class="campo-nova-senha" placeholder="nova senha" required minlength="6">
+                                    <input type="password" name="confirmar_senha" class="campo-confirmar-senha" placeholder="confirmar senha" required minlength="6">
                                     <button type="submit" class="botao botao-pequeno">Salvar</button>
                                 </form>
                             </details>
                             <form action="/admin/usuarios/{{ usuario_linha.id }}/excluir" method="post" data-perigo="true"
                                 data-confirm="{{ '' if eh_proprio else ('Excluir ' ~ usuario_linha.nome ~ ' permanentemente? Essa ação não pode ser desfeita.') }}">
                                 <button type="submit" class="admin-icone-acao admin-icone-acao-perigo"
-                                    {% if eh_proprio %}disabled title="Não é possível excluir o próprio usuário"
-                                    {% else %}title="Excluir usuário"{% endif %}>
+                                    {% if eh_proprio %}disabled data-dica="Não é possível excluir o próprio usuário" aria-label="Não é possível excluir o próprio usuário"
+                                    {% else %}data-dica="Excluir usuário" aria-label="Excluir usuário"{% endif %}>
                                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                         <line x1="18" y1="6" x2="6" y2="18"></line>
                                         <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -350,14 +361,14 @@
 
                             <span class="separador-acoes">
                             {% if usuario_linha.eh_admin %}
-                            <button type="button" class="botao-icone-ferramentas" disabled title="Administrador já tem acesso a todas as ferramentas">
+                            <button type="button" class="botao-icone-ferramentas" disabled data-dica="Administrador já tem acesso a todas as ferramentas" aria-label="Administrador já tem acesso a todas as ferramentas">
                                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                     <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
                                 </svg>
                             </button>
                             {% else %}
                             <div class="seletor-ferramentas">
-                                <button type="button" class="botao-icone-ferramentas" title="Ferramentas liberadas" aria-haspopup="true" aria-expanded="false">
+                                <button type="button" class="botao-icone-ferramentas" data-dica="Ferramentas liberadas" aria-label="Ferramentas liberadas" aria-haspopup="true" aria-expanded="false">
                                     <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                         <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
                                     </svg>
@@ -381,7 +392,7 @@
                                                     </span>
                                                 </label>
                                                 {% if usuario_linha.cargo == "coordenador" %}
-                                                <label class="ferramenta-tile-admin" title="Acesso às abas de administração desta ferramenta">
+                                                <label class="ferramenta-tile-admin" data-dica="Acesso às Configurações do Motor desta ferramenta">
                                                     <input type="checkbox" name="ferramentas_admin_ids" value="{{ ferramenta.id }}" class="check-input"
                                                         {% if ferramenta.id in ferramentas_admin_por_usuario.get(usuario_linha.id, []) %}checked{% endif %}>
                                                     <span class="check-caixa check-caixa-pequena"></span>
@@ -389,11 +400,11 @@
                                                 </label>
                                                 {% endif %}
                                                 {% if ferramenta.suporta_fila_motor %}
-                                                <label class="ferramenta-tile-fila" title="Acesso à aba de fila do motor (upload em lote)">
+                                                <label class="ferramenta-tile-fila" data-dica="Acesso à aba de fila do Motor (upload em lote)">
                                                     <input type="checkbox" name="ferramentas_fila_ids" value="{{ ferramenta.id }}" class="check-input"
                                                         {% if ferramenta.id in ferramentas_fila_por_usuario.get(usuario_linha.id, []) %}checked{% endif %}>
                                                     <span class="check-caixa check-caixa-pequena"></span>
-                                                    <span>Fila do motor</span>
+                                                    <span>Fila do Motor</span>
                                                 </label>
                                                 {% endif %}
                                             </div>

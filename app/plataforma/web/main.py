@@ -17,15 +17,18 @@ from app.plataforma.db.seed import garantir_ferramentas_padrao
 from app.plataforma.db.session import obter_sessao
 from app.plataforma.db.usuarios import registrar_acesso_ferramenta
 from app.plataforma.web.auth import NaoAutenticado
-from app.plataforma.web.routes import admin, auth, home, perfil
+from app.plataforma.web.routes import admin, auth, home, notificacoes, perfil
+from app.ferramentas.extratus.core.checagem_watcher import loop_checagem
 from app.ferramentas.extratus.core.motor_watcher import loop_motor
-from app.ferramentas.extratus.web.routes import fila, historico, inbox, motor, relatorios_prontos
+from app.ferramentas.extratus.web.routes import fila, historico, inbox, motor, relatorios_motor, relatorios_prontos
+from app.ferramentas.extratus_aburesi.core.checagem_watcher import loop_checagem as loop_checagem_aburesi
 from app.ferramentas.extratus_aburesi.core.motor_watcher import loop_motor as loop_motor_aburesi
 from app.ferramentas.extratus_aburesi.web.routes import (
     fila as fila_aburesi,
     historico as historico_aburesi,
     inbox as inbox_aburesi,
     motor as motor_aburesi,
+    relatorios_motor as relatorios_motor_aburesi,
     relatorios_prontos as relatorios_prontos_aburesi,
 )
 from app.ferramentas.leitor_publicacoes.web.routes import home as leitor_publicacoes_home
@@ -57,11 +60,17 @@ async def lifespan(app: FastAPI):
     # aqui quando um módulo novo ganhar Motor.
     tarefa_motor = asyncio.create_task(loop_motor())
     tarefa_motor_aburesi = asyncio.create_task(loop_motor_aburesi())
+    # Checagem da Fila (a "triagem" de duplicidade nome+processo) — loop
+    # bem mais rápido que o do Motor, só leitura local, sem custo de API.
+    tarefa_checagem = asyncio.create_task(loop_checagem())
+    tarefa_checagem_aburesi = asyncio.create_task(loop_checagem_aburesi())
 
     yield
 
     tarefa_motor.cancel()
     tarefa_motor_aburesi.cancel()
+    tarefa_checagem.cancel()
+    tarefa_checagem_aburesi.cancel()
 
 
 app = FastAPI(
@@ -146,16 +155,19 @@ app.include_router(auth.router)
 app.include_router(home.router)
 app.include_router(admin.router)
 app.include_router(perfil.router)
+app.include_router(notificacoes.router)
 app.include_router(inbox.router, prefix="/extratus")
 app.include_router(relatorios_prontos.router, prefix="/extratus")
 app.include_router(historico.router, prefix="/extratus")
 app.include_router(motor.router, prefix="/extratus")
 app.include_router(fila.router, prefix="/extratus")
+app.include_router(relatorios_motor.router, prefix="/extratus")
 app.include_router(inbox_aburesi.router, prefix="/extratus-aburesi")
 app.include_router(relatorios_prontos_aburesi.router, prefix="/extratus-aburesi")
 app.include_router(historico_aburesi.router, prefix="/extratus-aburesi")
 app.include_router(motor_aburesi.router, prefix="/extratus-aburesi")
 app.include_router(fila_aburesi.router, prefix="/extratus-aburesi")
+app.include_router(relatorios_motor_aburesi.router, prefix="/extratus-aburesi")
 app.include_router(leitor_publicacoes_home.router, prefix="/leitor-publicacoes")
 
 

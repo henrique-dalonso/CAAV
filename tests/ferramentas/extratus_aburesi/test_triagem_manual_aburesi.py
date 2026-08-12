@@ -1,0 +1,145 @@
+from app.ferramentas.extratus_aburesi.db import triagem_manual as db_triagem
+
+# IDs negativos de propósito — não colidem com usuário real, mesmo padrão
+# de tests/ferramentas/extratus/test_checagem_fila.py e test_jobs.py.
+USUARIO_A = -9302
+USUARIO_B = -9303
+
+
+def _criar(nome, usuario_id=USUARIO_A):
+    return db_triagem.criar_registro(nome, f"/tmp/{nome}", usuario_id)
+
+
+def test_criar_e_obter_registro():
+    registro = _criar("teste_triagem_criar.pdf")
+
+    assert registro.status == "pendente"
+    assert db_triagem.obter_registro(registro.id).nome_arquivo == "teste_triagem_criar.pdf"
+
+    db_triagem.descartar(registro.id)
+
+
+def test_atualizar_apos_triagem_grava_tudo():
+    registro = _criar("teste_triagem_atualizar.pdf")
+
+    atualizado = db_triagem.atualizar_apos_triagem(
+        registro.id, db_triagem.NAO_ENCONTRADO, None, "revisao", "não achou nada",
+    )
+
+    assert atualizado.status == db_triagem.NAO_ENCONTRADO
+    assert atualizado.confianca_motivo == "não achou nada"
+
+    db_triagem.descartar(registro.id)
+
+
+def test_concluir_grava_job_id():
+    registro = _criar("teste_triagem_concluir.pdf")
+
+    atualizado = db_triagem.concluir(registro.id, 12345)
+
+    assert atualizado.status == db_triagem.CONCLUIDO
+    assert atualizado.job_id == 12345
+
+    db_triagem.descartar(registro.id)
+
+
+def test_marcar_erro_grava_mensagem():
+    registro = _criar("teste_triagem_erro.pdf")
+
+    atualizado = db_triagem.marcar_erro(registro.id, "falha ao gerar")
+
+    assert atualizado.status == db_triagem.ERRO
+    assert atualizado.erro_mensagem == "falha ao gerar"
+
+    db_triagem.descartar(registro.id)
+
+
+def test_aprovar_manualmente_forca_revisao_e_status_processando():
+    registro = _criar("teste_triagem_aprovar.pdf")
+    db_triagem.atualizar_apos_triagem(registro.id, db_triagem.DUPLICADO_EM_ANDAMENTO, "789", "alta", "motivo original")
+
+    atualizado = db_triagem.aprovar_manualmente(registro.id)
+
+    assert atualizado.status == db_triagem.PROCESSANDO
+    assert atualizado.processo_detectado == "789"  # mantido, não veio processo manual
+    assert atualizado.confianca_nivel == "revisao"  # nunca herda "alta" automático
+
+    db_triagem.descartar(registro.id)
+
+
+def test_aprovar_manualmente_com_processo_informado_sobrescreve():
+    registro = _criar("teste_triagem_aprovar_processo.pdf")
+    db_triagem.atualizar_apos_triagem(registro.id, db_triagem.NAO_ENCONTRADO, None, "revisao", "não achou nada")
+
+    atualizado = db_triagem.aprovar_manualmente(registro.id, processo_manual="1111111-11.2026.8.00.1111")
+
+    assert atualizado.processo_detectado == "1111111-11.2026.8.00.1111"
+    assert atualizado.status == db_triagem.PROCESSANDO
+
+    db_triagem.descartar(registro.id)
+
+
+def test_aprovar_manualmente_registro_inexistente_nao_quebra():
+    assert db_triagem.aprovar_manualmente(999999999) is None
+
+
+def test_descartar_apaga_a_linha():
+    registro = _criar("teste_triagem_descartar.pdf")
+
+    db_triagem.descartar(registro.id)
+
+    assert db_triagem.obter_registro(registro.id) is None
+
+
+def test_descartar_registro_inexistente_nao_quebra():
+    db_triagem.descartar(999999999)  # não deve levantar exceção
+
+
+def test_listar_estado_do_usuario_separa_pendentes_e_processando_e_escopa_por_usuario():
+    pendente_a = _criar("teste_triagem_estado_pendente_a.pdf", USUARIO_A)
+    processando_a = _criar("teste_triagem_estado_processando_a.pdf", USUARIO_A)
+    db_triagem.atualizar_apos_triagem(processando_a.id, db_triagem.PROCESSANDO, "123", "alta", "ok")
+    pendente_b = _criar("teste_triagem_estado_pendente_b.pdf", USUARIO_B)
+
+    estado_a = db_triagem.listar_estado_do_usuario(USUARIO_A)
+    nomes_pendentes_a = {r.nome_arquivo for r in estado_a["pendentes"]}
+    nomes_processando_a = {r.nome_arquivo for r in estado_a["processando"]}
+
+    assert pendente_a.nome_arquivo in nomes_pendentes_a
+    assert processando_a.nome_arquivo in nomes_processando_a
+    assert pendente_b.nome_arquivo not in nomes_pendentes_a
+    assert pendente_b.nome_arquivo not in nomes_processando_a
+
+    db_triagem.descartar(pendente_a.id)
+    db_triagem.descartar(processando_a.id)
+    db_triagem.descartar(pendente_b.id)
+
+
+def test_listar_estado_do_usuario_mantem_inconsistencia_em_pendentes():
+    duplicado = _criar("teste_triagem_estado_duplicado.pdf", USUARIO_A)
+    db_triagem.atualizar_apos_triagem(duplicado.id, db_triagem.DUPLICADO_RELATORIO, "123", "alta", "ok")
+
+    estado = db_triagem.listar_estado_do_usuario(USUARIO_A)
+    nomes_pendentes = {r.nome_arquivo for r in estado["pendentes"]}
+    nomes_processando = {r.nome_arquivo for r in estado["processando"]}
+
+    assert duplicado.nome_arquivo in nomes_pendentes
+    assert duplicado.nome_arquivo not in nomes_processando
+
+    db_triagem.descartar(duplicado.id)
+
+
+def test_listar_inconsistencias_do_usuario_escopa_por_usuario():
+    duplicado_a = _criar("teste_triagem_inconsistencia_a.pdf", USUARIO_A)
+    db_triagem.atualizar_apos_triagem(duplicado_a.id, db_triagem.DUPLICADO_RELATORIO, "123", "alta", "ok")
+    duplicado_b = _criar("teste_triagem_inconsistencia_b.pdf", USUARIO_B)
+    db_triagem.atualizar_apos_triagem(duplicado_b.id, db_triagem.NAO_ENCONTRADO, None, "revisao", "nada")
+
+    inconsistencias_a = db_triagem.listar_inconsistencias_do_usuario(USUARIO_A)
+    nomes_a = {r.nome_arquivo for r in inconsistencias_a}
+
+    assert duplicado_a.nome_arquivo in nomes_a
+    assert duplicado_b.nome_arquivo not in nomes_a
+
+    db_triagem.descartar(duplicado_a.id)
+    db_triagem.descartar(duplicado_b.id)

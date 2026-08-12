@@ -27,9 +27,15 @@
     --cor-texto: #111827;
     --cor-texto-suave: #525b68;
     --cor-borda: #d4d8e0;
-    --cor-acento: #4f46e5;
-    --cor-acento-hover: #4338ca;
-    --cor-acento-fraco: #eef2ff;
+    /* --db-cor-acento* vem do banco (Ferramenta.cor_acento*, injetado
+       como style="" no <html> por base.html, ver cor_ferramenta_atual)
+       — cada ferramenta pode ter a própria identidade sem precisar de
+       um bloco :root fixo no CSS dela. Sem cor própria (ou fora de
+       qualquer ferramenta, ex: home/admin), var() cai no azul padrão
+       abaixo, sem precisar de nada especial pra isso acontecer. */
+    --cor-acento: var(--db-cor-acento, #4f46e5);
+    --cor-acento-hover: var(--db-cor-acento-hover, #4338ca);
+    --cor-acento-fraco: var(--db-cor-acento-fraco, #eef2ff);
     --cor-erro-fundo: #fef2f2;
     --cor-erro-texto: #b91c1c;
     --cor-erro-borda: #fecaca;
@@ -50,9 +56,9 @@
         --cor-texto: #f3f4f6;
         --cor-texto-suave: #9ca3af;
         --cor-borda: #262c3d;
-        --cor-acento: #818cf8;
-        --cor-acento-hover: #a5b4fc;
-        --cor-acento-fraco: #1e2247;
+        --cor-acento: var(--db-cor-acento-escuro, #818cf8);
+        --cor-acento-hover: var(--db-cor-acento-hover-escuro, #a5b4fc);
+        --cor-acento-fraco: var(--db-cor-acento-fraco-escuro, #1e2247);
         --cor-erro-fundo: #2a1215;
         --cor-erro-texto: #fca5a5;
         --cor-erro-borda: #4c1d24;
@@ -76,9 +82,9 @@
     --cor-texto: #f3f4f6;
     --cor-texto-suave: #9ca3af;
     --cor-borda: #262c3d;
-    --cor-acento: #818cf8;
-    --cor-acento-hover: #a5b4fc;
-    --cor-acento-fraco: #1e2247;
+    --cor-acento: var(--db-cor-acento-escuro, #818cf8);
+    --cor-acento-hover: var(--db-cor-acento-hover-escuro, #a5b4fc);
+    --cor-acento-fraco: var(--db-cor-acento-fraco-escuro, #1e2247);
     --cor-erro-fundo: #2a1215;
     --cor-erro-texto: #fca5a5;
     --cor-erro-borda: #4c1d24;
@@ -88,6 +94,84 @@
 
 * {
     box-sizing: border-box;
+}
+
+/* Barra de rolagem minimalista, sitewide — qualquer área que role (as
+   colunas da Fila do motor, o popover "+N", a lista de detalhes de um
+   aviso, uma tabela larga, e qualquer coisa nova que role no futuro)
+   ganha essa aparência automaticamente, sem precisar marcar elemento
+   por elemento. scrollbar-width/scrollbar-color é o padrão CSS (Firefox);
+   ::-webkit-scrollbar* cobre Chrome/Edge/Safari — juntos, os dois cobrem
+   todo navegador relevante pra esse site (uso só em escritório/desktop).
+   Usa as mesmas variáveis de cor do resto do site, então já respeita
+   tema claro/escuro sem precisar de regra extra. */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--cor-borda) transparent;
+}
+
+*::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+    background-color: var(--cor-borda);
+    background-clip: padding-box;
+    border: 2px solid transparent;
+    border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background-color: var(--cor-texto-suave);
+}
+
+*::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* Dica (tooltip) estilizada, sitewide — substitui o title="" nativo do
+   navegador (sem estilo nenhum, cinza cru) por um balãozinho no visual
+   do site. Qualquer elemento com data-dica="texto" ganha isso
+   automaticamente. Cor invertida (fundo escuro/texto claro no modo
+   claro, e vice-versa) de propósito, pra sempre ter contraste alto sem
+   precisar de uma regra extra pro tema escuro.
+
+   Posicionado via JS (base.js, .dica-flutuante), não mais um ::after
+   puro CSS ancorado no próprio elemento — motivo real, achado ao aplicar
+   isso sitewide (2026-08-07): um ::after posicionado com
+   position:absolute é CORTADO por qualquer ancestral com
+   overflow:auto/hidden, e boa parte do site é exatamente isso (colunas
+   da Fila do Motor, tabelas com .tabela-scroll) — a dica simplesmente
+   nunca aparecia visualmente ali, mesmo "funcionando" no código. Um
+   único elemento position:fixed (relativo à janela, nunca cortado por
+   scroll de nenhum ancestral), reaproveitado pra tudo e posicionado via
+   getBoundingClientRect() a cada hover, resolve isso pra qualquer
+   elemento, atual ou futuro, dentro ou fora de área com scroll. */
+.dica-flutuante {
+    position: fixed;
+    max-width: 320px;
+    white-space: normal;
+    background: var(--cor-texto);
+    color: var(--cor-cartao);
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.4;
+    padding: 0.35rem 0.65rem;
+    border-radius: var(--raio-pequeno);
+    box-shadow: var(--sombra-suave);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.12s ease;
+    z-index: 200;
+}
+
+.dica-flutuante-visivel {
+    opacity: 1;
 }
 
 html, body {
@@ -250,7 +334,7 @@ a {
     border-radius: var(--raio-pequeno);
     cursor: pointer;
     text-decoration: none;
-    transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+    transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease, opacity 0.15s ease;
     white-space: nowrap;
 }
 
@@ -470,17 +554,43 @@ a {
 
 /* Emblema/monograma reaproveitável — pra iniciais de usuário e de
    ferramenta (essas não são a marca do escritório, só identificação
-   visual funcional, cabe cor de destaque). */
+   visual funcional, cabe cor de destaque).
+
+   Cor própria de cada ferramenta (bandeja de apps + home): aqui NÃO dá
+   pra confiar só em var(--cor-acento) como o resto do site faz, porque
+   tanto a bandeja quanto a home são páginas da PLATAFORMA — mostram
+   VÁRIAS ferramentas na mesma página, então só um --cor-acento por
+   página não bastaria (cada ferramenta precisa da própria, ao mesmo
+   tempo). Por isso quem monta a lista (home.html, base.html) escreve as
+   cores de cada ferramenta como variáveis locais no próprio elemento
+   (style="--emblema-cor:...", vindas de Ferramenta.cor_acento* no
+   banco) — --emblema-cor* sem valor (ferramenta sem cor própria) cai
+   em var(--cor-acento), o azul padrão. */
 .emblema {
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: var(--raio-pequeno);
-    background: linear-gradient(135deg, var(--cor-acento), var(--cor-acento-hover));
+    background: linear-gradient(135deg, var(--emblema-cor, var(--cor-acento)), var(--emblema-cor-hover, var(--cor-acento-hover)));
     color: white;
     font-weight: 700;
     letter-spacing: 0.02em;
     flex-shrink: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme="claro"]) .emblema {
+        background: linear-gradient(135deg, var(--emblema-cor-escuro, var(--cor-acento)), var(--emblema-cor-hover-escuro, var(--cor-acento-hover)));
+    }
+}
+
+html[data-theme="escuro"] .emblema {
+    background: linear-gradient(135deg, var(--emblema-cor-escuro, var(--cor-acento)), var(--emblema-cor-hover-escuro, var(--cor-acento-hover)));
+}
+
+html[data-theme="escuro"] .bandeja-apps-item[data-slug="extratus-aburesi"] .emblema,
+html[data-theme="escuro"] .cartao-ferramenta[data-slug="extratus-aburesi"] .emblema {
+    background: linear-gradient(135deg, #2dd4bf, #5eead4);
 }
 
 /* Selo neutro pra logo de verdade do escritório — fundo de "cartão"
@@ -581,6 +691,124 @@ a {
     background: rgba(0, 0, 0, 0.08);
 }
 
+/* Caixa de toasts — canto da tela, pra avisos criados na hora via JS
+   (window.mostrarBanner, base.js), sem empurrar o conteúdo da página
+   como o banner de topo faz. Os toasts em si reaproveitam as mesmas
+   classes .banner-erro/.banner-sucesso (mesma cara visual), só ganham
+   posição relativa dentro dessa caixa fixa + uma entrada própria. */
+.caixa-toasts {
+    position: fixed;
+    top: 1.1rem;
+    right: 1.1rem;
+    z-index: 300;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: min(420px, calc(100vw - 2.2rem));
+    pointer-events: none;
+}
+
+.caixa-toasts .banner-toast {
+    margin-bottom: 0;
+    box-shadow: var(--sombra);
+    pointer-events: auto;
+    animation: toast-entrada 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes toast-entrada {
+    from { opacity: 0; transform: translateX(16px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+/* Toast expansível (window.mostrarBannerDetalhado, base.js). Estrutura:
+   <div class="banner-erro banner-expansivel">
+     <div class="banner-linha">texto + ações (contador/fechar)</div>
+     <ul class="banner-detalhes">...</ul>
+   </div>
+   .banner-erro/.banner-sucesso são "display:flex" (linha única) por
+   padrão — aqui isso é sobrescrito pra "block" de propósito, porque
+   senão a <ul> vira só mais um item DENTRO dessa linha (espremida ao
+   lado do texto, sem quebrar — foi exatamente o bug visto na prática:
+   a caixa "engordava" pro lado e a lista precisava de rolagem
+   horizontal). Com "block", a .banner-linha (essa sim "flex") continua
+   sendo só o resumo clicável no topo, e a lista fica livre pra ocupar
+   a largura toda, embaixo, quebrando texto em vez de rolar de lado. */
+.banner-expansivel {
+    display: block;
+}
+
+.banner-linha {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.banner-expansivel .banner-texto {
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.banner-expansivel .banner-texto::after {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: rotate(45deg);
+    opacity: 0.6;
+    transition: transform 0.15s ease;
+    flex-shrink: 0;
+}
+
+.banner-expandido .banner-texto::after {
+    transform: rotate(225deg);
+}
+
+.banner-detalhes {
+    list-style: none;
+    margin: 0.6rem 0 0;
+    padding: 0.55rem 0 0;
+    border-top: 1px solid currentColor;
+    border-top-color: color-mix(in srgb, currentColor 20%, transparent);
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    max-height: 240px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    width: 100%;
+}
+
+.banner-detalhes[hidden] {
+    display: none;
+}
+
+.banner-detalhes li {
+    position: relative;
+    padding-left: 1rem;
+}
+
+.banner-detalhes li::before {
+    content: "•";
+    position: absolute;
+    left: 0.15rem;
+    opacity: 0.6;
+}
+
+.banner-detalhe-nome {
+    font-weight: 600;
+    word-break: break-word;
+}
+
+.banner-detalhe-motivo {
+    opacity: 0.85;
+    word-break: break-word;
+}
+
 /* Separador reaproveitável pra "botão inerente, sem coluna própria" —
    um item extra que anda junto de uma célula/grupo de ações, mas não é
    parte do conteúdo/propósito principal dela (ex: baixar relatório
@@ -637,11 +865,30 @@ html[data-theme="escuro"] .banner-sucesso {
    (título, subtítulo, cartão com borda arredondada) é o mesmo em todo
    canto, então mora aqui em vez de ser copiado em cada arquivo. */
 .cabecalho-ferramenta {
+    position: relative;
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: 1rem;
     margin-bottom: 2rem;
+    padding-top: 1rem;
+}
+
+/* Identificador visual de qual ferramenta você está usando — uma
+   tracinho fino, na cor de destaque daquela ferramenta especificamente
+   (--cor-acento já vem redefinido no CSS de cada uma, ex: Aburesi é
+   verde-azulado), acima do título. Antes só os botões/abas carregavam
+   essa cor; isso dá uma identidade visível assim que a página abre,
+   antes mesmo de reparar em qualquer botão. */
+.cabecalho-ferramenta::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 42px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--cor-acento);
 }
 
 .cabecalho-ferramenta h1 {
@@ -1041,8 +1288,8 @@ html[data-theme="escuro"] .selo-roxo {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
     padding: 0;
     background: none;
     border: none;
@@ -1057,10 +1304,13 @@ html[data-theme="escuro"] .selo-roxo {
     color: var(--cor-acento);
 }
 
+/* 34px pra bater com os outros ícones do cabeçalho (apps, sininho,
+   admin, sair) — antes era 30px, um degrau visível de tamanho na
+   mesma fileira que Henrique notou (2026-08-06/07). */
 .avatar {
-    width: 30px;
-    height: 30px;
-    font-size: 0.75rem;
+    width: 34px;
+    height: 34px;
+    font-size: 0.8rem;
     border-radius: 999px;
 }
 
@@ -1227,6 +1477,362 @@ html[data-theme="escuro"] .selo-roxo {
     text-align: center;
     padding: 0.5rem;
     margin: 0;
+}
+
+/* Sininho de notificações — mesmo padrão do seletor de apps (botão
+   redondo + painel flutuante), atualizado sozinho via polling
+   (base.js). Fica sempre no cabeçalho, em toda página logada, não só
+   nas ferramentas. */
+.seletor-notificacoes {
+    position: relative;
+}
+
+.botao-notificacoes {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: 999px;
+    color: var(--cor-texto-suave);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.botao-notificacoes:hover,
+.botao-notificacoes[aria-expanded="true"] {
+    background: var(--cor-acento-fraco);
+    color: var(--cor-acento);
+}
+
+/* Sino "chacoalhando" quando uma notificação nova chega (Henrique,
+   2026-08-07: "uma vibrada do sininho, para ficar visual quando chega
+   algo novo") — disparado via JS (chacoalharSino, base.js), removida e
+   readicionada a cada notificação nova pra sempre reiniciar do zero,
+   mesmo se a anterior ainda estiver tocando. */
+@keyframes sino-chacoalhar {
+    0%, 100% { transform: rotate(0deg); }
+    15% { transform: rotate(-15deg); }
+    30% { transform: rotate(12deg); }
+    45% { transform: rotate(-10deg); }
+    60% { transform: rotate(8deg); }
+    75% { transform: rotate(-4deg); }
+    90% { transform: rotate(2deg); }
+}
+
+.botao-notificacoes-chacoalhando {
+    animation: sino-chacoalhar 0.6s ease-in-out;
+    transform-origin: 50% 20%;
+}
+
+.badge-notificacoes {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 1;
+    color: #fff;
+    background: var(--cor-erro-texto);
+    border-radius: 999px;
+    border: 2px solid var(--cor-cartao);
+    /* Números não têm "descendente" (a parte de uma letra que desce
+       abaixo da linha de base, tipo o rabinho do "g") — então mesmo
+       centralizado pelo flex, o texto "flutua" visualmente pra cima
+       dentro do balão (sobra espaço de descendente embaixo que nenhum
+       dígito usa). Esse nudge pequeno compensa isso. */
+    padding-top: 2px;
+}
+
+.badge-notificacoes[hidden] {
+    display: none;
+}
+
+/* Gaveta lateral (2026-08-06/07, pedido do Henrique — "tipo aqueles
+   chatbots fazem"), não mais um balão flutuante embaixo do sininho —
+   por isso o markup dela mora no nível do <body> (junto do
+   modal-confirmacao) em base.html, não mais dentro de .seletor-
+   notificacoes: position:fixed relativo à janela é mais confiável assim
+   (nenhum ancestral com transform pode quebrar isso). AVISO PRO FUTURO:
+   quando a reestruturação de grid do site acontecer (ver
+   [[extratus-pendencias]]), essa gaveta provavelmente precisa de um
+   reajuste de largura/z-index/posição junto — parte do escopo daquela
+   tarefa, não desta.
+
+   O "hidden" continua sendo alternado por configurarAlternador
+   (botao-notificacoes / painel-notificacoes) como qualquer outro painel
+   do cabeçalho — mas aqui ele NÃO vira display:none: fica sempre
+   display:flex, só empurrado pra fora da tela via transform, assim dá
+   pra animar entrando/saindo em vez de aparecer/sumir seco. */
+.painel-notificacoes {
+    position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    width: min(420px, 100vw);
+    height: 100vh;
+    background: var(--cor-cartao);
+    border-left: 1px solid var(--cor-borda);
+    box-shadow: var(--sombra);
+    transform: translateX(100%);
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.painel-notificacoes:not([hidden]) {
+    transform: translateX(0);
+}
+
+.painel-notificacoes[hidden] {
+    /* Continua "visível" pro navegador (sem isso a transição de saída
+       não teria o que animar) — só empurrada pra fora pelo transform
+       acima e tirada da navegação/clique enquanto fechada. */
+    pointer-events: none;
+}
+
+/* Fundo escurecido atrás da gaveta — sinaliza "isso é uma camada por
+   cima da página" (mesma linguagem visual do modal-confirmacao) e
+   também funciona como área de clique-fora-fecha, sem precisar de
+   lógica nova (configurarAlternador já fecha ao clicar fora de
+   painel+botão). */
+.notificacoes-fundo {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    background: rgb(0 0 0 / 0.25);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.22s ease;
+}
+
+.notificacoes-fundo.notificacoes-fundo-visivel {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.painel-notificacoes-cabecalho {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    padding: 1.1rem 1.2rem;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--cor-texto);
+    border-bottom: 1px solid var(--cor-borda);
+}
+
+.painel-notificacoes-fechar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: 999px;
+    color: var(--cor-texto-suave);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.painel-notificacoes-fechar:hover {
+    background: var(--cor-fundo);
+    color: var(--cor-texto);
+}
+
+.painel-notificacoes-abas {
+    display: flex;
+    gap: 0.4rem;
+    flex-shrink: 0;
+    padding: 0.8rem 1.2rem 0;
+    border-bottom: 1px solid var(--cor-borda);
+}
+
+.aba-notificacoes {
+    padding: 0.5rem 0.2rem 0.7rem;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--cor-texto-suave);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.aba-notificacoes:hover {
+    color: var(--cor-texto);
+}
+
+.aba-notificacoes-ativa,
+.aba-notificacoes-ativa:hover {
+    color: var(--cor-acento);
+    border-bottom-color: var(--cor-acento);
+}
+
+/* Contador ao lado do título de cada aba do sininho — mesma ideia do
+   .contagem-aba das abas "Gerar relatórios"/"Relatórios" de cada
+   ferramenta, mas com a cor da categoria em vez de neutra (Henrique,
+   2026-08-07: "a cor dessa bolinha de notificação vai ser de acordo com
+   a categoria"). Sistema usa a mesma --cor-erro-texto do badge do
+   próprio sininho (erro = vermelho, em todo lugar); Conferências usa o
+   mesmo laranja de .item-notificacao-triagem/bolinha-laranja da fila,
+   já estabelecido como "isso é uma pendência de triagem" em todo o
+   site. Minhas não tem cor fixa aqui — vem inline no HTML (cor de
+   perfil do próprio usuário), por isso não tem uma regra própria. */
+.contagem-aba-notificacoes {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 1;
+    color: #fff;
+    vertical-align: middle;
+}
+
+/* Mesma pegadinha do [hidden] vs regra de display de autor de sempre
+   (ver nota em .bandeja-apps[hidden] acima) — sem isso, "hidden" não
+   escondia nada, porque display:inline-flex acima tem prioridade sobre
+   o [hidden] nativo do navegador. */
+.contagem-aba-notificacoes[hidden] {
+    display: none;
+}
+
+.contagem-aba-sistema {
+    background: var(--cor-erro-texto);
+}
+
+.contagem-aba-conferencias {
+    background: #f97316;
+}
+
+.painel-notificacoes-conteudo {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.6rem;
+}
+
+.lista-notificacoes {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.lista-notificacoes[hidden] {
+    display: none;
+}
+
+.item-notificacao {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.7rem 0.75rem;
+    border-radius: var(--raio-pequeno);
+    text-decoration: none;
+    color: var(--cor-texto);
+    font-size: 0.85rem;
+    line-height: 1.4;
+    border-left: 3px solid transparent;
+    transition: background 0.15s ease;
+}
+
+.item-notificacao:hover {
+    background: var(--cor-fundo);
+    color: var(--cor-texto);
+}
+
+/* Nome da ferramenta de origem — fonte/cor distinta do corpo da
+   mensagem, pra não confundir com o texto em si mesmo quando o painel
+   tiver notificação de várias ferramentas diferentes misturadas
+   (Henrique, pensando em quando o site tiver muitas ferramentas). */
+.item-notificacao-origem {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--cor-acento);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.item-notificacao-texto {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.item-notificacao-texto.expandido {
+    -webkit-line-clamp: unset;
+    overflow: visible;
+}
+
+.item-notificacao-expandir {
+    align-self: flex-start;
+    padding: 0;
+    margin-top: 0.1rem;
+    background: none;
+    border: none;
+    color: var(--cor-acento);
+    font-size: 0.74rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.item-notificacao-expandir:hover {
+    text-decoration: underline;
+}
+
+.item-notificacao-triagem {
+    border-left-color: #f97316;
+}
+
+/* Henrique (2026-08-06/07): a borda salmão/rosé de antes não chamava
+   atenção o suficiente pra algo que precisa de ação — agora é vermelho
+   forte e vívido na borda (fixo, não muda por tema — testado nos dois e
+   lê bem tanto no claro quanto no escuro) + fundo usando
+   --cor-erro-fundo, o token que o site já usa pra superfícies de erro
+   (banners etc.) e que já vem com um valor pensado pra cada tema —
+   sem inventar uma cor nova pro fundo, só reaproveitando. Testado ao
+   vivo: um color-mix() fixo (a primeira tentativa) ficava bom demais
+   suave no modo escuro, quase sumia — --cor-erro-fundo já resolve
+   isso puxando o valor certo pra cada tema. */
+.item-notificacao-erro {
+    border-left-color: #dc2626;
+    background: var(--cor-erro-fundo);
+}
+
+.item-notificacao-erro:hover {
+    background: color-mix(in srgb, var(--cor-erro-fundo) 70%, var(--cor-erro-texto) 30%);
+}
+
+.painel-notificacoes-vazio {
+    padding: 1.25rem 0.6rem;
+    text-align: center;
+    margin: 0;
+}
+
+.painel-notificacoes-vazio[hidden] {
+    display: none;
 }
 
 /* Avatar sozinho no cabeçalho (sem nome do lado, pra economizar espaço) —

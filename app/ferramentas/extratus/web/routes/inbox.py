@@ -1,21 +1,38 @@
+import re
+import uuid
 from pathlib import Path
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, Request, UploadFile, File
-from fastapi.responses import RedirectResponse, FileResponse
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, RedirectResponse
 
 from app.ferramentas.extratus.core.config_manager import carregar_config
-from app.ferramentas.extratus.core.pdf_manager import listar_pdfs
-from app.ferramentas.extratus.core.pipeline import processar_pdf
-from app.ferramentas.extratus.db.pendentes import (
-    listar_nomes_pendentes_do_usuario,
-    registrar_pendente,
-    remover_pendente,
+from app.ferramentas.extratus.core.pipeline_manual import processar_upload_manual, retomar_apos_conferencia
+from app.ferramentas.extratus.db.conferencias import registrar_decisao
+from app.ferramentas.extratus.db.triagem_manual import (
+    DUPLICADO_RELATORIO,
+    MENSAGENS_INCONSISTENCIA,
+    STATUS_EXIGE_PROCESSO_MANUAL,
+    STATUS_INCONSISTENCIA,
+    criar_registro,
+    descartar,
+    listar_estado_do_usuario,
+    listar_inconsistencias_do_usuario,
+    obter_registro,
 )
+from app.ferramentas.extratus.web.rotulos import contagem_nav_pendentes, contagem_nav_relatorios
 from app.plataforma.db.models import Usuario
 from app.plataforma.web.auth import exigir_acesso_ferramenta
 from app.plataforma.web.templates_util import criar_templates
 
+
+# Mesmo padrão CNJ que a Fila do Motor já valida (web/routes/fila.py) —
+# ver core/processo_detector.py pro reconhecimento automático.
+PADRAO_CNJ = re.compile(r"^\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}$")
+
+# Henrique, 2026-08-11: "se não pode virar baderna, nego sair torrando
+# solicitação" — teto rígido, reforçado no servidor (nunca só no cliente).
+MAXIMO_ARQUIVOS_POR_ENVIO = 5
 
 router = APIRouter(dependencies=[Depends(exigir_acesso_ferramenta("extratus"))])
 
@@ -25,25 +42,79 @@ TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 PLATAFORMA_TEMPLATES_DIR = (
     Path(__file__).resolve().parents[4] / "plataforma" / "web" / "templates"
 )
-# Duas pastas de busca: a própria (inbox.html) e a da plataforma (base.html,
-# de onde essa tela herda o cabeçalho/layout compartilhado).
 templates = criar_templates([TEMPLATES_DIR, PLATAFORMA_TEMPLATES_DIR])
+templates.env.globals["contagem_nav_pendentes"] = contagem_nav_pendentes
+templates.env.globals["contagem_nav_relatorios"] = contagem_nav_relatorios
 
 
-def listar_relatorios_prontos(pasta_saida):
-    pasta_saida = Path(pasta_saida)
+def _estado_atual(usuario_id):
+    estado = listar_estado_do_usuario(usuario_id)
 
-    if not pasta_saida.exists():
-        return []
+    # Henrique, 2026-08-12: uma inconsistência não sai de Pendentes — só
+    # ganha bolinha vermelha (aguardando_conferencia), igual à Fila do
+    # Motor (web/routes/fila.py::_estado_atual_fila). Continua visível
+    # ali até ser resolvida em Conferências.
+    pendentes = [
+        {
+            "id": r.id,
+            "nome": r.nome_arquivo,
+            "status": r.status,
+            "aguardando_conferencia": r.status in STATUS_INCONSISTENCIA,
+        }
+        for r in estado["pendentes"]
+    ]
+    processando = [
+        {
+            "id": r.id,
+            "nome": r.nome_arquivo,
+            "status": r.status,
+            "erro_mensagem": r.erro_mensagem,
+            "job_id": r.job_id,
+            "processo_detectado": r.processo_detectado,
+        }
+        for r in estado["processando"]
+    ]
 
-    return sorted(
-        (arquivo.name for arquivo in pasta_saida.glob("*.docx")),
-        reverse=True
-    )
+    return pendentes, processando
 
 
-def _redirecionar_com_erro(mensagem):
-    return RedirectResponse(url=f"/extratus/?erro={quote(mensagem)}", status_code=303)
+def _redirecionar(erro=None, sucesso=None):
+    partes = []
+
+    if erro:
+        partes.append(f"erro={quote(erro)}")
+
+    if sucesso:
+        partes.append(f"sucesso={quote(sucesso)}")
+
+    query = f"?{'&'.join(partes)}" if partes else ""
+
+    return RedirectResponse(url=f"/extratus/{query}", status_code=303)
+
+
+def _link_relatorio_existente(registro):
+    """Pra onde o botão "Ir ao relatório" deve apontar — Henrique,
+    2026-08-12: estava sempre mandando pra "Seus Relatórios", mesmo
+    quando o duplicado tinha sido gerado pelo Motor (onde ele nunca
+    aparece). `origem_duplicado` é gravado na hora da triagem (core/
+    pipeline_manual.py), a partir de `Job.usuario_id`."""
+    if registro.origem_duplicado == "motor":
+        return "/extratus/relatorios-finalizados"
+    return "/extratus/relatorios"
+
+
+def _conferencias_pendentes(usuario_id):
+    return [
+        {
+            "id": registro.id,
+            "nome": registro.nome_arquivo,
+            "tipo": registro.status,
+            "mensagem": MENSAGENS_INCONSISTENCIA.get(registro.status, "pendência na triagem"),
+            "processo_detectado": registro.processo_detectado,
+            "link_relatorio": _link_relatorio_existente(registro) if registro.status == DUPLICADO_RELATORIO else None,
+        }
+        for registro in listar_inconsistencias_do_usuario(usuario_id)
+    ]
 
 
 @router.get("/")
@@ -51,101 +122,183 @@ def pagina_inicial(
     request: Request,
     usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
     erro: str | None = None,
+    sucesso: str | None = None,
 ):
-    config = carregar_config()
-
-    # pasta_entrada é compartilhada no disco entre todo mundo — a fila
-    # aqui é "individual" só na exibição: cada um só vê os PDFs que ele
-    # mesmo enviou, filtrando pelo rastreio em ArquivoPendente.
-    nomes_do_usuario = listar_nomes_pendentes_do_usuario(usuario.id)
-    pendentes = [
-        pdf for pdf in listar_pdfs(config.get("pasta_entrada", "entrada_pdfs"))
-        if pdf.name in nomes_do_usuario
-    ]
-    relatorios = listar_relatorios_prontos(config.get("pasta_saida", "relatorios_prontos"))
+    pendentes, processando = _estado_atual(usuario.id)
 
     return templates.TemplateResponse(
         request,
         "inbox.html",
         {
             "usuario": usuario,
-            "pendentes": [pdf.name for pdf in pendentes],
+            "pendentes": pendentes,
             "total_pendentes": len(pendentes),
-            "total_relatorios": len(relatorios),
-            "ia_provider": config.get("ia_provider", "simulado"),
+            "processando": processando,
+            "conferencias": _conferencias_pendentes(usuario.id),
+            "maximo_arquivos": MAXIMO_ARQUIVOS_POR_ENVIO,
             "erro": erro,
+            "sucesso": sucesso,
             "aba_ativa": "gerar",
         },
     )
 
 
+@router.get("/estado")
+def estado_processamento(usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus"))):
+    """Endpoint enxuto pro polling (inbox.js) — mesmo formato que
+    /fila/estado usa, escopado ao próprio usuário (Conferências e
+    processamento manual são pessoais, diferente da Fila do Motor)."""
+    pendentes, processando = _estado_atual(usuario.id)
+
+    return {
+        "pendentes": pendentes,
+        "processando": processando,
+        "conferencias": _conferencias_pendentes(usuario.id),
+    }
+
+
 @router.post("/upload")
-async def enviar_pdf(
-    arquivo: UploadFile = File(...),
+async def enviar_pdfs(
+    background_tasks: BackgroundTasks,
+    arquivos: list[UploadFile] = File(...),
     usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
 ):
-    nome_seguro = Path(arquivo.filename).name
-
-    if not nome_seguro.lower().endswith(".pdf"):
-        return _redirecionar_com_erro("Só é permitido enviar arquivos .pdf.")
-
-    conteudo = await arquivo.read()
-
-    if len(conteudo) > TAMANHO_MAXIMO_UPLOAD:
-        return _redirecionar_com_erro(
-            f"\"{nome_seguro}\" tem mais de {TAMANHO_MAXIMO_UPLOAD // (1024 * 1024)} MB "
-            "— esse é o limite atual de upload."
-        )
-
-    if not conteudo.startswith(b"%PDF"):
-        return _redirecionar_com_erro(
-            f"\"{nome_seguro}\" não parece ser um PDF válido."
+    if len(arquivos) > MAXIMO_ARQUIVOS_POR_ENVIO:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Máximo de {MAXIMO_ARQUIVOS_POR_ENVIO} arquivos por envio.",
         )
 
     config = carregar_config()
-
     pasta_entrada = Path(config.get("pasta_entrada", "entrada_pdfs"))
     pasta_entrada.mkdir(parents=True, exist_ok=True)
 
-    destino = pasta_entrada / nome_seguro
-    destino.write_bytes(conteudo)
-    registrar_pendente(nome_seguro, usuario.id)
+    enviados = []
+    rejeitados = []
 
-    return RedirectResponse(url="/extratus/", status_code=303)
+    for arquivo in arquivos:
+        nome_seguro = Path(arquivo.filename).name
 
-
-@router.post("/processar-tudo")
-def processar_tudo(usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus"))):
-    config = carregar_config()
-
-    pasta_entrada = config.get("pasta_entrada", "entrada_pdfs")
-    pasta_saida = config.get("pasta_saida", "relatorios_prontos")
-    pasta_processados = config.get("pasta_processados", "processados")
-    pasta_erros = config.get("pasta_erros", "erros")
-    pasta_revisao = config.get("pasta_revisao", "revisao")
-    ia_provider = config.get("ia_provider", "simulado")
-
-    # Só processa os PDFs que o próprio usuário enviou — a pasta é
-    # compartilhada, mas "processar tudo" não pode varrer os PDFs de
-    # outra pessoa que também usa a ferramenta ao mesmo tempo.
-    nomes_do_usuario = listar_nomes_pendentes_do_usuario(usuario.id)
-
-    for pdf in listar_pdfs(pasta_entrada):
-        if pdf.name not in nomes_do_usuario:
+        if not nome_seguro.lower().endswith(".pdf"):
+            rejeitados.append(f'"{nome_seguro}" não é .pdf')
             continue
 
-        processar_pdf(
-            pdf,
-            pasta_saida,
-            pasta_processados,
-            pasta_erros,
-            pasta_revisao,
-            ia_provider,
-            usuario_id=usuario.id,
-        )
-        remover_pendente(pdf.name, usuario.id)
+        conteudo = await arquivo.read()
 
-    return RedirectResponse(url="/extratus/", status_code=303)
+        if len(conteudo) > TAMANHO_MAXIMO_UPLOAD:
+            rejeitados.append(
+                f'"{nome_seguro}" tem mais de {TAMANHO_MAXIMO_UPLOAD // (1024 * 1024)} MB'
+            )
+            continue
+
+        if not conteudo.startswith(b"%PDF"):
+            rejeitados.append(f'"{nome_seguro}" não parece ser um PDF válido')
+            continue
+
+        # Prefixo único por upload — a pasta é compartilhada no disco e
+        # vários usuários (ou vários arquivos do mesmo lote) podem mandar
+        # nomes iguais ao mesmo tempo; diferente da Fila do Motor (um
+        # arquivo por requisição, sequencial), aqui todos sobem juntos.
+        nome_no_disco = f"{uuid.uuid4().hex[:8]}_{nome_seguro}"
+        caminho_destino = pasta_entrada / nome_no_disco
+        caminho_destino.write_bytes(conteudo)
+
+        registro = criar_registro(nome_seguro, caminho_destino, usuario.id)
+        background_tasks.add_task(processar_upload_manual, registro.id)
+        enviados.append(nome_seguro)
+
+    if rejeitados:
+        return _redirecionar(
+            erro=f"{len(enviados)} enviado(s). Recusado(s): " + "; ".join(rejeitados)
+        )
+
+    return _redirecionar(sucesso=f"{len(enviados)} PDF(s) enviado(s) — a triagem já começou.")
+
+
+@router.post("/conferencia/{registro_id}/aprovar")
+async def aprovar_conferencia(
+    registro_id: int,
+    background_tasks: BackgroundTasks,
+    processo: str | None = Form(None),
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
+):
+    registro = obter_registro(registro_id)
+
+    if not registro or registro.usuario_id != usuario.id or registro.status not in STATUS_INCONSISTENCIA:
+        return _redirecionar(erro="Essa pendência de conferência não existe mais.")
+
+    processo_informado = (processo or "").strip() or None
+
+    if registro.status in STATUS_EXIGE_PROCESSO_MANUAL and (not processo_informado or not PADRAO_CNJ.match(processo_informado)):
+        return _redirecionar(
+            erro="Informe um número de processo válido (formato 0000000-00.0000.0.00.0000) pra liberar esse arquivo."
+        )
+
+    tipo_original = registro.status
+    nome_arquivo = registro.nome_arquivo
+
+    registrar_decisao(nome_arquivo, tipo_original, "aprovado", usuario.id, processo_informado=processo_informado)
+    background_tasks.add_task(retomar_apos_conferencia, registro_id, processo_informado)
+
+    return _redirecionar(sucesso=f'"{nome_arquivo}" liberado — gerando o relatório agora.')
+
+
+@router.post("/conferencia/{registro_id}/descartar")
+def descartar_conferencia(
+    registro_id: int,
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
+):
+    registro = obter_registro(registro_id)
+
+    if not registro or registro.usuario_id != usuario.id or registro.status not in STATUS_INCONSISTENCIA:
+        return _redirecionar(erro="Essa pendência de conferência não existe mais.")
+
+    tipo_original = registro.status
+    nome_arquivo = registro.nome_arquivo
+    caminho = Path(registro.caminho_pdf)
+
+    if caminho.exists():
+        caminho.unlink()
+
+    descartar(registro_id)
+    registrar_decisao(nome_arquivo, tipo_original, "descartado", usuario.id)
+
+    return _redirecionar(sucesso=f'"{nome_arquivo}" descartado.')
+
+
+@router.get("/conferencia/{registro_id}/ver")
+def ver_pdf_conferencia(
+    registro_id: int,
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
+):
+    registro = obter_registro(registro_id)
+
+    if not registro or registro.usuario_id != usuario.id:
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado.")
+
+    caminho = Path(registro.caminho_pdf)
+
+    if not caminho.exists():
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado.")
+
+    return FileResponse(caminho, media_type="application/pdf")
+
+
+@router.post("/processamento/{registro_id}/descartar")
+def dispensar_processamento_finalizado(
+    registro_id: int,
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
+):
+    """Dispensa um card "Concluído"/"Erro" já finalizado — só some da
+    tela, o Job/relatório já está seguro em outro lugar (Job/.docx)."""
+    registro = obter_registro(registro_id)
+
+    if not registro or registro.usuario_id != usuario.id or registro.status not in ("concluido", "erro"):
+        raise HTTPException(status_code=404, detail="Esse item não existe mais.")
+
+    descartar(registro_id)
+
+    return {"ok": True}
 
 
 @router.get("/download/{nome_arquivo}")

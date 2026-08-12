@@ -1,23 +1,28 @@
 {% extends "base.html" %}
 
-{% block titulo %}Motor — Extratus - Aburesi{% endblock %}
+{% block titulo %}Configurações do Motor — Extratus - Aburesi{% endblock %}
 {% block nome_pagina %}Extratus - Aburesi{% endblock %}
 {% block css_pagina %}<link rel="stylesheet" href="/extratus-aburesi/static/extratus.css?v={{ v }}">{% endblock %}
 
 {% block conteudo %}
 <div class="cabecalho-ferramenta">
     <div>
-        <h1>Motor</h1>
+        <h1>Configurações do Motor</h1>
         <p>Controle do processamento automático — liga/desliga e configurações.</p>
     </div>
 </div>
 
 <nav class="abas-extratus">
-    <a href="/extratus-aburesi/" class="aba">Gerar relatórios</a>
-    <a href="/extratus-aburesi/relatorios" class="aba">Relatórios</a>
-    <a href="/extratus-aburesi/fila" class="aba aba-motor">Fila do motor</a>
-    <a href="/extratus-aburesi/motor" class="aba aba-motor aba-ativa">Motor</a>
-    <a href="/extratus-aburesi/historico" class="aba aba-admin">Custos (admin)</a>
+    <a href="/extratus-aburesi/" class="aba">Gerar seu Relatório <span class="contagem-aba">{{ contagem_nav_pendentes(usuario) }}</span></a>
+    <a href="/extratus-aburesi/relatorios" class="aba">Seus Relatórios <span class="contagem-aba">{{ contagem_nav_relatorios(usuario) }}</span></a>
+    <a href="/extratus-aburesi/relatorios-finalizados" class="aba aba-motor">Relatórios do Motor</a>
+    <a href="/extratus-aburesi/fila" class="aba aba-motor">Fila do Motor</a>
+    <a href="/extratus-aburesi/motor" class="aba aba-motor aba-ativa aba-fixa-direita" data-dica="Configurações do Motor" aria-label="Configurações do Motor">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+    </a>
 </nav>
 
 {% if erro %}
@@ -39,10 +44,10 @@
         </form>
         <p class="aviso-discreto motor-descricao">
             {% if motor_ativo %}
-            O motor está ligado: a cada poucos minutos, ele confere a pasta "Fila do motor" sozinho e
+            O Motor está ligado: a cada poucos minutos, ele confere a pasta "Fila do Motor" sozinho e
             manda os PDFs novos em lote pra IA (mais barato, mas pode levar de minutos até 24h pra voltar).
             {% else %}
-            Desligado — o motor não olha a pasta nem processa nada enquanto isso. Use "Processar tudo" na aba
+            Desligado — o Motor não olha a pasta nem processa nada enquanto isso. Use "Processar tudo" na aba
             Gerar relatórios pra continuar disparando manualmente (esse fluxo é sempre em tempo real, nunca em lote).
             {% endif %}
         </p>
@@ -85,12 +90,12 @@
             </span>
             <div>
                 <h3>Pasta e modo de IA</h3>
-                <p>Pasta que a "Fila do motor" usa pra depositar PDFs. Processamento é sempre em lote (mais barato, até 24h), nunca se mistura com a fila manual em tempo real.</p>
+                <p>Pasta que a "Fila do Motor" usa pra depositar PDFs. Processamento é sempre em lote (mais barato, até 24h), nunca se mistura com a fila manual em tempo real.</p>
             </div>
         </div>
         <form action="/extratus-aburesi/motor/config" method="post">
             <div class="campo">
-                <label for="pasta_entrada">Pasta de entrada do motor</label>
+                <label for="pasta_entrada">Pasta de entrada do Motor</label>
                 <div class="linha-campo-pasta">
                     <input id="pasta_entrada" type="text" name="pasta_entrada" value="{{ config.motor_pasta_entrada }}" required>
                     <button type="button" class="botao-secundario" id="botao-escolher-pasta">
@@ -162,7 +167,7 @@
 {% else %}
 <section class="cartao-secao">
     <h2>Configurações</h2>
-    <p class="aviso-discreto">A pasta e o modo de IA do motor só podem ser alterados por um administrador da plataforma.</p>
+    <p class="aviso-discreto">A pasta e o modo de IA do Motor só podem ser alterados por um administrador da plataforma.</p>
 </section>
 {% endif %}
 {% endblock %}

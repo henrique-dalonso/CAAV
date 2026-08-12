@@ -1,7 +1,6 @@
 import base64
 import os
 import re
-from datetime import datetime
 from pathlib import Path
 
 from app.ferramentas.extratus.core.prompt_manager import carregar_instrucoes_relatorio
@@ -280,51 +279,6 @@ FERRAMENTA_PEDACO = {
         "required": ["cronologia", "documentos_identificados"],
     },
 }
-
-
-def gerar_relatorio_simulado(caminho_pdf, processo_detectado):
-    """Devolve dados de exemplo no mesmo formato que a IA real devolve.
-
-    Isso garante que o resto do pipeline (geração do .docx a partir do
-    template) funciona igual, seja o conteúdo simulado ou real.
-    """
-    carregar_instrucoes_relatorio()
-
-    agora = datetime.now().strftime("%d/%m/%Y %H:%M")
-
-    dados = {
-        "tipo_acao": "(exemplo — IA ainda não ativada)",
-        "numero_processo": processo_detectado or "não localizado nos autos",
-        "incidente": "",
-        "valor_causa": "não localizado nos autos",
-        "valor_divida": "não localizado nos autos",
-        "autor": "não localizado nos autos",
-        "reu": "não localizado nos autos",
-        "bem": "não localizado nos autos",
-        "contrato": "não localizado nos autos",
-        "comarca": "não localizado nos autos",
-        "cronologia": [
-            {
-                "data": agora,
-                "ator": "Extratus",
-                "descricao": (
-                    f"Relatório simulado gerado a partir de {Path(caminho_pdf).name}. "
-                    "A integração real com IA ainda não está ativada."
-                ),
-            },
-        ],
-        "parecer": (
-            "Este é um relatório simulado. Quando a integração real com IA "
-            "estiver ativada, este texto será substituído pela análise real "
-            "do processo, seguindo as instruções carregadas do escritório."
-        ),
-        "data_publicacao": "",
-        "prazo_fatal_ed": "",
-        "prazo_fatal": "",
-        "status_atual": "Simulado — aguardando integração real de IA.",
-    }
-
-    return dados, {}
 
 
 def parece_digitalizado(total_paginas, paginas_sem_texto):
@@ -750,10 +704,15 @@ def gerar_relatorio_claude(caminho_pdf, processo_detectado):
 
 
 def gerar_relatorio(caminho_pdf, processo_detectado, ia_provider):
-    """Ponto único de entrada — escolhe simulado ou real conforme o
-    config.json (`ia_provider`). Sempre devolve (dados, uso_ia).
-    """
+    """Ponto único de entrada — hoje só existe o provedor "claude"; a
+    validação de config já impede qualquer outro valor chegar aqui (ver
+    PROVEDORES_IA_VALIDOS, config_manager.py). Mantido como função de
+    despacho (em vez de chamar gerar_relatorio_claude direto em
+    pipeline.py) pra já deixar o lugar certo pronto se um dia existir
+    um segundo provedor de IA real. "Modo simulado" existiu aqui antes
+    (Henrique, 2026-08-11: removido — resto de uma fase anterior do
+    projeto, sem uso real)."""
     if str(ia_provider).strip().lower() == "claude":
         return gerar_relatorio_claude(caminho_pdf, processo_detectado)
 
-    return gerar_relatorio_simulado(caminho_pdf, processo_detectado)
+    raise ValueError(f"Provedor de IA não suportado: {ia_provider!r}")

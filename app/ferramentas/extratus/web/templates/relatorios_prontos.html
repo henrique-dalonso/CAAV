@@ -1,33 +1,38 @@
 {% extends "base.html" %}
 
-{% block titulo %}Relatórios gerados — Extratus - Relatórios{% endblock %}
+{% block titulo %}Seus Relatórios — Extratus - Relatórios{% endblock %}
 {% block nome_pagina %}Extratus - Relatórios{% endblock %}
 {% block css_pagina %}<link rel="stylesheet" href="/extratus/static/extratus.css?v={{ v }}">{% endblock %}
 
 {% block conteudo %}
 <div class="cabecalho-ferramenta">
     <div>
-        <h1>Extratus - Relatórios</h1>
+        <h1>Seus Relatórios</h1>
         <p>Relatórios de processos já gerados, prontos pra revisão e envio.</p>
     </div>
 </div>
 
 <nav class="abas-extratus">
-    <a href="/extratus/" class="aba">Gerar relatórios <span class="contagem-aba">{{ total_pendentes }}</span></a>
-    <a href="/extratus/relatorios" class="aba aba-ativa">Relatórios</a>
+    <a href="/extratus/" class="aba">Gerar seu Relatório <span class="contagem-aba">{{ contagem_nav_pendentes(usuario) }}</span></a>
+    <a href="/extratus/relatorios" class="aba aba-ativa">Seus Relatórios <span class="contagem-aba">{{ contagem_nav_relatorios(usuario) }}</span></a>
+    <a href="/extratus/relatorios-finalizados" class="aba aba-motor">Relatórios do Motor</a>
     {% if usuario_tem_acesso_fila_motor(usuario, "extratus") %}
-    <a href="/extratus/fila" class="aba aba-motor">Fila do motor</a>
+    <a href="/extratus/fila" class="aba aba-motor">Fila do Motor</a>
     {% endif %}
     {% if usuario_eh_admin_da_ferramenta(usuario, "extratus") %}
-    <a href="/extratus/motor" class="aba aba-motor">Motor</a>
-    <a href="/extratus/historico" class="aba aba-admin">Custos (admin)</a>
+    <a href="/extratus/motor" class="aba aba-motor aba-fixa-direita" data-dica="Configurações do Motor" aria-label="Configurações do Motor">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+    </a>
     {% endif %}
 </nav>
 
 <section class="cartao-secao">
     {% if jobs %}
     <div class="barra-filtros">
-        <input type="search" class="campo-busca" placeholder="Buscar por processo ou arquivo...">
+        <input type="search" class="campo-busca" placeholder="Buscar por processo ou arquivo..." id="campo-busca-relatorios" data-processo-inicial="{{ processo_busca or '' }}">
         <div class="chips-filtro">
             <button type="button" class="chip chip-ativo" data-status="todos">Todos</button>
             <button type="button" class="chip" data-status="sucesso">Sucesso</button>
@@ -37,36 +42,36 @@
     </div>
     <div class="filtro-meus-linha">
         <label class="filtro-meus">
-            <input type="checkbox" id="check-meus-relatorios" class="check-input" data-usuario-id="{{ usuario.id }}">
+            <input type="checkbox" id="check-meus-relatorios" class="check-input" data-usuario-id="{{ usuario.id }}" checked>
             <span class="check-caixa"></span>
             Solicitados por mim
         </label>
     </div>
     <ul class="lista-relatorios">
         {% for job in jobs %}
-        <li class="relatorio-item" data-status="{{ job.status }}" data-usuario-id="{{ job.usuario_id or '' }}" data-busca="{{ ((job.processo or '') ~ ' ' ~ job.arquivo_pdf) | lower }}">
+        <li class="relatorio-item" data-status="{{ job.status }}" data-usuario-id="{{ job.usuario_id or '' }}" data-processo="{{ job.processo or '' }}" data-busca="{{ ((job.processo or '') ~ ' ' ~ job.arquivo_pdf) | lower }}">
             <span class="status status-{{ job.status }}">{{ job.status | rotulo_status }}</span>
             <div class="relatorio-info{% if job.relatorio_path %} relatorio-info-clicavel{% endif %}"{% if job.relatorio_path %} data-download="download/{{ job.relatorio_path.split('\\')[-1].split('/')[-1] }}"{% endif %}>
                 {% if job.processo %}
-                <strong class="truncavel" title="{{ job.processo }}">{{ job.processo }}</strong>
-                <span class="relatorio-meta truncavel" title="{{ job.arquivo_pdf }} · {{ job.criado_em.strftime('%d/%m/%Y %H:%M') }}">{{ job.arquivo_pdf }} · {{ job.criado_em.strftime("%d/%m/%Y %H:%M") }}</span>
+                <strong class="truncavel" data-dica="{{ job.processo }}">{{ job.processo }}</strong>
+                <span class="relatorio-meta truncavel" data-dica="{{ job.arquivo_pdf }} · {{ job.criado_em.strftime('%d/%m/%Y %H:%M') }}">{{ job.arquivo_pdf }} · {{ job.criado_em.strftime("%d/%m/%Y %H:%M") }}</span>
                 {% else %}
-                <strong class="truncavel" title="{{ job.arquivo_pdf }}">{{ job.arquivo_pdf }}</strong>
-                <span class="relatorio-meta truncavel" title="{{ job.criado_em.strftime('%d/%m/%Y %H:%M') }}">{{ job.criado_em.strftime("%d/%m/%Y %H:%M") }}</span>
+                <strong class="truncavel" data-dica="{{ job.arquivo_pdf }}">{{ job.arquivo_pdf }}</strong>
+                <span class="relatorio-meta truncavel" data-dica="{{ job.criado_em.strftime('%d/%m/%Y %H:%M') }}">{{ job.criado_em.strftime("%d/%m/%Y %H:%M") }}</span>
                 {% endif %}
                 {% if job.status == "revisao" and job.motivo_confianca %}
-                <span class="motivo" title="{{ job.motivo_confianca }}">{{ job.motivo_confianca }}</span>
+                <span class="motivo" data-dica="{{ job.motivo_confianca }}">{{ job.motivo_confianca }}</span>
                 {% elif job.status == "erro" and job.erro_mensagem %}
-                <span class="motivo" title="{{ job.erro_mensagem }}">{{ job.tipo_erro | rotulo_erro }}</span>
+                <span class="motivo" data-dica="{{ job.erro_mensagem }}">{{ job.tipo_erro | rotulo_erro }}</span>
                 {% endif %}
             </div>
             <div class="relatorio-solicitante">
                 <span class="divisor-vertical" aria-hidden="true"></span>
-                {% set nome_solicitante = "Solicitante: " ~ nomes_por_id.get(job.usuario_id, "Motor automático") %}
-                <span class="solicitante-texto truncavel" title="{{ nome_solicitante }}">{{ nome_solicitante }}</span>
+                {% set nome_solicitante = "Solicitante: " ~ nomes_por_id.get(job.usuario_id, "—") %}
+                <span class="solicitante-texto truncavel" data-dica="{{ nome_solicitante }}">{{ nome_solicitante }}</span>
             </div>
             {% if job.relatorio_path %}
-            <a href="download/{{ job.relatorio_path.split('\\')[-1].split('/')[-1] }}" class="botao-download" title="Baixar relatório" aria-label="Baixar relatório">
+            <a href="download/{{ job.relatorio_path.split('\\')[-1].split('/')[-1] }}" class="botao-download" data-dica="Baixar relatório" aria-label="Baixar relatório">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                     <polyline points="7 10 12 15 17 10"></polyline>

@@ -1,10 +1,116 @@
 (function () {
     "use strict";
 
+    // Capturado logo no topo, síncrono — document.currentScript só é
+    // confiável durante a execução inicial do próprio script (mesmo
+    // "deferred", esse trecho todo roda de um tirão só quando dispara).
+    // Usado mais abaixo pro cache-busting do SharedWorker do sininho.
+    var VERSAO_ESTATICOS = (document.currentScript && document.currentScript.dataset.versaoEstaticos) || "";
+
+    // ---------------------------------------------------------------
+    // Dica (tooltip) estilizada, sitewide — qualquer elemento com
+    // data-dica="texto" ganha isso automaticamente (ver base.css,
+    // .dica-flutuante). Delegação de evento no document (mouseover/
+    // mouseout, focusin/focusout pra quem navega por teclado) — cobre
+    // elemento que já existe na página E qualquer um que apareça depois
+    // via JS (fila.js, notificações), sem precisar religar nada.
+    //
+    // Um único elemento, position:fixed, reaproveitado pra tudo —
+    // reposicionado via getBoundingClientRect() a cada hover. Escolhido
+    // no lugar do ::after puro CSS que existia antes porque um
+    // position:absolute ancorado no próprio elemento é cortado por
+    // qualquer ancestral com overflow:auto/hidden (as colunas da Fila
+    // do Motor, as tabelas com .tabela-scroll — boa parte do site).
+    // ---------------------------------------------------------------
+    var ATRASO_DICA_MS = 350;
+
+    var dicaEl = document.createElement("div");
+    dicaEl.className = "dica-flutuante";
+    dicaEl.setAttribute("role", "tooltip");
+    document.body.appendChild(dicaEl);
+
+    var temporizadorDica = null;
+
+    function posicionarDica(alvo) {
+        var caixaAlvo = alvo.getBoundingClientRect();
+        var caixaDica = dicaEl.getBoundingClientRect();
+
+        var esquerda = caixaAlvo.left + caixaAlvo.width / 2 - caixaDica.width / 2;
+        esquerda = Math.max(8, Math.min(esquerda, window.innerWidth - caixaDica.width - 8));
+
+        var topo = caixaAlvo.top - caixaDica.height - 8;
+        if (topo < 8) {
+            // Sem espaço acima (elemento perto do topo da janela) — mostra
+            // embaixo em vez de deixar cortado/invisível.
+            topo = caixaAlvo.bottom + 8;
+        }
+
+        dicaEl.style.left = esquerda + "px";
+        dicaEl.style.top = topo + "px";
+    }
+
+    function mostrarDica(alvo) {
+        var texto = alvo.getAttribute("data-dica");
+
+        if (!texto) {
+            return;
+        }
+
+        clearTimeout(temporizadorDica);
+        temporizadorDica = setTimeout(function () {
+            dicaEl.textContent = texto;
+            dicaEl.classList.add("dica-flutuante-visivel");
+            posicionarDica(alvo);
+        }, ATRASO_DICA_MS);
+    }
+
+    function esconderDica() {
+        clearTimeout(temporizadorDica);
+        dicaEl.classList.remove("dica-flutuante-visivel");
+    }
+
+    document.addEventListener("mouseover", function (evento) {
+        var alvo = evento.target.closest("[data-dica]");
+
+        if (alvo) {
+            mostrarDica(alvo);
+        }
+    });
+
+    document.addEventListener("mouseout", function (evento) {
+        var alvo = evento.target.closest("[data-dica]");
+
+        if (alvo) {
+            esconderDica();
+        }
+    });
+
+    document.addEventListener("focusin", function (evento) {
+        var alvo = evento.target.closest("[data-dica]");
+
+        if (alvo) {
+            mostrarDica(alvo);
+        }
+    });
+
+    document.addEventListener("focusout", function (evento) {
+        var alvo = evento.target.closest("[data-dica]");
+
+        if (alvo) {
+            esconderDica();
+        }
+    });
+
     // Banners de sucesso/erro ("Usuário excluído", etc) ganham um
-    // contador de 5s + um "x" pra fechar na hora — em qualquer página,
+    // contador de 10s + um "x" pra fechar na hora — em qualquer página,
     // sem precisar mexer nos templates que já geram esses banners.
-    document.querySelectorAll(".banner-sucesso, .banner-erro").forEach(function (banner) {
+    // decorarBanner faz isso pra um elemento que já existe no HTML
+    // (renderizado pelo servidor); window.mostrarBanner (mais abaixo)
+    // reaproveita a mesma função pra criar um banner novo, na hora, via
+    // JS puro — usado pelo aviso instantâneo de nome duplicado da Fila.
+    var DURACAO_BANNER_SEGUNDOS = 10;
+
+    function decorarBanner(banner) {
         var acoes = document.createElement("span");
         acoes.className = "banner-acoes";
 
@@ -19,9 +125,13 @@
 
         acoes.appendChild(contador);
         acoes.appendChild(botaoFechar);
-        banner.appendChild(acoes);
+        // Banner simples: "acoes" entra direto nele (linha única, flex).
+        // Banner expansível (mostrarBannerDetalhado): tem um wrapper
+        // .banner-linha só pro resumo — é ali que "acoes" precisa entrar,
+        // não solto no banner inteiro (que agora é "block", não "flex").
+        (banner.querySelector(".banner-linha") || banner).appendChild(acoes);
 
-        var restante = 5;
+        var restante = DURACAO_BANNER_SEGUNDOS;
         contador.textContent = "(" + restante + ")";
 
         var intervalo = setInterval(function () {
@@ -36,11 +146,122 @@
             contador.textContent = "(" + restante + ")";
         }, 1000);
 
+        function pararContador() {
+            clearInterval(intervalo);
+            contador.remove();
+        }
+
         botaoFechar.addEventListener("click", function () {
             clearInterval(intervalo);
             banner.remove();
         });
-    });
+
+        // Devolvida pra quem criou o banner poder "travar" ele antes do
+        // tempo (ex: banner-toast-detalhado, ao ser expandido) — só
+        // cancela o sumiço automático, o "x" continua fechando na hora.
+        return pararContador;
+    }
+
+    document.querySelectorAll(".banner-sucesso, .banner-erro").forEach(decorarBanner);
+
+    // Toast dinâmico — pra avisos que precisam aparecer na hora, sem
+    // recarregar a página (ex: "esse documento já foi anexado" na Fila).
+    // Flutua no canto da tela (não empurra o conteúdo, diferente do
+    // banner de topo de página) mas usa a mesma cara visual
+    // (.banner-erro/.banner-sucesso) pra parecer parte do mesmo sistema.
+    function obterCaixaToasts() {
+        var caixa = document.getElementById("caixa-toasts");
+
+        if (!caixa) {
+            caixa = document.createElement("div");
+            caixa.id = "caixa-toasts";
+            caixa.className = "caixa-toasts";
+            document.body.appendChild(caixa);
+        }
+
+        return caixa;
+    }
+
+    window.mostrarBanner = function (mensagem, tipo) {
+        var banner = document.createElement("p");
+        banner.className = tipo === "sucesso" ? "banner-sucesso" : "banner-erro";
+        banner.className += " banner-toast";
+        banner.textContent = (tipo === "sucesso" ? "✓ " : "⚠ ") + mensagem;
+
+        obterCaixaToasts().appendChild(banner);
+        decorarBanner(banner);
+    };
+
+    // Toast com detalhe expansível — pra quando dar vários erros
+    // parecidos de uma vez (ex: 5 PDFs recusados na Fila, cada um por
+    // um motivo diferente) e uma frase só ("duplicado ou grande demais")
+    // fica vaga demais pra ser útil. "itens" é [{ titulo, detalhe }].
+    // Clicar no resumo TRAVA o banner (cancela o sumiço automático,
+    // só o "x" fecha dali em diante) e revela a lista — é <div>, não
+    // <p>, porque precisa caber uma <ul> dentro sem quebrar o HTML.
+    window.mostrarBannerDetalhado = function (resumo, itens, tipo) {
+        var banner = document.createElement("div");
+        banner.className = (tipo === "sucesso" ? "banner-sucesso" : "banner-erro") + " banner-toast banner-expansivel";
+        banner.setAttribute("role", "alert");
+
+        // .banner-linha segura só o resumo (fica sempre no topo, do
+        // jeito que foi mostrado — clicar nele nunca "engorda" essa
+        // linha, só revela a lista abaixo). decorarBanner (acima) sabe
+        // procurar essa div pra colocar o contador/fechar dentro dela.
+        var linha = document.createElement("div");
+        linha.className = "banner-linha";
+
+        var texto = document.createElement("span");
+        texto.className = "banner-texto";
+        texto.textContent = (tipo === "sucesso" ? "✓ " : "⚠ ") + resumo;
+        texto.tabIndex = 0;
+        linha.appendChild(texto);
+        banner.appendChild(linha);
+
+        var lista = document.createElement("ul");
+        lista.className = "banner-detalhes";
+        lista.hidden = true;
+
+        itens.forEach(function (item) {
+            var li = document.createElement("li");
+
+            var nome = document.createElement("span");
+            nome.className = "banner-detalhe-nome";
+            nome.textContent = '"' + item.titulo + '"';
+
+            var detalhe = document.createElement("span");
+            detalhe.className = "banner-detalhe-motivo";
+            detalhe.textContent = ': "' + item.detalhe + '"';
+
+            li.appendChild(nome);
+            li.appendChild(detalhe);
+            lista.appendChild(li);
+        });
+
+        banner.appendChild(lista);
+        obterCaixaToasts().appendChild(banner);
+
+        var pararContador = decorarBanner(banner);
+        var travado = false;
+
+        function alternar() {
+            if (!travado) {
+                travado = true;
+                pararContador();
+            }
+
+            lista.hidden = !lista.hidden;
+            banner.classList.toggle("banner-expandido", !lista.hidden);
+        }
+
+        texto.addEventListener("click", alternar);
+        texto.addEventListener("keydown", function (evento) {
+            if (evento.key === "Enter" || evento.key === " ") {
+                evento.preventDefault();
+                alternar();
+            }
+        });
+    };
 
     // Clique em qualquer .truncavel (nome cortado, e-mail cortado, etc)
     // alterna o corte — um listener só cobre a página inteira, incluindo
@@ -104,23 +325,32 @@
             formPendente = null;
         }
 
-        document.querySelectorAll("form[data-confirm]").forEach(function (form) {
-            form.addEventListener("submit", function (evento) {
-                var mensagem = form.dataset.confirm;
+        // Delegado no document (não um listener por form encontrado na
+        // hora que a página carrega) — precisa cobrir formulário que
+        // aparece DEPOIS, via polling (ex: painel de Conferências da
+        // Fila do Motor, 2026-08-07). Um `querySelectorAll` fixo nunca
+        // pegaria esses.
+        document.addEventListener("submit", function (evento) {
+            var form = evento.target;
 
-                if (!mensagem) {
-                    return;
-                }
+            if (!form.matches || !form.matches("form[data-confirm]")) {
+                return;
+            }
 
-                evento.preventDefault();
-                formPendente = form;
-                mensagemConfirmacao.textContent = mensagem;
-                botaoConfirmarConfirmacao.classList.toggle(
-                    "modal-confirmacao-confirmar-perigo",
-                    form.dataset.perigo === "true"
-                );
-                modalConfirmacao.hidden = false;
-            });
+            var mensagem = form.dataset.confirm;
+
+            if (!mensagem) {
+                return;
+            }
+
+            evento.preventDefault();
+            formPendente = form;
+            mensagemConfirmacao.textContent = mensagem;
+            botaoConfirmarConfirmacao.classList.toggle(
+                "modal-confirmacao-confirmar-perigo",
+                form.dataset.perigo === "true"
+            );
+            modalConfirmacao.hidden = false;
         });
 
         botaoCancelarConfirmacao.addEventListener("click", fecharModalConfirmacao);
@@ -192,7 +422,14 @@
         });
 
         alternadores.push({ fechar: fechar });
+        return fechar;
     }
+
+    // Exposto pra outras páginas montarem seu próprio painel flutuante
+    // (ex: o popover "+N" de arquivos da Fila do motor) reaproveitando
+    // o mesmo mecanismo (um aberto por vez, fecha fora/Esc) em vez de
+    // duplicar a lógica.
+    window.configurarAlternador = configurarAlternador;
 
     configurarAlternador("botao-apps", "bandeja-apps");
     configurarAlternador("botao-perfil", "card-perfil");
@@ -298,5 +535,463 @@
         });
 
         aplicarFavoritos();
+    }
+
+    // ---------------------------------------------------------------
+    // Sininho de notificações — pendências da Fila do Motor (triagem +
+    // erros) de toda ferramenta que o usuário tem acesso, GET
+    // /notificacoes (ver app/plataforma/web/notificacoes.py). Presente em
+    // toda página logada (base.html), não só nas ferramentas.
+    //
+    // Empurrado por SSE (Server-Sent Events, GET /notificacoes/eventos),
+    // não mais por polling num timer — Henrique, 2026-08-08: "não dá
+    // para deixar certas coisas instantâneas?" O servidor avisa
+    // (eventos_sse.py) toda vez que algo muda de verdade (checagem,
+    // Job novo, decisão de Conferência), e essa aba busca /notificacoes
+    // na hora, sem esperar tick nenhum — inclusive com a aba em segundo
+    // plano, já que uma conexão SSE não é pausada do mesmo jeito que um
+    // setInterval seria (é isso que permite o som/alerta no título
+    // funcionarem mesmo sem a aba estar em foco, mais abaixo).
+    // INTERVALO_NOTIFICACOES_MS_RESERVA continua existindo só como rede
+    // de segurança bem espaçada — se o SSE cair por algum motivo (proxy
+    // bloqueando, navegador antigo sem EventSource), a página nunca
+    // fica desatualizada por muito tempo, só menos instantânea.
+    // Mesmo cuidado de escopo do bug achado em fila.js (2026-08-06):
+    // fica DENTRO desta mesma IIFE de propósito, não em um bloco
+    // `(function(){...})()` separado.
+    // ---------------------------------------------------------------
+    var INTERVALO_NOTIFICACOES_MS_RESERVA = 60000;
+
+    var botaoNotificacoesEl = document.getElementById("botao-notificacoes");
+    var painelNotificacoesEl = document.getElementById("painel-notificacoes");
+    var fecharNotificacoesEl = document.getElementById("fechar-notificacoes");
+    var fundoNotificacoesEl = document.getElementById("notificacoes-fundo");
+    var abaSistemaEl = document.getElementById("aba-sistema");
+    var abaMinhasEl = document.getElementById("aba-minhas");
+    var abaConferenciasEl = document.getElementById("aba-conferencias");
+    var listaNotificacoesEl = document.getElementById("lista-notificacoes");
+    var listaNotificacoesConferenciasEl = document.getElementById("lista-notificacoes-conferencias");
+    var painelNotificacoesVazioEl = document.getElementById("painel-notificacoes-vazio");
+    var painelNotificacoesVazioMinhasEl = document.getElementById("painel-notificacoes-vazio-minhas");
+    var painelNotificacoesVazioConferenciasEl = document.getElementById("painel-notificacoes-vazio-conferencias");
+    var badgeNotificacoesEl = document.getElementById("badge-notificacoes");
+    var contagemAbaSistemaEl = document.getElementById("contagem-aba-sistema");
+    var contagemAbaConferenciasEl = document.getElementById("contagem-aba-conferencias");
+
+    if (botaoNotificacoesEl && painelNotificacoesEl) {
+        var fecharPainelNotificacoes = configurarAlternador("botao-notificacoes", "painel-notificacoes");
+
+        if (fecharNotificacoesEl) {
+            fecharNotificacoesEl.addEventListener("click", fecharPainelNotificacoes);
+        }
+
+        // O fundo escurecido não é mexido por configurarAlternador (não
+        // sabe que ele existe) — um MutationObserver no atributo
+        // "hidden" do painel mantém os dois sincronizados não importa
+        // COMO o painel fechou (botão de X, clique fora, Esc — todos
+        // passam por configurarAlternador, que só mexe em "hidden").
+        if (fundoNotificacoesEl) {
+            new MutationObserver(function () {
+                fundoNotificacoesEl.classList.toggle("notificacoes-fundo-visivel", !painelNotificacoesEl.hidden);
+            }).observe(painelNotificacoesEl, { attributes: true, attributeFilter: ["hidden"] });
+        }
+
+        // Abas "Sistema"/"Minhas"/"Conferências" — só trocam o que aparece
+        // no conteúdo, sem pedir nada novo ao servidor (os dados de todas
+        // as abas já vêm juntos numa chamada só a /notificacoes, ver
+        // renderizarNotificacoes). "Conferências" só existe no DOM pra
+        // quem tem acesso a pelo menos uma fila do motor (gate no próprio
+        // base.html, usuario_tem_acesso_a_alguma_fila_motor) — por isso
+        // abaConferenciasEl pode ser null aqui, e cada entrada abaixo
+        // sabe pular a si mesma nesse caso. "Minhas" ainda não tem fonte
+        // de dados nenhuma (notificação por usuário — ferramentas
+        // manuais, perfil — é trabalho futuro, Henrique confirmou
+        // 2026-08-07); por ora só mostra um aviso de "vazio por
+        // enquanto", sem fingir que existe algo lá (por isso "lista: null").
+        var ABAS_NOTIFICACOES = [
+            { nome: "sistema", botao: abaSistemaEl, lista: listaNotificacoesEl, vazio: painelNotificacoesVazioEl },
+            { nome: "minhas", botao: abaMinhasEl, lista: null, vazio: painelNotificacoesVazioMinhasEl },
+            { nome: "conferencias", botao: abaConferenciasEl, lista: listaNotificacoesConferenciasEl, vazio: painelNotificacoesVazioConferenciasEl },
+        ];
+        var abaNotificacoesAtiva = "sistema";
+
+        function mostrarAbaNotificacoes(nomeAba) {
+            abaNotificacoesAtiva = nomeAba;
+
+            ABAS_NOTIFICACOES.forEach(function (aba) {
+                if (!aba.botao) {
+                    return;
+                }
+
+                var ativa = aba.nome === nomeAba;
+                aba.botao.classList.toggle("aba-notificacoes-ativa", ativa);
+
+                if (aba.lista) {
+                    aba.lista.hidden = !ativa || aba.lista.children.length === 0;
+                }
+                if (aba.vazio) {
+                    aba.vazio.hidden = !ativa || (aba.lista ? aba.lista.children.length > 0 : false);
+                }
+            });
+        }
+
+        ABAS_NOTIFICACOES.forEach(function (aba) {
+            if (aba.botao) {
+                aba.botao.addEventListener("click", function () { mostrarAbaNotificacoes(aba.nome); });
+            }
+        });
+
+        function adicionarBotaoExpandir(linkEl, textoEl) {
+            var expandirEl = document.createElement("button");
+            expandirEl.type = "button";
+            expandirEl.className = "item-notificacao-expandir";
+            expandirEl.textContent = "Ver mais";
+
+            expandirEl.addEventListener("click", function (evento) {
+                // Impede que o clique também dispare a navegação do <a>
+                // que envolve tudo isso.
+                evento.preventDefault();
+                evento.stopPropagation();
+
+                var expandido = textoEl.classList.toggle("expandido");
+                expandirEl.textContent = expandido ? "Ver menos" : "Ver mais";
+            });
+
+            linkEl.appendChild(expandirEl);
+        }
+
+        // Só oferece "Ver mais" quando o texto realmente estoura as 3
+        // linhas do line-clamp — mensagens curtas (a maioria da triagem)
+        // nunca precisam disso. Não dá pra medir isso na hora de montar
+        // a lista (renderizarNotificacoes roda por trás mesmo com o
+        // painel fechado — [hidden] zera scrollHeight/clientHeight dos
+        // dois, a comparação nunca bate) — por isso isso roda de novo
+        // toda vez que o painel É ABERTO, quando o layout de verdade já
+        // existe. Idempotente: pula quem já tem o botão.
+        function atualizarBotoesExpandir() {
+            var textos = listaNotificacoesEl.querySelectorAll(".item-notificacao-texto");
+
+            if (listaNotificacoesConferenciasEl) {
+                textos = Array.prototype.concat.call(
+                    Array.prototype.slice.call(textos),
+                    Array.prototype.slice.call(listaNotificacoesConferenciasEl.querySelectorAll(".item-notificacao-texto"))
+                );
+            }
+
+            textos.forEach(function (textoEl) {
+                var linkEl = textoEl.closest(".item-notificacao");
+
+                if (linkEl.querySelector(".item-notificacao-expandir")) {
+                    return;
+                }
+
+                if (textoEl.scrollHeight > textoEl.clientHeight + 1) {
+                    adicionarBotaoExpandir(linkEl, textoEl);
+                }
+            });
+        }
+
+        botaoNotificacoesEl.addEventListener("click", function () {
+            if (!painelNotificacoesEl.hidden) {
+                atualizarBotoesExpandir();
+            }
+        });
+
+        // Detecta quem é genuinamente NOVO entre um poll e outro, pra
+        // alertar (som + sino chacoalhando + toast) só quando algo chega
+        // de verdade — não a cada poll, e não na primeira carga da
+        // página (senão tudo que já existia "alertaria" no F5, o que
+        // seria barulho, não aviso). Itens não têm um id estável no
+        // payload de /notificacoes — a chave é tipo+link+mensagem, que
+        // já é única o bastante na prática (dois arquivos diferentes
+        // nunca têm a mesma mensagem).
+        var chavesNotificacoesConhecidas = null;
+
+        function chaveNotificacao(item) {
+            return item.tipo + "|" + item.link + "|" + item.mensagem;
+        }
+
+        function detectarNovasNotificacoes(itens) {
+            var chavesAtuais = itens.map(chaveNotificacao);
+
+            if (chavesNotificacoesConhecidas === null) {
+                chavesNotificacoesConhecidas = new Set(chavesAtuais);
+                return [];
+            }
+
+            var novas = itens.filter(function (item) {
+                return !chavesNotificacoesConhecidas.has(chaveNotificacao(item));
+            });
+
+            chavesNotificacoesConhecidas = new Set(chavesAtuais);
+            return novas;
+        }
+
+        // Beep curto sintetizado via Web Audio (sem depender de um
+        // arquivo de áudio externo). Autoplay do navegador só libera som
+        // depois de alguma interação real na página — como o primeiro
+        // poll nunca alerta (só estabelece a base, ver
+        // detectarNovasNotificacoes), na prática isso já roda bem depois
+        // da pessoa ter clicado em algo, então não deveria ser bloqueado.
+        // Envolto em try/catch por precaução — sem Web Audio, ou com o
+        // navegador recusando por qualquer motivo, o resto do alerta
+        // (sino chacoalhando + toast) continua funcionando normal.
+        function tocarSomNotificacao() {
+            try {
+                var Contexto = window.AudioContext || window.webkitAudioContext;
+                var contexto = new Contexto();
+                var oscilador = contexto.createOscillator();
+                var ganho = contexto.createGain();
+
+                oscilador.type = "sine";
+                oscilador.frequency.value = 880;
+                ganho.gain.setValueAtTime(0.16, contexto.currentTime);
+                ganho.gain.exponentialRampToValueAtTime(0.001, contexto.currentTime + 0.35);
+
+                oscilador.connect(ganho);
+                ganho.connect(contexto.destination);
+                oscilador.start();
+                oscilador.stop(contexto.currentTime + 0.35);
+            } catch (erro) {
+                // Web Audio indisponível/bloqueado — segue sem som.
+            }
+        }
+
+        // Reinicia a animação mesmo se ela já rodou antes (void
+        // offsetWidth força um reflow) — sem isso, chegar uma 2ª
+        // notificação nova enquanto a animação da 1ª ainda não passou
+        // não reiniciaria a "chacoalhada".
+        function chacoalharSino() {
+            botaoNotificacoesEl.classList.remove("botao-notificacoes-chacoalhando");
+            void botaoNotificacoesEl.offsetWidth;
+            botaoNotificacoesEl.classList.add("botao-notificacoes-chacoalhando");
+        }
+
+        // Toast (reaproveita window.mostrarBanner/mostrarBannerDetalhado,
+        // já usados pelos avisos de upload da Fila) — Henrique, 2026-08-07:
+        // "aparecer um popup... para notificar rapido que chegou algo...
+        // sem ter que clicar". Sistema e Conferências alertam em toasts
+        // separados (mesma separação por categoria do resto do painel);
+        // singular/plural escrito por extenso em cada bloco (não dá pra
+        // só grudar um "s" em "Motor"/"Conferências" sem estragar a
+        // concordância).
+        function alertarNovasNotificacoes(novas) {
+            if (novas.length === 0) {
+                return;
+            }
+
+            tocarSomNotificacao();
+            chacoalharSino();
+
+            // Aba em segundo plano — soma no título pra chamar atenção
+            // mesmo sem a pessoa estar olhando (Henrique, 2026-08-08:
+            // "atrai a pessoa a olhar oq deu"). Com foco: (dispensável)
+            // o painel já mostra tudo ao vivo, não precisa duplicar no
+            // título.
+            if (document.hidden) {
+                notificacoesNaoVistas += novas.length;
+                atualizarTituloNotificacoes();
+            }
+
+            var novasSistema = novas.filter(function (item) { return item.tipo !== "triagem"; });
+            var novasConferencias = novas.filter(function (item) { return item.tipo === "triagem"; });
+
+            if (novasSistema.length === 1) {
+                window.mostrarBanner("Novo erro no Motor: " + novasSistema[0].mensagem, "erro");
+            } else if (novasSistema.length > 1) {
+                window.mostrarBannerDetalhado(
+                    novasSistema.length + " novos erros no Motor — clique pra ver",
+                    novasSistema.map(function (item) { return { titulo: item.ferramenta, detalhe: item.mensagem }; }),
+                    "erro"
+                );
+            }
+
+            if (novasConferencias.length === 1) {
+                window.mostrarBanner("Nova pendência em Conferências: " + novasConferencias[0].mensagem, "erro");
+            } else if (novasConferencias.length > 1) {
+                window.mostrarBannerDetalhado(
+                    novasConferencias.length + " novas pendências em Conferências — clique pra ver",
+                    novasConferencias.map(function (item) { return { titulo: item.ferramenta, detalhe: item.mensagem }; }),
+                    "erro"
+                );
+            }
+        }
+
+        function preencherListaNotificacoes(listaEl, itens) {
+            listaEl.innerHTML = "";
+
+            itens.forEach(function (item) {
+                var linkEl = document.createElement("a");
+                linkEl.className = "item-notificacao item-notificacao-" + item.tipo;
+                linkEl.href = item.link;
+
+                var origemEl = document.createElement("span");
+                origemEl.className = "item-notificacao-origem";
+                origemEl.textContent = item.ferramenta;
+
+                var textoEl = document.createElement("span");
+                textoEl.className = "item-notificacao-texto";
+                textoEl.textContent = item.mensagem;
+
+                linkEl.appendChild(origemEl);
+                linkEl.appendChild(textoEl);
+                listaEl.appendChild(linkEl);
+            });
+        }
+
+        function renderizarNotificacoes(itens) {
+            // Compara com o poll anterior ANTES de qualquer outra coisa
+            // mexer no DOM — detectarNovasNotificacoes já atualiza o
+            // registro do que é "conhecido" pro próximo tick, então só
+            // pode rodar uma vez por render.
+            var novas = detectarNovasNotificacoes(itens);
+
+            // "triagem" (pendência esperando decisão humana no painel de
+            // Conferências) vai pra aba própria; todo o resto ("erro" e
+            // qualquer tipo futuro) continua em "Sistema". Se a aba
+            // Conferências nem existe pra esse usuário, não sobra nenhum
+            // item "triagem" no payload mesmo (o backend já filtra por
+            // acesso à fila do motor antes de devolver — ver
+            // notificacoes_do_usuario), então separar aqui é sempre
+            // seguro, existindo a aba ou não.
+            var itensSistema = itens.filter(function (item) { return item.tipo !== "triagem"; });
+            var itensConferencias = itens.filter(function (item) { return item.tipo === "triagem"; });
+
+            preencherListaNotificacoes(listaNotificacoesEl, itensSistema);
+            if (listaNotificacoesConferenciasEl) {
+                preencherListaNotificacoes(listaNotificacoesConferenciasEl, itensConferencias);
+            }
+
+            // Contador ao lado do título de cada aba — mesma ideia do
+            // "Gerar relatórios"/"Relatórios" de cada ferramenta, só que
+            // aqui atualizado ao vivo a cada poll (Henrique, 2026-08-07:
+            // "consigo saber quantas notificações são em cada aba antes
+            // de precisar entrar nela"). Some por completo em zero (não
+            // mostra "0") — Henrique pediu isso explicitamente, diferente
+            // do .contagem-aba original que sempre mostra o número.
+            // "Minhas" fica de fora — sem fonte de dados nenhuma ainda,
+            // continua escondido de propósito (hidden fixo no HTML).
+            if (contagemAbaSistemaEl) {
+                contagemAbaSistemaEl.textContent = itensSistema.length > 99 ? "99+" : String(itensSistema.length);
+                contagemAbaSistemaEl.hidden = itensSistema.length === 0;
+            }
+            if (contagemAbaConferenciasEl) {
+                contagemAbaConferenciasEl.textContent = itensConferencias.length > 99 ? "99+" : String(itensConferencias.length);
+                contagemAbaConferenciasEl.hidden = itensConferencias.length === 0;
+            }
+
+            // Painel já pode estar aberto quando um poll periódico
+            // reconstrói a lista (não só na primeira carga) — nesse caso
+            // dá pra medir certo na hora.
+            if (!painelNotificacoesEl.hidden) {
+                atualizarBotoesExpandir();
+            }
+
+            // Reaplica a visibilidade da aba ATUAL com o conteúdo recém
+            // preenchido — cobre tanto a primeira carga quanto um poll
+            // periódico chegando com o painel aberto numa aba que não é
+            // "Sistema" (sem isso, o poll reapareceria a lista errada por
+            // baixo da aba ativa).
+            mostrarAbaNotificacoes(abaNotificacoesAtiva);
+
+            if (itens.length > 0) {
+                badgeNotificacoesEl.textContent = itens.length > 99 ? "99+" : String(itens.length);
+                badgeNotificacoesEl.hidden = false;
+            } else {
+                badgeNotificacoesEl.hidden = true;
+            }
+
+            alertarNovasNotificacoes(novas);
+        }
+
+        function consultarNotificacoes() {
+            // cache: "no-store" de propósito — Henrique reportou uma
+            // notificação nova não aparecendo sem F5 (2026-08-07).
+            // Verificado ao vivo que o polling em si atualizava certo
+            // sem reload nenhum (não achado bug ali), mas isso aqui
+            // fecha por completo a possibilidade de o navegador (ou
+            // algum proxy no meio do caminho) servir uma resposta
+            // cacheada em vez de bater no servidor de verdade.
+            fetch("/notificacoes", { cache: "no-store" })
+                .then(function (resposta) { return resposta.json(); })
+                .then(function (dados) { renderizarNotificacoes(dados.itens || []); })
+                .catch(function () {
+                    // Falha de rede pontual — mantém o que já estava
+                    // mostrado, tenta de novo no próximo evento/tick.
+                });
+        }
+
+        // Título da aba enquanto ela está em segundo plano (Henrique,
+        // 2026-08-08: "poderia aparecer algo tambem no nome da guia...
+        // Tipo 'X notificações novas'" — confirmado: soma TODAS as
+        // categorias juntas, sem distinção). Só conta quando a aba
+        // realmente não está visível (document.hidden) — com ela em
+        // foco, a pessoa já está vendo o sininho/painel se atualizar ao
+        // vivo, não faz sentido "avisar" no título também. Restaura o
+        // título original assim que a aba volta a ficar visível.
+        var tituloOriginalDocumento = document.title;
+        var notificacoesNaoVistas = 0;
+
+        function atualizarTituloNotificacoes() {
+            if (notificacoesNaoVistas === 0) {
+                document.title = tituloOriginalDocumento;
+                return;
+            }
+
+            var contagem = notificacoesNaoVistas > 99 ? "99+" : String(notificacoesNaoVistas);
+            var sufixo = notificacoesNaoVistas === 1 ? "notificação nova" : "notificações novas";
+            document.title = contagem + " " + sufixo + " — " + tituloOriginalDocumento;
+        }
+
+        document.addEventListener("visibilitychange", function () {
+            if (document.hidden) {
+                return;
+            }
+
+            notificacoesNaoVistas = 0;
+            atualizarTituloNotificacoes();
+            // Volta o foco pra aba é um ótimo momento de buscar de novo
+            // na hora, sem esperar o SSE ou a rede de segurança — cobre
+            // o caso raro de um evento SSE ter chegado enquanto a
+            // conexão estava temporariamente instável.
+            consultarNotificacoes();
+        });
+
+        // SSE (Server-Sent Events) via SharedWorker — Henrique, 2026-08-11:
+        // cada aba abrindo sua PRÓPRIA conexão SSE estourava o limite de 6
+        // conexões simultâneas por site que o navegador impõe (Chrome/Edge/
+        // Firefox, HTTP/1.1) — com poucas abas do site abertas ao mesmo
+        // tempo, qualquer navegação NOVA ficava "carregando" indefinidamente
+        // esperando uma conexão livre, mesmo com o servidor respondendo na
+        // hora (bug real, reproduzido ao vivo). O SharedWorker (ver
+        // notificacoes_worker.js) mantém UMA ÚNICA conexão SSE compartilhada
+        // entre todas as abas do site, não importa quantas estejam abertas.
+        if (window.SharedWorker) {
+            var worker = new SharedWorker("/static/notificacoes_worker.js?v=" + VERSAO_ESTATICOS);
+            worker.port.onmessage = function (evento) {
+                if (evento.data === "atualizar") {
+                    consultarNotificacoes();
+                }
+            };
+            worker.port.start();
+        } else if (window.EventSource) {
+            // Sem suporte a SharedWorker (raro hoje em dia): volta pro
+            // EventSource direto, por aba — funciona, só sofre de novo do
+            // limite de conexões com muitas abas abertas.
+            var eventos = new EventSource("/notificacoes/eventos");
+            eventos.addEventListener("atualizar", consultarNotificacoes);
+        }
+        // Sem suporte a nenhum dos dois (navegador muito antigo), a rede de
+        // segurança abaixo vira a única via — ainda funciona, só sem
+        // instantaneidade nenhuma.
+
+        consultarNotificacoes();
+
+        // Rede de segurança, com ou sem SSE — bem espaçada de propósito
+        // (ver comentário no topo do arquivo). Roda mesmo com a aba
+        // escondida: diferente do polling antigo, aqui é só uma
+        // garantia de "nunca ficar desatualizado por muito tempo mesmo
+        // se o SSE falhar silenciosamente", não a via principal.
+        setInterval(consultarNotificacoes, INTERVALO_NOTIFICACOES_MS_RESERVA);
     }
 })();

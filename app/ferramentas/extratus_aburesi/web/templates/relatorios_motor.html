@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block titulo %}Relatórios do Motor — Extratus - Aburesi{% endblock %}
+{% block nome_pagina %}Extratus - Aburesi{% endblock %}
+{% block css_pagina %}<link rel="stylesheet" href="/extratus-aburesi/static/extratus.css?v={{ v }}">{% endblock %}
+
+{% block conteudo %}
+<div class="cabecalho-ferramenta">
+    <div>
+        <h1>Relatórios do Motor</h1>
+        <p>Repositório universal do que o Motor já processou — prontos, em revisão ou com erro.</p>
+    </div>
+</div>
+
+<nav class="abas-extratus">
+    <a href="/extratus-aburesi/" class="aba">Gerar seu Relatório <span class="contagem-aba">{{ contagem_nav_pendentes(usuario) }}</span></a>
+    <a href="/extratus-aburesi/relatorios" class="aba">Seus Relatórios <span class="contagem-aba">{{ contagem_nav_relatorios(usuario) }}</span></a>
+    <a href="/extratus-aburesi/relatorios-finalizados" class="aba aba-motor aba-ativa">Relatórios do Motor</a>
+    {% if usuario_tem_acesso_fila_motor(usuario, "extratus-aburesi") %}
+    <a href="/extratus-aburesi/fila" class="aba aba-motor">Fila do Motor</a>
+    {% endif %}
+    {% if usuario_eh_admin_da_ferramenta(usuario, "extratus-aburesi") %}
+    <a href="/extratus-aburesi/motor" class="aba aba-motor aba-fixa-direita" data-dica="Configurações do Motor" aria-label="Configurações do Motor">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+    </a>
+    {% endif %}
+</nav>
+
+<section class="cartao-secao">
+    {% if jobs %}
+    <div class="abas-relatorios-motor">
+        <button type="button" class="aba-relatorios-motor aba-relatorios-motor-ativa" data-status="sucesso">Sucesso</button>
+        <button type="button" class="aba-relatorios-motor" data-status="revisao">Revisão</button>
+        <button type="button" class="aba-relatorios-motor" data-status="erro">Erro</button>
+    </div>
+    <div class="barra-filtros">
+        <input type="search" class="campo-busca" placeholder="Buscar por processo ou arquivo..." id="campo-busca-relatorios-motor" data-processo-inicial="{{ processo_busca or '' }}">
+    </div>
+    <ul class="lista-relatorios">
+        {% for job in jobs %}
+        <li class="relatorio-item" data-status="{{ job.status }}" data-processo="{{ job.processo or '' }}" data-busca="{{ ((job.processo or '') ~ ' ' ~ job.arquivo_pdf) | lower }}">
+            <span class="status status-{{ job.status }}">{{ job.status | rotulo_status }}</span>
+            <div class="relatorio-info{% if job.relatorio_path %} relatorio-info-clicavel{% endif %}"{% if job.relatorio_path %} data-download="download/{{ job.relatorio_path.split('\\')[-1].split('/')[-1] }}"{% endif %}>
+                {% if job.processo %}
+                <strong class="truncavel" data-dica="{{ job.processo }}">{{ job.processo }}</strong>
+                <span class="relatorio-meta truncavel" data-dica="{{ job.arquivo_pdf }} · {{ job.criado_em.strftime('%d/%m/%Y %H:%M') }}">{{ job.arquivo_pdf }} · {{ job.criado_em.strftime("%d/%m/%Y %H:%M") }}</span>
+                {% else %}
+                <strong class="truncavel" data-dica="{{ job.arquivo_pdf }}">{{ job.arquivo_pdf }}</strong>
+                <span class="relatorio-meta truncavel" data-dica="{{ job.criado_em.strftime('%d/%m/%Y %H:%M') }}">{{ job.criado_em.strftime("%d/%m/%Y %H:%M") }}</span>
+                {% endif %}
+                {% if job.status == "revisao" and job.motivo_confianca %}
+                <span class="motivo" data-dica="{{ job.motivo_confianca }}">{{ job.motivo_confianca }}</span>
+                {% elif job.status == "erro" and job.erro_mensagem %}
+                <span class="motivo" data-dica="{{ job.erro_mensagem }}">{{ job.tipo_erro | rotulo_erro }}</span>
+                {% endif %}
+            </div>
+            {% if job.relatorio_path %}
+            <a href="download/{{ job.relatorio_path.split('\\')[-1].split('/')[-1] }}" class="botao-download" data-dica="Baixar relatório" aria-label="Baixar relatório">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+            </a>
+            {% else %}
+            <span class="botao-download botao-fantasma" aria-hidden="true"></span>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    <p class="vazio filtro-vazio" hidden>Nenhum relatório encontrado com esse filtro.</p>
+    {% else %}
+    <p class="vazio">Nenhum processamento do Motor registrado ainda.</p>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block js_pagina %}<script src="/extratus-aburesi/static/relatorios_motor.js?v={{ v }}" defer></script>{% endblock %}

@@ -6,11 +6,13 @@ from app.ferramentas.extratus_aburesi.db.jobs import listar_jobs, somar_custo_po
 from app.ferramentas.extratus_aburesi.web.rotulos import rotulo_erro, rotulo_status
 from app.plataforma.db.models import Usuario
 from app.plataforma.db.usuarios import listar_todos_usuarios
-from app.plataforma.web.auth import exigir_admin_ferramenta
+from app.plataforma.web.auth import exigir_admin
 from app.plataforma.web.templates_util import criar_templates
 
 
-router = APIRouter(dependencies=[Depends(exigir_admin_ferramenta("extratus-aburesi"))])
+# Ver comentário equivalente em app/ferramentas/extratus/web/routes/
+# historico.py (Extratus - Relatórios) — mesma lógica.
+router = APIRouter(dependencies=[Depends(exigir_admin)])
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 PLATAFORMA_TEMPLATES_DIR = (
@@ -24,7 +26,7 @@ templates.env.filters["rotulo_erro"] = rotulo_erro
 @router.get("/historico")
 def pagina_historico(
     request: Request,
-    usuario: Usuario = Depends(exigir_admin_ferramenta("extratus-aburesi")),
+    usuario: Usuario = Depends(exigir_admin),
 ):
     jobs = listar_jobs()
     info_por_id = {u.id: {"nome": u.nome, "login": u.nome_usuario} for u in listar_todos_usuarios()}

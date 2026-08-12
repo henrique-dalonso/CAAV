@@ -29,6 +29,30 @@ def obter_dados_deteccao(caminho_pdf):
     return processo, confianca
 
 
+def ajustar_confianca_pos_ia(confianca, uso_ia):
+    """Ver docstring equivalente em app/ferramentas/extratus/core/pipeline.py
+    (Extratus - Relatórios) — mesma lógica, reaproveitada por
+    core/pipeline_manual.py deste módulo também."""
+    motivos_revisao = []
+    if uso_ia.get("dividido"):
+        motivos_revisao.append(
+            "processo grande demais para uma única chamada de IA — dividido em partes e sintetizado"
+        )
+    if uso_ia.get("paginas_excluidas_triagem"):
+        motivos_revisao.append(
+            f"{len(uso_ia['paginas_excluidas_triagem'])} página(s) removida(s) automaticamente por "
+            "parecerem um anexo de listagem de terceiros"
+        )
+
+    if motivos_revisao:
+        return {
+            "nivel": "revisao",
+            "motivo": "Revisão manual recomendada: " + "; ".join(motivos_revisao) + ".",
+        }
+
+    return confianca
+
+
 def tratar_erro(pdf, processo, tipo_erro, erro, pasta_erros, usuario_id=None):
     """Registra uma falha de processamento (PDF, IA, docx ou movimentação)
     e move o PDF pra pasta de erros. Reaproveitada tanto pelo fluxo
@@ -118,6 +142,7 @@ def finalizar_processamento(
     return {
         "sucesso": True,
         "status": job.status,
+        "job_id": job.id,
         "processo": processo,
         "confianca": confianca.get("nivel"),
         "relatorio": str(caminho_saida),
@@ -131,7 +156,7 @@ def processar_pdf(
     pasta_processados,
     pasta_erros,
     pasta_revisao,
-    ia_provider="simulado",
+    ia_provider="claude",
     usuario_id=None,
 ):
     """Processa um único PDF: detecta o processo, gera o relatório, move o
@@ -157,27 +182,7 @@ def processar_pdf(
     except Exception as erro:
         return tratar_erro(pdf, processo, "erro_ia", erro, pasta_erros, usuario_id)
 
-    # Processo grande demais pra uma chamada só (dividido em pedaços) e/ou
-    # que teve páginas removidas pela triagem de anexos de listagem de
-    # terceiros (ver ia_cliente.montar_diagnostico_com_triagem) — nos dois
-    # casos é um caminho mais novo e mais arriscado que o de chamada única
-    # normal, então nunca cai em "alta confiança" automática.
-    motivos_revisao = []
-    if uso_ia.get("dividido"):
-        motivos_revisao.append(
-            "processo grande demais para uma única chamada de IA — dividido em partes e sintetizado"
-        )
-    if uso_ia.get("paginas_excluidas_triagem"):
-        motivos_revisao.append(
-            f"{len(uso_ia['paginas_excluidas_triagem'])} página(s) removida(s) automaticamente por "
-            "parecerem um anexo de listagem de terceiros"
-        )
-
-    if motivos_revisao:
-        confianca = {
-            "nivel": "revisao",
-            "motivo": "Revisão manual recomendada: " + "; ".join(motivos_revisao) + ".",
-        }
+    confianca = ajustar_confianca_pos_ia(confianca, uso_ia)
 
     return finalizar_processamento(
         pdf,

@@ -18,7 +18,7 @@ CONFIG_PADRAO = {
 
     "limite_padrao": 0,
 
-    "ia_provider": "simulado",
+    "ia_provider": "claude",
 
     # Motor automático — ainda só liga/desliga uma bandeira (ver Motor no
     # Extratus). O "vigiar a pasta sozinho de verdade" é o próximo passo,
@@ -40,7 +40,10 @@ PASTAS_CONFIGURAVEIS = [
     "motor_pasta_entrada",
 ]
 
-PROVEDORES_IA_VALIDOS = ("simulado", "claude")
+
+# Ver comentário equivalente em app/ferramentas/extratus/core/
+# config_manager.py (Extratus - Relatórios) — mesma lógica.
+PROVEDORES_IA_VALIDOS = ("claude",)
 
 
 def salvar_config(config):
@@ -189,7 +192,7 @@ def atualizar_config_motor(pasta_entrada=None, ia_provider=None):
         pasta_entrada = pasta_entrada.strip()
 
         if not pasta_entrada:
-            raise ValueError("Pasta de entrada do motor não pode ficar vazia.")
+            raise ValueError("Pasta de entrada do Motor não pode ficar vazia.")
 
         config["motor_pasta_entrada"] = pasta_entrada
 

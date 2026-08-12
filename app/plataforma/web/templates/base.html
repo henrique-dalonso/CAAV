@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="pt-br"{% if usuario.tema and usuario.tema != "sistema" %} data-theme="{{ usuario.tema }}"{% endif %}>
+{% set _cor_ferramenta = cor_ferramenta_atual(request) %}
+<html lang="pt-br"{% if usuario.tema and usuario.tema != "sistema" %} data-theme="{{ usuario.tema }}"{% endif %}{% if _cor_ferramenta and _cor_ferramenta.cor_acento %} style="--db-cor-acento:{{ _cor_ferramenta.cor_acento }};--db-cor-acento-hover:{{ _cor_ferramenta.cor_acento_hover }};--db-cor-acento-fraco:{{ _cor_ferramenta.cor_acento_fraco }};--db-cor-acento-escuro:{{ _cor_ferramenta.cor_acento_escuro }};--db-cor-acento-hover-escuro:{{ _cor_ferramenta.cor_acento_hover_escuro }};--db-cor-acento-fraco-escuro:{{ _cor_ferramenta.cor_acento_fraco_escuro }};"{% endif %}>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -25,7 +26,7 @@
 
             <div class="menu-usuario">
                 <div class="seletor-apps">
-                    <button type="button" class="botao-apps" id="botao-apps" aria-haspopup="true" aria-expanded="false" title="Ferramentas">
+                    <button type="button" class="botao-apps" id="botao-apps" aria-haspopup="true" aria-expanded="false" data-dica="Ferramentas" aria-label="Ferramentas">
                         <span class="grade-pontos" aria-hidden="true">
                             <span></span><span></span><span></span>
                             <span></span><span></span><span></span>
@@ -35,31 +36,40 @@
                     <div class="bandeja-apps" id="bandeja-apps" hidden>
                         {% for ferramenta in ferramentas_do_usuario(usuario) %}
                         <a href="{{ ferramenta.url }}" class="bandeja-apps-item" data-slug="{{ ferramenta.slug }}" data-nome="{{ ferramenta.nome }}">
-                            <span class="bandeja-apps-favorito" role="button" tabindex="0" title="Fixar nos favoritos" aria-label="Fixar nos favoritos">
+                            <span class="bandeja-apps-favorito" role="button" tabindex="0" data-dica="Fixar nos favoritos" aria-label="Fixar nos favoritos">
                                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                                 </svg>
                             </span>
-                            <div class="emblema">{{ ferramenta.nome|emblema_ferramenta }}</div>
-                            <span class="bandeja-apps-item-nome" title="{{ ferramenta.nome }}">{{ ferramenta.nome }}</span>
+                            <div class="emblema"{% if ferramenta.cor_acento %} style="--emblema-cor:{{ ferramenta.cor_acento }};--emblema-cor-hover:{{ ferramenta.cor_acento_hover }};--emblema-cor-escuro:{{ ferramenta.cor_acento_escuro }};--emblema-cor-hover-escuro:{{ ferramenta.cor_acento_hover_escuro }};"{% endif %}>{{ ferramenta.nome|emblema_ferramenta }}</div>
+                            <span class="bandeja-apps-item-nome" data-dica="{{ ferramenta.nome }}">{{ ferramenta.nome }}</span>
                         </a>
                         {% else %}
                         <p class="vazio bandeja-apps-vazio">Nenhuma ferramenta liberada ainda.</p>
                         {% endfor %}
                     </div>
                 </div>
+                <div class="seletor-notificacoes">
+                    <button type="button" class="botao-notificacoes" id="botao-notificacoes" aria-haspopup="true" aria-expanded="false" data-dica="Notificações" aria-label="Notificações">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                        </svg>
+                        <span class="badge-notificacoes" id="badge-notificacoes" hidden>0</span>
+                    </button>
+                </div>
                 <div class="seletor-perfil">
-                    <button type="button" class="botao-perfil" id="botao-perfil" aria-haspopup="true" aria-expanded="false" title="{{ usuario.nome }}">
+                    <button type="button" class="botao-perfil" id="botao-perfil" aria-haspopup="true" aria-expanded="false" data-dica="{{ usuario.nome }}" aria-label="{{ usuario.nome }}">
                         <div class="emblema avatar" style="background: {{ usuario.cor_perfil or "#4f46e5" }};">{{ usuario.nome[0]|upper }}</div>
                     </button>
                     <div class="card-perfil" id="card-perfil" hidden>
                         <div class="card-perfil-cabecalho">
-                            <a href="/perfil" class="avatar-grande-link" title="Ir ao perfil">
+                            <a href="/perfil" class="avatar-grande-link" data-dica="Ir ao perfil" aria-label="Ir ao perfil">
                                 <div class="emblema avatar-grande" style="background: {{ usuario.cor_perfil or "#4f46e5" }};">{{ usuario.nome[0]|upper }}</div>
                             </a>
                             <div>
                                 <strong>{{ usuario.nome }}</strong>
-                                <span class="card-perfil-email" title="{{ usuario.email }}">{{ usuario.email }}</span>
+                                <span class="card-perfil-email" data-dica="{{ usuario.email }}">{{ usuario.email }}</span>
                             </div>
                         </div>
                         <dl class="card-perfil-dados">
@@ -75,14 +85,14 @@
                     </div>
                 </div>
                 {% if usuario.eh_admin %}
-                <a href="/admin" class="icone-menu" title="Administração" aria-label="Administração">
+                <a href="/admin" class="icone-menu" data-dica="Administração" aria-label="Administração">
                     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                     </svg>
                 </a>
                 {% endif %}
                 <form action="/logout" method="post">
-                    <button type="submit" class="icone-menu" title="Sair" aria-label="Sair">
+                    <button type="submit" class="icone-menu" data-dica="Sair" aria-label="Sair">
                         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                             <polyline points="16 17 21 12 16 7"></polyline>
@@ -96,6 +106,37 @@
         {% block conteudo %}{% endblock %}
     </div>
 
+    <div class="notificacoes-fundo" id="notificacoes-fundo" hidden></div>
+    <div class="painel-notificacoes" id="painel-notificacoes" hidden>
+        <div class="painel-notificacoes-cabecalho">
+            <span>Notificações</span>
+            <button type="button" class="painel-notificacoes-fechar" id="fechar-notificacoes" aria-label="Fechar notificações">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div class="painel-notificacoes-abas">
+            <button type="button" class="aba-notificacoes aba-notificacoes-ativa" id="aba-sistema" data-aba="sistema">Sistema <span class="contagem-aba-notificacoes contagem-aba-sistema" id="contagem-aba-sistema" hidden>0</span></button>
+            <button type="button" class="aba-notificacoes" id="aba-minhas" data-aba="minhas">Minhas <span class="contagem-aba-notificacoes" id="contagem-aba-minhas" style="background: {{ usuario.cor_perfil or "#4f46e5" }};" hidden>0</span></button>
+            {% if usuario_tem_acesso_a_alguma_fila_motor(usuario) %}
+            <button type="button" class="aba-notificacoes" id="aba-conferencias" data-aba="conferencias">Conferências <span class="contagem-aba-notificacoes contagem-aba-conferencias" id="contagem-aba-conferencias" hidden>0</span></button>
+            {% endif %}
+        </div>
+        <div class="painel-notificacoes-conteudo">
+            <ul class="lista-notificacoes" id="lista-notificacoes"></ul>
+            <p class="vazio painel-notificacoes-vazio" id="painel-notificacoes-vazio">Nenhuma pendência no momento.</p>
+            <p class="vazio painel-notificacoes-vazio" id="painel-notificacoes-vazio-minhas" hidden>
+                Nenhuma notificação pessoal ainda — essa aba vai reunir avisos só seus (ferramentas manuais, perfil) conforme forem existindo.
+            </p>
+            {% if usuario_tem_acesso_a_alguma_fila_motor(usuario) %}
+            <ul class="lista-notificacoes" id="lista-notificacoes-conferencias" hidden></ul>
+            <p class="vazio painel-notificacoes-vazio" id="painel-notificacoes-vazio-conferencias" hidden>Nenhuma conferência pendente no momento.</p>
+            {% endif %}
+        </div>
+    </div>
+
     <div class="modal-confirmacao" id="modal-confirmacao" hidden>
         <div class="modal-confirmacao-caixa">
             <p class="modal-confirmacao-mensagem" id="modal-confirmacao-mensagem"></p>
@@ -106,7 +147,7 @@
         </div>
     </div>
 
-    <script src="/static/base.js?v={{ v }}" defer></script>
+    <script src="/static/base.js?v={{ v }}" defer data-versao-estaticos="{{ v }}"></script>
     {% block js_pagina %}{% endblock %}
 </body>
 </html>

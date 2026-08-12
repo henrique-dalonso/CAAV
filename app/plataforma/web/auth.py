@@ -59,10 +59,11 @@ def exigir_acesso_ferramenta(slug_ferramenta: str):
 
 
 def exigir_admin_ferramenta(slug_ferramenta: str):
-    """Abas administrativas DENTRO de uma ferramenta (custos, motor...) —
-    admin da plataforma sempre passa; coordenador só se foi liberado pra
-    essa ferramenta específica (ver Usuario.eh_admin vs admin_ferramenta
-    em UsuarioFerramenta)."""
+    """Aba administrativa DENTRO de uma ferramenta (Configurações do
+    Motor — "Custos" não é mais uma delas, ver admin.py) — admin da
+    plataforma sempre passa; coordenador só se foi liberado pra essa
+    ferramenta específica (ver Usuario.eh_admin vs admin_ferramenta em
+    UsuarioFerramenta)."""
 
     def dependencia(usuario: Usuario = Depends(exigir_login)) -> Usuario:
         if not usuario_eh_admin_da_ferramenta(usuario, slug_ferramenta):
@@ -86,7 +87,7 @@ def exigir_acesso_fila_motor(slug_ferramenta: str):
         if not usuario_tem_acesso_fila_motor(usuario, slug_ferramenta):
             raise HTTPException(
                 status_code=403,
-                detail="Acesso restrito a quem pode alimentar a fila do motor.",
+                detail="Acesso restrito a quem pode alimentar a fila do Motor.",
             )
 
         return usuario

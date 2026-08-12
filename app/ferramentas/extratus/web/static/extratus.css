@@ -28,11 +28,6 @@
     background: currentColor;
 }
 
-.selo-status.simulado {
-    background: var(--cor-erro-fundo);
-    color: var(--cor-erro-texto);
-}
-
 .selo-status.real {
     background: #dcfce7;
     color: #166534;
@@ -57,6 +52,35 @@ html[data-theme="escuro"] .selo-status.real {
     gap: 0.25rem;
     border-bottom: 1px solid var(--cor-borda);
     margin-bottom: 1.5rem;
+    /* Nomes maiores + mais abas (2026-08-11: "Relatórios do Motor",
+       "Configurações do Motor" etc.) não cabem mais na largura fixa do
+       conteúdo (~832px) em nenhum tamanho de janela — rolagem lateral
+       é o remendo de hoje (Henrique optou por isso em vez de apertar o
+       texto), até a reestruturação de layout mais ampla que já estava
+       pendente (mesma conversa do painel de notificações). Sem essa
+       correção, o texto quebrava em 2 linhas dentro da própria aba, o
+       que ficava pior ainda ("torto"). Barra de rolagem sempre visível
+       (não escondida, padrão de alguns SOs) — única pista de que tem
+       mais aba pra ver além da borda. */
+    overflow-x: auto;
+    /* Sem isso o overflow-y "herda" auto do overflow-x (regra da spec de
+       CSS quando só um dos dois eixos é visible) e abre rolagem vertical
+       indesejada, cortando o topo das abas. */
+    overflow-y: hidden;
+    scrollbar-width: thin;
+}
+
+.abas-extratus::-webkit-scrollbar {
+    height: 6px;
+}
+
+.abas-extratus::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.abas-extratus::-webkit-scrollbar-thumb {
+    background: var(--cor-borda);
+    border-radius: 999px;
 }
 
 .aba {
@@ -70,6 +94,14 @@ html[data-theme="escuro"] .selo-status.real {
     text-decoration: none;
     border-bottom: 2px solid transparent;
     margin-bottom: -1px;
+    /* Henrique, 2026-08-11: com nomes de aba maiores, o texto quebrava
+       em 2 linhas dentro da própria aba — abas vizinhas com quantidades
+       de linhas diferentes ficavam desalinhadas ("torto, quebrado").
+       nowrap + flex-shrink:0 mantém toda aba numa linha só, sempre no
+       tamanho natural do texto; a barra rola de lado (.abas-extratus)
+       se um dia não couber tudo, em vez de espremer/quebrar o texto. */
+    white-space: nowrap;
+    flex-shrink: 0;
     transition: color 0.15s ease, border-color 0.15s ease;
 }
 
@@ -92,41 +124,14 @@ html[data-theme="escuro"] .selo-status.real {
     border-radius: 999px;
 }
 
-/* Aba de custos: só admin vê, então marca com uma cor diferente da aba
-   normal — sinaliza visualmente "isso aqui é outra categoria de tela".
-   A borda amarela embaixo só pode aparecer quando essa aba estiver
-   realmente ativa (.aba-ativa) — senão fica parecendo ativa sempre. */
-.aba-admin,
-.aba-admin:hover {
-    color: #b45309;
+/* Empurra uma aba (e tudo depois dela, se houver) pra ponta direita da
+   barra — Henrique, 2026-08-11: usado na engrenagem (Configurações do
+   Motor), que assumiu o lugar que "Custos (admin)" ocupava antes dela
+   virar uma tela à parte, fora do Extratus (ver admin.html). Genérico
+   de propósito (não amarrado à cor/categoria de nenhuma aba específica)
+   pra qualquer aba futura que precise do mesmo comportamento. */
+.aba-fixa-direita {
     margin-left: auto;
-}
-
-.aba-admin.aba-ativa,
-.aba-admin.aba-ativa:hover {
-    border-bottom-color: #b45309;
-}
-
-@media (prefers-color-scheme: dark) {
-    html:not([data-theme="claro"]) .aba-admin,
-    html:not([data-theme="claro"]) .aba-admin:hover {
-        color: #fbbf24;
-    }
-
-    html:not([data-theme="claro"]) .aba-admin.aba-ativa,
-    html:not([data-theme="claro"]) .aba-admin.aba-ativa:hover {
-        border-bottom-color: #fbbf24;
-    }
-}
-
-html[data-theme="escuro"] .aba-admin,
-html[data-theme="escuro"] .aba-admin:hover {
-    color: #fbbf24;
-}
-
-html[data-theme="escuro"] .aba-admin.aba-ativa,
-html[data-theme="escuro"] .aba-admin.aba-ativa:hover {
-    border-bottom-color: #fbbf24;
 }
 
 /* Aba do Motor — outra categoria de novo (admin + coordenador liberado),
@@ -175,6 +180,13 @@ html[data-theme="escuro"] .aba-motor.aba-ativa:hover {
     white-space: nowrap;
 }
 
+/* Transition precisa estar no estado BASE (não em .fila-item-saindo),
+   senão o navegador aplica o valor final direto, sem animar — o mesmo
+   detalhe já visto nos cartões do upload (.arquivo-cartao). */
+.lista-fila li {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
 /* Fila do motor em duas colunas lado a lado (Pendentes | Processando) —
    site é só pra uso em computador no escritório, então não tem variante
    estreita/empilhada: sempre lado a lado. Cada coluna rola por conta
@@ -208,6 +220,71 @@ html[data-theme="escuro"] .aba-motor.aba-ativa:hover {
     margin-bottom: 0;
 }
 
+/* Entrada/saída suave pra itens que aparecem/somem via polling (fila.js)
+   — sem isso, um item novo simplesmente "estala" na lista do nada. Saída
+   desliza pro lado (não pra baixo, como os cartões do upload) só pra
+   distinguir visualmente "isso é a fila de verdade", não o upload. */
+.fila-item-entrando {
+    animation: entrada 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+.fila-item-saindo {
+    opacity: 0;
+    transform: translateX(10px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Pendente com bolinha vermelha (aguardando Conferências) fica
+   clicável — leva até o card correspondente lá em cima (fila.js:
+   rolagem suave + pisca). Só esses ganham o cursor/hover — os demais
+   continuam sem interação nenhuma, como sempre foram. */
+.fila-item-clicavel {
+    cursor: pointer;
+}
+
+.fila-item-clicavel:hover {
+    background: var(--cor-fundo);
+}
+
+/* Lupa no fim da linha — sem ela não tinha como "adivinhar" que dava
+   pra clicar num pendente vermelho (Henrique, 2026-08-07). Fica sempre
+   visível (bem discreta) pra ser um indício permanente, não só uma
+   surpresa no hover — e reage no hover pra confirmar "sim, é clicável
+   mesmo", ficando mais forte e na cor da própria bolinha vermelha. */
+.fila-item-ver-conferencia {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--cor-texto-suave);
+    opacity: 0.55;
+    transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.fila-item-clicavel:hover .fila-item-ver-conferencia {
+    opacity: 1;
+    color: #dc2626;
+}
+
+/* "Piscadinha" de destaque quando alguém clica num pendente vermelho —
+   pisca a cor de acento do card de Conferências duas vezes, sem mudar
+   nada permanente (a classe é removida sozinha pelo fila.js quando a
+   animação termina). */
+@keyframes piscar-conferencia {
+    0%, 100% { background: var(--cor-cartao); }
+    25%, 75% { background: color-mix(in srgb, #f97316 30%, var(--cor-cartao)); }
+}
+
+.conferencia-item-destacado {
+    animation: piscar-conferencia 0.5s ease-in-out 2;
+}
+
+/* Destaque do deep-link "Ir ao relatório" (Conferências manuais,
+   2026-08-11) — mesma animação de piscar já usada em Conferências. */
+.relatorio-item-destacado {
+    animation: piscar-conferencia 0.5s ease-in-out 2;
+}
+
 /* Bolinha de status da fila — substitui a etiqueta de texto antiga.
    O significado de cada cor aparece ao passar o mouse (atributo title,
    nativo do navegador, sem precisar de JavaScript). */
@@ -219,12 +296,35 @@ html[data-theme="escuro"] .aba-motor.aba-ativa:hover {
     cursor: default;
 }
 
+/* Laranja = checagem (checagem_lote.py) ainda não aprovou esse arquivo
+   — seja porque a checagem simplesmente ainda não rodou pra ele (chega
+   e sai amarelo em poucos segundos, no rumo normal) ou porque achou
+   alguma inconsistência (processo duplicado, não encontrado) que só o
+   painel de Conferências (ainda não construído) vai resolver — os dois
+   casos são visualmente iguais de propósito por enquanto, ver
+   db/checagem_fila.py. */
+.bolinha-laranja {
+    background: #f97316;
+}
+
+/* Bem mais clara que a laranja de propósito (Henrique, 2026-08-07: na
+   bolinha pequena, o amarelo antigo #f59e0b ficava perto demais da
+   laranja #f97316 pra diferenciar de relance). */
 .bolinha-amarela {
-    background: #f59e0b;
+    background: #fde047;
 }
 
 .bolinha-verde {
     background: #16a34a;
+}
+
+/* Vermelha = a checagem achou uma inconsistência de verdade e está
+   esperando decisão humana no painel de Conferências — distinta da
+   laranja de propósito (Henrique, 2026-08-07: sem essa distinção "não
+   fica explícito que aquele em específico está esperando" alguém agir,
+   ao contrário de "em checagem", que se resolve sozinho em segundos). */
+.bolinha-vermelha {
+    background: #dc2626;
 }
 
 /* A lista genérica (.lista-arquivos) desenha um quadradinho decorativo
@@ -255,11 +355,141 @@ html[data-theme="escuro"] .aba-motor.aba-ativa:hover {
     text-decoration: underline;
 }
 
-.fila-barra-selecao {
+/* Painel de Conferências (2026-08-07) — inconsistências da triagem
+   esperando decisão humana ("Prosseguir" ou "Descartar"). Cor âmbar/
+   laranja de propósito: é a MESMA linguagem visual da bolinha laranja
+   já usada pra "precisa de atenção" na fila (não o vermelho do sininho
+   de erro — Conferências não é uma falha, é uma decisão pendente).
+   [hidden] via atributo, alternado tanto no primeiro render (Jinja)
+   quanto ao vivo pelo polling (fila.js) quando a lista esvazia/enche. */
+.secao-conferencias {
+    background: color-mix(in srgb, #f97316 8%, var(--cor-cartao));
+    border: 1px solid color-mix(in srgb, #f97316 30%, var(--cor-borda));
+}
+
+.secao-conferencias[hidden] {
+    display: none;
+}
+
+.secao-conferencias h2 {
+    color: #c2410c;
+}
+
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme="claro"]) .secao-conferencias h2 {
+        color: #fb923c;
+    }
+}
+
+html[data-theme="escuro"] .secao-conferencias h2 {
+    color: #fb923c;
+}
+
+.lista-conferencias {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.conferencia-item {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 0.75rem;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 0.9rem;
+    background: var(--cor-cartao);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-pequeno);
+}
+
+.conferencia-item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.conferencia-item-nome {
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.conferencia-item-nome:hover {
+    text-decoration: underline;
+}
+
+/* Não usa mais a classe genérica .truncavel — aqui o clique tem uma
+   segunda função (abrir o PDF em nova guia), então o comportamento é
+   todo próprio, controlado por um listener dedicado em fila.js
+   (Henrique, 2026-08-07). Essa parte só replica o visual de
+   corte/expansão que .truncavel dava antes. */
+.conferencia-item-nome.expandido {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    word-break: break-word;
+}
+
+/* Henrique (2026-08-07): o motivo estava "cinza sumido" — precisa ser
+   chamativo, com "Motivo:" explícito na frente (marcado direto no
+   template/fila.js, não só via CSS ::before, pra ficar selecionável
+   junto com o resto do texto). Reaproveita --cor-erro-texto (o
+   vermelho de alerta que o site já usa) em vez de inventar uma cor nova
+   só pra isso. */
+.conferencia-item-motivo {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--cor-erro-texto);
+}
+
+.conferencia-item-motivo strong {
+    font-weight: 700;
+}
+
+.conferencia-item-acoes {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-shrink: 0;
+}
+
+.form-conferencia {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Campo de número do processo — só aparece depois do primeiro clique em
+   "Prosseguir" no card de "processo não encontrado" (fila.js). Regra de
+   autor pro estado visível vence o padrão do navegador pra [hidden] —
+   mesmo cuidado já tomado em vários outros lugares do site. */
+.conferencia-campo-processo {
+    display: flex;
+}
+
+.conferencia-campo-processo[hidden] {
+    display: none;
+}
+
+.conferencia-campo-processo input {
+    width: 190px;
+    padding: 0.35rem 0.55rem;
+    font-size: 0.82rem;
+    font-family: inherit;
+    color: var(--cor-texto);
+    background: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-pequeno);
+}
+
+.conferencia-campo-processo input:invalid {
+    border-color: var(--cor-erro-borda);
 }
 
 .fila-acoes-selecao {
@@ -471,39 +701,378 @@ html[data-theme="escuro"] .aba-motor.aba-ativa:hover {
     font-size: 0.82rem;
 }
 
-.linha-upload {
+/* .botao (base) agora mora em base.css. */
+
+/* Zona de soltar arquivos — clicável (é um <label> em volta do input
+   real, que fica hidden) e também alvo de drag-and-drop (fila.js).
+   Continua visível mesmo depois de já ter arquivos selecionados, pra
+   sempre dar pra adicionar mais sem precisar rolar/procurar. */
+.zona-soltar {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
+    gap: 0.35rem;
+    text-align: center;
+    padding: 1.9rem 1.5rem;
+    border: 2px dashed var(--cor-borda);
+    border-radius: var(--raio);
+    background: var(--cor-fundo);
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
 }
 
-.linha-upload input[type="file"] {
-    flex: 1;
-    min-width: 200px;
-    font-size: 0.85rem;
+.zona-soltar:hover,
+.zona-soltar.arrastando {
+    border-color: var(--cor-acento);
+    background: var(--cor-acento-fraco);
+}
+
+.zona-soltar-icone {
+    width: 34px;
+    height: 34px;
+    color: var(--cor-acento);
+    margin-bottom: 0.2rem;
+}
+
+.zona-soltar-titulo {
+    margin: 0;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--cor-texto);
+}
+
+.zona-soltar-legenda {
+    margin: 0;
+    font-size: 0.78rem;
     color: var(--cor-texto-suave);
 }
 
-.linha-upload input[type="file"]::file-selector-button {
-    font-family: inherit;
-    font-size: 0.85rem;
+.upload-lote {
+    margin-top: 1.1rem;
+}
+
+.upload-lote-resumo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.82rem;
+    color: var(--cor-texto-suave);
     font-weight: 600;
-    padding: 0.5rem 0.9rem;
-    border-radius: var(--raio-pequeno);
-    border: 1px solid var(--cor-borda);
+}
+
+/* Agrupa Desfazer + Remover todos — .botao-minimal sozinho já tem
+   margin-left:auto (pensado pra quando é o único botão da barra, ver
+   extratus.css); dentro desse par, quem empurra o grupo inteiro pra
+   direita é o justify-content:space-between do pai, então zera esse
+   margin aqui pra não abrir um vão gigante só entre os dois botões. */
+.upload-lote-acoes {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.upload-lote-acoes .botao-minimal {
+    margin-left: 0;
+}
+
+/* Botão de desfazer (upload em montagem) — mesma casca do .botao-minimal
+   (borda, cor, hover), só que quadrado e só com ícone — o texto vira uma
+   dica (data-dica, base.css) no hover em vez de ficar escrito sempre. */
+.botao-minimal-icone {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+}
+
+.botao-desfazer-icone {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+/* Botão de desfazer o ÚLTIMO ENVIO de verdade (já mandado pro servidor)
+   — fica na sua própria linha, abaixo do título (não mais dividindo a
+   linha do título com "Selecionar" — Henrique preferiu manter
+   "Selecionar", que é usado o tempo todo, colado no título, e deixar
+   esse aqui, que só aparece de vez em quando, numa linha à parte, sem
+   se preocupar em alinhar os dois entre si). Fica à direita da coluna
+   por herdar o margin-left:auto de .botao-minimal. Some por padrão, só
+   aparece (fila.js, via sessionStorage) logo depois de um envio
+   bem-sucedido. */
+.botao-desfazer-envio {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+/* "display" de autor acima vence a regra padrão do navegador pra
+   [hidden] (mesma pegadinha já documentada em base.css/upload-progresso
+   — reaparece toda vez que um elemento escondido via [hidden] também
+   tem "display" definido em CSS de autor). */
+.botao-desfazer-envio[hidden] {
+    display: none;
+}
+
+.upload-cartoes {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.65rem;
+    margin-bottom: 1.1rem;
+}
+
+/* Cartão de um PDF selecionado — ícone, nome cortado (.truncavel) e
+   tamanho. O "x" de remover só aparece no hover, pra não poluir a
+   grade quando tem vários cartões lado a lado. */
+.arquivo-cartao {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 108px;
+    padding: 0.65rem 0.5rem 0.55rem;
     background: var(--cor-fundo);
-    color: var(--cor-texto);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-pequeno);
+    text-align: center;
+    animation: entrada 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    transition: opacity 0.4s cubic-bezier(0.4, 0, 1, 1), transform 0.4s cubic-bezier(0.4, 0, 1, 1);
+}
+
+.arquivo-cartao-saindo {
+    opacity: 0;
+    transform: translateY(14px) scale(0.94);
+}
+
+/* Esse arquivo especificamente falhou no envio (não é NADA visto no
+   resto do lote, que pode ter dado certo) — some da lista de "saindo",
+   fica marcado em vermelho até o redesenho final (que já filtra pra só
+   mostrar os que falharam mesmo). Reaproveita a animação chacoalhar já
+   usada no banner de erro (base.css). */
+.arquivo-cartao-falhou {
+    border-color: var(--cor-erro-texto);
+    background: var(--cor-erro-fundo);
+    animation: chacoalhar 0.4s ease;
+}
+
+.arquivo-cartao-icone svg {
+    width: 30px;
+    height: 35px;
+}
+
+.arquivo-cartao-nome {
+    width: 100%;
+    margin-top: 0.4rem;
+    font-size: 0.74rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.arquivo-cartao-tamanho {
+    margin-top: 0.15rem;
+    font-size: 0.68rem;
+    color: var(--cor-texto-suave);
+}
+
+.arquivo-cartao-remover {
+    position: absolute;
+    top: -7px;
+    right: -7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: 2px solid var(--cor-cartao);
+    border-radius: 999px;
+    background: var(--cor-erro-texto);
+    color: white;
+    font-size: 0.85rem;
+    line-height: 1;
     cursor: pointer;
-    margin-right: 0.75rem;
-    transition: border-color 0.15s ease;
+    opacity: 0;
+    transition: opacity 0.12s ease, transform 0.1s ease;
 }
 
-.linha-upload input[type="file"]::file-selector-button:hover {
-    border-color: var(--cor-acento);
+.arquivo-cartao:hover .arquivo-cartao-remover,
+.arquivo-cartao-remover:focus-visible {
+    opacity: 1;
 }
 
-/* .botao (base) agora mora em base.css. */
+.arquivo-cartao-remover:hover {
+    transform: scale(1.1);
+}
+
+/* Badge "+N" — pílula pequena e discreta (não compete visualmente com
+   os cartões), sentada ao LADO deles na mesma fileira (é o último item
+   dentro de #upload-cartoes, não um bloco separado embaixo — por isso
+   o HTML a coloca dentro do mesmo container flex; ver fila.js, que
+   insere/remove cartões sempre antes dela, nunca depois). Abre um
+   painel flutuante (reaproveita window.configurarAlternador, base.js)
+   com o resto dos arquivos, numa lista rolável em vez de uma grade
+   gigante — importante quando alguém solta 100-200 PDFs de uma vez. */
+.upload-mais-wrap {
+    position: relative;
+    align-self: center;
+}
+
+.upload-mais {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    height: 40px;
+    padding: 0 0.7rem;
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--cor-acento);
+    background: var(--cor-acento-fraco);
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+    animation: entrada 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+.upload-mais:hover,
+.upload-mais[aria-expanded="true"] {
+    background: var(--cor-acento);
+    color: white;
+}
+
+.upload-mais:active {
+    transform: scale(0.94);
+}
+
+.upload-mais-painel {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    z-index: 20;
+    width: min(300px, 90vw);
+    padding: 0.6rem;
+    background: var(--cor-cartao);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio);
+    box-shadow: var(--sombra);
+}
+
+.upload-mais-painel[hidden] {
+    display: none;
+}
+
+.upload-mais-lista {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.upload-mais-lista li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.5rem;
+    border-radius: var(--raio-pequeno);
+    font-size: 0.8rem;
+}
+
+.upload-mais-lista li:hover {
+    background: var(--cor-fundo);
+}
+
+.upload-mais-item-nome {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.upload-mais-item-tamanho {
+    flex-shrink: 0;
+    font-size: 0.72rem;
+    color: var(--cor-texto-suave);
+}
+
+.upload-mais-lista .arquivo-cartao-remover {
+    position: static;
+    opacity: 0.6;
+    background: none;
+    border: none;
+    color: var(--cor-texto-suave);
+    width: 18px;
+    height: 18px;
+}
+
+.upload-mais-lista li:hover .arquivo-cartao-remover {
+    opacity: 1;
+    color: var(--cor-erro-texto);
+}
+
+.upload-lote-enviando .arquivo-cartao,
+.upload-lote-enviando .upload-mais {
+    pointer-events: none;
+}
+
+.upload-progresso {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    margin-bottom: 1.1rem;
+}
+
+/* "display: flex" acima é regra de autor e vence a regra padrão do
+   navegador pra [hidden] (mesmo problema já visto nos filtros do
+   Extratus, ver base.css) — sem isso aqui, a barra ficava sempre
+   visível (vazia/transparente) mesmo com o atributo hidden ligado. */
+.upload-progresso[hidden] {
+    display: none;
+}
+
+.upload-progresso-trilha {
+    flex: 1;
+    height: 6px;
+    background: var(--cor-borda);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.upload-progresso-barra {
+    height: 100%;
+    width: 0%;
+    background: var(--cor-acento);
+    border-radius: inherit;
+    transition: width 0.15s ease;
+}
+
+.upload-progresso-texto {
+    flex-shrink: 0;
+    font-size: 0.78rem;
+    color: var(--cor-texto-suave);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Ícone do botão "Enviar pra fila" — a mesma seta pra cima do ícone da
+   zona de soltar (.zona-soltar-icone), ecoando visualmente "isso vai
+   pra cima, pro servidor" do início ao fim do fluxo de upload. */
+.botao-enviar-fila-icone {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
 
 .lista-arquivos {
     list-style: none;
@@ -606,6 +1175,41 @@ html[data-theme="escuro"] .aba-motor.aba-ativa:hover {
     display: flex;
     justify-content: flex-end;
     margin-bottom: 1rem;
+}
+
+/* Abas de status da tela "Relatórios Finalizados" (Motor) — mesma ideia
+   das abas Sistema/Minhas/Conferências do sininho, só que aqui trocam o
+   status inteiro em vez de listas paralelas. Henrique, 2026-08-08:
+   Sucesso primeiro (acesso rápido pro advogado), Revisão, Erro por
+   último ("em ordem de grau de fudido"). */
+.abas-relatorios-motor {
+    display: flex;
+    gap: 1.2rem;
+    border-bottom: 1px solid var(--cor-borda);
+    margin-bottom: 1.1rem;
+}
+
+.aba-relatorios-motor {
+    padding: 0.5rem 0.1rem 0.7rem;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--cor-texto-suave);
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.aba-relatorios-motor:hover {
+    color: var(--cor-texto);
+}
+
+.aba-relatorios-motor-ativa,
+.aba-relatorios-motor-ativa:hover {
+    color: var(--cor-acento);
+    border-bottom-color: var(--cor-acento);
 }
 
 .filtro-meus {

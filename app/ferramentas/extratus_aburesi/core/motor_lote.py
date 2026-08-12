@@ -11,13 +11,14 @@ from app.ferramentas.extratus_aburesi.core.ia_cliente import (
     montar_diagnostico_com_triagem,
     montar_parametros_mensagem,
 )
+from app.ferramentas.extratus_aburesi.core.pdf_isolado import executar_isolado
 from app.ferramentas.extratus_aburesi.core.pdf_manager import listar_pdfs
 from app.ferramentas.extratus_aburesi.core.pipeline import (
     finalizar_processamento,
-    obter_dados_deteccao,
     tratar_erro,
 )
 from app.ferramentas.extratus_aburesi.core.prompt_manager import carregar_instrucoes_relatorio
+from app.ferramentas.extratus_aburesi.db.checagem_fila import listar_aprovados_por_nome
 from app.ferramentas.extratus_aburesi.db.lotes import (
     criar_lote,
     listar_arquivos_ja_reivindicados,
@@ -26,6 +27,13 @@ from app.ferramentas.extratus_aburesi.db.lotes import (
     marcar_item_concluido,
     marcar_lote_concluido,
 )
+
+
+def montar_diagnostico_isolado(pdf):
+    """Ver docstring equivalente em app/ferramentas/extratus/core/
+    motor_lote.py (Extratus - Relatórios) — mesmo bug real (GIL do
+    pypdf travando o site inteiro), mesma correção."""
+    return executar_isolado(montar_diagnostico_com_triagem, pdf)
 
 
 def _obter_cliente():
@@ -114,11 +122,19 @@ def _preparar_novo_lote(config):
     nenhum lote (passado ou presente) e monta os itens elegíveis pra um
     lote novo. Arquivos que já estourarem os limites de segurança
     (digitalizado e grande demais, ou processo grande demais pro contexto)
-    são tratados como erro na hora, sem entrar no lote."""
+    são tratados como erro na hora, sem entrar no lote.
+
+    Só considera arquivo com checagem "aprovada" (checagem_lote.py, que
+    roda muito mais rápido que o motor, em segundo plano) — nome
+    duplicado, processo já processado noutro lugar, ou processo não
+    encontrado ficam de fora até o painel de Conferências (ainda não
+    construído) resolver. Reaproveita o processo/confiança já detectados
+    na checagem em vez de detectar tudo de novo aqui."""
     pasta_motor = config.get("motor_pasta_entrada")
     pasta_erros = config.get("pasta_erros")
 
     ja_reivindicados = listar_arquivos_ja_reivindicados()
+    aprovados = listar_aprovados_por_nome()
     instrucoes = carregar_instrucoes_relatorio()
 
     itens_para_lote = []
@@ -127,11 +143,17 @@ def _preparar_novo_lote(config):
         if pdf.name in ja_reivindicados:
             continue
 
-        try:
-            processo, confianca = obter_dados_deteccao(pdf)
-        except Exception as erro:
-            tratar_erro(pdf, None, "erro_pdf", erro, pasta_erros)
+        checagem = aprovados.get(pdf.name)
+
+        if checagem is None:
+            # Ainda não passou pela checagem, ou passou e não foi
+            # aprovado — não é elegível ainda. Nada se perde: a checagem
+            # roda a cada poucos segundos, então na prática já deve
+            # estar aprovado bem antes do motor sequer tentar de novo.
             continue
+
+        processo = checagem.processo_detectado
+        confianca = {"nivel": checagem.confianca_nivel, "motivo": checagem.confianca_motivo}
 
         try:
             # Triagem de anexos de listagem de terceiros (ver
@@ -141,7 +163,7 @@ def _preparar_novo_lote(config):
             # página foi removida, a confiança cai pra "revisão" na hora
             # (mesmo princípio do fluxo manual em pipeline.py) — nunca
             # cai em "alta confiança" sozinho depois de uma triagem.
-            diagnostico, _, paginas_excluidas_triagem = montar_diagnostico_com_triagem(pdf)
+            diagnostico, _, paginas_excluidas_triagem = montar_diagnostico_isolado(pdf)
             parametros = montar_parametros_mensagem(pdf, processo, instrucoes, diagnostico=diagnostico)
         except Exception as erro:
             tratar_erro(pdf, processo, "erro_ia", erro, pasta_erros)

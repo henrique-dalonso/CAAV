@@ -41,7 +41,7 @@ def main():
 
     ia_provider = config.get(
         "ia_provider",
-        "simulado"
+        "claude"
     )
 
     resultado_fila = montar_fila(

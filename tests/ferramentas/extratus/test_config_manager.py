@@ -37,11 +37,11 @@ def test_atualizar_config_motor_rejeita_provider_invalido(preservar_config_json)
 
 def test_atualizar_config_motor_rejeita_pasta_vazia(preservar_config_json):
     with pytest.raises(ValueError):
-        atualizar_config_motor(pasta_entrada="   ", ia_provider="simulado")
+        atualizar_config_motor(pasta_entrada="   ", ia_provider="claude")
 
 
 def test_carregar_config_bruto_nao_resolve_caminho_absoluto(preservar_config_json):
-    atualizar_config_motor(pasta_entrada="relativa/de/teste", ia_provider="simulado")
+    atualizar_config_motor(pasta_entrada="relativa/de/teste", ia_provider="claude")
 
     bruto = carregar_config_bruto()
     assert bruto["motor_pasta_entrada"] == "relativa/de/teste"

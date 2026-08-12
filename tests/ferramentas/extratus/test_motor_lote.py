@@ -150,17 +150,43 @@ def test_coletar_lotes_pendentes_nao_mexe_em_lote_ainda_em_progresso():
     cliente_fake.messages.batches.results.assert_not_called()
 
 
+def _checagem_aprovada(processo="123", nivel="alta", motivo="x"):
+    """Simula uma linha de ChecagemFila já aprovada — motor_lote.py não
+    detecta processo/confiança sozinho mais, só reaproveita o que a
+    checagem (checagem_lote.py, roda em segundo plano) já detectou."""
+    return SimpleNamespace(processo_detectado=processo, confianca_nivel=nivel, confianca_motivo=motivo)
+
+
 def test_preparar_novo_lote_ignora_arquivo_ja_reivindicado():
     pdf_ja_reivindicado = Path("/pasta/motor/ja_reivindicado.pdf")
 
     with patch.object(motor_lote, "listar_pdfs", return_value=[pdf_ja_reivindicado]), \
          patch.object(motor_lote, "listar_arquivos_ja_reivindicados", return_value={"ja_reivindicado.pdf"}), \
+         patch.object(motor_lote, "listar_aprovados_por_nome", return_value={}), \
          patch.object(motor_lote, "carregar_instrucoes_relatorio", return_value="instrucoes"), \
-         patch.object(motor_lote, "obter_dados_deteccao") as deteccao_mock:
+         patch.object(motor_lote, "montar_diagnostico_isolado") as diagnostico_mock:
         itens = motor_lote._preparar_novo_lote(CONFIG_EXEMPLO)
 
     assert itens == []
-    deteccao_mock.assert_not_called()
+    diagnostico_mock.assert_not_called()
+
+
+def test_preparar_novo_lote_ignora_arquivo_ainda_nao_aprovado_na_checagem():
+    """Núcleo do que a checagem (2026-08-06) precisa garantir: um arquivo
+    que ainda não tem checagem, ou que a checagem recusou (duplicado,
+    processo não encontrado), nunca chega a entrar num lote — mesmo sem
+    já estar "reivindicado" nem dar erro nenhum de montagem."""
+    pdf_nao_aprovado = Path("/pasta/motor/nao_aprovado.pdf")
+
+    with patch.object(motor_lote, "listar_pdfs", return_value=[pdf_nao_aprovado]), \
+         patch.object(motor_lote, "listar_arquivos_ja_reivindicados", return_value=set()), \
+         patch.object(motor_lote, "listar_aprovados_por_nome", return_value={}), \
+         patch.object(motor_lote, "carregar_instrucoes_relatorio", return_value="instrucoes"), \
+         patch.object(motor_lote, "montar_diagnostico_isolado") as diagnostico_mock:
+        itens = motor_lote._preparar_novo_lote(CONFIG_EXEMPLO)
+
+    assert itens == []
+    diagnostico_mock.assert_not_called()
 
 
 def test_preparar_novo_lote_trata_erro_de_montagem_sem_incluir_no_lote():
@@ -168,9 +194,9 @@ def test_preparar_novo_lote_trata_erro_de_montagem_sem_incluir_no_lote():
 
     with patch.object(motor_lote, "listar_pdfs", return_value=[pdf_grande_demais]), \
          patch.object(motor_lote, "listar_arquivos_ja_reivindicados", return_value=set()), \
+         patch.object(motor_lote, "listar_aprovados_por_nome", return_value={"grande.pdf": _checagem_aprovada()}), \
          patch.object(motor_lote, "carregar_instrucoes_relatorio", return_value="instrucoes"), \
-         patch.object(motor_lote, "obter_dados_deteccao", return_value=("123", {"nivel": "alta", "motivo": "x"})), \
-         patch.object(motor_lote, "montar_diagnostico_com_triagem", return_value=({}, None, [])), \
+         patch.object(motor_lote, "montar_diagnostico_isolado", return_value=({}, None, [])), \
          patch.object(motor_lote, "montar_parametros_mensagem", side_effect=RuntimeError("grande demais")), \
          patch.object(motor_lote, "tratar_erro") as tratar_erro_mock:
         itens = motor_lote._preparar_novo_lote(CONFIG_EXEMPLO)
@@ -186,9 +212,9 @@ def test_preparar_novo_lote_inclui_arquivo_elegivel():
 
     with patch.object(motor_lote, "listar_pdfs", return_value=[pdf_ok]), \
          patch.object(motor_lote, "listar_arquivos_ja_reivindicados", return_value=set()), \
+         patch.object(motor_lote, "listar_aprovados_por_nome", return_value={"ok.pdf": _checagem_aprovada()}), \
          patch.object(motor_lote, "carregar_instrucoes_relatorio", return_value="instrucoes"), \
-         patch.object(motor_lote, "obter_dados_deteccao", return_value=("123", {"nivel": "alta", "motivo": "x"})), \
-         patch.object(motor_lote, "montar_diagnostico_com_triagem", return_value=({}, None, [])), \
+         patch.object(motor_lote, "montar_diagnostico_isolado", return_value=({}, None, [])), \
          patch.object(motor_lote, "montar_parametros_mensagem", return_value=parametros_fake):
         itens = motor_lote._preparar_novo_lote(CONFIG_EXEMPLO)
 
@@ -206,9 +232,9 @@ def test_preparar_novo_lote_forca_revisao_quando_triagem_excluiu_paginas():
 
     with patch.object(motor_lote, "listar_pdfs", return_value=[pdf_com_anexo]), \
          patch.object(motor_lote, "listar_arquivos_ja_reivindicados", return_value=set()), \
+         patch.object(motor_lote, "listar_aprovados_por_nome", return_value={"tem_anexo.pdf": _checagem_aprovada(motivo="regex bateu")}), \
          patch.object(motor_lote, "carregar_instrucoes_relatorio", return_value="instrucoes"), \
-         patch.object(motor_lote, "obter_dados_deteccao", return_value=("123", {"nivel": "alta", "motivo": "regex bateu"})), \
-         patch.object(motor_lote, "montar_diagnostico_com_triagem", return_value=({}, None, [33, 34, 35])), \
+         patch.object(motor_lote, "montar_diagnostico_isolado", return_value=({}, None, [33, 34, 35])), \
          patch.object(motor_lote, "montar_parametros_mensagem", return_value=parametros_fake):
         itens = motor_lote._preparar_novo_lote(CONFIG_EXEMPLO)
 

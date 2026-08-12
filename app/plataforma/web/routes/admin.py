@@ -4,11 +4,10 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 
-# A tela de admin ainda mostra métricas/config específicas do Extratus
+# A tela de admin ainda mostra métricas específicas do Extratus
 # diretamente, por ser a única ferramenta hoje. Quando existir uma segunda
 # ferramenta, isso deve virar algo genérico (cada ferramenta expõe suas
 # próprias métricas), em vez de importar direto de um app.ferramentas.X.
-from app.ferramentas.extratus.core.config_manager import carregar_config
 from app.ferramentas.extratus.db.jobs import contar_por_status, somar_custo_por_usuario
 from app.plataforma.auth import gerar_hash_senha
 from app.plataforma.db.session import obter_sessao
@@ -20,6 +19,7 @@ from app.plataforma.db.usuarios import (
     criar_usuario,
     definir_cargo,
     definir_ferramentas,
+    desbloquear_usuario,
     excluir_usuario,
     listar_ferramentas_admin_ids,
     listar_ferramentas_fila_ids,
@@ -36,7 +36,7 @@ router = APIRouter(dependencies=[Depends(exigir_admin)])
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 templates = criar_templates(TEMPLATES_DIR)
 
-TAMANHO_MINIMO_SENHA = 8
+TAMANHO_MINIMO_SENHA = 6
 
 
 def _listar_ferramentas():
@@ -99,16 +99,30 @@ def pagina_custos(
     )
 
 
+# Henrique, 2026-08-11: "Custos" deixou de ser uma aba dentro de cada
+# ferramenta — agora só se chega lá por aqui. Registro manual de quem
+# tem uma tela própria e onde fica (mesmo padrão do
+# REGISTRO_NOTIFICACOES em app/plataforma/web/notificacoes.py) — nem
+# toda ferramenta tem uma ainda (ex: Leitor de Publicações), então só
+# entram aqui as que já têm de verdade.
+URL_CUSTOS_POR_FERRAMENTA = {
+    "extratus": "/extratus/historico",
+    "extratus-aburesi": "/extratus-aburesi/historico",
+}
+
+
 @router.get("/admin/ferramentas")
 def pagina_ferramentas(request: Request, usuario: Usuario = Depends(exigir_admin)):
+    ferramentas = _listar_ferramentas()
+
     return templates.TemplateResponse(
         request,
         "admin.html",
         {
             **_contexto_base(usuario),
             "aba_ativa": "ferramentas",
-            "ferramentas": _listar_ferramentas(),
-            "config": carregar_config(),
+            "ferramentas_com_custos": [f for f in ferramentas if f.slug in URL_CUSTOS_POR_FERRAMENTA],
+            "url_custos_por_ferramenta": URL_CUSTOS_POR_FERRAMENTA,
         },
     )
 
@@ -180,6 +194,12 @@ def criar_usuario_route(
     ferramentas_admin_ids: list[int] = Form([]),
     ferramentas_fila_ids: list[int] = Form([]),
 ):
+    if len(senha) < TAMANHO_MINIMO_SENHA:
+        return _redirecionar(
+            "/admin/usuarios/novo",
+            erro=f"A senha precisa ter pelo menos {TAMANHO_MINIMO_SENHA} caracteres.",
+        )
+
     try:
         criar_usuario(
             nome=nome.strip(),
@@ -246,6 +266,12 @@ def excluir_usuario_route(usuario_id: int, usuario: Usuario = Depends(exigir_adm
 
     excluir_usuario(usuario_id)
     return _redirecionar("/admin/usuarios", sucesso="Usuário excluído.")
+
+
+@router.post("/admin/usuarios/{usuario_id}/desbloquear")
+def desbloquear_usuario_route(usuario_id: int):
+    desbloquear_usuario(usuario_id)
+    return _redirecionar("/admin/usuarios", sucesso="Usuário desbloqueado.")
 
 
 @router.post("/admin/usuarios/{usuario_id}/redefinir-senha")

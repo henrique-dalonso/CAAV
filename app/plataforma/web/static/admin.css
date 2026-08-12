@@ -523,12 +523,31 @@ html[data-theme="escuro"] .ferramenta-tile-fila .check-input:checked + .check-ca
     table-layout: fixed;
 }
 
-.admin-tabela-usuarios th:nth-child(1) { width: 18%; }
-.admin-tabela-usuarios th:nth-child(2) { width: 13%; }
-.admin-tabela-usuarios th:nth-child(3) { width: 20%; }
-.admin-tabela-usuarios th:nth-child(4) { width: 14%; }
+.admin-tabela-usuarios th:nth-child(1) { width: 17%; }
+.admin-tabela-usuarios th:nth-child(2) { width: 12%; }
+.admin-tabela-usuarios th:nth-child(3) { width: 17%; }
+.admin-tabela-usuarios th:nth-child(4) { width: 13%; }
 .admin-tabela-usuarios th:nth-child(5) { width: 6%; }
-.admin-tabela-usuarios th:nth-child(6) { width: 29%; }
+.admin-tabela-usuarios th:nth-child(6) { width: 9%; }
+.admin-tabela-usuarios th:nth-child(7) { width: 26%; }
+
+/* Linha de usuário bloqueado por tentativas erradas (Henrique,
+   2026-08-11: "vermelho vibrante") — usa os mesmos tokens de erro do
+   resto do site, então continua legível/coerente no modo escuro. */
+.admin-linha-bloqueada td {
+    background: var(--cor-erro-fundo);
+    color: var(--cor-erro-texto);
+}
+
+/* Badge "Sim" + botão de desbloquear juntos na própria coluna Bloqueado
+   — em vez de crescer a coluna Ações (que já tem até 6 ícones em
+   linhas de coordenador/colaborador com muita ferramenta liberada, e
+   ela é fixa em largura). */
+.admin-bloqueio {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
 
 .admin-tabela-usuarios td:nth-child(1),
 .admin-tabela-usuarios td:nth-child(2),
@@ -637,11 +656,15 @@ html[data-theme="escuro"] .ferramenta-tile-fila .check-input:checked + .check-ca
     position: relative;
 }
 
+/* position:fixed, não absolute, pelo mesmo motivo do .painel-ferramentas
+   acima: dentro da tabela de Usuários, .tabela-scroll tem overflow-x:
+   auto, que por regra do CSS também vira overflow-y:auto implícito — um
+   painel "absolute" preso nisso fica cortado/escondido quando a linha
+   está perto do fim da tabela (Henrique, 2026-08-11). top/left calculados
+   em JS (admin.js) na hora de abrir, com base na posição real do botão. */
 .admin-form-senha {
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
-    z-index: 30;
+    position: fixed;
+    z-index: 40;
     display: flex;
     gap: 0.4rem;
     padding: 0.75rem;

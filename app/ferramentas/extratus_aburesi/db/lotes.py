@@ -48,11 +48,17 @@ def listar_itens_do_lote(lote_id):
 
 
 def listar_arquivos_ja_reivindicados():
-    """Nomes de arquivo que já têm um `ItemLoteMotor` (foram submetidos em
-    algum lote, em andamento ou já concluído) — usado pra não submeter o
-    mesmo PDF duas vezes."""
+    """Ver docstring equivalente em app/ferramentas/extratus/db/lotes.py
+    (Extratus - Relatórios) — mesmo bug real, mesma correção (Henrique,
+    2026-08-11): só lote "enviado" (em voo) reivindica um nome; lote já
+    concluído libera o nome de novo, senão um arquivo novo com o mesmo
+    nome de um já processado fica preso pra sempre como "processando"."""
     with obter_sessao() as sessao:
-        consulta = select(ItemLoteMotor.arquivo_pdf)
+        consulta = (
+            select(ItemLoteMotor.arquivo_pdf)
+            .join(LoteMotor, LoteMotor.id == ItemLoteMotor.lote_id)
+            .where(LoteMotor.status == "enviado")
+        )
         return set(sessao.exec(consulta).all())
 
 

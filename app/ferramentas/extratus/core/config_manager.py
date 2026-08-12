@@ -18,7 +18,7 @@ CONFIG_PADRAO = {
 
     "limite_padrao": 0,
 
-    "ia_provider": "simulado",
+    "ia_provider": "claude",
 
     # Motor automático — ainda só liga/desliga uma bandeira (ver Motor no
     # Extratus). O "vigiar a pasta sozinho de verdade" é o próximo passo,
@@ -40,7 +40,12 @@ PASTAS_CONFIGURAVEIS = [
     "motor_pasta_entrada",
 ]
 
-PROVEDORES_IA_VALIDOS = ("simulado", "claude")
+
+# Henrique, 2026-08-11: "modo simulado" foi removido — só existe o
+# provedor real "claude" hoje. Continua sendo uma tupla (em vez de uma
+# constante única) porque um segundo provedor de IA REAL pode entrar
+# aqui no futuro, "se for preciso".
+PROVEDORES_IA_VALIDOS = ("claude",)
 
 
 def salvar_config(config):
@@ -189,7 +194,7 @@ def atualizar_config_motor(pasta_entrada=None, ia_provider=None):
         pasta_entrada = pasta_entrada.strip()
 
         if not pasta_entrada:
-            raise ValueError("Pasta de entrada do motor não pode ficar vazia.")
+            raise ValueError("Pasta de entrada do Motor não pode ficar vazia.")
 
         config["motor_pasta_entrada"] = pasta_entrada
 
