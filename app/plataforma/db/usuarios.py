@@ -13,6 +13,7 @@ from app.plataforma.db.models import (
     CORES_PERFIL_VALIDAS,
     Ferramenta,
     TEMAS_VALIDOS,
+    UltimoVistoAba,
     Usuario,
     UsuarioFerramenta,
 )
@@ -248,6 +249,35 @@ def registrar_acesso_ferramenta(usuario_id, ferramenta_id):
             acesso = AcessoFerramenta(usuario_id=usuario_id, ferramenta_id=ferramenta_id, contagem=1)
 
         sessao.add(acesso)
+        sessao.commit()
+
+
+def obter_ultimo_visto(usuario_id, ferramenta_slug, aba):
+    """Quando esse usuário viu essa aba pela última vez, ou None se nunca
+    visitou — usado pelos badges "+N" (ver `web/rotulos.py` de cada
+    ferramenta) pra saber a partir de quando contar o que é novo. `None`
+    (nunca visitou) é tratado por quem chama como "desde sempre" — tudo
+    que já existir hoje conta como novo, não é escondido só por nunca ter
+    sido visto."""
+    with obter_sessao() as sessao:
+        registro = sessao.get(UltimoVistoAba, (usuario_id, ferramenta_slug, aba))
+        return registro.visto_em if registro else None
+
+
+def marcar_aba_vista(usuario_id, ferramenta_slug, aba):
+    """Marca "vi agora" pra essa aba — chamado no início de cada rota que
+    renderiza a página correspondente (antes do template calcular os
+    badges), pra a própria página já carregar com o número zerado, não só
+    a próxima visita."""
+    with obter_sessao() as sessao:
+        registro = sessao.get(UltimoVistoAba, (usuario_id, ferramenta_slug, aba))
+
+        if registro:
+            registro.visto_em = datetime.now()
+        else:
+            registro = UltimoVistoAba(usuario_id=usuario_id, ferramenta_slug=ferramenta_slug, aba=aba)
+
+        sessao.add(registro)
         sessao.commit()
 
 

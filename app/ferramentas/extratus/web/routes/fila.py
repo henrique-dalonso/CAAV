@@ -22,8 +22,16 @@ from app.ferramentas.extratus.db.checagem_fila import (
 )
 from app.ferramentas.extratus.db.conferencias import registrar_decisao
 from app.ferramentas.extratus.db.lotes import listar_arquivos_ja_reivindicados
-from app.ferramentas.extratus.web.rotulos import contagem_nav_pendentes, contagem_nav_relatorios
+from app.ferramentas.extratus.web.rotulos import (
+    ABA_FILA,
+    FERRAMENTA_SLUG,
+    contagem_nav_conferencias_fila,
+    contagem_nav_conferencias_manual,
+    contagem_nav_relatorios,
+    contagem_nav_relatorios_motor,
+)
 from app.plataforma.db.models import Usuario
+from app.plataforma.db.usuarios import marcar_aba_vista
 from app.plataforma.web.auth import exigir_acesso_fila_motor
 from app.plataforma.web.templates_util import criar_templates
 
@@ -44,13 +52,15 @@ PLATAFORMA_TEMPLATES_DIR = (
     Path(__file__).resolve().parents[4] / "plataforma" / "web" / "templates"
 )
 templates = criar_templates([TEMPLATES_DIR, PLATAFORMA_TEMPLATES_DIR])
-# Contagem da aba "Gerar relatórios"/"Relatórios" — ver mesmo comentário
-# em inbox.py. Cuidado: essa página TAMBÉM tem seu próprio
-# "total_pendentes" no contexto (a fila do MOTOR, sem relação nenhuma
-# com isso) — por isso as funções globais têm nome bem diferente
-# (contagem_nav_*), pra nunca colidir com esse outro.
-templates.env.globals["contagem_nav_pendentes"] = contagem_nav_pendentes
+# Badges "+N" da navegação — ver mesmo comentário em inbox.py. Cuidado:
+# essa página TAMBÉM tem seu próprio "total_pendentes" no contexto (a
+# fila do MOTOR, sem relação nenhuma com isso) — por isso as funções
+# globais têm nome bem diferente (contagem_nav_*), pra nunca colidir com
+# esse outro.
+templates.env.globals["contagem_nav_conferencias_manual"] = contagem_nav_conferencias_manual
+templates.env.globals["contagem_nav_conferencias_fila"] = contagem_nav_conferencias_fila
 templates.env.globals["contagem_nav_relatorios"] = contagem_nav_relatorios
+templates.env.globals["contagem_nav_relatorios_motor"] = contagem_nav_relatorios_motor
 
 
 def _redirecionar(erro=None, sucesso=None):
@@ -149,7 +159,9 @@ def pagina_fila(
 ):
     apenas_pendentes, apenas_processando = _estado_atual_fila()
 
-    return templates.TemplateResponse(
+    # Renderiza PRIMEIRO, marca como visto DEPOIS — mesmo motivo de
+    # inbox.py (senão o badge dessa própria visita nunca apareceria).
+    resposta = templates.TemplateResponse(
         request,
         "fila.html",
         {
@@ -163,6 +175,9 @@ def pagina_fila(
             "sucesso": sucesso,
         },
     )
+    marcar_aba_vista(usuario.id, FERRAMENTA_SLUG, ABA_FILA)
+
+    return resposta
 
 
 @router.get("/fila/estado")

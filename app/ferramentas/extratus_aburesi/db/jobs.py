@@ -1,4 +1,4 @@
-from sqlmodel import select
+from sqlmodel import func, select
 
 from app.ferramentas.extratus_aburesi.db.models import Job
 from app.plataforma.db.session import obter_sessao
@@ -165,6 +165,42 @@ def contar_jobs_manuais_do_usuario(usuario_id):
     with obter_sessao() as sessao:
         consulta = select(Job).where(Job.usuario_id == usuario_id)
         return len(sessao.exec(consulta).all())
+
+
+def contar_relatorios_novos_do_usuario(usuario_id, desde):
+    """Ver docstring equivalente em app/ferramentas/extratus/db/jobs.py
+    (Extratus - Relatórios) — mesma lógica."""
+    with obter_sessao() as sessao:
+        consulta = (
+            select(Job.status, func.count())
+            .where(
+                Job.usuario_id == usuario_id,
+                Job.criado_em > desde,
+                Job.status.in_(["sucesso", "revisao"]),
+            )
+            .group_by(Job.status)
+        )
+        contagem = dict(sessao.exec(consulta).all())
+
+    return {"sucesso": contagem.get("sucesso", 0), "revisao": contagem.get("revisao", 0)}
+
+
+def contar_relatorios_motor_novos(desde):
+    """Ver docstring equivalente em app/ferramentas/extratus/db/jobs.py
+    (Extratus - Relatórios) — mesma lógica."""
+    with obter_sessao() as sessao:
+        consulta = (
+            select(Job.status, func.count())
+            .where(
+                Job.usuario_id.is_(None),
+                Job.criado_em > desde,
+                Job.status.in_(["sucesso", "revisao"]),
+            )
+            .group_by(Job.status)
+        )
+        contagem = dict(sessao.exec(consulta).all())
+
+    return {"sucesso": contagem.get("sucesso", 0), "revisao": contagem.get("revisao", 0)}
 
 
 def somar_custo_por_usuario():

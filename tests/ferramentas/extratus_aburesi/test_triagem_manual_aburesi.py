@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from app.ferramentas.extratus_aburesi.db import triagem_manual as db_triagem
 
 # IDs negativos de propósito — não colidem com usuário real, mesmo padrão
@@ -143,3 +145,17 @@ def test_listar_inconsistencias_do_usuario_escopa_por_usuario():
 
     db_triagem.descartar(duplicado_a.id)
     db_triagem.descartar(duplicado_b.id)
+
+
+def test_contar_inconsistencias_novas_do_usuario_conta_so_desde_o_timestamp():
+    desde = datetime.now() - timedelta(seconds=1)
+
+    duplicado = _criar("teste_triagem_badge_novo_aburesi.pdf", USUARIO_A)
+    db_triagem.atualizar_apos_triagem(duplicado.id, db_triagem.DUPLICADO_RELATORIO, "123", "alta", "ok")
+
+    assert db_triagem.contar_inconsistencias_novas_do_usuario(USUARIO_A, desde) == 1
+
+    depois_de_ver = datetime.now()
+    assert db_triagem.contar_inconsistencias_novas_do_usuario(USUARIO_A, depois_de_ver) == 0
+
+    db_triagem.descartar(duplicado.id)

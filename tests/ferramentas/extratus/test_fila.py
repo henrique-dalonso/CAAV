@@ -308,3 +308,19 @@ def test_aprovar_conferencia_registro_inexistente_da_erro(cliente_logado):
 def test_descartar_conferencia_registro_inexistente_da_erro(cliente_logado):
     resp = cliente_logado.post("/extratus/fila/conferencia/999999999/descartar", follow_redirects=False)
     assert "erro=" in resp.headers["location"]
+
+
+def test_pagina_fila_mostra_badge_ambar_e_zera_ao_revisitar(cliente_logado, limpar_conferencia_teste):
+    # Badge "+N" âmbar (Henrique, 2026-08-13) — só existe pra Conferências
+    # novas da Fila do Motor, some depois que a própria página é visitada
+    # uma vez (marcar_aba_vista). Diferente de "Gerar seu Relatório", essa
+    # fila é compartilhada (não filtra por usuário).
+    _criar_checagem(f"{PREFIXO_TESTE}badge_ambar.pdf", NAO_ENCONTRADO)
+
+    primeira_visita = cliente_logado.get("/extratus/fila")
+    assert primeira_visita.status_code == 200
+    assert "contagem-aba-revisao" in primeira_visita.text
+
+    segunda_visita = cliente_logado.get("/extratus/fila")
+    assert segunda_visita.status_code == 200
+    assert "contagem-aba-revisao" not in segunda_visita.text

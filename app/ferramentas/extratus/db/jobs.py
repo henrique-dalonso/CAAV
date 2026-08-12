@@ -1,4 +1,4 @@
-from sqlmodel import select
+from sqlmodel import func, select
 
 from app.ferramentas.extratus.db.models import Job
 from app.plataforma.db.session import obter_sessao
@@ -183,6 +183,48 @@ def contar_jobs_manuais_do_usuario(usuario_id):
     with obter_sessao() as sessao:
         consulta = select(Job).where(Job.usuario_id == usuario_id)
         return len(sessao.exec(consulta).all())
+
+
+def contar_relatorios_novos_do_usuario(usuario_id, desde):
+    """Quantos relatórios manuais do PRÓPRIO usuário terminaram (sucesso
+    ou revisão), cada categoria separada, desde `desde` — alimenta o
+    badge duplo "+N" da aba "Seus Relatórios" (rotulos.py): um número na
+    cor padrão (sucesso) e outro na cor de revisão, os dois podendo
+    aparecer juntos (Henrique, 2026-08-13)."""
+    with obter_sessao() as sessao:
+        consulta = (
+            select(Job.status, func.count())
+            .where(
+                Job.usuario_id == usuario_id,
+                Job.criado_em > desde,
+                Job.status.in_(["sucesso", "revisao"]),
+            )
+            .group_by(Job.status)
+        )
+        contagem = dict(sessao.exec(consulta).all())
+
+    return {"sucesso": contagem.get("sucesso", 0), "revisao": contagem.get("revisao", 0)}
+
+
+def contar_relatorios_motor_novos(desde):
+    """Mesma ideia de `contar_relatorios_novos_do_usuario`, pros
+    relatórios do Motor (usuario_id None) — alimenta o badge duplo da
+    aba "Relatórios do Motor". A fila é compartilhada (não filtra por
+    usuário), só o "desde" é pessoal — cada usuário vê como "novo" o que
+    ainda não olhou, mesmo relatório sendo visível pra todo mundo."""
+    with obter_sessao() as sessao:
+        consulta = (
+            select(Job.status, func.count())
+            .where(
+                Job.usuario_id.is_(None),
+                Job.criado_em > desde,
+                Job.status.in_(["sucesso", "revisao"]),
+            )
+            .group_by(Job.status)
+        )
+        contagem = dict(sessao.exec(consulta).all())
+
+    return {"sucesso": contagem.get("sucesso", 0), "revisao": contagem.get("revisao", 0)}
 
 
 def somar_custo_por_usuario():

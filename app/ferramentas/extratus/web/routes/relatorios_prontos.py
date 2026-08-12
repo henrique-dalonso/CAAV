@@ -4,13 +4,17 @@ from fastapi import APIRouter, Depends, Request
 
 from app.ferramentas.extratus.db.jobs import listar_jobs_manuais
 from app.ferramentas.extratus.web.rotulos import (
-    contagem_nav_pendentes,
+    ABA_RELATORIOS,
+    FERRAMENTA_SLUG,
+    contagem_nav_conferencias_fila,
+    contagem_nav_conferencias_manual,
     contagem_nav_relatorios,
+    contagem_nav_relatorios_motor,
     rotulo_erro,
     rotulo_status,
 )
 from app.plataforma.db.models import Usuario
-from app.plataforma.db.usuarios import listar_todos_usuarios
+from app.plataforma.db.usuarios import listar_todos_usuarios, marcar_aba_vista
 from app.plataforma.web.auth import exigir_acesso_ferramenta
 from app.plataforma.web.templates_util import criar_templates
 
@@ -24,10 +28,11 @@ PLATAFORMA_TEMPLATES_DIR = (
 templates = criar_templates([TEMPLATES_DIR, PLATAFORMA_TEMPLATES_DIR])
 templates.env.filters["rotulo_status"] = rotulo_status
 templates.env.filters["rotulo_erro"] = rotulo_erro
-# Contagem da aba "Gerar relatórios"/"Relatórios" — ver mesmo comentário
-# em inbox.py.
-templates.env.globals["contagem_nav_pendentes"] = contagem_nav_pendentes
+# Badges "+N" da navegação — ver mesmo comentário em inbox.py.
+templates.env.globals["contagem_nav_conferencias_manual"] = contagem_nav_conferencias_manual
+templates.env.globals["contagem_nav_conferencias_fila"] = contagem_nav_conferencias_fila
 templates.env.globals["contagem_nav_relatorios"] = contagem_nav_relatorios
+templates.env.globals["contagem_nav_relatorios_motor"] = contagem_nav_relatorios_motor
 
 
 @router.get("/relatorios")
@@ -39,7 +44,9 @@ def pagina_relatorios_prontos(
     jobs = listar_jobs_manuais()
     nomes_por_id = {u.id: u.nome for u in listar_todos_usuarios()}
 
-    return templates.TemplateResponse(
+    # Renderiza PRIMEIRO, marca como visto DEPOIS — mesmo motivo de
+    # inbox.py (senão o badge dessa própria visita nunca apareceria).
+    resposta = templates.TemplateResponse(
         request,
         "relatorios_prontos.html",
         {
@@ -53,3 +60,6 @@ def pagina_relatorios_prontos(
             "processo_busca": processo,
         },
     )
+    marcar_aba_vista(usuario.id, FERRAMENTA_SLUG, ABA_RELATORIOS)
+
+    return resposta

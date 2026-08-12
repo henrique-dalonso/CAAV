@@ -20,8 +20,16 @@ from app.ferramentas.extratus.db.triagem_manual import (
     listar_inconsistencias_do_usuario,
     obter_registro,
 )
-from app.ferramentas.extratus.web.rotulos import contagem_nav_pendentes, contagem_nav_relatorios
+from app.ferramentas.extratus.web.rotulos import (
+    ABA_INBOX,
+    FERRAMENTA_SLUG,
+    contagem_nav_conferencias_fila,
+    contagem_nav_conferencias_manual,
+    contagem_nav_relatorios,
+    contagem_nav_relatorios_motor,
+)
 from app.plataforma.db.models import Usuario
+from app.plataforma.db.usuarios import marcar_aba_vista
 from app.plataforma.web.auth import exigir_acesso_ferramenta
 from app.plataforma.web.templates_util import criar_templates
 
@@ -43,8 +51,10 @@ PLATAFORMA_TEMPLATES_DIR = (
     Path(__file__).resolve().parents[4] / "plataforma" / "web" / "templates"
 )
 templates = criar_templates([TEMPLATES_DIR, PLATAFORMA_TEMPLATES_DIR])
-templates.env.globals["contagem_nav_pendentes"] = contagem_nav_pendentes
+templates.env.globals["contagem_nav_conferencias_manual"] = contagem_nav_conferencias_manual
+templates.env.globals["contagem_nav_conferencias_fila"] = contagem_nav_conferencias_fila
 templates.env.globals["contagem_nav_relatorios"] = contagem_nav_relatorios
+templates.env.globals["contagem_nav_relatorios_motor"] = contagem_nav_relatorios_motor
 
 
 def _estado_atual(usuario_id):
@@ -126,7 +136,13 @@ def pagina_inicial(
 ):
     pendentes, processando = _estado_atual(usuario.id)
 
-    return templates.TemplateResponse(
+    # Renderiza PRIMEIRO (TemplateResponse já monta o HTML aqui dentro,
+    # na hora — Jinja2Templates não é preguiçoso) usando o "visto_em"
+    # ANTIGO, senão o badge dessa Conferência que acabou de aparecer
+    # nunca apareceria pra ninguém: marcar como visto antes de contar
+    # já zeraria o próprio número que essa visita deveria mostrar.
+    # marcar_aba_vista só atualiza "visto_em" DEPOIS, pra próxima visita.
+    resposta = templates.TemplateResponse(
         request,
         "inbox.html",
         {
@@ -141,6 +157,9 @@ def pagina_inicial(
             "aba_ativa": "gerar",
         },
     )
+    marcar_aba_vista(usuario.id, FERRAMENTA_SLUG, ABA_INBOX)
+
+    return resposta
 
 
 @router.get("/estado")

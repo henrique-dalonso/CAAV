@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlmodel import select
+from sqlmodel import func, select
 
 from app.ferramentas.extratus_aburesi.db.models import ChecagemFila, ItemLoteMotor, LoteMotor
 from app.plataforma.db.session import obter_sessao
@@ -154,6 +154,17 @@ def listar_inconsistencias():
     with obter_sessao() as sessao:
         consulta = select(ChecagemFila).where(ChecagemFila.status.in_(STATUS_INCONSISTENCIA))
         return sessao.exec(consulta).all()
+
+
+def contar_inconsistencias_novas(desde):
+    """Ver docstring equivalente em app/ferramentas/extratus/db/
+    checagem_fila.py (Extratus - Relatórios) — mesma lógica."""
+    with obter_sessao() as sessao:
+        consulta = select(func.count()).select_from(ChecagemFila).where(
+            ChecagemFila.status.in_(STATUS_INCONSISTENCIA),
+            ChecagemFila.atualizado_em > desde,
+        )
+        return sessao.exec(consulta).one()
 
 
 def aprovar_manualmente(registro_id, processo_manual=None):

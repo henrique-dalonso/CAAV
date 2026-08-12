@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 import pytest
 from sqlmodel import delete
 
@@ -9,6 +11,7 @@ from app.ferramentas.extratus.db.checagem_fila import (
     PENDENTE,
     aprovar_manualmente,
     atualizar_apos_checagem,
+    contar_inconsistencias_novas,
     descartar,
     estado_por_nome,
     existe_conflito_de_processo,
@@ -221,3 +224,26 @@ def test_descartar_apaga_a_linha(limpar_checagem_teste):
 
 def test_descartar_registro_inexistente_nao_quebra(limpar_checagem_teste):
     descartar(999999999)  # não deve levantar exceção
+
+
+def test_contar_inconsistencias_novas_conta_a_partir_do_timestamp(limpar_checagem_teste):
+    desde = datetime.now() - timedelta(seconds=1)
+    antes = contar_inconsistencias_novas(desde)
+
+    nome = f"{PREFIXO_TESTE}badge_novo.pdf"
+    registro = next(p for p in _sincronizar_so_de_teste({nome}) if p.nome_arquivo == nome)
+    atualizar_apos_checagem(registro.id, NAO_ENCONTRADO, None, "revisao", "não achou nada")
+
+    depois = contar_inconsistencias_novas(desde)
+
+    assert depois == antes + 1
+
+
+def test_contar_inconsistencias_novas_nao_conta_o_que_ja_foi_visto(limpar_checagem_teste):
+    nome = f"{PREFIXO_TESTE}badge_ja_visto.pdf"
+    registro = next(p for p in _sincronizar_so_de_teste({nome}) if p.nome_arquivo == nome)
+    atualizar_apos_checagem(registro.id, NAO_ENCONTRADO, None, "revisao", "não achou nada")
+
+    depois_de_ver = datetime.now()
+
+    assert contar_inconsistencias_novas(depois_de_ver) == 0

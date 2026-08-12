@@ -300,3 +300,18 @@ def test_aprovar_conferencia_registro_inexistente_da_erro(cliente_logado):
 def test_descartar_conferencia_registro_inexistente_da_erro(cliente_logado):
     resp = cliente_logado.post("/extratus-aburesi/fila/conferencia/999999999/descartar", follow_redirects=False)
     assert "erro=" in resp.headers["location"]
+
+
+def test_pagina_fila_mostra_badge_ambar_e_zera_ao_revisitar(cliente_logado, limpar_conferencia_teste):
+    # Ver comentário equivalente em tests/ferramentas/extratus/test_fila.py
+    # — mesma lógica. _criar_checagem já grava direto com o status
+    # pedido (atualizado_em nasce "agora"), então já conta como novo.
+    _criar_checagem(f"{PREFIXO_TESTE}badge_ambar.pdf", NAO_ENCONTRADO)
+
+    primeira_visita = cliente_logado.get("/extratus-aburesi/fila")
+    assert primeira_visita.status_code == 200
+    assert "contagem-aba-revisao" in primeira_visita.text
+
+    segunda_visita = cliente_logado.get("/extratus-aburesi/fila")
+    assert segunda_visita.status_code == 200
+    assert "contagem-aba-revisao" not in segunda_visita.text

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlmodel import select
+from sqlmodel import func, select
 
 from app.ferramentas.extratus.db.models import ChecagemFila, ItemLoteMotor, LoteMotor
 from app.plataforma.db.session import obter_sessao
@@ -165,6 +165,22 @@ def listar_inconsistencias():
     with obter_sessao() as sessao:
         consulta = select(ChecagemFila).where(ChecagemFila.status.in_(STATUS_INCONSISTENCIA))
         return sessao.exec(consulta).all()
+
+
+def contar_inconsistencias_novas(desde):
+    """Quantas Conferências da Fila do Motor (compartilhada, não é por
+    usuário) surgiram desde `desde` — alimenta o badge "+N" (cor de
+    revisão, único número dessa aba) em rotulos.py. `atualizado_em`, não
+    `criado_em`, pelo mesmo motivo de `triagem_manual.
+    contar_inconsistencias_novas_do_usuario`: é quando o registro virou
+    inconsistência de verdade, e não muda sozinho enquanto continuar
+    aberta."""
+    with obter_sessao() as sessao:
+        consulta = select(func.count()).select_from(ChecagemFila).where(
+            ChecagemFila.status.in_(STATUS_INCONSISTENCIA),
+            ChecagemFila.atualizado_em > desde,
+        )
+        return sessao.exec(consulta).one()
 
 
 def aprovar_manualmente(registro_id, processo_manual=None):

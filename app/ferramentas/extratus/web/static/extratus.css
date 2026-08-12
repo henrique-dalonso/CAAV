@@ -124,6 +124,21 @@ html[data-theme="escuro"] .selo-status.real {
     border-radius: 999px;
 }
 
+/* Badge "+N" na cor de revisão (mesma paleta de .status-revisao) — usado
+   quando o que é novo precisa de atenção (caiu em revisão, ou é uma
+   Conferência esperando decisão), pra se distinguir visualmente do
+   badge padrão (que só indica "terminou bem"). Henrique, 2026-08-13. */
+.aba .contagem-aba-revisao {
+    background: #fef9c3;
+    color: #854d0e;
+}
+
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme="claro"]) .aba .contagem-aba-revisao { background: #332b0f; color: #fde68a; }
+}
+
+html[data-theme="escuro"] .aba .contagem-aba-revisao { background: #332b0f; color: #fde68a; }
+
 /* Empurra uma aba (e tudo depois dela, se houver) pra ponta direita da
    barra — Henrique, 2026-08-11: usado na engrenagem (Configurações do
    Motor), que assumiu o lugar que "Custos (admin)" ocupava antes dela

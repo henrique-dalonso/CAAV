@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlmodel import select
+from sqlmodel import func, select
 
 from app.ferramentas.extratus.db.models import TriagemManual
 from app.plataforma.db.session import obter_sessao
@@ -204,3 +204,20 @@ def listar_inconsistencias_do_usuario(usuario_id):
             TriagemManual.status.in_(STATUS_INCONSISTENCIA),
         )
         return sessao.exec(consulta).all()
+
+
+def contar_inconsistencias_novas_do_usuario(usuario_id, desde):
+    """Quantas Conferências do PRÓPRIO usuário (inconsistência esperando
+    decisão em "Gerar seu Relatório") surgiram desde `desde` — alimenta o
+    badge "+N" (cor de revisão, único número dessa aba) em rotulos.py.
+    `atualizado_em`, não `criado_em`: é o instante em que o registro virou
+    uma inconsistência de verdade (a triagem já rodou), não quando o
+    arquivo foi só recebido — enquanto uma inconsistência continua aberta
+    ela nunca é reescrita de novo, então essa data não se move sozinha."""
+    with obter_sessao() as sessao:
+        consulta = select(func.count()).select_from(TriagemManual).where(
+            TriagemManual.usuario_id == usuario_id,
+            TriagemManual.status.in_(STATUS_INCONSISTENCIA),
+            TriagemManual.atualizado_em > desde,
+        )
+        return sessao.exec(consulta).one()

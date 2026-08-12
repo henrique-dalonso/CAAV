@@ -157,6 +157,26 @@ class AcessoFerramenta(SQLModel, table=True):
     ultimo_acesso: datetime = Field(default_factory=datetime.now)
 
 
+class UltimoVistoAba(SQLModel, table=True):
+    """Quando cada usuário viu por último uma aba específica de uma
+    ferramenta — alimenta os badges "+N" do menu do Extratus (Henrique,
+    2026-08-13): em vez de uma contagem total que só cresce, o número
+    mostra só o que é novo desde a última visita a ESSA aba. Mesmo padrão
+    de chave composta que `AcessoFerramenta` já usa (sem `id` próprio).
+
+    `ferramenta_slug` é string solta (não FK pra `Ferramenta`) de
+    propósito — quem chama já sabe de qual ferramenta está falando (é
+    sempre chamado de dentro do próprio módulo), evitando uma consulta a
+    mais só pra resolver o id."""
+
+    usuario_id: Optional[int] = Field(
+        default=None, foreign_key="usuario.id", primary_key=True
+    )
+    ferramenta_slug: str = Field(primary_key=True)
+    aba: str = Field(primary_key=True)
+    visto_em: datetime = Field(default_factory=datetime.now)
+
+
 class TentativaLoginFalha(SQLModel, table=True):
     """Trava por IP/rede (Henrique, 2026-08-11): guarda cada tentativa de
     login que falhou (senha errada, ou nome de usuário que nem existe).

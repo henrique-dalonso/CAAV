@@ -16,7 +16,12 @@ from app.ferramentas.extratus.core.prompt_manager import (
     substituir_instrucoes_relatorio,
 )
 from app.ferramentas.extratus.db.lotes import listar_itens_do_lote, listar_lotes_em_andamento
-from app.ferramentas.extratus.web.rotulos import contagem_nav_pendentes, contagem_nav_relatorios
+from app.ferramentas.extratus.web.rotulos import (
+    contagem_nav_conferencias_fila,
+    contagem_nav_conferencias_manual,
+    contagem_nav_relatorios,
+    contagem_nav_relatorios_motor,
+)
 from app.plataforma.db.models import Usuario
 from app.plataforma.paths import PROJECT_ROOT
 from app.plataforma.web.auth import exigir_admin_ferramenta
@@ -30,10 +35,11 @@ PLATAFORMA_TEMPLATES_DIR = (
     Path(__file__).resolve().parents[4] / "plataforma" / "web" / "templates"
 )
 templates = criar_templates([TEMPLATES_DIR, PLATAFORMA_TEMPLATES_DIR])
-# Contagem da aba "Gerar relatórios"/"Relatórios" — ver mesmo comentário
-# em inbox.py.
-templates.env.globals["contagem_nav_pendentes"] = contagem_nav_pendentes
+# Badges "+N" da navegação — ver mesmo comentário em inbox.py.
+templates.env.globals["contagem_nav_conferencias_manual"] = contagem_nav_conferencias_manual
+templates.env.globals["contagem_nav_conferencias_fila"] = contagem_nav_conferencias_fila
 templates.env.globals["contagem_nav_relatorios"] = contagem_nav_relatorios
+templates.env.globals["contagem_nav_relatorios_motor"] = contagem_nav_relatorios_motor
 
 
 @router.get("/motor")

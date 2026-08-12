@@ -110,6 +110,19 @@ html[data-theme="escuro"] .selo-status.real {
     border-radius: 999px;
 }
 
+/* Badge "+N" na cor de revisão — ver comentário equivalente em
+   app/ferramentas/extratus/web/static/extratus.css. */
+.aba .contagem-aba-revisao {
+    background: #fef9c3;
+    color: #854d0e;
+}
+
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme="claro"]) .aba .contagem-aba-revisao { background: #332b0f; color: #fde68a; }
+}
+
+html[data-theme="escuro"] .aba .contagem-aba-revisao { background: #332b0f; color: #fde68a; }
+
 /* Ver comentário equivalente em app/ferramentas/extratus/web/static/
    extratus.css (Extratus - Relatórios) — mesma lógica. */
 .aba-fixa-direita {

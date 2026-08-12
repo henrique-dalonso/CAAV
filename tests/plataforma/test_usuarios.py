@@ -6,6 +6,7 @@ from app.plataforma.db.models import (
     CARGO_COLABORADOR,
     CARGO_COORDENADOR,
     Ferramenta,
+    UltimoVistoAba,
     Usuario,
     UsuarioFerramenta,
 )
@@ -21,6 +22,8 @@ from app.plataforma.db.usuarios import (
     listar_ferramentas_fila_ids,
     listar_ferramentas_liberadas_ids,
     listar_ferramentas_mais_usadas,
+    marcar_aba_vista,
+    obter_ultimo_visto,
     registrar_acesso_ferramenta,
     usuario_eh_admin_da_ferramenta,
     usuario_tem_acesso_a_alguma_fila_motor,
@@ -57,6 +60,7 @@ def _apagar_usuarios_teste_e_vinculos():
         if ids:
             sessao.exec(delete(UsuarioFerramenta).where(UsuarioFerramenta.usuario_id.in_(ids)))
             sessao.exec(delete(AcessoFerramenta).where(AcessoFerramenta.usuario_id.in_(ids)))
+            sessao.exec(delete(UltimoVistoAba).where(UltimoVistoAba.usuario_id.in_(ids)))
 
         sessao.exec(
             delete(Usuario).where(
@@ -536,3 +540,85 @@ def test_mais_usadas_vazio_para_quem_nunca_usou(limpar_usuarios_teste):
     )
 
     assert listar_ferramentas_mais_usadas(usuario) == []
+
+
+# --- UltimoVistoAba — badges "+N" das abas (Henrique, 2026-08-13) ---
+
+def test_obter_ultimo_visto_none_quando_nunca_visitou(limpar_usuarios_teste):
+    extratus_id = _buscar_ferramenta_id_por_slug("extratus")
+    usuario = criar_usuario(
+        nome="Teste Coordenador",
+        nome_usuario=NOME_COORDENADOR_TESTE,
+        email="teste_usuarios_coord@example.com",
+        senha="senhaTeste123",
+        eh_admin=False,
+        cargo=CARGO_COORDENADOR,
+        ferramenta_ids=[extratus_id],
+    )
+
+    assert obter_ultimo_visto(usuario.id, "extratus", "relatorios") is None
+
+
+def test_marcar_aba_vista_depois_obter_ultimo_visto_preenchido(limpar_usuarios_teste):
+    extratus_id = _buscar_ferramenta_id_por_slug("extratus")
+    usuario = criar_usuario(
+        nome="Teste Coordenador",
+        nome_usuario=NOME_COORDENADOR_TESTE,
+        email="teste_usuarios_coord@example.com",
+        senha="senhaTeste123",
+        eh_admin=False,
+        cargo=CARGO_COORDENADOR,
+        ferramenta_ids=[extratus_id],
+    )
+
+    marcar_aba_vista(usuario.id, "extratus", "relatorios")
+
+    assert obter_ultimo_visto(usuario.id, "extratus", "relatorios") is not None
+
+
+def test_marcar_aba_vista_atualiza_registro_existente_em_vez_de_duplicar(limpar_usuarios_teste):
+    extratus_id = _buscar_ferramenta_id_por_slug("extratus")
+    usuario = criar_usuario(
+        nome="Teste Coordenador",
+        nome_usuario=NOME_COORDENADOR_TESTE,
+        email="teste_usuarios_coord@example.com",
+        senha="senhaTeste123",
+        eh_admin=False,
+        cargo=CARGO_COORDENADOR,
+        ferramenta_ids=[extratus_id],
+    )
+
+    marcar_aba_vista(usuario.id, "extratus", "relatorios")
+    primeira_visita = obter_ultimo_visto(usuario.id, "extratus", "relatorios")
+
+    marcar_aba_vista(usuario.id, "extratus", "relatorios")
+    segunda_visita = obter_ultimo_visto(usuario.id, "extratus", "relatorios")
+
+    assert segunda_visita >= primeira_visita
+
+    with obter_sessao() as sessao:
+        total = sessao.exec(
+            select(UltimoVistoAba).where(
+                UltimoVistoAba.usuario_id == usuario.id,
+                UltimoVistoAba.ferramenta_slug == "extratus",
+                UltimoVistoAba.aba == "relatorios",
+            )
+        ).all()
+        assert len(total) == 1
+
+
+def test_marcar_aba_vista_nao_afeta_outra_aba(limpar_usuarios_teste):
+    extratus_id = _buscar_ferramenta_id_por_slug("extratus")
+    usuario = criar_usuario(
+        nome="Teste Coordenador",
+        nome_usuario=NOME_COORDENADOR_TESTE,
+        email="teste_usuarios_coord@example.com",
+        senha="senhaTeste123",
+        eh_admin=False,
+        cargo=CARGO_COORDENADOR,
+        ferramenta_ids=[extratus_id],
+    )
+
+    marcar_aba_vista(usuario.id, "extratus", "relatorios")
+
+    assert obter_ultimo_visto(usuario.id, "extratus", "relatorios-motor") is None
