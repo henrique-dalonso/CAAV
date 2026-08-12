@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from sqlmodel import func, select
+from sqlalchemy.exc import IntegrityError
+from sqlmodel import func, select, update
 
 from app.ferramentas.extratus_aburesi.db.models import TriagemManual
 from app.plataforma.db.session import obter_sessao
@@ -56,7 +57,9 @@ def obter_registro(registro_id):
 
 def atualizar_apos_triagem(registro_id, status, processo_detectado, confianca_nivel, confianca_motivo, origem_duplicado=None):
     """Ver docstring equivalente em app/ferramentas/extratus/db/
-    triagem_manual.py (Extratus - Relatórios) — mesma lógica."""
+    triagem_manual.py (Extratus - Relatórios) — mesma lógica, incluindo
+    a trava do índice único parcial (db/session.py) contra 2 arquivos
+    virando "processando" pro mesmo processo ao mesmo tempo."""
     with obter_sessao() as sessao:
         registro = sessao.get(TriagemManual, registro_id)
 
@@ -71,7 +74,20 @@ def atualizar_apos_triagem(registro_id, status, processo_detectado, confianca_ni
         registro.atualizado_em = datetime.now()
 
         sessao.add(registro)
-        sessao.commit()
+        try:
+            sessao.commit()
+        except IntegrityError:
+            sessao.rollback()
+            registro = sessao.get(TriagemManual, registro_id)
+            registro.status = DUPLICADO_EM_ANDAMENTO
+            registro.processo_detectado = processo_detectado
+            registro.confianca_nivel = confianca_nivel
+            registro.confianca_motivo = "Esse número de processo já está sendo processado por outro arquivo."
+            registro.origem_duplicado = None
+            registro.atualizado_em = datetime.now()
+            sessao.add(registro)
+            sessao.commit()
+
         sessao.refresh(registro)
 
         avisar_mudanca()
@@ -120,30 +136,47 @@ def marcar_erro(registro_id, mensagem):
 
 
 def aprovar_manualmente(registro_id, processo_manual=None):
-    """Ação "Prosseguir" do painel de Conferências manual — mesma ideia
-    de checagem_fila.aprovar_manualmente: pula a trava automática,
-    confiança sempre forçada pra "revisão" (nunca herda alta confiança
-    silenciosamente por cima de uma inconsistência). Quem chama
-    (core/pipeline_manual.py) segue direto pra geração na sequência —
-    aqui também a aprovação já é o próprio gatilho."""
+    """Ver docstring equivalente em app/ferramentas/extratus/db/
+    triagem_manual.py (Extratus - Relatórios) — mesma lógica: UPDATE
+    condicional (trava contra clique duplo em "Aprovar") + tratamento do
+    índice único parcial (trava contra outro arquivo já "processando"
+    esse mesmo número de processo)."""
     with obter_sessao() as sessao:
-        registro = sessao.get(TriagemManual, registro_id)
+        valores = {
+            "status": PROCESSANDO,
+            "confianca_nivel": "revisao",
+            "confianca_motivo": "Liberado manualmente via Conferências, por cima de uma inconsistência da triagem.",
+            "atualizado_em": datetime.now(),
+        }
+        if processo_manual:
+            valores["processo_detectado"] = processo_manual
 
-        if not registro:
+        try:
+            resultado = sessao.exec(
+                update(TriagemManual)
+                .where(TriagemManual.id == registro_id, TriagemManual.status.in_(STATUS_INCONSISTENCIA))
+                .values(**valores)
+            )
+            sessao.commit()
+        except IntegrityError:
+            sessao.rollback()
+            registro = sessao.get(TriagemManual, registro_id)
+            if not registro:
+                return None
+            registro.status = DUPLICADO_EM_ANDAMENTO
+            if processo_manual:
+                registro.processo_detectado = processo_manual
+            registro.confianca_motivo = "Esse número de processo já está sendo processado por outro arquivo."
+            registro.atualizado_em = datetime.now()
+            sessao.add(registro)
+            sessao.commit()
+            avisar_mudanca()
             return None
 
-        if processo_manual:
-            registro.processo_detectado = processo_manual
+        if resultado.rowcount == 0:
+            return None
 
-        registro.status = PROCESSANDO
-        registro.confianca_nivel = "revisao"
-        registro.confianca_motivo = "Liberado manualmente via Conferências, por cima de uma inconsistência da triagem."
-        registro.atualizado_em = datetime.now()
-
-        sessao.add(registro)
-        sessao.commit()
-        sessao.refresh(registro)
-
+        registro = sessao.get(TriagemManual, registro_id)
         avisar_mudanca()
 
         return registro

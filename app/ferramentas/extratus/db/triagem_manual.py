@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from sqlmodel import func, select
+from sqlalchemy.exc import IntegrityError
+from sqlmodel import func, select, update
 
 from app.ferramentas.extratus.db.models import TriagemManual
 from app.plataforma.db.session import obter_sessao
@@ -72,7 +73,16 @@ def atualizar_apos_triagem(registro_id, status, processo_detectado, confianca_ni
     `origem_duplicado` ("motor" ou "manual") só é usado quando
     status=DUPLICADO_RELATORIO — diz pro botão "Ir ao relatório" (web/
     routes/inbox.py) se o duplicado mora em "Relatórios do Motor" ou
-    "Seus Relatórios"."""
+    "Seus Relatórios".
+
+    Henrique, 2026-08-13: quando `status` é PROCESSANDO, essa gravação
+    esbarra no índice único parcial (db/session.py) que garante que só
+    UM arquivo por vez fica "processando" pra um mesmo número de
+    processo — a trava real contra 2 arquivos (2 uploads quase juntos,
+    ou o mesmo caso enviado 2x) chamando a IA em duplicidade pro mesmo
+    processo. Se acontecer, o SQLite recusa a gravação (IntegrityError)
+    e aqui vira DUPLICADO_EM_ANDAMENTO, igual a quando a checagem já
+    pega isso de antemão."""
     with obter_sessao() as sessao:
         registro = sessao.get(TriagemManual, registro_id)
 
@@ -87,7 +97,20 @@ def atualizar_apos_triagem(registro_id, status, processo_detectado, confianca_ni
         registro.atualizado_em = datetime.now()
 
         sessao.add(registro)
-        sessao.commit()
+        try:
+            sessao.commit()
+        except IntegrityError:
+            sessao.rollback()
+            registro = sessao.get(TriagemManual, registro_id)
+            registro.status = DUPLICADO_EM_ANDAMENTO
+            registro.processo_detectado = processo_detectado
+            registro.confianca_nivel = confianca_nivel
+            registro.confianca_motivo = "Esse número de processo já está sendo processado por outro arquivo."
+            registro.origem_duplicado = None
+            registro.atualizado_em = datetime.now()
+            sessao.add(registro)
+            sessao.commit()
+
         sessao.refresh(registro)
 
         avisar_mudanca()
@@ -141,25 +164,57 @@ def aprovar_manualmente(registro_id, processo_manual=None):
     confiança sempre forçada pra "revisão" (nunca herda alta confiança
     silenciosamente por cima de uma inconsistência). Quem chama
     (core/pipeline_manual.py) segue direto pra geração na sequência —
-    aqui também a aprovação já é o próprio gatilho."""
-    with obter_sessao() as sessao:
-        registro = sessao.get(TriagemManual, registro_id)
+    aqui também a aprovação já é o próprio gatilho.
 
-        if not registro:
+    Henrique, 2026-08-13: UPDATE condicional (só grava se o registro
+    ainda estiver numa inconsistência) em vez de ler-e-gravar — trava
+    real contra clique duplo em "Aprovar" (2 requisições quase juntas
+    pro mesmo registro): a segunda não acha mais nenhuma linha pra
+    atualizar (rowcount 0) e sai sem gerar o relatório 2x. Também pode
+    esbarrar no índice único parcial (db/session.py, ver
+    atualizar_apos_triagem) se outro arquivo diferente já estiver
+    "processando" esse mesmo número — vira DUPLICADO_EM_ANDAMENTO em vez
+    de estourar erro."""
+    with obter_sessao() as sessao:
+        valores = {
+            "status": PROCESSANDO,
+            "confianca_nivel": "revisao",
+            "confianca_motivo": "Liberado manualmente via Conferências, por cima de uma inconsistência da triagem.",
+            "atualizado_em": datetime.now(),
+        }
+        if processo_manual:
+            valores["processo_detectado"] = processo_manual
+
+        try:
+            resultado = sessao.exec(
+                update(TriagemManual)
+                .where(TriagemManual.id == registro_id, TriagemManual.status.in_(STATUS_INCONSISTENCIA))
+                .values(**valores)
+            )
+            sessao.commit()
+        except IntegrityError:
+            # Não retorna o registro pro chamador (core/pipeline_manual.py)
+            # seguir gerando — ele só olha "veio algo?", não o status. Igual
+            # ao rowcount==0 logo abaixo: devolve None, quem chamou já sabe
+            # não seguir pra geração nesse caso.
+            sessao.rollback()
+            registro = sessao.get(TriagemManual, registro_id)
+            if not registro:
+                return None
+            registro.status = DUPLICADO_EM_ANDAMENTO
+            if processo_manual:
+                registro.processo_detectado = processo_manual
+            registro.confianca_motivo = "Esse número de processo já está sendo processado por outro arquivo."
+            registro.atualizado_em = datetime.now()
+            sessao.add(registro)
+            sessao.commit()
+            avisar_mudanca()
             return None
 
-        if processo_manual:
-            registro.processo_detectado = processo_manual
+        if resultado.rowcount == 0:
+            return None
 
-        registro.status = PROCESSANDO
-        registro.confianca_nivel = "revisao"
-        registro.confianca_motivo = "Liberado manualmente via Conferências, por cima de uma inconsistência da triagem."
-        registro.atualizado_em = datetime.now()
-
-        sessao.add(registro)
-        sessao.commit()
-        sessao.refresh(registro)
-
+        registro = sessao.get(TriagemManual, registro_id)
         avisar_mudanca()
 
         return registro

@@ -85,6 +85,71 @@ def test_aprovar_manualmente_registro_inexistente_nao_quebra():
     assert db_triagem.aprovar_manualmente(999999999) is None
 
 
+def test_aprovar_manualmente_segunda_chamada_nao_reprocessa():
+    """Trava contra clique duplo em "Aprovar" (Henrique, 2026-08-13): a
+    2ª chamada pro mesmo registro, depois que a 1ª já mudou o status pra
+    "processando", não deve mais achar a linha pra atualizar — sem isso,
+    o mesmo arquivo seria gerado 2x."""
+    registro = _criar("teste_triagem_aprovar_duplo_clique.pdf")
+    db_triagem.atualizar_apos_triagem(registro.id, db_triagem.NAO_ENCONTRADO, None, "revisao", "não achou nada")
+
+    primeira = db_triagem.aprovar_manualmente(registro.id, processo_manual="9990001-01.2026.8.00.0001")
+    segunda = db_triagem.aprovar_manualmente(registro.id, processo_manual="9990001-01.2026.8.00.0001")
+
+    assert primeira is not None
+    assert primeira.status == db_triagem.PROCESSANDO
+    assert segunda is None
+
+    do_banco = db_triagem.obter_registro(registro.id)
+    assert do_banco.status == db_triagem.PROCESSANDO  # não foi sobrescrito nem voltou atrás
+
+    db_triagem.descartar(registro.id)
+
+
+def test_atualizar_apos_triagem_processando_com_processo_ja_ativo_vira_duplicado():
+    """Trava real de banco (índice único parcial, db/session.py) contra
+    2 arquivos DIFERENTES virando "processando" pro MESMO número de
+    processo — cenário que a checagem de duplicidade (checagem_fila) não
+    cobre pra 2 uploads manuais concorrentes entre si (Henrique,
+    2026-08-13)."""
+    processo = "9990002-02.2026.8.00.0002"
+    primeiro = _criar("teste_triagem_processo_ativo_1.pdf")
+    segundo = _criar("teste_triagem_processo_ativo_2.pdf")
+
+    db_triagem.atualizar_apos_triagem(primeiro.id, db_triagem.PROCESSANDO, processo, "alta", "ok")
+    resultado = db_triagem.atualizar_apos_triagem(segundo.id, db_triagem.PROCESSANDO, processo, "alta", "ok")
+
+    assert resultado.status == db_triagem.DUPLICADO_EM_ANDAMENTO
+
+    do_banco_primeiro = db_triagem.obter_registro(primeiro.id)
+    assert do_banco_primeiro.status == db_triagem.PROCESSANDO  # o primeiro não foi mexido
+
+    db_triagem.descartar(primeiro.id)
+    db_triagem.descartar(segundo.id)
+
+
+def test_aprovar_manualmente_com_processo_ja_ativo_em_outro_arquivo_vira_duplicado():
+    processo = "9990003-03.2026.8.00.0003"
+    ja_processando = _criar("teste_triagem_processo_ativo_aprovar_1.pdf")
+    aguardando_conferencia = _criar("teste_triagem_processo_ativo_aprovar_2.pdf")
+
+    db_triagem.atualizar_apos_triagem(ja_processando.id, db_triagem.PROCESSANDO, processo, "alta", "ok")
+    db_triagem.atualizar_apos_triagem(
+        aguardando_conferencia.id, db_triagem.NAO_ENCONTRADO, None, "revisao", "não achou nada",
+    )
+
+    resultado = db_triagem.aprovar_manualmente(aguardando_conferencia.id, processo_manual=processo)
+
+    assert resultado is None
+
+    do_banco = db_triagem.obter_registro(aguardando_conferencia.id)
+    assert do_banco.status == db_triagem.DUPLICADO_EM_ANDAMENTO
+    assert do_banco.processo_detectado == processo
+
+    db_triagem.descartar(ja_processando.id)
+    db_triagem.descartar(aguardando_conferencia.id)
+
+
 def test_descartar_apaga_a_linha():
     registro = _criar("teste_triagem_descartar.pdf")
 

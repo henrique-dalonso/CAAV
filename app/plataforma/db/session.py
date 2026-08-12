@@ -65,6 +65,33 @@ def _garantir_colunas(engine):
         conexao.commit()
 
 
+# Índices únicos parciais — não têm "IF NOT EXISTS" natural via ALTER
+# TABLE como COLUNAS_PENDENTES, mas CREATE INDEX já aceita IF NOT EXISTS
+# nativamente, então não precisa do controle manual de PRAGMA table_info.
+# Henrique, 2026-08-13: trava real de banco contra 2 arquivos do fluxo
+# manual (Gerar seu Relatório) virando "processando" (prestes a chamar a
+# IA) pro MESMO número de processo ao mesmo tempo — duas pessoas (ou o
+# mesmo PDF 2x) enviando quase junto. Índice PARCIAL (só olha linhas
+# "processando") pra não impedir reenvio depois que a primeira já
+# terminou. Quem grava por cima disso trata o erro de violação e vira
+# "duplicado_em_andamento" (db/triagem_manual.py) em vez de quebrar.
+INDICES_UNICOS_PARCIAIS = [
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_triagemmanual_processo_ativo "
+    "ON triagemmanual (processo_detectado) "
+    "WHERE processo_detectado IS NOT NULL AND status = 'processando'",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_triagemmanual_aburesi_processo_ativo "
+    "ON triagemmanual_aburesi (processo_detectado) "
+    "WHERE processo_detectado IS NOT NULL AND status = 'processando'",
+]
+
+
+def _garantir_indices(engine):
+    with engine.connect() as conexao:
+        for sql in INDICES_UNICOS_PARCIAIS:
+            conexao.exec_driver_sql(sql)
+        conexao.commit()
+
+
 def _criar_engine():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
@@ -72,6 +99,7 @@ def _criar_engine():
 
     SQLModel.metadata.create_all(engine)
     _garantir_colunas(engine)
+    _garantir_indices(engine)
 
     return engine
 
