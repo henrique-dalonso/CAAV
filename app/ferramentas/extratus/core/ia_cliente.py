@@ -12,6 +12,16 @@ from app.ferramentas.extratus.core.texto_manager import (
 
 MODELO_PADRAO = "claude-sonnet-5"
 
+# Modelo mais barato usado só na etapa de "pedaço" de um processo dividido
+# (ver TOKENS_POR_PEDACO_DIVISAO e `_montar_parametros_pedaco`). Essa etapa
+# só faz extração literal do trecho (datas, atos, documentos vistos), sem
+# nenhum julgamento jurídico — um modelo mais simples dá conta igual e
+# custa metade do preço (ver PRECOS_POR_MILHAO_USD). A etapa que de fato
+# escreve o parecer (redução final, `_montar_parametros_reducao`) continua
+# no modelo padrão. Henrique, 2026-08-12: "queremos baratear o máximo
+# possível" — adotado como parte da rodada de eficiência de custo.
+MODELO_PEDACO = "claude-haiku-4-5"
+
 # --- Limites de segurança para a análise via texto extraído localmente ---
 # (ver memória de redução de custo — validados com testes reais em 2026-07-29)
 #
@@ -27,9 +37,14 @@ LIMITE_PROPORCAO_PAGINAS_SEM_TEXTO = 0.15
 # um erro de "excedeu a janela de contexto" no meio do processamento.
 TOKENS_POR_CARACTERE_ESTIMADO = 0.6
 
-# Deixamos uma folga generosa da janela de 200 mil tokens do modelo, porque
-# ainda entram o prompt do Max, o schema da ferramenta e a resposta.
-LIMITE_TOKENS_TEXTO_EXTRAIDO = 150_000
+# Deixamos uma folga generosa da janela real de 1 milhão de tokens do
+# modelo (Sonnet 5) — ~200 mil de sobra pro prompt do Max, o schema da
+# ferramenta e a resposta. Corrigido em 2026-08-12: o valor antigo (150 mil)
+# partia de uma suposição desatualizada de janela de 200 mil tokens (gerações
+# antigas do Sonnet) — documentos grandes estavam sendo divididos em pedaços
+# à toa, pagando várias chamadas de saída (mais cara) em vez de uma só, e
+# caindo em "revisão" automaticamente mesmo sem precisar.
+LIMITE_TOKENS_TEXTO_EXTRAIDO = 800_000
 
 # A Anthropic rejeita (HTTP 413) requisições acima de 32MB. Um PDF em
 # base64 fica ~1,33x maior que o arquivo original — por isso o teto aqui
@@ -37,22 +52,24 @@ LIMITE_TOKENS_TEXTO_EXTRAIDO = 150_000
 # um PDF de 34,2MB (979 páginas) foi rejeitado de fato com esse erro.
 LIMITE_MB_ARQUIVO_PARA_PDF_NATIVO = 24
 
-# Preço promocional por milhão de tokens, válido até 31/08/2026 (depois
-# disso sobe pra $3/$15 — lembrar de atualizar). Isso é só uma ESTIMATIVA
-# pra acompanhar gasto dentro do sistema — a fatura real da Anthropic é
-# que vale de verdade. Testado em 25/07/2026: o cálculo aqui deu US$ 0,64
-# pra uma chamada que a fatura real cobrou US$ 0,85 — ainda não sabemos
-# a causa exata da diferença (possível custo extra de processar PDF/imagem
-# não refletido em usage.input_tokens). Tratar este número como piso, não teto.
-PRECO_ENTRADA_POR_MILHAO_USD = 2.00
-PRECO_SAIDA_POR_MILHAO_USD = 10.00
-
-# Cache de prompt: escrita (primeira vez) custa 1,25x o preço normal de
-# entrada; leitura (reaproveitando o que já foi escrito, dentro de ~5min)
-# custa só 10% do preço normal. Só a instrução do Max entra em cache — o
-# PDF de cada processo é sempre diferente, não tem o que reaproveitar ali.
-PRECO_CACHE_ESCRITA_POR_MILHAO_USD = PRECO_ENTRADA_POR_MILHAO_USD * 1.25
-PRECO_CACHE_LEITURA_POR_MILHAO_USD = PRECO_ENTRADA_POR_MILHAO_USD * 0.10
+# Preço promocional por milhão de tokens (entrada, saída), válido até
+# 31/08/2026 (depois disso o padrão sobe pra $3/$15 — lembrar de atualizar).
+# Isso é só uma ESTIMATIVA pra acompanhar gasto dentro do sistema — a fatura
+# real da Anthropic é que vale de verdade. Testado em 25/07/2026: o cálculo
+# aqui deu US$ 0,64 pra uma chamada que a fatura real cobrou US$ 0,85 —
+# ainda não sabemos a causa exata da diferença (possível custo extra de
+# processar PDF/imagem não refletido em usage.input_tokens). Tratar estes
+# números como piso, não teto.
+#
+# Indexado por modelo (não só um preço fixo) desde que MODELO_PEDACO existe:
+# `extrair_dados_e_uso` olha QUAL modelo respondeu de verdade
+# (`resposta.model`) pra cobrar certo — sem isso, a etapa de pedaço (que
+# roda no modelo mais barato) apareceria no Histórico com o preço do modelo
+# padrão, inflando o custo mostrado sem inflar o custo real.
+PRECOS_POR_MILHAO_USD = {
+    MODELO_PADRAO: (2.00, 10.00),
+    MODELO_PEDACO: (1.00, 5.00),
+}
 
 # Batch API (usado só pelo Motor, ver motor_lote.py): 50% de desconto em
 # cima de TODOS os preços acima — entrada, saída e cache. Confirmado com
@@ -61,14 +78,18 @@ DESCONTO_BATCH_API = 0.5
 
 # Tamanho de cada pedaço quando um processo é grande demais pra uma
 # chamada só (ver `_dividir_paginas_em_pedacos` / `gerar_relatorio_claude_dividido`).
-# Bem abaixo do limite de uma chamada única (150k) de propósito: cada
+# Bem abaixo do limite de uma chamada única (800k) de propósito: cada
 # pedaço ainda carrega o prompt inteiro do Max (cacheado) e precisa
 # sobrar espaço pra resposta — prioriza nunca estourar contexto sobre
-# economizar uma chamada a mais. Só usado no fluxo síncrono (fila
-# manual) por enquanto — o Motor/Batch API não suporta uma sequência de
-# chamadas dependentes dentro de um único item de lote, então processos
-# grandes no Motor continuam caindo em erro claro, como hoje.
-TOKENS_POR_PEDACO_DIVISAO = 80_000
+# economizar uma chamada a mais. Subido de 80k pra 200k em 2026-08-12
+# junto com LIMITE_TOKENS_TEXTO_EXTRAIDO: como a divisão em pedaços passou
+# a ser bem mais rara, quando ainda assim for necessária (documentos
+# realmente enormes), pedaços maiores significam menos chamadas pagas por
+# documento. Só usado no fluxo síncrono (fila manual) por enquanto — o
+# Motor/Batch API não suporta uma sequência de chamadas dependentes dentro
+# de um único item de lote, então processos grandes no Motor continuam
+# caindo em erro claro, como hoje.
+TOKENS_POR_PEDACO_DIVISAO = 200_000
 
 # --- Triagem de anexos de listagem de terceiros (ex: cessão de carteira
 # de crédito entre instituições financeiras) ---
@@ -315,7 +336,13 @@ def _instrucao_formato():
 def extrair_dados_e_uso(resposta, via_batch=False):
     """`via_batch=True` quando `resposta` veio de um resultado do Batch API
     (Motor) — aplica os 50% de desconto da Anthropic nesse caso; chamadas
-    em tempo real (fila manual) usam o preço cheio normalmente."""
+    em tempo real (fila manual) usam o preço cheio normalmente.
+
+    O preço usado é sempre o do modelo que respondeu de verdade
+    (`resposta.model`), não um preço fixo — necessário desde que
+    MODELO_PEDACO existe (a etapa de pedaço roda mais barato que a
+    padrão). `resposta.model` ausente (só acontece em resposta fake de
+    teste) cai no preço do modelo padrão."""
     bloco_ferramenta = next(
         (bloco for bloco in resposta.content if bloco.type == "tool_use"),
         None,
@@ -326,6 +353,15 @@ def extrair_dados_e_uso(resposta, via_batch=False):
 
     dados = dict(bloco_ferramenta.input)
 
+    modelo = getattr(resposta, "model", None) or MODELO_PADRAO
+    preco_entrada, preco_saida = PRECOS_POR_MILHAO_USD.get(modelo, PRECOS_POR_MILHAO_USD[MODELO_PADRAO])
+    # Cache de prompt: escrita (primeira vez) custa 1,25x o preço normal de
+    # entrada; leitura (reaproveitando o que já foi escrito, dentro de
+    # ~5min) custa só 10% do preço normal — mesma proporção em qualquer
+    # modelo, só muda o preço-base de entrada.
+    preco_cache_escrita = preco_entrada * 1.25
+    preco_cache_leitura = preco_entrada * 0.10
+
     tokens_entrada = resposta.usage.input_tokens
     tokens_saida = resposta.usage.output_tokens
     tokens_cache_escrita = getattr(resposta.usage, "cache_creation_input_tokens", 0) or 0
@@ -334,14 +370,14 @@ def extrair_dados_e_uso(resposta, via_batch=False):
     multiplicador = (1 - DESCONTO_BATCH_API) if via_batch else 1
 
     custo_estimado = multiplicador * (
-        tokens_entrada / 1_000_000 * PRECO_ENTRADA_POR_MILHAO_USD
-        + tokens_saida / 1_000_000 * PRECO_SAIDA_POR_MILHAO_USD
-        + tokens_cache_escrita / 1_000_000 * PRECO_CACHE_ESCRITA_POR_MILHAO_USD
-        + tokens_cache_leitura / 1_000_000 * PRECO_CACHE_LEITURA_POR_MILHAO_USD
+        tokens_entrada / 1_000_000 * preco_entrada
+        + tokens_saida / 1_000_000 * preco_saida
+        + tokens_cache_escrita / 1_000_000 * preco_cache_escrita
+        + tokens_cache_leitura / 1_000_000 * preco_cache_leitura
     )
 
     uso_ia = {
-        "modelo": MODELO_PADRAO,
+        "modelo": modelo,
         # tokens_entrada aqui soma tudo (normal + cache), pra manter a
         # coluna do histórico simples de ler — o detalhe do cache fica
         # só no log, pra quem quiser conferir se está funcionando.
@@ -353,7 +389,7 @@ def extrair_dados_e_uso(resposta, via_batch=False):
     if tokens_cache_leitura:
         economia_estimada = (
             tokens_cache_leitura / 1_000_000
-            * (PRECO_ENTRADA_POR_MILHAO_USD - PRECO_CACHE_LEITURA_POR_MILHAO_USD)
+            * (preco_entrada - preco_cache_leitura)
         )
         print(
             f"[cache] {tokens_cache_leitura} tokens vieram do cache "
@@ -401,7 +437,7 @@ def _montar_parametros_pedaco(texto_pedaco, indice, total, processo_detectado, i
     )
 
     return {
-        "model": MODELO_PADRAO,
+        "model": MODELO_PEDACO,
         "max_tokens": 4096,
         "system": [
             {
@@ -409,7 +445,10 @@ def _montar_parametros_pedaco(texto_pedaco, indice, total, processo_detectado, i
                 "text": instrucoes,
                 # Mesmo texto (prompt do Max) em toda chamada de pedaço E na
                 # de redução — cacheado uma vez, lido barato (10% do preço)
-                # em todas as chamadas seguintes do mesmo processo.
+                # em todas as chamadas seguintes do mesmo processo. Cache é
+                # por modelo, então o pedaço (Haiku) e a redução (Sonnet)
+                # escrevem/leem caches separados entre si — cada um ainda
+                # aproveita cache dos outros pedaços do MESMO processo.
                 "cache_control": {"type": "ephemeral"},
             }
         ],

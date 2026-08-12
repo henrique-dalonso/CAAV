@@ -4,8 +4,12 @@ from unittest.mock import MagicMock, patch
 from app.ferramentas.extratus.core.ia_cliente import (
     LIMITE_MB_ARQUIVO_PARA_PDF_NATIVO,
     LIMITE_TOKENS_TEXTO_EXTRAIDO,
+    MODELO_PADRAO,
+    MODELO_PEDACO,
     _agregar_pedacos,
     _dividir_paginas_em_pedacos,
+    _montar_parametros_pedaco,
+    _montar_parametros_reducao,
     _pagina_parece_lista_de_terceiros,
     cabe_no_limite_pdf_nativo,
     estimar_tokens_texto,
@@ -61,12 +65,13 @@ def test_cabe_no_limite_pdf_nativo_arquivo_grande_demais(tmp_path):
 
 def test_limite_tokens_texto_extraido_deixa_folga_da_janela_de_contexto():
     # Sanity check do valor em si: tem que deixar espaço pra prompt/schema/
-    # resposta dentro da janela de 200 mil tokens do modelo.
-    assert LIMITE_TOKENS_TEXTO_EXTRAIDO < 200_000
+    # resposta dentro da janela real de 1 milhão de tokens do Sonnet 5.
+    assert LIMITE_TOKENS_TEXTO_EXTRAIDO < 1_000_000
 
 
-def _resposta_fake(tokens_entrada=100_000, tokens_saida=1_000):
+def _resposta_fake(tokens_entrada=100_000, tokens_saida=1_000, modelo=None):
     return SimpleNamespace(
+        model=modelo,
         content=[SimpleNamespace(type="tool_use", input={"campo": "valor"})],
         usage=SimpleNamespace(
             input_tokens=tokens_entrada,
@@ -78,15 +83,50 @@ def _resposta_fake(tokens_entrada=100_000, tokens_saida=1_000):
 
 
 def test_extrair_dados_e_uso_preco_cheio_por_padrao():
-    _, uso_ia = extrair_dados_e_uso(_resposta_fake())
+    _, uso_ia = extrair_dados_e_uso(_resposta_fake(modelo=MODELO_PADRAO))
     assert uso_ia["custo_estimado_usd"] == round(100_000 / 1e6 * 2.00 + 1_000 / 1e6 * 10.00, 4)
+    assert uso_ia["modelo"] == MODELO_PADRAO
 
 
 def test_extrair_dados_e_uso_aplica_desconto_do_batch():
-    _, uso_normal = extrair_dados_e_uso(_resposta_fake(), via_batch=False)
-    _, uso_batch = extrair_dados_e_uso(_resposta_fake(), via_batch=True)
+    _, uso_normal = extrair_dados_e_uso(_resposta_fake(modelo=MODELO_PADRAO), via_batch=False)
+    _, uso_batch = extrair_dados_e_uso(_resposta_fake(modelo=MODELO_PADRAO), via_batch=True)
 
     assert uso_batch["custo_estimado_usd"] == round(uso_normal["custo_estimado_usd"] / 2, 4)
+
+
+def test_extrair_dados_e_uso_cobra_preco_do_modelo_pedaco_quando_foi_ele_que_respondeu():
+    # Modelo mais barato (Haiku) usado na etapa de pedaço — o custo tem que
+    # refletir o preço DELE, não o do modelo padrão (Sonnet), senão o
+    # Histórico infla o gasto real da etapa mais barata.
+    _, uso_ia = extrair_dados_e_uso(_resposta_fake(modelo=MODELO_PEDACO))
+    assert uso_ia["custo_estimado_usd"] == round(100_000 / 1e6 * 1.00 + 1_000 / 1e6 * 5.00, 4)
+    assert uso_ia["modelo"] == MODELO_PEDACO
+
+
+def test_extrair_dados_e_uso_sem_model_na_resposta_cai_no_preco_padrao():
+    # `resposta.model` ausente (só acontece em resposta fake/mock de teste,
+    # a API real sempre devolve) não pode quebrar — cai no preço padrão.
+    resposta_sem_model = SimpleNamespace(
+        content=[SimpleNamespace(type="tool_use", input={"campo": "valor"})],
+        usage=SimpleNamespace(
+            input_tokens=100_000, output_tokens=1_000,
+            cache_creation_input_tokens=0, cache_read_input_tokens=0,
+        ),
+    )
+    _, uso_ia = extrair_dados_e_uso(resposta_sem_model)
+    assert uso_ia["custo_estimado_usd"] == round(100_000 / 1e6 * 2.00 + 1_000 / 1e6 * 10.00, 4)
+    assert uso_ia["modelo"] == MODELO_PADRAO
+
+
+def test_montar_parametros_pedaco_usa_modelo_mais_barato():
+    parametros = _montar_parametros_pedaco("texto do pedaço", 1, 2, "0000000-00.2026.8.06.0300", "instruções")
+    assert parametros["model"] == MODELO_PEDACO
+
+
+def test_montar_parametros_reducao_usa_modelo_padrao():
+    parametros = _montar_parametros_reducao("resumo consolidado", "0000000-00.2026.8.06.0300", "instruções")
+    assert parametros["model"] == MODELO_PADRAO
 
 
 # --- Divisão de processos grandes em pedaços (map-reduce) ---
