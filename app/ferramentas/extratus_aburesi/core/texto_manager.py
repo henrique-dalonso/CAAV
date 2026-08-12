@@ -3,22 +3,6 @@ from pathlib import Path
 from pypdf import PdfReader
 
 
-def extrair_texto_pdf(caminho_pdf):
-    caminho_pdf = Path(caminho_pdf)
-
-    leitor = PdfReader(str(caminho_pdf))
-
-    texto = []
-
-    for pagina in leitor.pages:
-        conteudo = pagina.extract_text()
-
-        if conteudo:
-            texto.append(conteudo)
-
-    return "\n".join(texto)
-
-
 # Abaixo disso, consideramos que a página "não tem texto de verdade" —
 # só um cabeçalho/carimbo solto, não o conteúdo real da página.
 MINIMO_CARACTERES_PAGINA_COM_TEXTO = 30
@@ -69,3 +53,22 @@ def extrair_texto_pdf_com_diagnostico(caminho_pdf):
         "paginas_sem_texto": paginas_sem_texto,
         "caracteres": len(texto_completo),
     }
+
+
+# Mesmo limite usado em 2 lugares (Henrique, 2026-08-13): decide se o PDF
+# vai pra IA como texto ou como imagem nativa (ia_cliente.py) E rebaixa a
+# confiança da detecção do processo quando o documento é escaneado
+# (processo_detector.ajustar_confianca_por_digitalizacao) — mora aqui, ao
+# lado do diagnóstico que ele consome, pra não existir 2 definições
+# divergentes do que "parece digitalizado" significa.
+LIMITE_PROPORCAO_PAGINAS_SEM_TEXTO = 0.15
+
+
+def parece_digitalizado(total_paginas, paginas_sem_texto):
+    """True quando a proporção de páginas sem texto real sugere que o PDF
+    é escaneado/digitalizado (sem camada de texto), não um PDF nativo do
+    sistema do tribunal."""
+    if total_paginas <= 0:
+        return True
+
+    return (paginas_sem_texto / total_paginas) > LIMITE_PROPORCAO_PAGINAS_SEM_TEXTO

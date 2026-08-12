@@ -2,7 +2,10 @@ import re
 from pathlib import Path
 from collections import Counter
 
-from app.ferramentas.extratus_aburesi.core.texto_manager import extrair_texto_pdf
+from app.ferramentas.extratus_aburesi.core.texto_manager import (
+    extrair_texto_pdf_com_diagnostico,
+    parece_digitalizado,
+)
 
 
 PADRAO_CNJ = r"\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}"
@@ -97,8 +100,37 @@ def calcular_confianca(dominante, processos_nome):
     }
 
 
-def analisar_texto_pdf(caminho_pdf, texto):
+def ajustar_confianca_por_digitalizacao(confianca, total_paginas, paginas_sem_texto):
+    """Rebaixa confiança "alta" pra "média" quando o PDF parece
+    digitalizado (escaneado) — o número do processo pode ter batido
+    certinho no texto, mas se o documento foi lido como imagem em vez de
+    texto (ver `ia_cliente.montar_parametros_mensagem`), a IA está
+    trabalhando com um material mais arriscado que o normal, e isso
+    precisa ficar visível pra quem for conferir.
+
+    Henrique, 2026-08-13: só mexe na confiança "alta" — "média" e
+    "revisão" já caem no mesmo tratamento hoje (revisão humana, decisão
+    dele mesmo, proposital: "já não tem mais 100% de confiança"), não
+    existe "mais baixo" ali pra proteger."""
+    if confianca["nivel"] != "alta":
+        return confianca
+
+    if not parece_digitalizado(total_paginas, paginas_sem_texto):
+        return confianca
+
+    return {
+        "nivel": "media",
+        "motivo": (
+            f"{confianca['motivo']} Confiança rebaixada de alta para média: o "
+            "documento parece ser digitalizado (escaneado), lido pela IA como "
+            "imagem em vez de texto."
+        ),
+    }
+
+
+def analisar_texto_pdf(caminho_pdf, diagnostico):
     caminho_pdf = Path(caminho_pdf)
+    texto = diagnostico["texto"]
 
     processos_nome = encontrar_processos_no_nome(caminho_pdf)
 
@@ -106,6 +138,9 @@ def analisar_texto_pdf(caminho_pdf, texto):
     ocorrencias = contar_ocorrencias_processos(processos_texto)
     dominante = obter_processo_dominante(ocorrencias)
     confianca = calcular_confianca(dominante, processos_nome)
+    confianca = ajustar_confianca_por_digitalizacao(
+        confianca, diagnostico["total_paginas"], diagnostico["paginas_sem_texto"]
+    )
 
     return {
         "arquivo": caminho_pdf.name,
@@ -113,14 +148,14 @@ def analisar_texto_pdf(caminho_pdf, texto):
         "ocorrencias": ocorrencias,
         "dominante": dominante,
         "confianca": confianca,
-        "caracteres_extraidos": len(texto)
+        "caracteres_extraidos": diagnostico["caracteres"]
     }
 
 
 def analisar_pdf(caminho_pdf):
-    texto = extrair_texto_pdf(caminho_pdf)
+    diagnostico = extrair_texto_pdf_com_diagnostico(caminho_pdf)
 
     return analisar_texto_pdf(
         caminho_pdf,
-        texto
+        diagnostico
     )

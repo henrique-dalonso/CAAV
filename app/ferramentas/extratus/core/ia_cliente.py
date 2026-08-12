@@ -7,6 +7,7 @@ from app.ferramentas.extratus.core.prompt_manager import carregar_instrucoes_rel
 from app.ferramentas.extratus.core.texto_manager import (
     extrair_paginas_pdf,
     extrair_texto_pdf_com_diagnostico,
+    parece_digitalizado,
 )
 
 
@@ -24,12 +25,6 @@ MODELO_PEDACO = "claude-haiku-4-5"
 
 # --- Limites de segurança para a análise via texto extraído localmente ---
 # (ver memória de redução de custo — validados com testes reais em 2026-07-29)
-#
-# Se mais que essa proporção das páginas vier sem texto de verdade, tratamos
-# o PDF como digitalizado (escaneado) — nesse caso a extração de texto não
-# serve, e caímos de volta pro envio do PDF nativo (visão), que ao menos
-# consegue "ler" a imagem.
-LIMITE_PROPORCAO_PAGINAS_SEM_TEXTO = 0.15
 
 # Estimativa de tokens por caractere do texto extraído, calibrada com dois
 # testes reais pagos (0,53 e 0,58 tokens/caractere) — usamos 0,6 pra ter
@@ -300,16 +295,6 @@ FERRAMENTA_PEDACO = {
         "required": ["cronologia", "documentos_identificados"],
     },
 }
-
-
-def parece_digitalizado(total_paginas, paginas_sem_texto):
-    """True quando a proporção de páginas sem texto real sugere que o PDF
-    é escaneado/digitalizado (sem camada de texto), não um PDF nativo do
-    sistema do tribunal."""
-    if total_paginas <= 0:
-        return True
-
-    return (paginas_sem_texto / total_paginas) > LIMITE_PROPORCAO_PAGINAS_SEM_TEXTO
 
 
 def estimar_tokens_texto(texto):

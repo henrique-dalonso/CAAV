@@ -1,6 +1,8 @@
 from pathlib import Path
 
 from app.ferramentas.extratus.core.processo_detector import (
+    ajustar_confianca_por_digitalizacao,
+    analisar_texto_pdf,
     calcular_confianca,
     contar_ocorrencias_processos,
     encontrar_processos_no_nome,
@@ -83,3 +85,59 @@ def test_confianca_revisao_quando_aparece_uma_unica_vez():
     dominante = {"processo": "A-1", "ocorrencias": 1, "segundo_processo": None, "segundo_ocorrencias": 0}
     resultado = calcular_confianca(dominante, [])
     assert resultado["nivel"] == "revisao"
+
+
+# --- Mescla com "parece digitalizado" (Henrique, 2026-08-13) ---
+# Regra: só "alta" pode ser rebaixada (pra "média") quando o PDF parece
+# escaneado — "média" e "revisão" já caem no mesmo tratamento (revisão
+# humana) hoje, então não tem "mais baixo" pra proteger nem "mais alto"
+# pra evitar.
+
+def test_ajustar_confianca_rebaixa_alta_para_media_quando_digitalizado():
+    confianca_alta = {"nivel": "alta", "motivo": "Número encontrado no nome do arquivo."}
+    # 90% das páginas sem texto -> parece digitalizado (limite é 15%).
+    resultado = ajustar_confianca_por_digitalizacao(confianca_alta, total_paginas=10, paginas_sem_texto=9)
+
+    assert resultado["nivel"] == "media"
+    assert "Número encontrado no nome do arquivo." in resultado["motivo"]
+    assert "rebaixada de alta para média" in resultado["motivo"]
+    assert "digitalizado" in resultado["motivo"]
+
+
+def test_ajustar_confianca_mantem_alta_quando_nao_digitalizado():
+    confianca_alta = {"nivel": "alta", "motivo": "Número encontrado no nome do arquivo."}
+    # Só 1 de 10 páginas sem texto (10%) -> abaixo do limite, não é digitalizado.
+    resultado = ajustar_confianca_por_digitalizacao(confianca_alta, total_paginas=10, paginas_sem_texto=1)
+
+    assert resultado == confianca_alta
+
+
+def test_ajustar_confianca_media_nao_cai_mesmo_digitalizado():
+    confianca_media = {"nivel": "media", "motivo": "Número encontrado múltiplas vezes, mas sem dominância suficiente."}
+    resultado = ajustar_confianca_por_digitalizacao(confianca_media, total_paginas=10, paginas_sem_texto=9)
+
+    assert resultado == confianca_media
+
+
+def test_ajustar_confianca_revisao_nao_muda_mesmo_digitalizado():
+    confianca_revisao = {"nivel": "revisao", "motivo": "Nenhum número de processo encontrado no conteúdo do PDF."}
+    resultado = ajustar_confianca_por_digitalizacao(confianca_revisao, total_paginas=10, paginas_sem_texto=9)
+
+    assert resultado == confianca_revisao
+
+
+def test_analisar_texto_pdf_aplica_rebaixa_por_digitalizacao_de_ponta_a_ponta():
+    # Processo repetido no nome+conteúdo dá "alta" (ver calcular_confianca)
+    # — combinado com um diagnóstico "digitalizado" (9 de 10 páginas sem
+    # texto), o resultado final tem que já vir como "media".
+    texto = "1506649-24.2019.8.26.0071 " * 3
+    diagnostico = {"texto": texto, "total_paginas": 10, "paginas_sem_texto": 9, "caracteres": len(texto)}
+
+    resultado = analisar_texto_pdf(
+        Path("relatorio_1506649-24.2019.8.26.0071.pdf"),
+        diagnostico,
+    )
+
+    assert resultado["confianca"]["nivel"] == "media"
+    assert "digitalizado" in resultado["confianca"]["motivo"]
+    assert resultado["caracteres_extraidos"] == len(texto)
