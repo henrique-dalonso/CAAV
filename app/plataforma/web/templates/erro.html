@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ titulo }} — Centro de Experiência do Colaborador</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/erro.css?v={{ v }}">
+</head>
+<body class="fundo-vivo">
+    <main class="erro-cartao">
+        <div class="selo-marca erro-marca">
+            <img src="/static/marca/logo-av-marca.png" alt="Alonso &amp; Verdiani">
+        </div>
+
+        <p class="erro-codigo">Erro {{ codigo }}</p>
+        <h1>{{ titulo }}</h1>
+        <p class="erro-mensagem">{{ mensagem }}</p>
+        {% if orientacao %}
+        <p class="erro-orientacao">{{ orientacao }}</p>
+        {% endif %}
+
+        <a href="{{ botao_link }}" class="erro-botao">{{ botao_texto }}</a>
+    </main>
+</body>
+</html>

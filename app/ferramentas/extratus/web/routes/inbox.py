@@ -307,8 +307,15 @@ def baixar_relatorio(nome_arquivo: str):
 
     pasta_saida = Path(config.get("pasta_saida", "relatorios_prontos"))
     nome_seguro = Path(nome_arquivo).name
+    caminho = pasta_saida / nome_seguro
 
-    return FileResponse(
-        pasta_saida / nome_seguro,
-        filename=nome_seguro
-    )
+    # Achado testando a página de erro nova (2026-08-12): sem essa
+    # checagem, um link de download apontando pra um arquivo que já não
+    # existe (removido, movido) derrubava com um `RuntimeError` cru do
+    # Starlette (FileResponse só confere o arquivo na hora de mandar a
+    # resposta) — igual ao padrão já usado em fila.py, agora vira um 404
+    # controlado, com página de erro estilizada em vez de crash.
+    if not caminho.exists():
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado.")
+
+    return FileResponse(caminho, filename=nome_seguro)

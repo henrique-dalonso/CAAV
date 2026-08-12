@@ -3,6 +3,7 @@ import app.plataforma.env  # noqa: F401 — carrega o .env antes de qualquer coi
 import asyncio
 import os
 import secrets
+import traceback
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -10,6 +11,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlmodel import select
+from starlette.exceptions import HTTPException
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.plataforma.db.models import Ferramenta
@@ -18,6 +20,7 @@ from app.plataforma.db.session import obter_sessao
 from app.plataforma.db.usuarios import registrar_acesso_ferramenta
 from app.plataforma.web.auth import NaoAutenticado
 from app.plataforma.web.routes import admin, auth, home, notificacoes, perfil
+from app.plataforma.web.templates_util import criar_templates
 from app.ferramentas.extratus.core.checagem_watcher import loop_checagem
 from app.ferramentas.extratus.core.motor_watcher import loop_motor
 from app.ferramentas.extratus.web.routes import fila, historico, inbox, motor, relatorios_motor, relatorios_prontos
@@ -174,3 +177,79 @@ app.include_router(leitor_publicacoes_home.router, prefix="/leitor-publicacoes")
 @app.exception_handler(NaoAutenticado)
 def handler_nao_autenticado(request: Request, exc: NaoAutenticado):
     return RedirectResponse(url="/login", status_code=303)
+
+
+# Página de erro estilizada (403/404/500 e qualquer outro HTTPException)
+# — antes disso, qualquer erro (sem permissão, página inexistente, bug
+# real) caía no JSON cru padrão do FastAPI/Starlette. Standalone, igual
+# login.html/login.css — NÃO estende base.html de propósito: base.html
+# exige `usuario` preenchido (usuario.tema, usuario.nome...) sem checagem
+# de nulo, e uma URL inválida pode nunca ter passado por login nenhum.
+templates_erro = criar_templates(BASE_DIR / "templates")
+
+
+# Detalhes que o próprio Starlette preenche sozinho quando NENHUMA rota
+# bate com a URL (não veio de um `raise HTTPException(..., detail=...)`
+# escrito por nós) — em inglês, genéricos demais pra mostrar direto.
+# Achado testando ao vivo: sem esse filtro, uma URL inexistente mostrava
+# "Not Found" cru na tela em vez da mensagem em português.
+_DETALHES_PADRAO_DO_FRAMEWORK = {"Not Found", "Method Not Allowed", "Bad Request", "Forbidden", "Internal Server Error"}
+
+
+def _detalhe_especifico(exc: HTTPException) -> str | None:
+    detalhe = exc.detail
+    if not detalhe or detalhe in _DETALHES_PADRAO_DO_FRAMEWORK:
+        return None
+    return detalhe
+
+
+def _pagina_erro(request: Request, status_code: int, titulo: str, mensagem: str, orientacao: str | None = None):
+    return templates_erro.TemplateResponse(
+        request,
+        "erro.html",
+        {
+            "codigo": status_code,
+            "titulo": titulo,
+            "mensagem": mensagem,
+            "orientacao": orientacao,
+            "botao_texto": "Voltar para a Home",
+            "botao_link": "/",
+        },
+        status_code=status_code,
+    )
+
+
+@app.exception_handler(HTTPException)
+def handler_http_exception(request: Request, exc: HTTPException):
+    if exc.status_code == 403:
+        return _pagina_erro(
+            request, 403, "Sem permissão",
+            _detalhe_especifico(exc) or "Você não tem permissão para acessar isso.",
+            orientacao="Peça a um administrador para liberar seu acesso.",
+        )
+
+    if exc.status_code == 404:
+        return _pagina_erro(
+            request, 404, "Não encontramos isso",
+            _detalhe_especifico(exc) or "A página ou o arquivo que você procura não existe, ou foi removido.",
+        )
+
+    return _pagina_erro(
+        request, exc.status_code, "Algo não deu certo",
+        _detalhe_especifico(exc) or "Não foi possível completar essa ação.",
+    )
+
+
+@app.exception_handler(Exception)
+def handler_erro_interno(request: Request, exc: Exception):
+    # Bug real/exceção não tratada — nunca deve travar silenciosamente:
+    # imprime o traceback completo no log do servidor (mesmo padrão de
+    # `print` já usado no resto do projeto, ver ia_cliente.py) antes de
+    # mostrar a tela amigável pra quem está usando o site.
+    traceback.print_exc()
+
+    return _pagina_erro(
+        request, 500, "Algo deu errado",
+        "Nosso sistema encontrou um problema inesperado. Tente novamente "
+        "daqui a pouco — se continuar acontecendo, avise o suporte.",
+    )
