@@ -1744,6 +1744,7 @@ html[data-theme="escuro"] .selo-roxo {
 }
 
 .item-notificacao {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 0.2rem;
@@ -1755,6 +1756,13 @@ html[data-theme="escuro"] .selo-roxo {
     line-height: 1.4;
     border-left: 3px solid transparent;
     transition: background 0.15s ease;
+}
+
+/* Dá espaço pro X (posicionado absoluto) não cobrir o texto — só as
+   notificações "descartáveis" (aba Minhas, item.descartavel) ganham
+   essa classe extra via JS. */
+.item-notificacao-descartavel {
+    padding-right: 1.9rem;
 }
 
 .item-notificacao:hover {
@@ -1823,6 +1831,64 @@ html[data-theme="escuro"] .selo-roxo {
 
 .item-notificacao-erro:hover {
     background: color-mix(in srgb, var(--cor-erro-fundo) 70%, var(--cor-erro-texto) 30%);
+}
+
+/* Aba "Minhas" (Henrique, 2026-08-13) — mesma linguagem visual das
+   cores acima, reaproveitada por semântica: laranja = pendência de
+   decisão (igual triagem), vermelho = erro (igual Sistema), âmbar =
+   precisa de revisão humana (mesmo tom de .status-revisao em
+   extratus.css), verde = boa notícia sem ação nenhuma pendente. */
+.item-notificacao-conferencia_manual {
+    border-left-color: #f97316;
+}
+
+.item-notificacao-erro_manual {
+    border-left-color: #dc2626;
+    background: var(--cor-erro-fundo);
+}
+
+.item-notificacao-erro_manual:hover {
+    background: color-mix(in srgb, var(--cor-erro-fundo) 70%, var(--cor-erro-texto) 30%);
+}
+
+.item-notificacao-revisao {
+    border-left-color: #d97706;
+}
+
+.item-notificacao-pronto {
+    border-left-color: #16a34a;
+}
+
+/* X que dispensa uma notificação "não importante" (só "pronto" tem,
+   ver item.descartavel) — canto superior direito, não empurra o resto
+   do conteúdo (position:absolute), sem herdar o clique de navegação do
+   <a> em volta (stopPropagation em base.js). */
+.item-notificacao-descartar {
+    position: absolute;
+    top: 0.45rem;
+    right: 0.45rem;
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    border-radius: 50%;
+    color: var(--cor-texto-suave);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.item-notificacao-descartar:hover {
+    background: var(--cor-borda);
+    color: var(--cor-texto);
+}
+
+.item-notificacao-descartar:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .painel-notificacoes-vazio {

@@ -149,6 +149,36 @@ def listar_erros_nao_resolvidos_do_motor():
         return sessao.exec(consulta).all()
 
 
+def listar_relatorios_manuais_nao_notificados_do_usuario(usuario_id):
+    """Ver docstring equivalente em app/ferramentas/extratus/db/jobs.py
+    (Extratus - Relatórios) — mesma lógica."""
+    with obter_sessao() as sessao:
+        consulta = select(Job).where(
+            Job.usuario_id == usuario_id,
+            Job.status.in_(["sucesso", "revisao"]),
+            Job.notificacao_resolvida == False,  # noqa: E712
+        )
+        return sessao.exec(consulta).all()
+
+
+def marcar_notificacao_resolvida(job_id, usuario_id):
+    """Ver docstring equivalente em app/ferramentas/extratus/db/jobs.py
+    (Extratus - Relatórios) — mesma lógica."""
+    with obter_sessao() as sessao:
+        job = sessao.get(Job, job_id)
+
+        if not job or job.usuario_id != usuario_id:
+            return False
+
+        job.notificacao_resolvida = True
+        sessao.add(job)
+        sessao.commit()
+
+        avisar_mudanca()
+
+        return True
+
+
 def contar_por_status():
     contagem = {"sucesso": 0, "revisao": 0, "erro": 0}
 

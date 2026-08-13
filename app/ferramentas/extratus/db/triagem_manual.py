@@ -261,6 +261,20 @@ def listar_inconsistencias_do_usuario(usuario_id):
         return sessao.exec(consulta).all()
 
 
+def listar_erros_do_usuario(usuario_id):
+    """Registros de erro do PRÓPRIO usuário no fluxo manual — alimenta a
+    aba "Minhas" do sininho (Henrique, 2026-08-13). Fica visível enquanto
+    o registro existir — some sozinho quando a pessoa dispensa com o "×"
+    já existente na tela de Gerar seu Relatório (descartar), nunca por
+    uma notificação "lida"."""
+    with obter_sessao() as sessao:
+        consulta = select(TriagemManual).where(
+            TriagemManual.usuario_id == usuario_id,
+            TriagemManual.status == ERRO,
+        )
+        return sessao.exec(consulta).all()
+
+
 def contar_inconsistencias_novas_do_usuario(usuario_id, desde):
     """Quantas Conferências do PRÓPRIO usuário (inconsistência esperando
     decisão em "Gerar seu Relatório") surgiram desde `desde` — alimenta o

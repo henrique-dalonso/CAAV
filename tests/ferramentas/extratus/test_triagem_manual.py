@@ -229,6 +229,24 @@ def test_contar_inconsistencias_novas_do_usuario_conta_so_desde_o_timestamp():
     db_triagem.descartar(duplicado.id)
 
 
+def test_listar_erros_do_usuario_traz_so_erro_do_proprio_usuario():
+    erro_a = _criar("teste_triagem_minhas_erro_a.pdf", USUARIO_A)
+    db_triagem.marcar_erro(erro_a.id, "Falha ao gerar o relatório.")
+    erro_b = _criar("teste_triagem_minhas_erro_b.pdf", USUARIO_B)
+    db_triagem.marcar_erro(erro_b.id, "Falha ao gerar o relatório.")
+    pendente_a = _criar("teste_triagem_minhas_pendente_a.pdf", USUARIO_A)
+
+    nomes_a = {r.nome_arquivo for r in db_triagem.listar_erros_do_usuario(USUARIO_A)}
+
+    assert erro_a.nome_arquivo in nomes_a
+    assert erro_b.nome_arquivo not in nomes_a
+    assert pendente_a.nome_arquivo not in nomes_a
+
+    db_triagem.descartar(erro_a.id)
+    db_triagem.descartar(erro_b.id)
+    db_triagem.descartar(pendente_a.id)
+
+
 def test_contar_inconsistencias_novas_do_usuario_nao_conta_pendente_nem_outro_usuario():
     desde = datetime.now() - timedelta(seconds=1)
 

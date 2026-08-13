@@ -127,9 +127,8 @@
         <div class="painel-notificacoes-conteudo">
             <ul class="lista-notificacoes" id="lista-notificacoes"></ul>
             <p class="vazio painel-notificacoes-vazio" id="painel-notificacoes-vazio">Nenhuma pendência no momento.</p>
-            <p class="vazio painel-notificacoes-vazio" id="painel-notificacoes-vazio-minhas" hidden>
-                Nenhuma notificação pessoal ainda — essa aba vai reunir avisos só seus (ferramentas manuais, perfil) conforme forem existindo.
-            </p>
+            <ul class="lista-notificacoes" id="lista-notificacoes-minhas" hidden></ul>
+            <p class="vazio painel-notificacoes-vazio" id="painel-notificacoes-vazio-minhas" hidden>Nenhuma pendência sua no momento.</p>
             {% if usuario_tem_acesso_a_alguma_fila_motor(usuario) %}
             <ul class="lista-notificacoes" id="lista-notificacoes-conferencias" hidden></ul>
             <p class="vazio painel-notificacoes-vazio" id="painel-notificacoes-vazio-conferencias" hidden>Nenhuma conferência pendente no momento.</p>

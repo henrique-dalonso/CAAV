@@ -10,6 +10,8 @@ from app.ferramentas.extratus_aburesi.db.jobs import (
     contar_relatorios_novos_do_usuario,
     listar_jobs_manuais,
     listar_jobs_motor,
+    listar_relatorios_manuais_nao_notificados_do_usuario,
+    marcar_notificacao_resolvida,
     registrar_erro,
     registrar_processado,
 )
@@ -199,3 +201,49 @@ def test_contar_relatorios_motor_novos_conta_so_usuario_id_none(limpar_jobs_cria
 
     assert depois["sucesso"] == antes["sucesso"] + 1
     assert depois["revisao"] == antes["revisao"] + 1
+
+
+def test_listar_relatorios_manuais_nao_notificados_do_usuario_traz_sucesso_e_revisao(limpar_jobs_criados):
+    job_sucesso = registrar_processado(
+        arquivo_pdf="teste_sino_minhas_sucesso_aburesi.pdf",
+        processo="0000000-00.2026.8.00.0040",
+        relatorio_path=None,
+        destino_pdf=None,
+        confianca="alta",
+        usuario_id=USUARIO_TESTE_A,
+    )
+    job_revisao = registrar_processado(
+        arquivo_pdf="teste_sino_minhas_revisao_aburesi.pdf",
+        processo="0000000-00.2026.8.00.0041",
+        relatorio_path=None,
+        destino_pdf=None,
+        confianca="media",
+        usuario_id=USUARIO_TESTE_A,
+    )
+    limpar_jobs_criados.extend([job_sucesso.id, job_revisao.id])
+
+    nomes = {job.arquivo_pdf for job in listar_relatorios_manuais_nao_notificados_do_usuario(USUARIO_TESTE_A)}
+
+    assert "teste_sino_minhas_sucesso_aburesi.pdf" in nomes
+    assert "teste_sino_minhas_revisao_aburesi.pdf" in nomes
+
+
+def test_marcar_notificacao_resolvida_recusa_dono_errado(limpar_jobs_criados):
+    job = registrar_processado(
+        arquivo_pdf="teste_sino_minhas_dono_errado_aburesi.pdf",
+        processo="0000000-00.2026.8.00.0044",
+        relatorio_path=None,
+        destino_pdf=None,
+        confianca="alta",
+        usuario_id=USUARIO_TESTE_A,
+    )
+    limpar_jobs_criados.append(job.id)
+
+    assert marcar_notificacao_resolvida(job.id, USUARIO_TESTE_B) is False
+
+    do_banco = listar_relatorios_manuais_nao_notificados_do_usuario(USUARIO_TESTE_A)
+    assert any(j.id == job.id for j in do_banco)
+
+
+def test_marcar_notificacao_resolvida_job_inexistente_nao_quebra():
+    assert marcar_notificacao_resolvida(999999999, USUARIO_TESTE_A) is False

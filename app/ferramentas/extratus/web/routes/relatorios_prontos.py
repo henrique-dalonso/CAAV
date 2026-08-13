@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
-from app.ferramentas.extratus.db.jobs import listar_jobs_manuais
+from app.ferramentas.extratus.db.jobs import listar_jobs_manuais, marcar_notificacao_resolvida
 from app.ferramentas.extratus.web.rotulos import (
     ABA_RELATORIOS,
     FERRAMENTA_SLUG,
@@ -63,3 +63,19 @@ def pagina_relatorios_prontos(
     marcar_aba_vista(usuario.id, FERRAMENTA_SLUG, ABA_RELATORIOS)
 
     return resposta
+
+
+@router.post("/relatorios/{job_id}/marcar-notificacao-resolvida")
+def marcar_notificacao_resolvida_route(
+    job_id: int,
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
+):
+    """X (relatório "pronto" no sino) ou botão "Marcar como revisado"
+    (card em revisão, aqui na tela) — os dois dispensam a mesma
+    notificação por baixo (Job.notificacao_resolvida). Só o dono do
+    relatório pode; 404 se não existir ou não for dele, mesmo padrão de
+    dispensar_processamento_finalizado (inbox.py)."""
+    if not marcar_notificacao_resolvida(job_id, usuario.id):
+        raise HTTPException(status_code=404, detail="Esse relatório não existe mais.")
+
+    return {"ok": True}

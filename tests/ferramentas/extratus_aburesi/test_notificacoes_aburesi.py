@@ -6,13 +6,17 @@ from app.ferramentas.extratus_aburesi.db.checagem_fila import (
     DUPLICADO_RELATORIO,
     PENDENTE,
 )
-from app.ferramentas.extratus_aburesi.db.jobs import registrar_erro
-from app.ferramentas.extratus_aburesi.db.models import ChecagemFila, Job
-from app.ferramentas.extratus_aburesi.web.notificacoes import listar_notificacoes
+from app.ferramentas.extratus_aburesi.db.jobs import marcar_notificacao_resolvida, registrar_erro, registrar_processado
+from app.ferramentas.extratus_aburesi.db.models import ChecagemFila, Job, TriagemManual
+from app.ferramentas.extratus_aburesi.db.triagem_manual import NAO_ENCONTRADO, atualizar_apos_triagem, criar_registro, marcar_erro
+from app.ferramentas.extratus_aburesi.web.notificacoes import listar_notificacoes, listar_notificacoes_pessoais
 from app.plataforma.db.session import obter_sessao
 
 
 PREFIXO_TESTE = "teste_notif_aburesi_"
+
+# Ver comentário equivalente em tests/ferramentas/extratus/test_notificacoes.py
+USUARIO_TESTE = -9004
 
 
 @pytest.fixture
@@ -21,6 +25,7 @@ def limpar_notificacoes_teste():
     with obter_sessao() as sessao:
         sessao.exec(delete(ChecagemFila).where(ChecagemFila.nome_arquivo.like(f"{PREFIXO_TESTE}%")))
         sessao.exec(delete(Job).where(Job.arquivo_pdf.like(f"{PREFIXO_TESTE}%")))
+        sessao.exec(delete(TriagemManual).where(TriagemManual.nome_arquivo.like(f"{PREFIXO_TESTE}%")))
         sessao.commit()
 
 
@@ -74,6 +79,87 @@ def test_erro_do_fluxo_manual_nao_vira_notificacao(limpar_notificacoes_teste):
     itens = listar_notificacoes()
 
     assert not any(nome in i["mensagem"] for i in itens)
+
+
+def test_conferencia_pendente_do_usuario_vira_notificacao_pessoal(limpar_notificacoes_teste):
+    nome = f"{PREFIXO_TESTE}minhas_conferencia.pdf"
+    registro = criar_registro(nome, f"/tmp/{nome}", USUARIO_TESTE)
+    atualizar_apos_triagem(registro.id, NAO_ENCONTRADO, None, "revisao", "não achou nada")
+
+    itens = listar_notificacoes_pessoais(USUARIO_TESTE)
+    achado = next((i for i in itens if nome in i["mensagem"]), None)
+
+    assert achado is not None
+    assert achado["tipo"] == "conferencia_manual"
+    assert achado["pessoal"] is True
+    assert achado["descartavel"] is False
+
+
+def test_erro_manual_do_usuario_vira_notificacao_pessoal(limpar_notificacoes_teste):
+    nome = f"{PREFIXO_TESTE}minhas_erro.pdf"
+    registro = criar_registro(nome, f"/tmp/{nome}", USUARIO_TESTE)
+    marcar_erro(registro.id, "Falha ao gerar o relatório.")
+
+    itens = listar_notificacoes_pessoais(USUARIO_TESTE)
+    achado = next((i for i in itens if nome in i["mensagem"]), None)
+
+    assert achado is not None
+    assert achado["tipo"] == "erro_manual"
+    assert achado["descartavel"] is False
+
+
+def test_relatorio_pronto_do_usuario_vira_notificacao_descartavel(limpar_notificacoes_teste):
+    job = registrar_processado(
+        arquivo_pdf=f"{PREFIXO_TESTE}minhas_pronto.pdf",
+        processo="0000000-00.2026.8.00.0050",
+        relatorio_path=None,
+        destino_pdf=None,
+        confianca="alta",
+        usuario_id=USUARIO_TESTE,
+    )
+
+    itens = listar_notificacoes_pessoais(USUARIO_TESTE)
+    achado = next((i for i in itens if job.arquivo_pdf in i["mensagem"]), None)
+
+    assert achado is not None
+    assert achado["tipo"] == "pronto"
+    assert achado["descartavel"] is True
+    assert achado["resolver"] == f"/extratus-aburesi/relatorios/{job.id}/marcar-notificacao-resolvida"
+
+
+def test_relatorio_em_revisao_do_usuario_vira_notificacao_nao_descartavel(limpar_notificacoes_teste):
+    job = registrar_processado(
+        arquivo_pdf=f"{PREFIXO_TESTE}minhas_revisao.pdf",
+        processo="0000000-00.2026.8.00.0051",
+        relatorio_path=None,
+        destino_pdf=None,
+        confianca="media",
+        usuario_id=USUARIO_TESTE,
+    )
+
+    itens = listar_notificacoes_pessoais(USUARIO_TESTE)
+    achado = next((i for i in itens if job.arquivo_pdf in i["mensagem"]), None)
+
+    assert achado is not None
+    assert achado["tipo"] == "revisao"
+    assert achado["descartavel"] is False
+    assert "resolver" not in achado
+
+
+def test_relatorio_ja_notificado_nao_aparece_de_novo(limpar_notificacoes_teste):
+    job = registrar_processado(
+        arquivo_pdf=f"{PREFIXO_TESTE}minhas_ja_notificado.pdf",
+        processo="0000000-00.2026.8.00.0052",
+        relatorio_path=None,
+        destino_pdf=None,
+        confianca="alta",
+        usuario_id=USUARIO_TESTE,
+    )
+    marcar_notificacao_resolvida(job.id, USUARIO_TESTE)
+
+    itens = listar_notificacoes_pessoais(USUARIO_TESTE)
+
+    assert not any(job.arquivo_pdf in i["mensagem"] for i in itens)
 
 
 def test_erro_marcado_resolvido_nao_vira_notificacao(limpar_notificacoes_teste):

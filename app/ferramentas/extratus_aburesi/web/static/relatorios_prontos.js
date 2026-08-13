@@ -68,6 +68,22 @@
         });
     });
 
+    // Ver comentário equivalente em app/ferramentas/extratus/web/static/
+    // relatorios_prontos.js — botão "Marcar como revisado".
+    document.querySelectorAll(".botao-marcar-revisado").forEach(function (botao) {
+        botao.addEventListener("click", function (evento) {
+            evento.stopPropagation();
+            var jobId = botao.dataset.jobId;
+            botao.disabled = true;
+            fetch("relatorios/" + jobId + "/marcar-notificacao-resolvida", { method: "POST" })
+                .then(function (resp) {
+                    if (!resp.ok) { throw new Error("falhou"); }
+                    botao.remove();
+                })
+                .catch(function () { botao.disabled = false; });
+        });
+    });
+
     // Deep-link do botão "Ir ao relatório" (Conferências manuais,
     // web/routes/inbox.py, ?processo=...) — pré-preenche a busca, tira
     // "Solicitados por mim" (o relatório duplicado pode ser de outro

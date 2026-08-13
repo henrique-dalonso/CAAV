@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
-from app.ferramentas.extratus_aburesi.db.jobs import listar_jobs_manuais
+from app.ferramentas.extratus_aburesi.db.jobs import listar_jobs_manuais, marcar_notificacao_resolvida
 from app.ferramentas.extratus_aburesi.web.rotulos import (
     ABA_RELATORIOS,
     FERRAMENTA_SLUG,
@@ -60,3 +60,16 @@ def pagina_relatorios_prontos(
     marcar_aba_vista(usuario.id, FERRAMENTA_SLUG, ABA_RELATORIOS)
 
     return resposta
+
+
+@router.post("/relatorios/{job_id}/marcar-notificacao-resolvida")
+def marcar_notificacao_resolvida_route(
+    job_id: int,
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus-aburesi")),
+):
+    """Ver docstring equivalente em app/ferramentas/extratus/web/routes/
+    relatorios_prontos.py (Extratus - Relatórios) — mesma lógica."""
+    if not marcar_notificacao_resolvida(job_id, usuario.id):
+        raise HTTPException(status_code=404, detail="Esse relatório não existe mais.")
+
+    return {"ok": True}

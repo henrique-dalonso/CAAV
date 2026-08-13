@@ -64,6 +64,9 @@
                 {% elif job.status == "erro" and job.erro_mensagem %}
                 <span class="motivo" data-dica="{{ job.erro_mensagem }}">{{ job.tipo_erro | rotulo_erro }}</span>
                 {% endif %}
+                {% if job.status == "revisao" and not job.notificacao_resolvida and job.usuario_id == usuario.id %}
+                <button type="button" class="botao-marcar-revisado" data-job-id="{{ job.id }}" data-dica="Tira do sino de notificações">Marcar como revisado</button>
+                {% endif %}
             </div>
             <div class="relatorio-solicitante">
                 <span class="divisor-vertical" aria-hidden="true"></span>

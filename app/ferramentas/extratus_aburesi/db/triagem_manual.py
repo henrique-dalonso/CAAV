@@ -217,6 +217,17 @@ def listar_inconsistencias_do_usuario(usuario_id):
         return sessao.exec(consulta).all()
 
 
+def listar_erros_do_usuario(usuario_id):
+    """Ver docstring equivalente em app/ferramentas/extratus/db/
+    triagem_manual.py (Extratus - Relatórios) — mesma lógica."""
+    with obter_sessao() as sessao:
+        consulta = select(TriagemManual).where(
+            TriagemManual.usuario_id == usuario_id,
+            TriagemManual.status == ERRO,
+        )
+        return sessao.exec(consulta).all()
+
+
 def contar_inconsistencias_novas_do_usuario(usuario_id, desde):
     """Ver docstring equivalente em app/ferramentas/extratus/db/
     triagem_manual.py (Extratus - Relatórios) — mesma lógica."""

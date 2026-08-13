@@ -161,6 +161,45 @@ def listar_erros_nao_resolvidos_do_motor():
         return sessao.exec(consulta).all()
 
 
+def listar_relatorios_manuais_nao_notificados_do_usuario(usuario_id):
+    """Relatórios manuais do PRÓPRIO usuário (sucesso ou revisão) que
+    ainda não tiveram a notificação dispensada — alimenta a aba "Minhas"
+    do sininho (Henrique, 2026-08-13). "Sucesso" some com um X na
+    própria notificação; "revisão" só sai daqui quando a pessoa clicar
+    em "Marcar como revisado" no card do relatório (relatorios_prontos.
+    html) — nunca pelo X, mesma exigência de "não pode sumir sozinho"
+    que o erro do Motor já tinha. As duas chamam marcar_notificacao_
+    resolvida por baixo."""
+    with obter_sessao() as sessao:
+        consulta = select(Job).where(
+            Job.usuario_id == usuario_id,
+            Job.status.in_(["sucesso", "revisao"]),
+            Job.notificacao_resolvida == False,  # noqa: E712
+        )
+        return sessao.exec(consulta).all()
+
+
+def marcar_notificacao_resolvida(job_id, usuario_id):
+    """Dispensa a notificação de um relatório PRÓPRIO — X em "pronto" ou
+    botão "Marcar como revisado" em "revisão", ambos chamam isso (mesmo
+    campo por trás, `Job.notificacao_resolvida`). Só o dono do relatório
+    pode; devolve False sem mudar nada se o job não existir ou não for
+    dele — quem chama decide o que fazer com isso (404)."""
+    with obter_sessao() as sessao:
+        job = sessao.get(Job, job_id)
+
+        if not job or job.usuario_id != usuario_id:
+            return False
+
+        job.notificacao_resolvida = True
+        sessao.add(job)
+        sessao.commit()
+
+        avisar_mudanca()
+
+        return True
+
+
 def contar_por_status():
     contagem = {"sucesso": 0, "revisao": 0, "erro": 0}
 

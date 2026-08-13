@@ -1410,6 +1410,32 @@ html[data-theme="escuro"] .status-revisao { background: #332b0f; color: #fde68a;
     margin-top: 0.2rem;
 }
 
+/* Ver comentário equivalente em app/ferramentas/extratus/web/static/
+   extratus.css — mesmo botão "Marcar como revisado". */
+.botao-marcar-revisado {
+    align-self: flex-start;
+    margin-top: 0.3rem;
+    background: none;
+    border: 1px solid var(--cor-borda);
+    color: var(--cor-texto-suave);
+    font-family: inherit;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.25rem 0.6rem;
+    border-radius: var(--raio-pequeno);
+    cursor: pointer;
+}
+
+.botao-marcar-revisado:hover {
+    border-color: var(--cor-acento);
+    color: var(--cor-texto);
+}
+
+.botao-marcar-revisado:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 /* Célula de Detalhe do histórico: texto + botão de baixar sempre na
    mesma linha, sem o botão cair pra baixo quando o texto é longo — o
    texto trunca com "..." (clique expande, .truncavel global) em vez de

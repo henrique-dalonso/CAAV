@@ -6,7 +6,7 @@ from app.ferramentas.extratus.db.jobs import registrar_processado
 from app.ferramentas.extratus.db.models import Job
 from app.plataforma.db.models import Usuario
 from app.plataforma.db.session import obter_sessao
-from app.plataforma.db.usuarios import criar_usuario
+from app.plataforma.db.usuarios import buscar_usuario_por_nome_usuario, criar_usuario
 from app.plataforma.web.main import app
 
 
@@ -70,3 +70,67 @@ def test_pagina_com_processo_na_query_preenche_busca_inicial(cliente_logado, job
     assert resp.status_code == 200
     assert 'data-processo-inicial="0000000-00.2026.8.00.0900"' in resp.text
     assert 'data-processo="0000000-00.2026.8.00.0900"' in resp.text
+
+
+def test_botao_marcar_revisado_aparece_so_pro_dono_em_revisao(cliente_logado):
+    usuario = buscar_usuario_por_nome_usuario(NOME_USUARIO_TESTE)
+    job_proprio_revisao = registrar_processado(
+        arquivo_pdf="teste_relatorios_prontos_botao_revisado.pdf",
+        processo="0000000-00.2026.8.00.0903",
+        relatorio_path=None, destino_pdf=None, confianca="media",
+        usuario_id=usuario.id,
+    )
+    job_outro_revisao = registrar_processado(
+        arquivo_pdf="teste_relatorios_prontos_botao_revisado_outro.pdf",
+        processo="0000000-00.2026.8.00.0904",
+        relatorio_path=None, destino_pdf=None, confianca="media",
+        usuario_id=USUARIO_TESTE,
+    )
+
+    resp = cliente_logado.get("/extratus/relatorios")
+
+    assert resp.status_code == 200
+    assert f'data-job-id="{job_proprio_revisao.id}"' in resp.text
+    assert f'data-job-id="{job_outro_revisao.id}"' not in resp.text
+
+    with obter_sessao() as sessao:
+        sessao.exec(delete(Job).where(Job.id.in_([job_proprio_revisao.id, job_outro_revisao.id])))
+        sessao.commit()
+
+
+def test_marcar_notificacao_resolvida_route_funciona_pro_dono(cliente_logado):
+    usuario = buscar_usuario_por_nome_usuario(NOME_USUARIO_TESTE)
+    job = registrar_processado(
+        arquivo_pdf="teste_relatorios_prontos_marcar_resolvido.pdf",
+        processo="0000000-00.2026.8.00.0905",
+        relatorio_path=None, destino_pdf=None, confianca="alta",
+        usuario_id=usuario.id,
+    )
+
+    resp = cliente_logado.post(f"/extratus/relatorios/{job.id}/marcar-notificacao-resolvida")
+
+    assert resp.status_code == 200
+    assert resp.json() == {"ok": True}
+
+    with obter_sessao() as sessao:
+        atualizado = sessao.get(Job, job.id)
+        assert atualizado.notificacao_resolvida is True
+        sessao.exec(delete(Job).where(Job.id == job.id))
+        sessao.commit()
+
+
+def test_marcar_notificacao_resolvida_route_404_pra_job_de_outro_usuario(cliente_logado):
+    job = registrar_processado(
+        arquivo_pdf="teste_relatorios_prontos_marcar_resolvido_outro.pdf",
+        processo="0000000-00.2026.8.00.0906",
+        relatorio_path=None, destino_pdf=None, confianca="alta",
+        usuario_id=USUARIO_TESTE,
+    )
+
+    resp = cliente_logado.post(f"/extratus/relatorios/{job.id}/marcar-notificacao-resolvida")
+
+    assert resp.status_code == 404
+
+    with obter_sessao() as sessao:
+        sessao.exec(delete(Job).where(Job.id == job.id))
+        sessao.commit()

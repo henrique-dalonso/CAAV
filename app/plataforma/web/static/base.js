@@ -570,12 +570,14 @@
     var abaMinhasEl = document.getElementById("aba-minhas");
     var abaConferenciasEl = document.getElementById("aba-conferencias");
     var listaNotificacoesEl = document.getElementById("lista-notificacoes");
+    var listaNotificacoesMinhasEl = document.getElementById("lista-notificacoes-minhas");
     var listaNotificacoesConferenciasEl = document.getElementById("lista-notificacoes-conferencias");
     var painelNotificacoesVazioEl = document.getElementById("painel-notificacoes-vazio");
     var painelNotificacoesVazioMinhasEl = document.getElementById("painel-notificacoes-vazio-minhas");
     var painelNotificacoesVazioConferenciasEl = document.getElementById("painel-notificacoes-vazio-conferencias");
     var badgeNotificacoesEl = document.getElementById("badge-notificacoes");
     var contagemAbaSistemaEl = document.getElementById("contagem-aba-sistema");
+    var contagemAbaMinhasEl = document.getElementById("contagem-aba-minhas");
     var contagemAbaConferenciasEl = document.getElementById("contagem-aba-conferencias");
 
     if (botaoNotificacoesEl && painelNotificacoesEl) {
@@ -603,14 +605,14 @@
         // quem tem acesso a pelo menos uma fila do motor (gate no próprio
         // base.html, usuario_tem_acesso_a_alguma_fila_motor) — por isso
         // abaConferenciasEl pode ser null aqui, e cada entrada abaixo
-        // sabe pular a si mesma nesse caso. "Minhas" ainda não tem fonte
-        // de dados nenhuma (notificação por usuário — ferramentas
-        // manuais, perfil — é trabalho futuro, Henrique confirmou
-        // 2026-08-07); por ora só mostra um aviso de "vazio por
-        // enquanto", sem fingir que existe algo lá (por isso "lista: null").
+        // sabe pular a si mesma nesse caso. "Minhas" (Henrique, 2026-08-13:
+        // pendências do fluxo manual, pra quem não tem acesso à Fila do
+        // Motor também) reúne conferência/erro/pronto/revisão do próprio
+        // usuário — identificados pelo item.pessoal === true vindo do
+        // backend (ver item.pessoal em notificacoes_do_usuario).
         var ABAS_NOTIFICACOES = [
             { nome: "sistema", botao: abaSistemaEl, lista: listaNotificacoesEl, vazio: painelNotificacoesVazioEl },
-            { nome: "minhas", botao: abaMinhasEl, lista: null, vazio: painelNotificacoesVazioMinhasEl },
+            { nome: "minhas", botao: abaMinhasEl, lista: listaNotificacoesMinhasEl, vazio: painelNotificacoesVazioMinhasEl },
             { nome: "conferencias", botao: abaConferenciasEl, lista: listaNotificacoesConferenciasEl, vazio: painelNotificacoesVazioConferenciasEl },
         ];
         var abaNotificacoesAtiva = "sistema";
@@ -669,14 +671,13 @@
         // toda vez que o painel É ABERTO, quando o layout de verdade já
         // existe. Idempotente: pula quem já tem o botão.
         function atualizarBotoesExpandir() {
-            var textos = listaNotificacoesEl.querySelectorAll(".item-notificacao-texto");
+            var textos = Array.prototype.slice.call(listaNotificacoesEl.querySelectorAll(".item-notificacao-texto"));
 
-            if (listaNotificacoesConferenciasEl) {
-                textos = Array.prototype.concat.call(
-                    Array.prototype.slice.call(textos),
-                    Array.prototype.slice.call(listaNotificacoesConferenciasEl.querySelectorAll(".item-notificacao-texto"))
-                );
-            }
+            [listaNotificacoesMinhasEl, listaNotificacoesConferenciasEl].forEach(function (lista) {
+                if (lista) {
+                    textos = textos.concat(Array.prototype.slice.call(lista.querySelectorAll(".item-notificacao-texto")));
+                }
+            });
 
             textos.forEach(function (textoEl) {
                 var linkEl = textoEl.closest(".item-notificacao");
@@ -793,8 +794,9 @@
                 atualizarTituloNotificacoes();
             }
 
-            var novasSistema = novas.filter(function (item) { return item.tipo !== "triagem"; });
-            var novasConferencias = novas.filter(function (item) { return item.tipo === "triagem"; });
+            var novasMinhas = novas.filter(function (item) { return item.pessoal === true; });
+            var novasSistema = novas.filter(function (item) { return !item.pessoal && item.tipo !== "triagem"; });
+            var novasConferencias = novas.filter(function (item) { return !item.pessoal && item.tipo === "triagem"; });
 
             if (novasSistema.length === 1) {
                 window.mostrarBanner("Novo erro no Motor: " + novasSistema[0].mensagem, "erro");
@@ -815,6 +817,25 @@
                     "erro"
                 );
             }
+
+            // "Minhas" mistura boas notícias ("pronto") com pendências
+            // (erro/revisão/conferência) — só usa o tom de sucesso (✓,
+            // verde) quando TODAS as novidades da vez forem "pronto";
+            // qualquer coisa que precise de ação junto já puxa pro tom de
+            // atenção padrão.
+            if (novasMinhas.length > 0) {
+                var tomMinhas = novasMinhas.every(function (item) { return item.tipo === "pronto"; }) ? "sucesso" : "erro";
+
+                if (novasMinhas.length === 1) {
+                    window.mostrarBanner(novasMinhas[0].mensagem, tomMinhas);
+                } else {
+                    window.mostrarBannerDetalhado(
+                        novasMinhas.length + " novidades suas — clique pra ver",
+                        novasMinhas.map(function (item) { return { titulo: item.ferramenta, detalhe: item.mensagem }; }),
+                        tomMinhas
+                    );
+                }
+            }
         }
 
         function preencherListaNotificacoes(listaEl, itens) {
@@ -823,6 +844,9 @@
             itens.forEach(function (item) {
                 var linkEl = document.createElement("a");
                 linkEl.className = "item-notificacao item-notificacao-" + item.tipo;
+                if (item.descartavel) {
+                    linkEl.className += " item-notificacao-descartavel";
+                }
                 linkEl.href = item.link;
 
                 var origemEl = document.createElement("span");
@@ -835,6 +859,37 @@
 
                 linkEl.appendChild(origemEl);
                 linkEl.appendChild(textoEl);
+
+                // X só em notificações "não importantes" (Henrique,
+                // 2026-08-13: "pronto" pode ser descartado na hora;
+                // conferência/erro/revisão ficam até a pessoa resolver de
+                // verdade, nunca por aqui). item.resolver é a rota que
+                // marca Job.notificacao_resolvida — depois de descartar,
+                // busca /notificacoes de novo pra já refletir em tudo
+                // (lista, contadores, sino).
+                if (item.descartavel && item.resolver) {
+                    var descartarEl = document.createElement("button");
+                    descartarEl.type = "button";
+                    descartarEl.className = "item-notificacao-descartar";
+                    descartarEl.setAttribute("aria-label", "Dispensar notificação");
+                    descartarEl.textContent = "×";
+
+                    descartarEl.addEventListener("click", function (evento) {
+                        evento.preventDefault();
+                        evento.stopPropagation();
+                        descartarEl.disabled = true;
+
+                        fetch(item.resolver, { method: "POST" })
+                            .then(function (resp) {
+                                if (!resp.ok) { throw new Error("falhou"); }
+                                consultarNotificacoes();
+                            })
+                            .catch(function () { descartarEl.disabled = false; });
+                    });
+
+                    linkEl.appendChild(descartarEl);
+                }
+
                 listaEl.appendChild(linkEl);
             });
         }
@@ -846,18 +901,24 @@
             // pode rodar uma vez por render.
             var novas = detectarNovasNotificacoes(itens);
 
-            // "triagem" (pendência esperando decisão humana no painel de
-            // Conferências) vai pra aba própria; todo o resto ("erro" e
-            // qualquer tipo futuro) continua em "Sistema". Se a aba
-            // Conferências nem existe pra esse usuário, não sobra nenhum
-            // item "triagem" no payload mesmo (o backend já filtra por
-            // acesso à fila do motor antes de devolver — ver
+            // item.pessoal (Henrique, 2026-08-13) vai pra "Minhas",
+            // independente do tipo — pendências do fluxo manual do
+            // PRÓPRIO usuário. Do restante, "triagem" (pendência esperando
+            // decisão humana na Fila do Motor) vai pra "Conferências";
+            // todo o resto ("erro" do Motor) continua em "Sistema". Se uma
+            // aba nem existe pra esse usuário (Conferências depende de
+            // acesso à Fila do Motor), não sobra item dela no payload
+            // mesmo (o backend já filtra antes de devolver — ver
             // notificacoes_do_usuario), então separar aqui é sempre
             // seguro, existindo a aba ou não.
-            var itensSistema = itens.filter(function (item) { return item.tipo !== "triagem"; });
-            var itensConferencias = itens.filter(function (item) { return item.tipo === "triagem"; });
+            var itensMinhas = itens.filter(function (item) { return item.pessoal === true; });
+            var itensSistema = itens.filter(function (item) { return !item.pessoal && item.tipo !== "triagem"; });
+            var itensConferencias = itens.filter(function (item) { return !item.pessoal && item.tipo === "triagem"; });
 
             preencherListaNotificacoes(listaNotificacoesEl, itensSistema);
+            if (listaNotificacoesMinhasEl) {
+                preencherListaNotificacoes(listaNotificacoesMinhasEl, itensMinhas);
+            }
             if (listaNotificacoesConferenciasEl) {
                 preencherListaNotificacoes(listaNotificacoesConferenciasEl, itensConferencias);
             }
@@ -869,11 +930,13 @@
             // de precisar entrar nela"). Some por completo em zero (não
             // mostra "0") — Henrique pediu isso explicitamente, diferente
             // do .contagem-aba original que sempre mostra o número.
-            // "Minhas" fica de fora — sem fonte de dados nenhuma ainda,
-            // continua escondido de propósito (hidden fixo no HTML).
             if (contagemAbaSistemaEl) {
                 contagemAbaSistemaEl.textContent = itensSistema.length > 99 ? "99+" : String(itensSistema.length);
                 contagemAbaSistemaEl.hidden = itensSistema.length === 0;
+            }
+            if (contagemAbaMinhasEl) {
+                contagemAbaMinhasEl.textContent = itensMinhas.length > 99 ? "99+" : String(itensMinhas.length);
+                contagemAbaMinhasEl.hidden = itensMinhas.length === 0;
             }
             if (contagemAbaConferenciasEl) {
                 contagemAbaConferenciasEl.textContent = itensConferencias.length > 99 ? "99+" : String(itensConferencias.length);
