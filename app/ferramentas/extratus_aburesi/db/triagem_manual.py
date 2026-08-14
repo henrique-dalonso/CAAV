@@ -228,6 +228,19 @@ def listar_erros_do_usuario(usuario_id):
         return sessao.exec(consulta).all()
 
 
+def contar_registros_recentes_do_usuario(usuario_id, desde):
+    """Quantos arquivos esse usuário enviou (aceitos, viraram registro de
+    triagem) desde `desde` — usado pra limitar repetição na rota de
+    upload (duplo clique, várias abas, script), já que cada registro
+    aceito dispara uma chamada de IA cobrada."""
+    with obter_sessao() as sessao:
+        consulta = select(func.count()).select_from(TriagemManual).where(
+            TriagemManual.usuario_id == usuario_id,
+            TriagemManual.criado_em > desde,
+        )
+        return sessao.exec(consulta).one()
+
+
 def contar_inconsistencias_novas_do_usuario(usuario_id, desde):
     """Ver docstring equivalente em app/ferramentas/extratus/db/
     triagem_manual.py (Extratus - Relatórios) — mesma lógica."""

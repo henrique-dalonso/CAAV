@@ -695,7 +695,9 @@
 
     var INTERVALO_POLLING_MS = 5000;
 
-    var listaPendentesEl = document.getElementById("lista-pendentes");
+    // listaPendentesEl já foi consultado acima (bloco de "Modo de
+    // seleção") — mesmo elemento, mesmo escopo, reaproveitado aqui em
+    // vez de reconsultado à toa (Rodada 12, achado de qualidade de código).
     var listaProcessandoEl = document.getElementById("lista-processando");
     var vazioPendentesEl = document.getElementById("vazio-pendentes");
     var vazioProcessandoEl = document.getElementById("vazio-processando");

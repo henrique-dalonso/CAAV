@@ -28,7 +28,7 @@ PLATAFORMA_TEMPLATES_DIR = (
 templates = criar_templates([TEMPLATES_DIR, PLATAFORMA_TEMPLATES_DIR])
 templates.env.filters["rotulo_status"] = rotulo_status
 templates.env.filters["rotulo_erro"] = rotulo_erro
-# Badges "+N" da navegação — ver mesmo comentário em inbox.py.
+# Badges "+N" da navegação — ver mesmo comentário em gerar_relatorio.py.
 templates.env.globals["contagem_nav_conferencias_manual"] = contagem_nav_conferencias_manual
 templates.env.globals["contagem_nav_conferencias_fila"] = contagem_nav_conferencias_fila
 templates.env.globals["contagem_nav_relatorios"] = contagem_nav_relatorios
@@ -36,7 +36,7 @@ templates.env.globals["contagem_nav_relatorios_motor"] = contagem_nav_relatorios
 
 
 @router.get("/relatorios")
-def pagina_relatorios_prontos(
+def pagina_relatorios_manuais(
     request: Request,
     usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
     processo: str | None = None,
@@ -45,18 +45,17 @@ def pagina_relatorios_prontos(
     nomes_por_id = {u.id: u.nome for u in listar_todos_usuarios()}
 
     # Renderiza PRIMEIRO, marca como visto DEPOIS — mesmo motivo de
-    # inbox.py (senão o badge dessa própria visita nunca apareceria).
+    # gerar_relatorio.py (senão o badge dessa própria visita nunca apareceria).
     resposta = templates.TemplateResponse(
         request,
-        "relatorios_prontos.html",
+        "relatorios_manuais.html",
         {
             "usuario": usuario,
             "jobs": jobs,
-            "aba_ativa": "relatorios",
             "nomes_por_id": nomes_por_id,
             # Deep-link vindo do botão "Ir ao relatório" (Conferências
-            # manuais, web/routes/inbox.py) — pré-preenche a busca e dá
-            # scroll/destaque no item certo, ver relatorios_prontos.js.
+            # manuais, web/routes/gerar_relatorio.py) — pré-preenche a busca e dá
+            # scroll/destaque no item certo, ver relatorios_manuais.js.
             "processo_busca": processo,
         },
     )
@@ -74,7 +73,7 @@ def marcar_notificacao_resolvida_route(
     (card em revisão, aqui na tela) — os dois dispensam a mesma
     notificação por baixo (Job.notificacao_resolvida). Só o dono do
     relatório pode; 404 se não existir ou não for dele, mesmo padrão de
-    dispensar_processamento_finalizado (inbox.py)."""
+    dispensar_processamento_finalizado (gerar_relatorio.py)."""
     if not marcar_notificacao_resolvida(job_id, usuario.id):
         raise HTTPException(status_code=404, detail="Esse relatório não existe mais.")
 

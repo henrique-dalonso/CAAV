@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 
 from app.plataforma.auth import gerar_hash_senha, verificar_senha
-from app.plataforma.db.models import CORES_PERFIL_VALIDAS, TEMAS_VALIDOS, Usuario
+from app.plataforma.db.models import CORES_PERFIL_VALIDAS, NOMES_CORES_PERFIL, TEMAS_VALIDOS, Usuario
 from app.plataforma.db.usuarios import atualizar_cor_perfil, atualizar_senha, atualizar_tema
 from app.plataforma.web.auth import exigir_login
 from app.plataforma.web.templates_util import criar_templates
@@ -93,6 +93,7 @@ def pagina_preferencias(request: Request, usuario: Usuario = Depends(exigir_logi
             "usuario": usuario,
             "aba_ativa": "preferencias",
             "cores_perfil": CORES_PERFIL_VALIDAS,
+            "nomes_cores_perfil": NOMES_CORES_PERFIL,
         },
     )
 

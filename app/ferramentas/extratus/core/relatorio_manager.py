@@ -8,25 +8,6 @@ from app.plataforma.paths import PROJECT_ROOT
 TEMPLATE_PATH = PROJECT_ROOT / "app" / "ferramentas" / "extratus" / "config" / "relatorio_template.docx"
 
 
-def salvar_relatorio_texto(
-    conteudo,
-    caminho_saida
-):
-    caminho_saida = Path(caminho_saida)
-
-    caminho_saida.parent.mkdir(
-        parents=True,
-        exist_ok=True
-    )
-
-    with open(
-        caminho_saida,
-        "w",
-        encoding="utf-8"
-    ) as arquivo:
-        arquivo.write(conteudo)
-
-
 def salvar_relatorio_docx(
     dados,
     caminho_saida

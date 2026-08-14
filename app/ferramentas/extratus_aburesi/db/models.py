@@ -153,6 +153,20 @@ class RegistroConferencia(SQLModel, table=True):
     decidido_em: datetime = Field(default_factory=datetime.now)
 
 
+class UploadFilaMotor(SQLModel, table=True):
+    """Ver docstring equivalente em app/ferramentas/extratus/db/models.py
+    (Extratus - Relatórios) — mesma lógica, tabela própria (`_aburesi`)."""
+
+    __tablename__ = "uploadfilamotor_aburesi"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+    nome_arquivo: str = Field(index=True)
+    usuario_id: int = Field(foreign_key="usuario.id")
+
+    enviado_em: datetime = Field(default_factory=datetime.now)
+
+
 class TriagemManual(SQLModel, table=True):
     """Ver docstring equivalente em app/ferramentas/extratus/db/models.py
     (Extratus - Relatórios) — mesma lógica, tabela própria (`_aburesi`)."""

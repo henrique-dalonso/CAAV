@@ -39,6 +39,16 @@ self.addEventListener("connect", function (evento) {
     var porta = evento.ports[0];
     portas.push(porta);
 
+    // A aba avisa (base.js, evento "pagehide") quando fecha/navega pra
+    // fora — sem isso a lista de portas só cresce pela sessão inteira do
+    // navegador, nunca encolhe (Rodada 12, achado de qualidade de
+    // código). SharedWorker não tem um evento nativo de "porta fechou".
+    porta.addEventListener("message", function (evento) {
+        if (evento.data === "desconectar") {
+            portas = portas.filter(function (p) { return p !== porta; });
+        }
+    });
+
     garantirConexaoSSE();
 
     porta.start();

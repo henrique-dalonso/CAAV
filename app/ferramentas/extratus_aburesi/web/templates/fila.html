@@ -4,6 +4,8 @@
 {% block nome_pagina %}Extratus - Aburesi{% endblock %}
 {% block css_pagina %}<link rel="stylesheet" href="/extratus-aburesi/static/extratus.css?v={{ v }}">{% endblock %}
 
+{% from "_macros_extratus.html" import nav_abas_extratus %}
+
 {% block conteudo %}
 <div class="cabecalho-ferramenta">
     <div>
@@ -12,20 +14,7 @@
     </div>
 </div>
 
-<nav class="abas-extratus">
-    <a href="/extratus-aburesi/" class="aba">Gerar seu Relatório{% set conf_manual = contagem_nav_conferencias_manual(usuario) %}{% if conf_manual %} <span class="contagem-aba contagem-aba-revisao">+{{ conf_manual }}</span>{% endif %}</a>
-    <a href="/extratus-aburesi/relatorios" class="aba">Seus Relatórios{% set novos_relatorios = contagem_nav_relatorios(usuario) %}{% if novos_relatorios.sucesso %} <span class="contagem-aba">+{{ novos_relatorios.sucesso }}</span>{% endif %}{% if novos_relatorios.revisao %} <span class="contagem-aba contagem-aba-revisao">+{{ novos_relatorios.revisao }}</span>{% endif %}</a>
-    <a href="/extratus-aburesi/relatorios-finalizados" class="aba aba-motor">Relatórios do Motor{% set novos_motor = contagem_nav_relatorios_motor(usuario) %}{% if novos_motor.sucesso %} <span class="contagem-aba">+{{ novos_motor.sucesso }}</span>{% endif %}{% if novos_motor.revisao %} <span class="contagem-aba contagem-aba-revisao">+{{ novos_motor.revisao }}</span>{% endif %}</a>
-    <a href="/extratus-aburesi/fila" class="aba aba-motor aba-ativa">Fila do Motor{% set conf_fila = contagem_nav_conferencias_fila(usuario) %}{% if conf_fila %} <span class="contagem-aba contagem-aba-revisao">+{{ conf_fila }}</span>{% endif %}</a>
-    {% if usuario_eh_admin_da_ferramenta(usuario, "extratus-aburesi") %}
-    <a href="/extratus-aburesi/motor" class="aba aba-motor aba-fixa-direita" data-dica="Configurações do Motor" aria-label="Configurações do Motor">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="3"></circle>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-        </svg>
-    </a>
-    {% endif %}
-</nav>
+{{ nav_abas_extratus(usuario, "extratus-aburesi", "/extratus-aburesi", "fila") }}
 
 {% if erro %}
 <p class="banner-erro">⚠ {{ erro }}</p>

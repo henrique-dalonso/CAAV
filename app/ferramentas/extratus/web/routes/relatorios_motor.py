@@ -42,8 +42,8 @@ templates.env.globals["contagem_nav_relatorios"] = contagem_nav_relatorios
 templates.env.globals["contagem_nav_relatorios_motor"] = contagem_nav_relatorios_motor
 
 
-@router.get("/relatorios-finalizados")
-def pagina_relatorios_finalizados(
+@router.get("/relatorios-motor")
+def pagina_relatorios_motor(
     request: Request,
     usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
     processo: str | None = None,
@@ -51,7 +51,7 @@ def pagina_relatorios_finalizados(
     jobs = listar_jobs_motor()
 
     # Renderiza PRIMEIRO, marca como visto DEPOIS — mesmo motivo de
-    # inbox.py (senão o badge dessa própria visita nunca apareceria).
+    # gerar_relatorio.py (senão o badge dessa própria visita nunca apareceria).
     resposta = templates.TemplateResponse(
         request,
         "relatorios_motor.html",
@@ -59,7 +59,7 @@ def pagina_relatorios_finalizados(
             "usuario": usuario,
             "jobs": jobs,
             # Deep-link vindo do botão "Ir ao relatório" (Conferências
-            # manuais, web/routes/inbox.py, quando o duplicado é do
+            # manuais, web/routes/gerar_relatorio.py, quando o duplicado é do
             # Motor) — pré-preenche a busca, troca pra aba certa
             # (Sucesso/Revisão/Erro) e dá scroll/destaque, ver
             # relatorios_motor.js.

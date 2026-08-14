@@ -1,4 +1,5 @@
 import asyncio
+import traceback
 
 from app.ferramentas.extratus_aburesi.core.app_logger import registrar_log
 from app.ferramentas.extratus_aburesi.core.motor_lote import rodar_ciclo_motor
@@ -21,6 +22,6 @@ async def loop_motor():
         try:
             await asyncio.to_thread(rodar_ciclo_motor)
         except Exception as erro:
-            registrar_log(f"Erro no ciclo do motor: {erro}")
+            registrar_log(f"Erro no ciclo do motor: {erro}\n{traceback.format_exc()}")
 
         await asyncio.sleep(INTERVALO_SEGUNDOS)

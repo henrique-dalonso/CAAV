@@ -27,7 +27,7 @@
             var mostrar = passaStatus && passaBusca;
 
             // Mesma pegadinha do [hidden] vs display de autor já
-            // resolvida em relatorios_prontos.js — style.display direto
+            // resolvida em relatorios_manuais.js — style.display direto
             // em vez do atributo.
             item.style.display = mostrar ? "" : "none";
 
@@ -61,7 +61,7 @@
     });
 
     // Deep-link do botão "Ir ao relatório" (Conferências manuais,
-    // web/routes/inbox.py, ?processo=...) — pré-preenche a busca, troca
+    // web/routes/gerar_relatorio.py, ?processo=...) — pré-preenche a busca, troca
     // pra aba certa (o item pode estar em Sucesso/Revisão/Erro, não só
     // na aba padrão "Sucesso") e dá scroll+destaque no item certo.
     var processoInicial = campoBusca.dataset.processoInicial;

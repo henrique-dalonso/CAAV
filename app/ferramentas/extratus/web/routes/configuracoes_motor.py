@@ -35,15 +35,15 @@ PLATAFORMA_TEMPLATES_DIR = (
     Path(__file__).resolve().parents[4] / "plataforma" / "web" / "templates"
 )
 templates = criar_templates([TEMPLATES_DIR, PLATAFORMA_TEMPLATES_DIR])
-# Badges "+N" da navegação — ver mesmo comentário em inbox.py.
+# Badges "+N" da navegação — ver mesmo comentário em gerar_relatorio.py.
 templates.env.globals["contagem_nav_conferencias_manual"] = contagem_nav_conferencias_manual
 templates.env.globals["contagem_nav_conferencias_fila"] = contagem_nav_conferencias_fila
 templates.env.globals["contagem_nav_relatorios"] = contagem_nav_relatorios
 templates.env.globals["contagem_nav_relatorios_motor"] = contagem_nav_relatorios_motor
 
 
-@router.get("/motor")
-def pagina_motor(
+@router.get("/configuracoes-motor")
+def pagina_configuracoes_motor(
     request: Request,
     usuario: Usuario = Depends(exigir_admin_ferramenta("extratus")),
     sucesso: str | None = None,
@@ -59,7 +59,7 @@ def pagina_motor(
 
     return templates.TemplateResponse(
         request,
-        "motor.html",
+        "configuracoes_motor.html",
         {
             "usuario": usuario,
             "motor_ativo": config.get("motor_ativo", False),
@@ -73,7 +73,7 @@ def pagina_motor(
     )
 
 
-@router.post("/motor/alternar")
+@router.post("/configuracoes-motor/alternar")
 def alternar_motor_route():
     config = carregar_config()
     novo_estado = definir_motor_ativo(not config.get("motor_ativo", False))
@@ -81,11 +81,11 @@ def alternar_motor_route():
     mensagem = "Motor ligado." if novo_estado else "Motor desligado."
 
     return RedirectResponse(
-        url=f"/extratus/motor?sucesso={quote(mensagem)}", status_code=303
+        url=f"/extratus/configuracoes-motor?sucesso={quote(mensagem)}", status_code=303
     )
 
 
-@router.get("/motor/pastas")
+@router.get("/configuracoes-motor/pastas")
 def listar_pastas_route(
     caminho: str | None = None,
     usuario: Usuario = Depends(exigir_admin_ferramenta("extratus")),
@@ -112,7 +112,7 @@ def listar_pastas_route(
     return {"caminho": str(base), "pai": pai, "pastas": pastas}
 
 
-@router.post("/motor/config")
+@router.post("/configuracoes-motor/config")
 def atualizar_config_motor_route(
     pasta_entrada: str = Form(...),
     ia_provider: str = Form(...),
@@ -125,16 +125,16 @@ def atualizar_config_motor_route(
         atualizar_config_motor(pasta_entrada=pasta_entrada, ia_provider=ia_provider)
     except ValueError as erro:
         return RedirectResponse(
-            url=f"/extratus/motor?erro={quote(str(erro))}", status_code=303
+            url=f"/extratus/configuracoes-motor?erro={quote(str(erro))}", status_code=303
         )
 
     return RedirectResponse(
-        url="/extratus/motor?sucesso=" + quote("Configurações do Motor salvas."),
+        url="/extratus/configuracoes-motor?sucesso=" + quote("Configurações do Motor salvas."),
         status_code=303,
     )
 
 
-@router.post("/motor/prompt")
+@router.post("/configuracoes-motor/prompt")
 async def atualizar_prompt_motor_route(
     arquivo: UploadFile = File(...),
     usuario: Usuario = Depends(exigir_admin_ferramenta("extratus")),
@@ -149,7 +149,7 @@ async def atualizar_prompt_motor_route(
 
     if not nome_seguro.lower().endswith(extensao_esperada):
         return RedirectResponse(
-            url="/extratus/motor?erro=" + quote(
+            url="/extratus/configuracoes-motor?erro=" + quote(
                 f'"{nome_seguro}" não é um arquivo {extensao_esperada} — '
                 f"só é permitido enviar o prompt nesse formato."
             ),
@@ -162,10 +162,10 @@ async def atualizar_prompt_motor_route(
         substituir_instrucoes_relatorio(conteudo)
     except ValueError as erro:
         return RedirectResponse(
-            url=f"/extratus/motor?erro={quote(str(erro))}", status_code=303
+            url=f"/extratus/configuracoes-motor?erro={quote(str(erro))}", status_code=303
         )
 
     return RedirectResponse(
-        url="/extratus/motor?sucesso=" + quote("Prompt de instruções atualizado."),
+        url="/extratus/configuracoes-motor?sucesso=" + quote("Prompt de instruções atualizado."),
         status_code=303,
     )

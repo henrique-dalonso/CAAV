@@ -1,27 +1,30 @@
 import re
 import uuid
+from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import quote
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, RedirectResponse
 
-from app.ferramentas.extratus_aburesi.core.config_manager import carregar_config
-from app.ferramentas.extratus_aburesi.core.pipeline_manual import processar_upload_manual, retomar_apos_conferencia
-from app.ferramentas.extratus_aburesi.db.conferencias import registrar_decisao
-from app.ferramentas.extratus_aburesi.db.triagem_manual import (
+from app.ferramentas.extratus.core.config_manager import carregar_config
+from app.ferramentas.extratus.core.pipeline_manual import processar_upload_manual, retomar_apos_conferencia
+from app.ferramentas.extratus.core.processo_detector import PADRAO_CNJ as PADRAO_CNJ_TEXTO
+from app.ferramentas.extratus.db.conferencias import registrar_decisao
+from app.ferramentas.extratus.db.triagem_manual import (
     DUPLICADO_RELATORIO,
     MENSAGENS_INCONSISTENCIA,
     STATUS_EXIGE_PROCESSO_MANUAL,
     STATUS_INCONSISTENCIA,
+    contar_registros_recentes_do_usuario,
     criar_registro,
     descartar,
     listar_estado_do_usuario,
     listar_inconsistencias_do_usuario,
     obter_registro,
 )
-from app.ferramentas.extratus_aburesi.web.rotulos import (
-    ABA_INBOX,
+from app.ferramentas.extratus.web.rotulos import (
+    ABA_GERAR_RELATORIO,
     FERRAMENTA_SLUG,
     contagem_nav_conferencias_fila,
     contagem_nav_conferencias_manual,
@@ -34,15 +37,25 @@ from app.plataforma.web.auth import exigir_acesso_ferramenta
 from app.plataforma.web.templates_util import criar_templates
 
 
-# Mesmo padrão CNJ que a Fila do Motor já valida (web/routes/fila.py) —
-# ver core/processo_detector.py pro reconhecimento automático.
-PADRAO_CNJ = re.compile(r"^\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}$")
+# Mesmo padrão de número de processo (CNJ) que core/processo_detector.py
+# já define — importado de lá (não retipado), só ancorado com ^...$ e
+# compilado aqui porque esse uso é diferente (validar que o texto INTEIRO
+# digitado à mão em Conferências é um número CNJ válido, não procurar
+# ocorrências soltas dentro de um texto maior).
+PADRAO_CNJ = re.compile(f"^{PADRAO_CNJ_TEXTO}$")
 
 # Henrique, 2026-08-11: "se não pode virar baderna, nego sair torrando
 # solicitação" — teto rígido, reforçado no servidor (nunca só no cliente).
 MAXIMO_ARQUIVOS_POR_ENVIO = 5
 
-router = APIRouter(dependencies=[Depends(exigir_acesso_ferramenta("extratus-aburesi"))])
+# Trava contra repetição em sequência (duplo clique, várias abas, script) —
+# cada arquivo aceito dispara uma chamada de IA cobrada. Limite generoso de
+# propósito (8x o teto de um envio só) pra nunca travar uso legítimo de
+# várias remessas reais seguidas, só o caso de abuso/erro repetitivo.
+JANELA_MINUTOS_LIMITE_UPLOAD = 10
+LIMITE_ARQUIVOS_POR_JANELA = MAXIMO_ARQUIVOS_POR_ENVIO * 8
+
+router = APIRouter(dependencies=[Depends(exigir_acesso_ferramenta("extratus"))])
 
 TAMANHO_MAXIMO_UPLOAD = 100 * 1024 * 1024  # 100 MB
 
@@ -60,6 +73,10 @@ templates.env.globals["contagem_nav_relatorios_motor"] = contagem_nav_relatorios
 def _estado_atual(usuario_id):
     estado = listar_estado_do_usuario(usuario_id)
 
+    # Henrique, 2026-08-12: uma inconsistência não sai de Pendentes — só
+    # ganha bolinha vermelha (aguardando_conferencia), igual à Fila do
+    # Motor (web/routes/fila.py::_estado_atual_fila). Continua visível
+    # ali até ser resolvida em Conferências.
     pendentes = [
         {
             "id": r.id,
@@ -95,15 +112,18 @@ def _redirecionar(erro=None, sucesso=None):
 
     query = f"?{'&'.join(partes)}" if partes else ""
 
-    return RedirectResponse(url=f"/extratus-aburesi/{query}", status_code=303)
+    return RedirectResponse(url=f"/extratus/{query}", status_code=303)
 
 
 def _link_relatorio_existente(registro):
-    """Ver docstring equivalente em app/ferramentas/extratus/web/routes/
-    inbox.py (Extratus - Relatórios) — mesma lógica."""
+    """Pra onde o botão "Ir ao relatório" deve apontar — Henrique,
+    2026-08-12: estava sempre mandando pra "Seus Relatórios", mesmo
+    quando o duplicado tinha sido gerado pelo Motor (onde ele nunca
+    aparece). `origem_duplicado` é gravado na hora da triagem (core/
+    pipeline_manual.py), a partir de `Job.usuario_id`."""
     if registro.origem_duplicado == "motor":
-        return "/extratus-aburesi/relatorios-finalizados"
-    return "/extratus-aburesi/relatorios"
+        return "/extratus/relatorios-motor"
+    return "/extratus/relatorios"
 
 
 def _conferencias_pendentes(usuario_id):
@@ -123,17 +143,21 @@ def _conferencias_pendentes(usuario_id):
 @router.get("/")
 def pagina_inicial(
     request: Request,
-    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus-aburesi")),
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
     erro: str | None = None,
     sucesso: str | None = None,
 ):
     pendentes, processando = _estado_atual(usuario.id)
 
-    # Renderiza PRIMEIRO, marca como visto DEPOIS — ver comentário
-    # equivalente em app/ferramentas/extratus/web/routes/inbox.py.
+    # Renderiza PRIMEIRO (TemplateResponse já monta o HTML aqui dentro,
+    # na hora — Jinja2Templates não é preguiçoso) usando o "visto_em"
+    # ANTIGO, senão o badge dessa Conferência que acabou de aparecer
+    # nunca apareceria pra ninguém: marcar como visto antes de contar
+    # já zeraria o próprio número que essa visita deveria mostrar.
+    # marcar_aba_vista só atualiza "visto_em" DEPOIS, pra próxima visita.
     resposta = templates.TemplateResponse(
         request,
-        "inbox.html",
+        "gerar_relatorio.html",
         {
             "usuario": usuario,
             "pendentes": pendentes,
@@ -143,17 +167,16 @@ def pagina_inicial(
             "maximo_arquivos": MAXIMO_ARQUIVOS_POR_ENVIO,
             "erro": erro,
             "sucesso": sucesso,
-            "aba_ativa": "gerar",
         },
     )
-    marcar_aba_vista(usuario.id, FERRAMENTA_SLUG, ABA_INBOX)
+    marcar_aba_vista(usuario.id, FERRAMENTA_SLUG, ABA_GERAR_RELATORIO)
 
     return resposta
 
 
 @router.get("/estado")
-def estado_processamento(usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus-aburesi"))):
-    """Endpoint enxuto pro polling (inbox.js) — mesmo formato que
+def estado_processamento(usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus"))):
+    """Endpoint enxuto pro polling (gerar_relatorio.js) — mesmo formato que
     /fila/estado usa, escopado ao próprio usuário (Conferências e
     processamento manual são pessoais, diferente da Fila do Motor)."""
     pendentes, processando = _estado_atual(usuario.id)
@@ -169,12 +192,19 @@ def estado_processamento(usuario: Usuario = Depends(exigir_acesso_ferramenta("ex
 async def enviar_pdfs(
     background_tasks: BackgroundTasks,
     arquivos: list[UploadFile] = File(...),
-    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus-aburesi")),
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
 ):
     if len(arquivos) > MAXIMO_ARQUIVOS_POR_ENVIO:
         raise HTTPException(
             status_code=400,
             detail=f"Máximo de {MAXIMO_ARQUIVOS_POR_ENVIO} arquivos por envio.",
+        )
+
+    desde = datetime.now() - timedelta(minutes=JANELA_MINUTOS_LIMITE_UPLOAD)
+    if contar_registros_recentes_do_usuario(usuario.id, desde) >= LIMITE_ARQUIVOS_POR_JANELA:
+        return _redirecionar(
+            erro=f"Muitos arquivos enviados em pouco tempo — aguarde alguns minutos antes de enviar mais PDFs "
+            f"(limite de {LIMITE_ARQUIVOS_POR_JANELA} a cada {JANELA_MINUTOS_LIMITE_UPLOAD} minutos)."
         )
 
     config = carregar_config()
@@ -228,7 +258,7 @@ async def aprovar_conferencia(
     registro_id: int,
     background_tasks: BackgroundTasks,
     processo: str | None = Form(None),
-    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus-aburesi")),
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
 ):
     registro = obter_registro(registro_id)
 
@@ -254,7 +284,7 @@ async def aprovar_conferencia(
 @router.post("/conferencia/{registro_id}/descartar")
 def descartar_conferencia(
     registro_id: int,
-    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus-aburesi")),
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
 ):
     registro = obter_registro(registro_id)
 
@@ -277,7 +307,7 @@ def descartar_conferencia(
 @router.get("/conferencia/{registro_id}/ver")
 def ver_pdf_conferencia(
     registro_id: int,
-    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus-aburesi")),
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
 ):
     registro = obter_registro(registro_id)
 
@@ -295,7 +325,7 @@ def ver_pdf_conferencia(
 @router.post("/processamento/{registro_id}/descartar")
 def dispensar_processamento_finalizado(
     registro_id: int,
-    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus-aburesi")),
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
 ):
     """Dispensa um card "Concluído"/"Erro" já finalizado — só some da
     tela, o Job/relatório já está seguro em outro lugar (Job/.docx)."""

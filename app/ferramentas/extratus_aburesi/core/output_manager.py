@@ -9,12 +9,6 @@ def garantir_pasta(caminho):
     )
 
 
-def garantir_pastas_saida(pasta_processados, pasta_revisao, pasta_erros):
-    garantir_pasta(pasta_processados)
-    garantir_pasta(pasta_revisao)
-    garantir_pasta(pasta_erros)
-
-
 def gerar_caminho_unico(caminho_destino):
     caminho_destino = Path(caminho_destino)
 

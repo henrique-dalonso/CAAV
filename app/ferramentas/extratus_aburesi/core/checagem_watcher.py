@@ -1,4 +1,5 @@
 import asyncio
+import traceback
 
 from app.ferramentas.extratus_aburesi.core.app_logger import registrar_log
 from app.ferramentas.extratus_aburesi.core.checagem_lote import rodar_ciclo_checagem
@@ -20,6 +21,6 @@ async def loop_checagem():
         try:
             await asyncio.to_thread(rodar_ciclo_checagem)
         except Exception as erro:
-            registrar_log(f"Erro no ciclo de checagem da fila: {erro}")
+            registrar_log(f"Erro no ciclo de checagem da fila: {erro}\n{traceback.format_exc()}")
 
         await asyncio.sleep(INTERVALO_SEGUNDOS)

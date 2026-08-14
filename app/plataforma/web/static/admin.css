@@ -1,6 +1,6 @@
 /* Tela de administração — cabeçalho/layout de página, cabecalho-ferramenta,
-   cartao-secao, tabela, selo, lista-dados e checkbox estilizado já vêm de
-   base.css (compartilhados). Aqui só entra o que é específico desta tela. */
+   cartao-secao, tabela, selo e checkbox estilizado já vêm de base.css
+   (compartilhados). Aqui só entra o que é específico desta tela. */
 
 .contagem {
     font-weight: 500;
@@ -434,33 +434,13 @@
     text-align: left;
     font-size: 0.62rem;
     font-weight: 600;
-    color: #c2410c;
+    color: var(--cor-motor);
     cursor: pointer;
 }
 
 .ferramenta-tile-fila .check-input:checked + .check-caixa {
-    background: #c2410c;
-    border-color: #c2410c;
-}
-
-@media (prefers-color-scheme: dark) {
-    html:not([data-theme="claro"]) .ferramenta-tile-fila {
-        color: #fb923c;
-    }
-
-    html:not([data-theme="claro"]) .ferramenta-tile-fila .check-input:checked + .check-caixa {
-        background: #fb923c;
-        border-color: #fb923c;
-    }
-}
-
-html[data-theme="escuro"] .ferramenta-tile-fila {
-    color: #fb923c;
-}
-
-html[data-theme="escuro"] .ferramenta-tile-fila .check-input:checked + .check-caixa {
-    background: #fb923c;
-    border-color: #fb923c;
+    background: var(--cor-motor);
+    border-color: var(--cor-motor);
 }
 
 .ferramenta-tile-emblema {

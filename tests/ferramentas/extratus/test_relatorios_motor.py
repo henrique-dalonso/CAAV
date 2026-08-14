@@ -10,7 +10,7 @@ from app.plataforma.db.usuarios import criar_usuario
 from app.plataforma.web.main import app
 
 
-NOME_USUARIO_TESTE = "teste_relatorios_finalizados"
+NOME_USUARIO_TESTE = "teste_relatorios_motor"
 NOME_USUARIO_SEM_FILA = "teste_relmotor_sem_fila"
 SENHA = "senhaTeste123"
 
@@ -26,9 +26,9 @@ def cliente_logado():
         sessao.commit()
 
     criar_usuario(
-        nome="Teste Relatórios Finalizados",
+        nome="Teste Relatórios do Motor",
         nome_usuario=NOME_USUARIO_TESTE,
-        email="teste_relatorios_finalizados@example.com",
+        email="teste_relatorios_motor@example.com",
         senha=SENHA,
         eh_admin=True,
     )
@@ -55,18 +55,18 @@ def limpar_jobs_criados():
             sessao.commit()
 
 
-def test_pagina_relatorios_finalizados_exige_login():
+def test_pagina_relatorios_motor_exige_login():
     cliente = TestClient(app)
 
-    resp = cliente.get("/extratus/relatorios-finalizados", follow_redirects=False)
+    resp = cliente.get("/extratus/relatorios-motor", follow_redirects=False)
 
     assert resp.status_code == 303
     assert resp.headers["location"] == "/login"
 
 
-def test_pagina_relatorios_finalizados_so_lista_jobs_do_motor(cliente_logado, limpar_jobs_criados):
+def test_pagina_relatorios_motor_so_lista_jobs_do_motor(cliente_logado, limpar_jobs_criados):
     job_motor = registrar_processado(
-        arquivo_pdf="teste_pagina_relatorios_finalizados_motor.pdf",
+        arquivo_pdf="teste_pagina_relatorios_motor.pdf",
         processo="0000000-00.2026.8.00.0040",
         relatorio_path=None,
         destino_pdf=None,
@@ -74,7 +74,7 @@ def test_pagina_relatorios_finalizados_so_lista_jobs_do_motor(cliente_logado, li
         usuario_id=None,
     )
     job_manual = registrar_processado(
-        arquivo_pdf="teste_pagina_relatorios_finalizados_manual.pdf",
+        arquivo_pdf="teste_pagina_relatorios_motor_manual.pdf",
         processo="0000000-00.2026.8.00.0041",
         relatorio_path=None,
         destino_pdf=None,
@@ -83,14 +83,14 @@ def test_pagina_relatorios_finalizados_so_lista_jobs_do_motor(cliente_logado, li
     )
     limpar_jobs_criados.extend([job_motor.id, job_manual.id])
 
-    resp = cliente_logado.get("/extratus/relatorios-finalizados")
+    resp = cliente_logado.get("/extratus/relatorios-motor")
 
     assert resp.status_code == 200
-    assert "teste_pagina_relatorios_finalizados_motor.pdf" in resp.text
-    assert "teste_pagina_relatorios_finalizados_manual.pdf" not in resp.text
+    assert "teste_pagina_relatorios_motor.pdf" in resp.text
+    assert "teste_pagina_relatorios_motor_manual.pdf" not in resp.text
 
 
-def test_pagina_relatorios_finalizados_acessivel_sem_acesso_a_fila():
+def test_pagina_relatorios_motor_acessivel_sem_acesso_a_fila():
     """Henrique, 2026-08-11: ver o acervo do Motor não deveria mais exigir
     acesso à Fila do Motor — só acesso à ferramenta, igual "Seus
     Relatórios". Testa exatamente o caso que antes dava 403: usuário com
@@ -115,7 +115,7 @@ def test_pagina_relatorios_finalizados_acessivel_sem_acesso_a_fila():
     cliente = TestClient(app)
     cliente.post("/login", data={"usuario_login": NOME_USUARIO_SEM_FILA, "senha": SENHA})
 
-    resp = cliente.get("/extratus/relatorios-finalizados")
+    resp = cliente.get("/extratus/relatorios-motor")
 
     assert resp.status_code == 200
 

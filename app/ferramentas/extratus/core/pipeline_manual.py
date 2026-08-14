@@ -16,7 +16,7 @@ from app.ferramentas.extratus.db.jobs import obter_relatorio_existente_para_proc
 
 async def processar_upload_manual(registro_id):
     """Agendada via `BackgroundTasks` uma vez por arquivo, logo depois do
-    upload (web/routes/inbox.py) — todas agendadas juntas rodam
+    upload (web/routes/gerar_relatorio.py) — todas agendadas juntas rodam
     concorrentemente. `asyncio.to_thread` pra não travar o event loop do
     servidor (mesmo padrão dos watchers em core/motor_watcher.py e
     core/checagem_watcher.py)."""
@@ -137,8 +137,8 @@ def _gerar_e_finalizar(registro, confianca, config):
         uso_ia,
         pasta_saida,
         pasta_processados,
-        pasta_erros,
         pasta_revisao,
+        pasta_erros,
         registro.usuario_id,
     )
 

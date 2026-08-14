@@ -48,6 +48,8 @@ app/ferramentas/extratus/logs/*
 !app/ferramentas/extratus/logs/.gitkeep
 app/ferramentas/extratus_aburesi/logs/*
 !app/ferramentas/extratus_aburesi/logs/.gitkeep
+app/plataforma/logs/*
+!app/plataforma/logs/.gitkeep
 
 # Banco local (histórico + usuários — dado real)
 banco/*

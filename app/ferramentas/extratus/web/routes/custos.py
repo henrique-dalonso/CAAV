@@ -26,8 +26,8 @@ templates.env.filters["rotulo_status"] = rotulo_status
 templates.env.filters["rotulo_erro"] = rotulo_erro
 
 
-@router.get("/historico")
-def pagina_historico(
+@router.get("/custos")
+def pagina_custos(
     request: Request,
     usuario: Usuario = Depends(exigir_admin),
 ):
@@ -57,7 +57,7 @@ def pagina_historico(
 
     return templates.TemplateResponse(
         request,
-        "historico.html",
+        "custos.html",
         {
             "usuario": usuario,
             "jobs": jobs,

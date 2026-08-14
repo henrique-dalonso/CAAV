@@ -18,6 +18,14 @@
     var LIMITE_TAMANHO_BYTES = 100 * 1024 * 1024;
 
     var form = document.getElementById("form-upload-manual");
+
+    // Deriva a URL base do módulo (Relatórios usa /extratus/...,
+    // Aburesi usa /extratus-aburesi/...) do action do próprio form de
+    // upload, mesmo truque já usado em fila.js — assim esse arquivo
+    // continua byte-idêntico nos dois módulos, sem precisar saber o
+    // prefixo na mão em cada fetch/link/action montado abaixo.
+    var baseUrl = form ? form.action.replace(/\/upload$/, "") : "/extratus";
+
     var zona = document.getElementById("zona-soltar-manual");
     var campoUpload = document.getElementById("campo-pdfs-manual");
     var loteEl = document.getElementById("upload-lote-manual");
@@ -316,7 +324,7 @@
 
             var link = document.createElement("a");
             link.className = "botao-minimal";
-            link.href = "/extratus/relatorios?processo=" + encodeURIComponent(item.processo_detectado || "");
+            link.href = baseUrl + "/relatorios?processo=" + encodeURIComponent(item.processo_detectado || "");
             link.textContent = "Ver relatório";
             li.appendChild(link);
 
@@ -422,7 +430,7 @@
         if (item.tipo === "duplicado_relatorio") {
             var linkRelatorio = document.createElement("a");
             linkRelatorio.className = "botao-minimal";
-            linkRelatorio.href = (item.link_relatorio || "/extratus/relatorios") + "?processo=" + encodeURIComponent(item.processo_detectado || "");
+            linkRelatorio.href = (item.link_relatorio || (baseUrl + "/relatorios")) + "?processo=" + encodeURIComponent(item.processo_detectado || "");
             linkRelatorio.dataset.dica = "Abre o relatório já existente pra esse processo";
             linkRelatorio.textContent = "Ir ao relatório";
             acoes.appendChild(linkRelatorio);
@@ -430,7 +438,7 @@
 
         var formAprovar = document.createElement("form");
         formAprovar.method = "post";
-        formAprovar.action = "/extratus/conferencia/" + item.id + "/aprovar";
+        formAprovar.action = baseUrl + "/conferencia/" + item.id + "/aprovar";
         formAprovar.className = "form-conferencia";
 
         var dicaAprovar;
@@ -468,7 +476,7 @@
 
         var formDescartar = document.createElement("form");
         formDescartar.method = "post";
-        formDescartar.action = "/extratus/conferencia/" + item.id + "/descartar";
+        formDescartar.action = baseUrl + "/conferencia/" + item.id + "/descartar";
         formDescartar.className = "form-conferencia";
         formDescartar.dataset.confirm = "Descartar " + item.nome + "? Essa ação não pode ser desfeita.";
         formDescartar.dataset.perigo = "true";
@@ -585,7 +593,7 @@
         var id = botao.dataset.id;
         var li = botao.closest("li");
 
-        fetch("/extratus/processamento/" + id + "/descartar", { method: "POST" })
+        fetch(baseUrl + "/processamento/" + id + "/descartar", { method: "POST" })
             .then(function (resposta) {
                 if (resposta.ok && li) { li.remove(); }
             })
@@ -637,7 +645,7 @@
     function consultarEstado() {
         if (document.hidden) { return; }
 
-        fetch("/extratus/estado")
+        fetch(baseUrl + "/estado")
             .then(function (resposta) { return resposta.ok ? resposta.json() : null; })
             .then(function (estado) {
                 if (estado) { aplicarEstado(estado); }

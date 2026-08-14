@@ -145,6 +145,24 @@ class RegistroConferencia(SQLModel, table=True):
     decidido_em: datetime = Field(default_factory=datetime.now)
 
 
+class UploadFilaMotor(SQLModel, table=True):
+    """Registro PERMANENTE de quem enviou cada arquivo pela tela da Fila
+    do Motor (POST /fila/upload) — só isso, não decide nada e não é lido
+    por nenhum watcher. Existe porque, diferente de Aprovar/Descartar em
+    Conferências (RegistroConferencia acima), o upload em si nunca
+    guardava quem mandou o arquivo (achado de auditoria, Rodada 12,
+    2026-08-13). ChecagemFila é criada depois, por um scan de disco
+    (checagem_fila.sincronizar_registros) que não sabe de onde o arquivo
+    veio — por isso esse é um registro à parte, não um campo a mais lá."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+    nome_arquivo: str = Field(index=True)
+    usuario_id: int = Field(foreign_key="usuario.id")
+
+    enviado_em: datetime = Field(default_factory=datetime.now)
+
+
 class TriagemManual(SQLModel, table=True):
     """Checagem de duplicidade + acompanhamento de geração de cada PDF
     enviado pelo fluxo manual ("Gerar seu Relatório", 2026-08-11) — o
@@ -159,7 +177,7 @@ class TriagemManual(SQLModel, table=True):
     `Job.usuario_id`, que usa None pra distinguir origem Motor — aqui só
     existe origem manual, não há ambiguidade pra resolver). Conferências
     manuais são pessoais: sempre filtradas por `usuario_id` nas consultas
-    (web/routes/inbox.py), nunca compartilhadas entre usuários como a
+    (web/routes/gerar_relatorio.py), nunca compartilhadas entre usuários como a
     Fila do Motor é.
 
     status: "pendente" (triagem rodando) -> "processando" (IA rodando,

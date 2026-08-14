@@ -33,7 +33,7 @@ ERRO_LABELS = {
 
 FERRAMENTA_SLUG = "extratus-aburesi"
 
-ABA_INBOX = "inbox"
+ABA_GERAR_RELATORIO = "inbox"
 ABA_FILA = "fila"
 ABA_RELATORIOS = "relatorios"
 ABA_RELATORIOS_MOTOR = "relatorios-motor"
@@ -52,7 +52,7 @@ def rotulo_erro(tipo_erro):
 def contagem_nav_conferencias_manual(usuario):
     """Ver docstring equivalente em app/ferramentas/extratus/web/
     rotulos.py (Extratus - Relatórios) — mesma lógica."""
-    desde = obter_ultimo_visto(usuario.id, FERRAMENTA_SLUG, ABA_INBOX) or _DESDE_SEMPRE
+    desde = obter_ultimo_visto(usuario.id, FERRAMENTA_SLUG, ABA_GERAR_RELATORIO) or _DESDE_SEMPRE
     return contar_inconsistencias_novas_do_usuario(usuario.id, desde)
 
 

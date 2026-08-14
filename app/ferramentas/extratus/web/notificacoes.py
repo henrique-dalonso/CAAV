@@ -66,7 +66,7 @@ def listar_notificacoes_pessoais(usuario_id):
     - Pronto / revisão (Job): "pronto" tem X (`descartavel`), dispensa
       na hora. "Revisão" não tem X — só sai daqui quando a pessoa clicar
       em "Marcar como revisado" no card do relatório
-      (relatorios_prontos.html) — uma notificação importante não pode
+      (relatorios_manuais.html) — uma notificação importante não pode
       sumir sozinha, mesma exigência que já existia pro erro do Motor.
       As duas usam o mesmo campo por baixo, `Job.notificacao_resolvida`.
     """

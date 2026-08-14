@@ -319,10 +319,19 @@
         var botaoCancelarConfirmacao = document.getElementById("modal-confirmacao-cancelar");
         var botaoConfirmarConfirmacao = document.getElementById("modal-confirmacao-confirmar");
         var formPendente = null;
+        // Guarda quem tinha o foco antes de abrir (o botão que disparou o
+        // submit) — devolvido ao fechar, pra quem navega por teclado não
+        // "perder o lugar" na página (Rodada 12, achado de acessibilidade).
+        var elementoAnteriorFoco = null;
 
         function fecharModalConfirmacao() {
             modalConfirmacao.hidden = true;
             formPendente = null;
+
+            if (elementoAnteriorFoco && typeof elementoAnteriorFoco.focus === "function") {
+                elementoAnteriorFoco.focus();
+            }
+            elementoAnteriorFoco = null;
         }
 
         // Delegado no document (não um listener por form encontrado na
@@ -345,12 +354,14 @@
 
             evento.preventDefault();
             formPendente = form;
+            elementoAnteriorFoco = document.activeElement;
             mensagemConfirmacao.textContent = mensagem;
             botaoConfirmarConfirmacao.classList.toggle(
                 "modal-confirmacao-confirmar-perigo",
                 form.dataset.perigo === "true"
             );
             modalConfirmacao.hidden = false;
+            botaoCancelarConfirmacao.focus();
         });
 
         botaoCancelarConfirmacao.addEventListener("click", fecharModalConfirmacao);
@@ -371,8 +382,30 @@
         });
 
         document.addEventListener("keydown", function (evento) {
-            if (evento.key === "Escape" && !modalConfirmacao.hidden) {
+            if (modalConfirmacao.hidden) {
+                return;
+            }
+
+            if (evento.key === "Escape") {
                 fecharModalConfirmacao();
+                return;
+            }
+
+            // Foco preso nos 2 botões enquanto o modal está aberto — Tab no
+            // último volta pro primeiro, Shift+Tab no primeiro vai pro
+            // último, nunca escapa pro resto da página por trás.
+            if (evento.key === "Tab") {
+                var focaveis = [botaoCancelarConfirmacao, botaoConfirmarConfirmacao];
+                var primeiro = focaveis[0];
+                var ultimo = focaveis[focaveis.length - 1];
+
+                if (evento.shiftKey && document.activeElement === primeiro) {
+                    evento.preventDefault();
+                    ultimo.focus();
+                } else if (!evento.shiftKey && document.activeElement === ultimo) {
+                    evento.preventDefault();
+                    primeiro.focus();
+                }
             }
         });
     }
@@ -387,10 +420,23 @@
             return;
         }
 
-        function fechar() {
+        // devolverFoco só é true quando o próprio usuário fechou de
+        // propósito (clique no botão que abriu, ou Esc) — fechar como
+        // efeito colateral de abrir outro painel, ou por clique fora
+        // (que já move o foco pra onde a pessoa clicou), NÃO reivindica
+        // o foco de volta (Rodada 12, achado de acessibilidade: quem usa
+        // teclado perdia a posição na página ao fechar qualquer um
+        // desses painéis).
+        function fechar(devolverFoco) {
+            var estavaAberto = !painel.hidden;
+
             painel.hidden = true;
             painel.classList.remove("expandido");
             botao.setAttribute("aria-expanded", "false");
+
+            if (devolverFoco && estavaAberto) {
+                botao.focus();
+            }
         }
 
         function abrir() {
@@ -411,7 +457,7 @@
             if (painel.hidden) {
                 abrir();
             } else {
-                fechar();
+                fechar(true);
             }
         });
 
@@ -444,7 +490,7 @@
 
     document.addEventListener("keydown", function (evento) {
         if (evento.key === "Escape") {
-            alternadores.forEach(function (a) { a.fechar(); });
+            alternadores.forEach(function (a) { a.fechar(true); });
         }
     });
 
@@ -1037,6 +1083,15 @@
                 }
             };
             worker.port.start();
+
+            // Avisa o worker que essa aba fechou/navegou pra fora, pra ele
+            // tirar a porta da lista — sem isso a lista só cresce pela
+            // sessão inteira do navegador (Rodada 12, achado de qualidade
+            // de código; inofensivo na prática, postMessage numa porta
+            // morta não faz nada, mas nunca era limpo).
+            window.addEventListener("pagehide", function () {
+                worker.port.postMessage("desconectar");
+            });
         } else if (window.EventSource) {
             // Sem suporte a SharedWorker (raro hoje em dia): volta pro
             // EventSource direto, por aba — funciona, só sofre de novo do

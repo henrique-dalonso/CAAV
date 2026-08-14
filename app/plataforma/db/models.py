@@ -30,6 +30,22 @@ CORES_PERFIL_VALIDAS = (
 )
 COR_PERFIL_PADRAO = CORES_PERFIL_VALIDAS[0]
 
+# Nome em português de cada cor acima — as 8 opções são visualmente
+# idênticas (só muda a cor de fundo), então sem um nome nenhum leitor de
+# tela consegue diferenciá-las (achado de acessibilidade, Rodada 12).
+NOMES_CORES_PERFIL = {
+    "#4f46e5": "índigo",
+    "#2563eb": "azul",
+    "#0ea5e9": "céu",
+    "#0d9488": "verde-azulado",
+    "#16a34a": "verde",
+    "#d97706": "âmbar",
+    "#ea580c": "laranja",
+    "#e11d48": "rosa-vermelho",
+    "#7c3aed": "roxo",
+    "#475569": "grafite",
+}
+
 
 class Usuario(SQLModel, table=True):
     """Um colaborador com acesso ao Centro de Experiência do Colaborador.

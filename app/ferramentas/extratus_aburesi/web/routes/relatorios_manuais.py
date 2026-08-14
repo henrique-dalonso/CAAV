@@ -28,7 +28,7 @@ PLATAFORMA_TEMPLATES_DIR = (
 templates = criar_templates([TEMPLATES_DIR, PLATAFORMA_TEMPLATES_DIR])
 templates.env.filters["rotulo_status"] = rotulo_status
 templates.env.filters["rotulo_erro"] = rotulo_erro
-# Badges "+N" da navegação — ver mesmo comentário em inbox.py.
+# Badges "+N" da navegação — ver mesmo comentário em gerar_relatorio.py.
 templates.env.globals["contagem_nav_conferencias_manual"] = contagem_nav_conferencias_manual
 templates.env.globals["contagem_nav_conferencias_fila"] = contagem_nav_conferencias_fila
 templates.env.globals["contagem_nav_relatorios"] = contagem_nav_relatorios
@@ -36,7 +36,7 @@ templates.env.globals["contagem_nav_relatorios_motor"] = contagem_nav_relatorios
 
 
 @router.get("/relatorios")
-def pagina_relatorios_prontos(
+def pagina_relatorios_manuais(
     request: Request,
     usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus-aburesi")),
     processo: str | None = None,
@@ -45,14 +45,13 @@ def pagina_relatorios_prontos(
     nomes_por_id = {u.id: u.nome for u in listar_todos_usuarios()}
 
     # Renderiza PRIMEIRO, marca como visto DEPOIS — ver comentário
-    # equivalente em app/ferramentas/extratus/web/routes/relatorios_prontos.py.
+    # equivalente em app/ferramentas/extratus/web/routes/relatorios_manuais.py.
     resposta = templates.TemplateResponse(
         request,
-        "relatorios_prontos.html",
+        "relatorios_manuais.html",
         {
             "usuario": usuario,
             "jobs": jobs,
-            "aba_ativa": "relatorios",
             "nomes_por_id": nomes_por_id,
             "processo_busca": processo,
         },
@@ -68,7 +67,7 @@ def marcar_notificacao_resolvida_route(
     usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus-aburesi")),
 ):
     """Ver docstring equivalente em app/ferramentas/extratus/web/routes/
-    relatorios_prontos.py (Extratus - Relatórios) — mesma lógica."""
+    relatorios_manuais.py (Extratus - Relatórios) — mesma lógica."""
     if not marcar_notificacao_resolvida(job_id, usuario.id):
         raise HTTPException(status_code=404, detail="Esse relatório não existe mais.")
 

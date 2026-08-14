@@ -88,7 +88,7 @@ def listar_jobs(limite=100):
 def listar_jobs_manuais(limite=100):
     """Só os relatórios gerados manualmente (usuario_id preenchido) —
     usado pela tela "Relatórios". Os do Motor (usuario_id None) têm sua
-    própria tela, "Relatórios Finalizados" (Henrique, 2026-08-08: "na
+    própria tela, "Relatórios do Motor" (Henrique, 2026-08-08: "na
     aba manual só aparecerão os relatórios realizados manualmente...
     e na Relatórios do Motor será o repositório universal do motor").
     `listar_jobs()` continua sem filtro nenhum — Custos (admin) precisa
@@ -106,7 +106,7 @@ def listar_jobs_manuais(limite=100):
 
 def listar_jobs_motor(limite=100):
     """Só os relatórios (prontos, em revisão ou com erro) gerados pelo
-    Motor (usuario_id None) — alimenta "Relatórios Finalizados"."""
+    Motor (usuario_id None) — alimenta "Relatórios do Motor"."""
     with obter_sessao() as sessao:
         consulta = (
             select(Job)
@@ -166,7 +166,7 @@ def listar_relatorios_manuais_nao_notificados_do_usuario(usuario_id):
     ainda não tiveram a notificação dispensada — alimenta a aba "Minhas"
     do sininho (Henrique, 2026-08-13). "Sucesso" some com um X na
     própria notificação; "revisão" só sai daqui quando a pessoa clicar
-    em "Marcar como revisado" no card do relatório (relatorios_prontos.
+    em "Marcar como revisado" no card do relatório (relatorios_manuais.
     html) — nunca pelo X, mesma exigência de "não pode sumir sozinho"
     que o erro do Motor já tinha. As duas chamam marcar_notificacao_
     resolvida por baixo."""
@@ -204,8 +204,12 @@ def contar_por_status():
     contagem = {"sucesso": 0, "revisao": 0, "erro": 0}
 
     with obter_sessao() as sessao:
-        for job in sessao.exec(select(Job)).all():
-            contagem[job.status] = contagem.get(job.status, 0) + 1
+        linhas = sessao.exec(
+            select(Job.status, func.count()).group_by(Job.status)
+        ).all()
+
+    for status, total in linhas:
+        contagem[status] = total
 
     return contagem
 
@@ -268,15 +272,14 @@ def contar_relatorios_motor_novos(desde):
 
 def somar_custo_por_usuario():
     """Soma o custo estimado de IA por usuário — pra tela de custos do
-    admin, ver quanto cada login gastou e o total do sistema."""
-    totais = {}
-
+    admin, ver quanto cada login gastou e o total do sistema. Só soma
+    Job com custo > 0 (igual ao comportamento antigo, que pulava custo
+    None/0) — um usuário sem nenhum custo real não aparece no dicionário."""
     with obter_sessao() as sessao:
-        for job in sessao.exec(select(Job)).all():
-            if not job.custo_estimado_usd:
-                continue
+        linhas = sessao.exec(
+            select(Job.usuario_id, func.sum(Job.custo_estimado_usd))
+            .where(Job.custo_estimado_usd > 0)
+            .group_by(Job.usuario_id)
+        ).all()
 
-            chave = job.usuario_id
-            totais[chave] = totais.get(chave, 0.0) + job.custo_estimado_usd
-
-    return totais
+    return {usuario_id: total for usuario_id, total in linhas}

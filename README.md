@@ -71,7 +71,7 @@ perfil prontos — não precisa recriar nada disso numa ferramenta nova.
 | `/extratus/relatorios` | Extratus - Relatórios — relatórios já gerados (todo mundo com acesso vê) |
 | `/extratus/fila` | Extratus - Relatórios — fila do Motor (upload em lote) |
 | `/extratus/motor` | Extratus - Relatórios — liga/desliga o Motor, configurações, prompt |
-| `/extratus/historico` | Extratus - Relatórios — histórico técnico com custo de IA por usuário (só admin) |
+| `/extratus/custos` | Extratus - Relatórios — histórico técnico com custo de IA por usuário (só admin) |
 | `/extratus-aburesi/...` | Extratus - Aburesi — mesmas rotas acima, módulo separado |
 | `/leitor-publicacoes/` | Leitor de Publicações — em construção |
 

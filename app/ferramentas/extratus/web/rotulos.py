@@ -46,7 +46,11 @@ FERRAMENTA_SLUG = "extratus"
 
 # Chaves de aba usadas em UltimoVistoAba — mesmos nomes em toda parte
 # (rotas que chamam `marcar_aba_vista` e funções de contagem abaixo).
-ABA_INBOX = "inbox"
+# Valor da chave abaixo continua "inbox" de propósito (Rodada 13, rename
+# de nomenclatura "Gerar seu Relatório") — é o que já está gravado no
+# banco pra cada usuário; mudar o VALOR resetaria o "último visto" de
+# todo mundo silenciosamente. Só o nome da constante Python mudou.
+ABA_GERAR_RELATORIO = "inbox"
 ABA_FILA = "fila"
 ABA_RELATORIOS = "relatorios"
 ABA_RELATORIOS_MOTOR = "relatorios-motor"
@@ -69,7 +73,7 @@ def contagem_nav_conferencias_manual(usuario):
     """Badge (só cor de revisão) da aba "Gerar seu Relatório" — quantas
     Conferências novas (duplicidade, processo não encontrado etc.) do
     próprio usuário surgiram desde a última visita."""
-    desde = obter_ultimo_visto(usuario.id, FERRAMENTA_SLUG, ABA_INBOX) or _DESDE_SEMPRE
+    desde = obter_ultimo_visto(usuario.id, FERRAMENTA_SLUG, ABA_GERAR_RELATORIO) or _DESDE_SEMPRE
     return contar_inconsistencias_novas_do_usuario(usuario.id, desde)
 
 

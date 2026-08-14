@@ -39,6 +39,12 @@
     --cor-erro-fundo: #fef2f2;
     --cor-erro-texto: #b91c1c;
     --cor-erro-borda: #fecaca;
+    /* Laranja do Motor — usado em toda marcação "isso é área do Motor"
+       (aba .aba-motor, checkbox de Fila do Motor no admin, interruptor
+       ligado). Era hardcoded e repetido em extratus.css (2 módulos) +
+       admin.css, cada um com seu próprio bloco claro/escuro (Rodada 12,
+       achado de qualidade de código) — centralizado aqui. */
+    --cor-motor: #c2410c;
     --raio: 16px;
     --raio-pequeno: 10px;
     --sombra: 0 20px 60px -15px rgb(17 24 39 / 0.15);
@@ -62,6 +68,7 @@
         --cor-erro-fundo: #2a1215;
         --cor-erro-texto: #fca5a5;
         --cor-erro-borda: #4c1d24;
+        --cor-motor: #fb923c;
         --sombra: 0 20px 60px -15px rgb(0 0 0 / 0.6);
         --sombra-suave: 0 8px 24px -8px rgb(0 0 0 / 0.5);
     }
@@ -88,6 +95,7 @@
     --cor-erro-fundo: #2a1215;
     --cor-erro-texto: #fca5a5;
     --cor-erro-borda: #4c1d24;
+    --cor-motor: #fb923c;
     --sombra: 0 20px 60px -15px rgb(0 0 0 / 0.6);
     --sombra-suave: 0 8px 24px -8px rgb(0 0 0 / 0.5);
 }
@@ -316,10 +324,10 @@ a {
                    preenchido com a cor de acento.
    .botao-secundario = ação de apoio (contorno, sem preenchimento) — não
                    compete visualmente com a principal.
-   .botao-perigo = ação destrutiva ou que desliga algo, mesmo vermelho já
-                   usado no modal de confirmação de exclusão (só um
-                   vermelho no site inteiro). Combina com .botao
-                   (class="botao botao-perigo"), não substitui. */
+   Ações destrutivas hoje usam suas próprias classes dedicadas por
+   contexto (ex: .admin-icone-acao-perigo, .botao-remover-fila), não um
+   ".botao-perigo" genérico — removido daqui por nunca ter sido usado
+   (Rodada 12, achado de qualidade de código). */
 .botao {
     display: inline-flex;
     align-items: center;
@@ -393,19 +401,6 @@ a {
 .botao-secundario:disabled {
     opacity: 0.5;
     cursor: not-allowed;
-}
-
-.botao-perigo {
-    background: var(--cor-erro-texto);
-}
-
-.botao-perigo:hover {
-    background: #991b1b;
-    box-shadow: 0 8px 20px -6px color-mix(in srgb, var(--cor-erro-texto) 60%, transparent);
-}
-
-.botao-perigo:disabled:hover {
-    background: var(--cor-erro-texto);
 }
 
 /* Interruptor (switch) — pra estados liga/desliga de verdade (ex: Motor),
@@ -1181,41 +1176,6 @@ html[data-theme="escuro"] .selo-roxo {
 
 .tabela tbody tr:hover {
     background: var(--cor-fundo);
-}
-
-/* Lista de dados chave/valor (dt/dd), reaproveitável — perfil, admin,
-   qualquer tela que precise mostrar "campo: valor" em linhas. */
-.lista-dados {
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.6rem;
-}
-
-.lista-dados div {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 1rem;
-    padding-bottom: 0.6rem;
-    border-bottom: 1px solid var(--cor-borda);
-    font-size: 0.9rem;
-}
-
-.lista-dados div:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
-}
-
-.lista-dados dt {
-    color: var(--cor-texto-suave);
-    font-weight: 600;
-}
-
-.lista-dados dd {
-    margin: 0;
-    color: var(--cor-texto);
-    text-align: right;
 }
 
 /* Layout de página compartilhado por toda tela logada (base.html) */

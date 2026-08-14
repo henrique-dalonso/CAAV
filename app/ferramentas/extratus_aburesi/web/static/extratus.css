@@ -130,37 +130,16 @@ html[data-theme="escuro"] .aba .contagem-aba-revisao { background: #332b0f; colo
 }
 
 /* Aba do Motor — outra categoria de novo (admin + coordenador liberado),
-   cor diferente da de Custos (âmbar) pra não confundir as duas: laranja. */
+   cor diferente da de Custos (âmbar) pra não confundir as duas: laranja.
+   --cor-motor (base.css) já resolve sozinha pro tom certo por tema. */
 .aba-motor,
 .aba-motor:hover {
-    color: #c2410c;
+    color: var(--cor-motor);
 }
 
 .aba-motor.aba-ativa,
 .aba-motor.aba-ativa:hover {
-    border-bottom-color: #c2410c;
-}
-
-@media (prefers-color-scheme: dark) {
-    html:not([data-theme="claro"]) .aba-motor,
-    html:not([data-theme="claro"]) .aba-motor:hover {
-        color: #fb923c;
-    }
-
-    html:not([data-theme="claro"]) .aba-motor.aba-ativa,
-    html:not([data-theme="claro"]) .aba-motor.aba-ativa:hover {
-        border-bottom-color: #fb923c;
-    }
-}
-
-html[data-theme="escuro"] .aba-motor,
-html[data-theme="escuro"] .aba-motor:hover {
-    color: #fb923c;
-}
-
-html[data-theme="escuro"] .aba-motor.aba-ativa,
-html[data-theme="escuro"] .aba-motor.aba-ativa:hover {
-    border-bottom-color: #fb923c;
+    border-bottom-color: var(--cor-motor);
 }
 
 /* Lista da fila do motor — mesma .lista-arquivos, só com o nome ocupando
@@ -367,17 +346,7 @@ html[data-theme="escuro"] .aba-motor.aba-ativa:hover {
 }
 
 .secao-conferencias h2 {
-    color: #c2410c;
-}
-
-@media (prefers-color-scheme: dark) {
-    html:not([data-theme="claro"]) .secao-conferencias h2 {
-        color: #fb923c;
-    }
-}
-
-html[data-theme="escuro"] .secao-conferencias h2 {
-    color: #fb923c;
+    color: var(--cor-motor);
 }
 
 .lista-conferencias {
@@ -1464,14 +1433,14 @@ html[data-theme="escuro"] .status-revisao { background: #332b0f; color: #fde68a;
     margin: -0.5rem 0 1.25rem;
 }
 
-.tabela-historico {
+.tabela-custos {
     width: 100%;
     border-collapse: collapse;
     table-layout: fixed;
     font-size: 0.85rem;
 }
 
-.tabela-historico th {
+.tabela-custos th {
     text-align: center;
     font-size: 0.72rem;
     font-weight: 600;
@@ -1482,7 +1451,7 @@ html[data-theme="escuro"] .status-revisao { background: #332b0f; color: #fde68a;
     border-bottom: 1px solid var(--cor-borda);
 }
 
-.tabela-historico td {
+.tabela-custos td {
     padding: 0.7rem 0.6rem;
     border-bottom: 1px solid var(--cor-borda);
     /* middle, mesmo motivo do .tabela td em base.css — mesma linha,
@@ -1492,25 +1461,25 @@ html[data-theme="escuro"] .status-revisao { background: #332b0f; color: #fde68a;
     overflow-wrap: break-word;
 }
 
-.tabela-historico tr:last-child td {
+.tabela-custos tr:last-child td {
     border-bottom: none;
 }
 
-.tabela-historico tbody tr:hover {
+.tabela-custos tbody tr:hover {
     background: var(--cor-fundo);
 }
 
-.tabela-historico th:nth-child(1), .tabela-historico td:nth-child(1) { width: 100px; }
-.tabela-historico th:nth-child(2), .tabela-historico td:nth-child(2) { width: 14%; }
-.tabela-historico th:nth-child(3), .tabela-historico td:nth-child(3) { width: 16%; }
-.tabela-historico th:nth-child(4), .tabela-historico td:nth-child(4) { width: 12%; }
-.tabela-historico th:nth-child(5), .tabela-historico td:nth-child(5) { width: 80px; }
-.tabela-historico th:nth-child(6), .tabela-historico td:nth-child(6) { width: 100px; }
-.tabela-historico th:nth-child(7), .tabela-historico td:nth-child(7) { width: 140px; }
+.tabela-custos th:nth-child(1), .tabela-custos td:nth-child(1) { width: 100px; }
+.tabela-custos th:nth-child(2), .tabela-custos td:nth-child(2) { width: 14%; }
+.tabela-custos th:nth-child(3), .tabela-custos td:nth-child(3) { width: 16%; }
+.tabela-custos th:nth-child(4), .tabela-custos td:nth-child(4) { width: 12%; }
+.tabela-custos th:nth-child(5), .tabela-custos td:nth-child(5) { width: 80px; }
+.tabela-custos th:nth-child(6), .tabela-custos td:nth-child(6) { width: 100px; }
+.tabela-custos th:nth-child(7), .tabela-custos td:nth-child(7) { width: 140px; }
 /* Coluna própria pro botão de baixar, sem título — posição sempre fixa
    no fim da linha, não muda mais dependendo do tamanho do texto de
    Detalhe do lado (era isso que fazia o botão "pular" de lugar). */
-.tabela-historico th:nth-child(8), .tabela-historico td:nth-child(8) { width: 52px; }
+.tabela-custos th:nth-child(8), .tabela-custos td:nth-child(8) { width: 52px; }
 
 /* Arquivo e Processo são identificadores usados pra conferência — não
    podem centralizar. A tabela é table-layout:fixed, então nowrap sem
@@ -1518,8 +1487,8 @@ html[data-theme="escuro"] .status-revisao { background: #332b0f; color: #fde68a;
    visto na prática); com ellipsis, corta certinho dentro da própria
    coluna e o clique (.truncavel, aplicado no HTML) expande pra ver o
    valor inteiro, quebrando linha dentro da célula em vez de vazar. */
-.tabela-historico td:nth-child(3),
-.tabela-historico td:nth-child(4) {
+.tabela-custos td:nth-child(3),
+.tabela-custos td:nth-child(4) {
     text-align: left;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1602,11 +1571,11 @@ html[data-theme="escuro"] .status-revisao { background: #332b0f; color: #fde68a;
     font-size: 0.87rem;
 }
 
-.lista-custos-total {
+.lista-custos li.lista-custos-total {
     border-top: 1px dashed var(--cor-borda);
     margin-top: 0.3rem;
-    padding-top: 0.75rem !important;
-    background: transparent !important;
+    padding-top: 0.75rem;
+    background: transparent;
     font-weight: 700;
 }
 
@@ -1630,15 +1599,5 @@ html[data-theme="escuro"] .status-revisao { background: #332b0f; color: #fde68a;
    Motor" é uma categoria de função, não muda com a identidade da
    ferramenta (essa fica só no --cor-acento lá em cima do arquivo). */
 .motor-status .interruptor {
-    --cor-interruptor-ligado: #c2410c;
-}
-
-@media (prefers-color-scheme: dark) {
-    html:not([data-theme="claro"]) .motor-status .interruptor {
-        --cor-interruptor-ligado: #fb923c;
-    }
-}
-
-html[data-theme="escuro"] .motor-status .interruptor {
-    --cor-interruptor-ligado: #fb923c;
+    --cor-interruptor-ligado: var(--cor-motor);
 }

@@ -20,6 +20,15 @@
         return;
     }
 
+    // Deriva a URL base do módulo (Relatórios usa /extratus/...,
+    // Aburesi usa /extratus-aburesi/...) do action do form do
+    // interruptor, mesmo truque já usado em fila.js/gerar_relatorio.js —
+    // achado ao renomear esse arquivo (Rodada 13, nomenclatura): a
+    // cópia aburesi tinha essa URL fixa em "/extratus/..." (bug real,
+    // buscava as pastas do módulo ERRADO), agora corrigido na raiz.
+    var formInterruptor = document.getElementById("form-interruptor-motor");
+    var baseUrl = formInterruptor ? formInterruptor.action.replace(/\/alternar$/, "") : "/extratus/configuracoes-motor";
+
     var elementoAtual = document.getElementById("navegador-pastas-atual");
     var elementoLista = document.getElementById("navegador-pastas-lista");
     var botaoUsar = document.getElementById("navegador-pastas-usar");
@@ -28,7 +37,7 @@
     var caminhoAtual = "";
 
     function carregar(caminho) {
-        var url = "/extratus/motor/pastas" + (caminho ? "?caminho=" + encodeURIComponent(caminho) : "");
+        var url = baseUrl + "/pastas" + (caminho ? "?caminho=" + encodeURIComponent(caminho) : "");
 
         fetch(url)
             .then(function (resposta) { return resposta.json(); })

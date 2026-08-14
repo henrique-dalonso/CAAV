@@ -79,7 +79,7 @@ def test_aba_ferramentas_carrega(cliente_admin_logado):
     # própria vira um link direto pra ela, não mais uma tabela de texto
     # nem o bloco "Configuração do Extratus" (removido, virou redundante
     # com Configurações do Motor dentro da própria ferramenta).
-    assert "/extratus/historico" in resp.text
+    assert "/extratus/custos" in resp.text
     assert "Configuração do Extratus" not in resp.text
 
 
@@ -87,7 +87,7 @@ def test_aba_novo_usuario_carrega_formulario(cliente_admin_logado):
     resp = cliente_admin_logado.get("/admin/usuarios/novo")
 
     assert resp.status_code == 200
-    assert "Novo usuário" in resp.text
+    assert "Criar usuário" in resp.text
 
 
 def test_aba_usuarios_carrega_tabela(cliente_admin_logado):

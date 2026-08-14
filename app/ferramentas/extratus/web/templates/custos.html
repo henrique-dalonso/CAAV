@@ -34,7 +34,7 @@
 <section class="cartao-secao">
     <h2>Colaboradores</h2>
     <p class="aviso-discreto">Busque por nome e marque quem quiser destacar na tabela abaixo — também serve de glossário, ninguém precisa decorar login de ninguém.</p>
-    <input type="search" class="campo-busca campo-busca-colaborador" placeholder="Buscar colaborador por nome...">
+    <input type="search" class="campo-busca campo-busca-colaborador" placeholder="Buscar colaborador por nome..." aria-label="Buscar colaborador por nome">
     <ul class="lista-colaboradores">
         {% for pessoa in colaboradores %}
         <li class="colaborador-item" data-busca="{{ pessoa.nome | lower }}">
@@ -56,7 +56,7 @@
     {% if jobs %}
     <p class="aviso-discreto">Custo de IA é uma estimativa interna, não a fatura oficial. Marque colaboradores acima pra filtrar a tabela.</p>
     <div class="tabela-scroll">
-    <table class="tabela-historico">
+    <table class="tabela-custos">
         <thead>
             <tr>
                 <th>Quando</th>
@@ -131,4 +131,4 @@
 </section>
 {% endblock %}
 
-{% block js_pagina %}<script src="/extratus/static/historico.js?v={{ v }}" defer></script>{% endblock %}
+{% block js_pagina %}<script src="/extratus/static/custos.js?v={{ v }}" defer></script>{% endblock %}

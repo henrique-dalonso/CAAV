@@ -68,8 +68,11 @@
         });
     });
 
-    // Ver comentário equivalente em app/ferramentas/extratus/web/static/
-    // relatorios_prontos.js — botão "Marcar como revisado".
+    // Botão "Marcar como revisado" — dispensa a notificação de revisão
+    // do próprio relatório no sino (Henrique, 2026-08-13: só sai de lá
+    // com uma ação explícita, nunca sozinha). stopPropagation pra não
+    // deixar o clique "vazar" pro .relatorio-info-clicavel do card
+    // (que baixaria o relatório junto).
     document.querySelectorAll(".botao-marcar-revisado").forEach(function (botao) {
         botao.addEventListener("click", function (evento) {
             evento.stopPropagation();
@@ -85,7 +88,7 @@
     });
 
     // Deep-link do botão "Ir ao relatório" (Conferências manuais,
-    // web/routes/inbox.py, ?processo=...) — pré-preenche a busca, tira
+    // web/routes/gerar_relatorio.py, ?processo=...) — pré-preenche a busca, tira
     // "Solicitados por mim" (o relatório duplicado pode ser de outro
     // usuário) e dá scroll+destaque no item certo.
     var processoInicial = campoBusca.dataset.processoInicial;

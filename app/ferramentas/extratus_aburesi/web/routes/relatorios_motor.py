@@ -36,8 +36,8 @@ templates.env.globals["contagem_nav_relatorios"] = contagem_nav_relatorios
 templates.env.globals["contagem_nav_relatorios_motor"] = contagem_nav_relatorios_motor
 
 
-@router.get("/relatorios-finalizados")
-def pagina_relatorios_finalizados(
+@router.get("/relatorios-motor")
+def pagina_relatorios_motor(
     request: Request,
     usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus-aburesi")),
     processo: str | None = None,

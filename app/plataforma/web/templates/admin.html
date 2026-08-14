@@ -1,6 +1,13 @@
 {% extends "base.html" %}
 
-{% block titulo %}Administração — Centro de Experiência do Colaborador{% endblock %}
+{% set titulos_admin = {
+    "custos": "Custos",
+    "ferramentas": "Ferramentas",
+    "novo-usuario": "Criar usuário",
+    "usuarios": "Usuários",
+} %}
+
+{% block titulo %}{{ titulos_admin.get(aba_ativa, "Administração") }} — Administração — Centro de Experiência do Colaborador{% endblock %}
 {% block nome_pagina %}Centro de Experiência{% endblock %}
 {% block css_pagina %}
 <link rel="stylesheet" href="/static/admin.css?v={{ v }}">
@@ -85,7 +92,10 @@
                 </div>
                 <div class="admin-stat">
                     <strong>US$ {{ "%.2f"|format(custo_total) }}</strong>
-                    <span>custo de IA (total) <a href="/extratus/historico" class="link-suave">ver por colaborador &rarr;</a></span>
+                    <span>custo de IA (total, Relatórios + Aburesi) —
+                        <a href="/extratus/custos" class="link-suave">Relatórios</a> ·
+                        <a href="/extratus-aburesi/custos" class="link-suave">Aburesi</a>
+                    </span>
                 </div>
             </div>
         </section>
@@ -112,7 +122,7 @@
 
         {% elif aba_ativa == "novo-usuario" %}
         <section class="cartao-secao">
-            <h2>Novo usuário</h2>
+            <h2>Criar usuário</h2>
             <form action="/admin/usuarios" method="post" class="admin-form-usuario">
                 <div class="grupo-config">
                     <div class="grupo-config-cabecalho">

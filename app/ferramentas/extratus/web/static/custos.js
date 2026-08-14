@@ -4,7 +4,7 @@
     var campoBusca = document.querySelector(".campo-busca-colaborador");
     var itensColaborador = document.querySelectorAll(".colaborador-item");
     var checks = document.querySelectorAll(".colaborador-check");
-    var linhasTabela = document.querySelectorAll(".tabela-historico tbody tr");
+    var linhasTabela = document.querySelectorAll(".tabela-custos tbody tr");
 
     if (campoBusca) {
         campoBusca.addEventListener("input", function () {

@@ -4,11 +4,19 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 
-# A tela de admin ainda mostra métricas específicas do Extratus
-# diretamente, por ser a única ferramenta hoje. Quando existir uma segunda
-# ferramenta, isso deve virar algo genérico (cada ferramenta expõe suas
-# próprias métricas), em vez de importar direto de um app.ferramentas.X.
-from app.ferramentas.extratus.db.jobs import contar_por_status, somar_custo_por_usuario
+# A tela de admin ainda soma métricas direto das 2 ferramentas que já têm
+# Job/custo hoje, em vez de algo genérico onde cada ferramenta expõe suas
+# próprias métricas (não existe esse contrato ainda). Rodada 12,
+# 2026-08-13: a tela de Custos ficava cega ao Aburesi (só importava do
+# Extratus) — os dois entram aqui agora.
+from app.ferramentas.extratus.db.jobs import (
+    contar_por_status as _contar_por_status_extratus,
+    somar_custo_por_usuario as _somar_custo_por_usuario_extratus,
+)
+from app.ferramentas.extratus_aburesi.db.jobs import (
+    contar_por_status as _contar_por_status_aburesi,
+    somar_custo_por_usuario as _somar_custo_por_usuario_aburesi,
+)
 from app.plataforma.auth import gerar_hash_senha
 from app.plataforma.db.session import obter_sessao
 from app.plataforma.db.models import CARGO_COLABORADOR, CARGOS_VALIDOS, Ferramenta, Usuario
@@ -21,9 +29,9 @@ from app.plataforma.db.usuarios import (
     definir_ferramentas,
     desbloquear_usuario,
     excluir_usuario,
-    listar_ferramentas_admin_ids,
-    listar_ferramentas_fila_ids,
-    listar_ferramentas_liberadas_ids,
+    listar_ferramentas_admin_ids_por_usuario,
+    listar_ferramentas_fila_ids_por_usuario,
+    listar_ferramentas_liberadas_ids_por_usuario,
     listar_todos_usuarios,
 )
 from app.plataforma.web.auth import exigir_admin
@@ -82,7 +90,18 @@ def pagina_custos(
     sucesso: str | None = None,
 ):
     usuarios = listar_todos_usuarios()
-    custo_por_usuario = somar_custo_por_usuario()
+
+    metricas_extratus = _contar_por_status_extratus()
+    metricas_aburesi = _contar_por_status_aburesi()
+    metricas = {
+        chave: metricas_extratus.get(chave, 0) + metricas_aburesi.get(chave, 0)
+        for chave in set(metricas_extratus) | set(metricas_aburesi)
+    }
+
+    custo_total = (
+        sum(_somar_custo_por_usuario_extratus().values())
+        + sum(_somar_custo_por_usuario_aburesi().values())
+    )
 
     return templates.TemplateResponse(
         request,
@@ -91,8 +110,8 @@ def pagina_custos(
             **_contexto_base(usuario),
             "aba_ativa": "custos",
             "total_usuarios_ativos": sum(1 for u in usuarios if u.ativo),
-            "metricas": contar_por_status(),
-            "custo_total": sum(custo_por_usuario.values()),
+            "metricas": metricas,
+            "custo_total": custo_total,
             "erro": erro,
             "sucesso": sucesso,
         },
@@ -106,8 +125,8 @@ def pagina_custos(
 # toda ferramenta tem uma ainda (ex: Leitor de Publicações), então só
 # entram aqui as que já têm de verdade.
 URL_CUSTOS_POR_FERRAMENTA = {
-    "extratus": "/extratus/historico",
-    "extratus-aburesi": "/extratus-aburesi/historico",
+    "extratus": "/extratus/custos",
+    "extratus-aburesi": "/extratus-aburesi/custos",
 }
 
 
@@ -155,15 +174,16 @@ def pagina_usuarios(
     usuarios = listar_todos_usuarios()
     ferramentas = _listar_ferramentas()
 
-    ferramentas_por_usuario = {
-        u.id: listar_ferramentas_liberadas_ids(u.id) for u in usuarios
-    }
-    ferramentas_admin_por_usuario = {
-        u.id: listar_ferramentas_admin_ids(u.id) for u in usuarios
-    }
-    ferramentas_fila_por_usuario = {
-        u.id: listar_ferramentas_fila_ids(u.id) for u in usuarios
-    }
+    # 3 consultas no TOTAL (não 3 por usuário listado) — cada função já
+    # devolve um dict usuario_id -> set(ferramenta_id) pronto; .get com
+    # default vazio cobre o usuário sem nenhuma ferramenta liberada.
+    liberadas_bulk = listar_ferramentas_liberadas_ids_por_usuario()
+    admin_bulk = listar_ferramentas_admin_ids_por_usuario()
+    fila_bulk = listar_ferramentas_fila_ids_por_usuario()
+
+    ferramentas_por_usuario = {u.id: liberadas_bulk.get(u.id, set()) for u in usuarios}
+    ferramentas_admin_por_usuario = {u.id: admin_bulk.get(u.id, set()) for u in usuarios}
+    ferramentas_fila_por_usuario = {u.id: fila_bulk.get(u.id, set()) for u in usuarios}
 
     return templates.TemplateResponse(
         request,

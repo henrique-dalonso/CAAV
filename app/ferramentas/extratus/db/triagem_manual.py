@@ -32,7 +32,7 @@ STATUS_INCONSISTENCIA = {DUPLICADO_RELATORIO, DUPLICADO_EM_ANDAMENTO, NAO_ENCONT
 
 # Igual a NAO_ENCONTRADO na tela: nenhum processo foi detectado, então
 # Conferências exige digitar o número na mão pra Aprovar — ver
-# web/routes/inbox.py e web/static/inbox.js.
+# web/routes/gerar_relatorio.py e web/static/gerar_relatorio.js.
 STATUS_EXIGE_PROCESSO_MANUAL = {NAO_ENCONTRADO, FALHA_LEITURA}
 
 MENSAGENS_INCONSISTENCIA = {
@@ -72,7 +72,7 @@ def atualizar_apos_triagem(registro_id, status, processo_detectado, confianca_ni
 
     `origem_duplicado` ("motor" ou "manual") só é usado quando
     status=DUPLICADO_RELATORIO — diz pro botão "Ir ao relatório" (web/
-    routes/inbox.py) se o duplicado mora em "Relatórios do Motor" ou
+    routes/gerar_relatorio.py) se o duplicado mora em "Relatórios do Motor" ou
     "Seus Relatórios".
 
     Henrique, 2026-08-13: quando `status` é PROCESSANDO, essa gravação
@@ -273,6 +273,19 @@ def listar_erros_do_usuario(usuario_id):
             TriagemManual.status == ERRO,
         )
         return sessao.exec(consulta).all()
+
+
+def contar_registros_recentes_do_usuario(usuario_id, desde):
+    """Quantos arquivos esse usuário enviou (aceitos, viraram registro de
+    triagem) desde `desde` — usado pra limitar repetição na rota de
+    upload (duplo clique, várias abas, script), já que cada registro
+    aceito dispara uma chamada de IA cobrada."""
+    with obter_sessao() as sessao:
+        consulta = select(func.count()).select_from(TriagemManual).where(
+            TriagemManual.usuario_id == usuario_id,
+            TriagemManual.criado_em > desde,
+        )
+        return sessao.exec(consulta).one()
 
 
 def contar_inconsistencias_novas_do_usuario(usuario_id, desde):

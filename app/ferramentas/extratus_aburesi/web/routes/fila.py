@@ -7,6 +7,7 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 
 from app.ferramentas.extratus_aburesi.core.config_manager import carregar_config
 from app.ferramentas.extratus_aburesi.core.pdf_manager import listar_pdfs
+from app.ferramentas.extratus_aburesi.core.processo_detector import PADRAO_CNJ as PADRAO_CNJ_TEXTO
 from app.ferramentas.extratus_aburesi.db.checagem_fila import (
     APROVADO,
     MENSAGENS_INCONSISTENCIA,
@@ -19,6 +20,7 @@ from app.ferramentas.extratus_aburesi.db.checagem_fila import (
     listar_inconsistencias,
     obter_registro,
     obter_registro_por_nome,
+    registrar_upload,
 )
 from app.ferramentas.extratus_aburesi.db.conferencias import registrar_decisao
 from app.ferramentas.extratus_aburesi.db.lotes import listar_arquivos_ja_reivindicados
@@ -36,11 +38,12 @@ from app.plataforma.web.auth import exigir_acesso_fila_motor
 from app.plataforma.web.templates_util import criar_templates
 
 
-# Mesmo padrão de número de processo (CNJ) que o resto do sistema já
-# reconhece (ver core/processo_detector.py) — usado aqui só pra validar
-# o número digitado à mão no painel de Conferências antes de liberar um
-# arquivo marcado como "processo não encontrado".
-PADRAO_CNJ = re.compile(r"^\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}$")
+# Mesmo padrão de número de processo (CNJ) que core/processo_detector.py
+# já define — importado de lá (não retipado), só ancorado com ^...$ e
+# compilado aqui porque esse uso é diferente (validar que o texto INTEIRO
+# digitado à mão no painel de Conferências é um número CNJ válido, não
+# procurar ocorrências soltas dentro de um texto maior).
+PADRAO_CNJ = re.compile(f"^{PADRAO_CNJ_TEXTO}$")
 
 
 router = APIRouter(dependencies=[Depends(exigir_acesso_fila_motor("extratus-aburesi"))])
@@ -52,7 +55,7 @@ PLATAFORMA_TEMPLATES_DIR = (
     Path(__file__).resolve().parents[4] / "plataforma" / "web" / "templates"
 )
 templates = criar_templates([TEMPLATES_DIR, PLATAFORMA_TEMPLATES_DIR])
-# Badges "+N" da navegação — ver mesmo comentário em inbox.py. Cuidado:
+# Badges "+N" da navegação — ver mesmo comentário em gerar_relatorio.py. Cuidado:
 # essa página TAMBÉM tem seu próprio "total_pendentes" no contexto (a
 # fila do MOTOR, sem relação nenhuma com isso) — por isso as funções
 # globais têm nome bem diferente (contagem_nav_*), pra nunca colidir com
@@ -196,7 +199,11 @@ def estado_fila():
 
 
 @router.post("/fila/upload")
-async def enviar_pdfs(request: Request, arquivos: list[UploadFile] = File(...)):
+async def enviar_pdfs(
+    request: Request,
+    arquivos: list[UploadFile] = File(...),
+    usuario: Usuario = Depends(exigir_acesso_fila_motor("extratus-aburesi")),
+):
     config = carregar_config()
     pasta_entrada = Path(config.get("motor_pasta_entrada", "motor_entrada_pdfs"))
     pasta_entrada.mkdir(parents=True, exist_ok=True)
@@ -231,6 +238,7 @@ async def enviar_pdfs(request: Request, arquivos: list[UploadFile] = File(...)):
             continue
 
         caminho_destino.write_bytes(conteudo)
+        registrar_upload(nome_seguro, usuario.id)
         enviados += 1
 
     # A Fila do motor envia um arquivo por requisição (fila.js), pra um
@@ -322,7 +330,10 @@ def aprovar_conferencia(
     tipo_original = registro.status
     nome_arquivo = registro.nome_arquivo
 
-    aprovar_manualmente(registro_id, processo_manual=processo_informado)
+    aprovado = aprovar_manualmente(registro_id, processo_manual=processo_informado)
+    if not aprovado:
+        return _redirecionar(erro="Essa pendência de conferência não existe mais (o arquivo já saiu da fila).")
+
     registrar_decisao(nome_arquivo, tipo_original, "aprovado", usuario.id, processo_informado=processo_informado)
 
     return _redirecionar(sucesso=f'"{nome_arquivo}" liberado pra fila do Motor.')

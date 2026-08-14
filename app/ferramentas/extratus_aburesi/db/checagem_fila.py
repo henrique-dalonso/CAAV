@@ -1,8 +1,8 @@
 from datetime import datetime
 
-from sqlmodel import func, select
+from sqlmodel import func, select, update
 
-from app.ferramentas.extratus_aburesi.db.models import ChecagemFila, ItemLoteMotor, LoteMotor
+from app.ferramentas.extratus_aburesi.db.models import ChecagemFila, ItemLoteMotor, LoteMotor, UploadFilaMotor
 from app.plataforma.db.session import obter_sessao
 from app.plataforma.web.eventos_sse import avisar_mudanca
 
@@ -29,6 +29,14 @@ MENSAGENS_INCONSISTENCIA = {
     DUPLICADO_EM_ANDAMENTO: "esse processo já está sendo processado por outro arquivo na fila",
     NAO_ENCONTRADO: "não foi possível identificar o número do processo",
 }
+
+
+def registrar_upload(nome_arquivo, usuario_id):
+    """Ver docstring equivalente em app/ferramentas/extratus/db/
+    checagem_fila.py (Extratus - Relatórios) — mesma lógica."""
+    with obter_sessao() as sessao:
+        sessao.add(UploadFilaMotor(nome_arquivo=nome_arquivo, usuario_id=usuario_id))
+        sessao.commit()
 
 
 def sincronizar_registros(nomes_no_disco):
@@ -171,23 +179,26 @@ def aprovar_manualmente(registro_id, processo_manual=None):
     """Ver docstring equivalente em app/ferramentas/extratus/db/
     checagem_fila.py (Extratus - Relatórios) — mesma lógica."""
     with obter_sessao() as sessao:
-        registro = sessao.get(ChecagemFila, registro_id)
+        valores = {
+            "status": APROVADO,
+            "confianca_nivel": "revisao",
+            "confianca_motivo": "Liberado manualmente via Conferências, por cima de uma inconsistência da triagem.",
+            "atualizado_em": datetime.now(),
+        }
+        if processo_manual:
+            valores["processo_detectado"] = processo_manual
 
-        if not registro:
+        resultado = sessao.exec(
+            update(ChecagemFila)
+            .where(ChecagemFila.id == registro_id, ChecagemFila.status.in_(STATUS_INCONSISTENCIA))
+            .values(**valores)
+        )
+        sessao.commit()
+
+        if resultado.rowcount == 0:
             return None
 
-        if processo_manual:
-            registro.processo_detectado = processo_manual
-
-        registro.status = APROVADO
-        registro.confianca_nivel = "revisao"
-        registro.confianca_motivo = "Liberado manualmente via Conferências, por cima de uma inconsistência da triagem."
-        registro.atualizado_em = datetime.now()
-
-        sessao.add(registro)
-        sessao.commit()
-        sessao.refresh(registro)
-
+        registro = sessao.get(ChecagemFila, registro_id)
         avisar_mudanca()
 
         return registro

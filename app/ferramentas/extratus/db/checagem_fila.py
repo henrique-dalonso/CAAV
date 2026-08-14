@@ -1,8 +1,8 @@
 from datetime import datetime
 
-from sqlmodel import func, select
+from sqlmodel import func, select, update
 
-from app.ferramentas.extratus.db.models import ChecagemFila, ItemLoteMotor, LoteMotor
+from app.ferramentas.extratus.db.models import ChecagemFila, ItemLoteMotor, LoteMotor, UploadFilaMotor
 from app.plataforma.db.session import obter_sessao
 from app.plataforma.web.eventos_sse import avisar_mudanca
 
@@ -29,6 +29,15 @@ MENSAGENS_INCONSISTENCIA = {
     DUPLICADO_EM_ANDAMENTO: "esse processo já está sendo processado por outro arquivo na fila",
     NAO_ENCONTRADO: "não foi possível identificar o número do processo",
 }
+
+
+def registrar_upload(nome_arquivo, usuario_id):
+    """Grava PRA SEMPRE quem enviou esse arquivo pela tela da Fila do
+    Motor — ver docstring de UploadFilaMotor (db/models.py) pro porquê
+    de ser uma tabela própria, não um campo em ChecagemFila."""
+    with obter_sessao() as sessao:
+        sessao.add(UploadFilaMotor(nome_arquivo=nome_arquivo, usuario_id=usuario_id))
+        sessao.commit()
 
 
 def sincronizar_registros(nomes_no_disco):
@@ -201,25 +210,34 @@ def aprovar_manualmente(registro_id, processo_manual=None):
     automático sempre merece um novo par de olhos no relatório final,
     nunca deveria virar "alta confiança" silenciosamente. O motivo vira
     rastreável no Job final (motivo_confianca), já que quem chama
-    registra a decisão de verdade em RegistroConferencia (db/conferencias.py)."""
-    with obter_sessao() as sessao:
-        registro = sessao.get(ChecagemFila, registro_id)
+    registra a decisão de verdade em RegistroConferencia (db/conferencias.py).
 
-        if not registro:
+    UPDATE condicional (só grava se o registro ainda estiver numa
+    inconsistência) em vez de ler-e-gravar — trava contra clique duplo
+    em "Aprovar": a segunda chamada não acha mais nenhuma linha pra
+    atualizar (rowcount 0), devolve None, e quem chama sabe não
+    duplicar o registro de auditoria (RegistroConferencia)."""
+    with obter_sessao() as sessao:
+        valores = {
+            "status": APROVADO,
+            "confianca_nivel": "revisao",
+            "confianca_motivo": "Liberado manualmente via Conferências, por cima de uma inconsistência da triagem.",
+            "atualizado_em": datetime.now(),
+        }
+        if processo_manual:
+            valores["processo_detectado"] = processo_manual
+
+        resultado = sessao.exec(
+            update(ChecagemFila)
+            .where(ChecagemFila.id == registro_id, ChecagemFila.status.in_(STATUS_INCONSISTENCIA))
+            .values(**valores)
+        )
+        sessao.commit()
+
+        if resultado.rowcount == 0:
             return None
 
-        if processo_manual:
-            registro.processo_detectado = processo_manual
-
-        registro.status = APROVADO
-        registro.confianca_nivel = "revisao"
-        registro.confianca_motivo = "Liberado manualmente via Conferências, por cima de uma inconsistência da triagem."
-        registro.atualizado_em = datetime.now()
-
-        sessao.add(registro)
-        sessao.commit()
-        sessao.refresh(registro)
-
+        registro = sessao.get(ChecagemFila, registro_id)
         avisar_mudanca()
 
         return registro

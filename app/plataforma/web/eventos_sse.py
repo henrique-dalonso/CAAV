@@ -1,4 +1,5 @@
 import asyncio
+import threading
 
 
 # Hub de Server-Sent Events pro sininho — Henrique, 2026-08-08: "não da
@@ -17,6 +18,16 @@ import asyncio
 # raciocínio parecido sobre escala.
 _conexoes: list[asyncio.Queue] = []
 
+# threading.Lock (não asyncio.Lock) de propósito — essa lista é mexida
+# tanto pelo event loop async das rotas SSE quanto pelos watchers do
+# Motor/Checagem, que rodam em thread OS separada (asyncio.to_thread).
+# Um lock de asyncio só protege contra outras coroutines do MESMO loop,
+# não contra outra thread real — sem essa trava, um registrar/remover
+# concorrente com um avisar_mudanca() rodando no watcher podia mudar o
+# tamanho da lista no meio do "for fila in _conexoes" (Rodada 12, achado
+# de qualidade de código).
+_trava_conexoes = threading.Lock()
+
 
 def registrar_conexao() -> asyncio.Queue:
     # maxsize pequeno de propósito: isso é só um sinal "confira de novo",
@@ -25,13 +36,15 @@ def registrar_conexao() -> asyncio.Queue:
     # avisar_mudanca() simplesmente descarta o excesso (ver QueueFull
     # abaixo) em vez de crescer sem limite.
     fila: asyncio.Queue = asyncio.Queue(maxsize=10)
-    _conexoes.append(fila)
+    with _trava_conexoes:
+        _conexoes.append(fila)
     return fila
 
 
 def remover_conexao(fila: asyncio.Queue) -> None:
-    if fila in _conexoes:
-        _conexoes.remove(fila)
+    with _trava_conexoes:
+        if fila in _conexoes:
+            _conexoes.remove(fila)
 
 
 def avisar_mudanca() -> None:
@@ -41,7 +54,10 @@ def avisar_mudanca() -> None:
     decisão no painel de Conferências (aprovar/descartar/descartar
     todas/remover pendente). Acorda toda conexão SSE aberta pra buscar
     o estado real na hora, em vez de esperar o próximo poll."""
-    for fila in _conexoes:
+    with _trava_conexoes:
+        filas = list(_conexoes)
+
+    for fila in filas:
         try:
             fila.put_nowait(None)
         except asyncio.QueueFull:

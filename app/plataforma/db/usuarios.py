@@ -1,6 +1,6 @@
 from typing import Optional
 
-from sqlmodel import delete, select
+from sqlmodel import delete, select, update
 
 from datetime import datetime
 
@@ -134,6 +134,36 @@ def listar_ferramentas_admin_ids(usuario_id: int):
             UsuarioFerramenta.admin_ferramenta == True,  # noqa: E712
         )
         return set(sessao.exec(consulta).all())
+
+
+def _agrupar_ferramenta_ids_por_usuario(condicao_extra=None):
+    """Mesma ideia das 3 funções de um usuário só acima (liberadas/admin/
+    fila), mas pra TODOS de uma vez — 1 consulta no total em vez de 1 por
+    usuário. Usada pela tela de Usuários do admin (Rodada 12, achado de
+    qualidade de código: 3 consultas × N usuários listados, virou 3 no
+    total)."""
+    with obter_sessao() as sessao:
+        consulta = select(UsuarioFerramenta.usuario_id, UsuarioFerramenta.ferramenta_id)
+        if condicao_extra is not None:
+            consulta = consulta.where(condicao_extra)
+        linhas = sessao.exec(consulta).all()
+
+    resultado: dict[int, set[int]] = {}
+    for usuario_id, ferramenta_id in linhas:
+        resultado.setdefault(usuario_id, set()).add(ferramenta_id)
+    return resultado
+
+
+def listar_ferramentas_liberadas_ids_por_usuario():
+    return _agrupar_ferramenta_ids_por_usuario()
+
+
+def listar_ferramentas_admin_ids_por_usuario():
+    return _agrupar_ferramenta_ids_por_usuario(UsuarioFerramenta.admin_ferramenta == True)  # noqa: E712
+
+
+def listar_ferramentas_fila_ids_por_usuario():
+    return _agrupar_ferramenta_ids_por_usuario(UsuarioFerramenta.fila_motor == True)  # noqa: E712
 
 
 def usuario_tem_acesso_fila_motor(usuario: Usuario, slug_ferramenta: str) -> bool:
@@ -481,12 +511,20 @@ def atualizar_senha(usuario_id, nova_senha_hash):
 def incrementar_tentativas_falhas(usuario_id):
     """Soma 1 nas tentativas de senha erradas SEGUIDAS e devolve o novo
     total — quem decide se isso já é motivo de bloqueio é o chamador
-    (auth.py), que conhece o limite (LIMITE_TENTATIVAS_USUARIO)."""
+    (auth.py), que conhece o limite (LIMITE_TENTATIVAS_USUARIO).
+
+    UPDATE atômico (incremento feito pelo próprio banco, não
+    ler-e-gravar em Python) — duas tentativas erradas simultâneas na
+    mesma conta não podem mais "perder" um incremento uma por cima da
+    outra."""
     with obter_sessao() as sessao:
-        usuario = sessao.get(Usuario, usuario_id)
-        usuario.tentativas_login_falhas += 1
-        sessao.add(usuario)
+        sessao.exec(
+            update(Usuario)
+            .where(Usuario.id == usuario_id)
+            .values(tentativas_login_falhas=Usuario.tentativas_login_falhas + 1)
+        )
         sessao.commit()
+        usuario = sessao.get(Usuario, usuario_id)
         return usuario.tentativas_login_falhas
 
 

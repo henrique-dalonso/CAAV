@@ -11,7 +11,7 @@ from app.plataforma.web.templates_util import criar_templates
 
 
 # Ver comentário equivalente em app/ferramentas/extratus/web/routes/
-# historico.py (Extratus - Relatórios) — mesma lógica.
+# custos.py (Extratus - Relatórios) — mesma lógica.
 router = APIRouter(dependencies=[Depends(exigir_admin)])
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
@@ -23,8 +23,8 @@ templates.env.filters["rotulo_status"] = rotulo_status
 templates.env.filters["rotulo_erro"] = rotulo_erro
 
 
-@router.get("/historico")
-def pagina_historico(
+@router.get("/custos")
+def pagina_custos(
     request: Request,
     usuario: Usuario = Depends(exigir_admin),
 ):
@@ -54,7 +54,7 @@ def pagina_historico(
 
     return templates.TemplateResponse(
         request,
-        "historico.html",
+        "custos.html",
         {
             "usuario": usuario,
             "jobs": jobs,

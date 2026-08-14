@@ -183,8 +183,12 @@ def contar_por_status():
     contagem = {"sucesso": 0, "revisao": 0, "erro": 0}
 
     with obter_sessao() as sessao:
-        for job in sessao.exec(select(Job)).all():
-            contagem[job.status] = contagem.get(job.status, 0) + 1
+        linhas = sessao.exec(
+            select(Job.status, func.count()).group_by(Job.status)
+        ).all()
+
+    for status, total in linhas:
+        contagem[status] = total
 
     return contagem
 
@@ -235,15 +239,14 @@ def contar_relatorios_motor_novos(desde):
 
 def somar_custo_por_usuario():
     """Soma o custo estimado de IA por usuário — pra tela de custos do
-    admin, ver quanto cada login gastou e o total do sistema."""
-    totais = {}
-
+    admin, ver quanto cada login gastou e o total do sistema. Só soma
+    Job com custo > 0 (igual ao comportamento antigo, que pulava custo
+    None/0) — um usuário sem nenhum custo real não aparece no dicionário."""
     with obter_sessao() as sessao:
-        for job in sessao.exec(select(Job)).all():
-            if not job.custo_estimado_usd:
-                continue
+        linhas = sessao.exec(
+            select(Job.usuario_id, func.sum(Job.custo_estimado_usd))
+            .where(Job.custo_estimado_usd > 0)
+            .group_by(Job.usuario_id)
+        ).all()
 
-            chave = job.usuario_id
-            totais[chave] = totais.get(chave, 0.0) + job.custo_estimado_usd
-
-    return totais
+    return {usuario_id: total for usuario_id, total in linhas}

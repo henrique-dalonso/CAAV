@@ -1,5 +1,8 @@
+import re
+
 from sqlmodel import SQLModel, create_engine, Session
 
+from app.plataforma.logger import registrar_log
 from app.plataforma.paths import PROJECT_ROOT
 
 # Garante que TODAS as tabelas (de todas as ferramentas) sejam registradas
@@ -26,6 +29,14 @@ COLUNAS_PENDENTES = {
         "tentativas_login_falhas": "INTEGER DEFAULT 0",
         "bloqueado": "BOOLEAN DEFAULT 0",
         "bloqueado_em": "TIMESTAMP",
+        # As 2 abaixo foram adicionadas ao modelo antes desse mecanismo de
+        # migração existir (02-03/08) e nunca tinham sido registradas aqui —
+        # sem efeito na base atual (já existem), mas restaurar um backup
+        # anterior a essa data, ou subir um ambiente novo a partir de uma
+        # cópia velha, quebrava sem elas. Valores batem com
+        # TEMA_SISTEMA/COR_PERFIL_PADRAO em db/models.py.
+        "tema": "VARCHAR DEFAULT 'sistema'",
+        "cor_perfil": "VARCHAR DEFAULT '#4f46e5'",
     },
     "ferramenta": {
         "cor_acento": "VARCHAR",
@@ -34,6 +45,8 @@ COLUNAS_PENDENTES = {
         "cor_acento_escuro": "VARCHAR",
         "cor_acento_hover_escuro": "VARCHAR",
         "cor_acento_fraco_escuro": "VARCHAR",
+        # Mesma retroatividade do usuario.tema/cor_perfil acima.
+        "suporta_fila_motor": "BOOLEAN DEFAULT 0",
     },
     "job": {
         "notificacao_resolvida": "BOOLEAN DEFAULT 0",
@@ -46,6 +59,11 @@ COLUNAS_PENDENTES = {
     },
     "triagemmanual_aburesi": {
         "origem_duplicado": "VARCHAR",
+    },
+    "usuarioferramenta": {
+        # Mesma retroatividade do usuario.tema/cor_perfil acima.
+        "admin_ferramenta": "BOOLEAN DEFAULT 0",
+        "fila_motor": "BOOLEAN DEFAULT 0",
     },
 }
 
@@ -61,6 +79,7 @@ def _garantir_colunas(engine):
             for nome, tipo in colunas.items():
                 if nome not in existentes:
                     conexao.exec_driver_sql(f"ALTER TABLE {tabela} ADD COLUMN {nome} {tipo}")
+                    registrar_log(f"Migração: coluna '{nome}' adicionada à tabela '{tabela}'.")
 
         conexao.commit()
 
@@ -85,10 +104,25 @@ INDICES_UNICOS_PARCIAIS = [
 ]
 
 
+_PADRAO_NOME_INDICE = re.compile(r"CREATE (?:UNIQUE )?INDEX IF NOT EXISTS (\w+)")
+
+
 def _garantir_indices(engine):
     with engine.connect() as conexao:
+        indices_existentes = {
+            linha[0]
+            for linha in conexao.exec_driver_sql(
+                "SELECT name FROM sqlite_master WHERE type = 'index'"
+            )
+        }
+
         for sql in INDICES_UNICOS_PARCIAIS:
+            nome = _PADRAO_NOME_INDICE.match(sql).group(1)
             conexao.exec_driver_sql(sql)
+
+            if nome not in indices_existentes:
+                registrar_log(f"Migração: índice '{nome}' criado.")
+
         conexao.commit()
 
 
