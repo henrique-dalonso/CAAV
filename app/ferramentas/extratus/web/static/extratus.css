@@ -312,6 +312,22 @@ html[data-theme="escuro"] .aba .contagem-aba-revisao { background: #332b0f; colo
     background: #16a34a;
 }
 
+/* Azul pulsando = ainda em processamento de verdade (Motor rodando o
+   lote, ou fluxo manual gerando o relatório) — antes usava a MESMA cor
+   verde do "concluído", confundindo as duas coisas (Henrique,
+   2026-08-14: "quando os casos estiverem sendo processados... a
+   bolinha deve ficar de outra cor... azul pulsando"). Verde continua
+   reservado só pra quando já terminou de verdade. */
+@keyframes pulsar-processando {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+}
+
+.bolinha-azul {
+    background: #2563eb;
+    animation: pulsar-processando 1.4s ease-in-out infinite;
+}
+
 /* Vermelha = a checagem achou uma inconsistência de verdade e está
    esperando decisão humana no painel de Conferências — distinta da
    laranja de propósito (Henrique, 2026-08-07: sem essa distinção "não

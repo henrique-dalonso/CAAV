@@ -70,7 +70,22 @@ def test_erro_do_motor_vira_notificacao(limpar_notificacoes_teste):
 
     assert achado is not None
     assert achado["tipo"] == "erro"
-    assert achado["link"] == "/extratus/erros"
+    assert achado["link"] == "/extratus/relatorios-motor"
+
+
+def test_erro_do_motor_com_processo_vira_notificacao_com_deep_link(limpar_notificacoes_teste):
+    # Achado 2026-08-13: o link precisa levar direto pro item certo (o
+    # mesmo mecanismo de "Ir ao relatório", ?processo=..., que já troca
+    # de aba sozinho e dá scroll/destaque em relatorios_motor.js) — não
+    # só pra página em branco.
+    nome = f"{PREFIXO_TESTE}erro_motor_com_processo.pdf"
+    registrar_erro(nome, "0000000-00.2026.8.00.9999", "erro_ia", "processo grande demais", usuario_id=None)
+
+    itens = listar_notificacoes()
+    achado = next((i for i in itens if nome in i["mensagem"]), None)
+
+    assert achado is not None
+    assert achado["link"] == "/extratus/relatorios-motor?processo=0000000-00.2026.8.00.9999"
 
 
 def test_erro_do_fluxo_manual_nao_vira_notificacao(limpar_notificacoes_teste):

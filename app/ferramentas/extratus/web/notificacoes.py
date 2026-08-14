@@ -1,3 +1,5 @@
+from urllib.parse import quote
+
 from app.ferramentas.extratus.db.checagem_fila import (
     MENSAGENS_INCONSISTENCIA,
     listar_inconsistencias,
@@ -41,10 +43,22 @@ def listar_notificacoes():
 
     for job in listar_erros_nao_resolvidos_do_motor():
         motivo = job.erro_mensagem or job.tipo_erro or "falha desconhecida"
+        # Achado 2026-08-13: apontava pra "/extratus/erros", uma tela
+        # dedicada que nunca chegou a ser construída (404 sempre) — manda
+        # pra "Relatórios do Motor" (já mostra esses erros na aba "Erro").
+        # Com "?processo=..." reaproveita o MESMO mecanismo de deep-link
+        # que "Ir ao relatório" já usa ali (relatorios_motor.js) — troca
+        # pra aba certa sozinho e dá scroll/destaque no item, sem precisar
+        # de nenhum parâmetro novo de "aba". Sem processo detectado (ex:
+        # erro_pdf antes da detecção rodar), cai na página normal.
+        link = "/extratus/relatorios-motor"
+        if job.processo:
+            link += "?processo=" + quote(job.processo)
+
         notificacoes.append({
             "mensagem": f'"{job.arquivo_pdf}": erro ao processar ({motivo})',
             "tipo": "erro",
-            "link": "/extratus/erros",
+            "link": link,
         })
 
     return notificacoes

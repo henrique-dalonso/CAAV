@@ -241,6 +241,17 @@ def contar_registros_recentes_do_usuario(usuario_id, desde):
         return sessao.exec(consulta).one()
 
 
+def contar_inconsistencias_ativas_do_usuario(usuario_id):
+    """Ver docstring equivalente em app/ferramentas/extratus/db/
+    triagem_manual.py (Extratus - Relatórios) — mesma lógica."""
+    with obter_sessao() as sessao:
+        consulta = select(func.count()).select_from(TriagemManual).where(
+            TriagemManual.usuario_id == usuario_id,
+            TriagemManual.status.in_(STATUS_INCONSISTENCIA),
+        )
+        return sessao.exec(consulta).one()
+
+
 def contar_inconsistencias_novas_do_usuario(usuario_id, desde):
     """Ver docstring equivalente em app/ferramentas/extratus/db/
     triagem_manual.py (Extratus - Relatórios) — mesma lógica."""

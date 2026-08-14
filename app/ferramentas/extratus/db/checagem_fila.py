@@ -176,6 +176,21 @@ def listar_inconsistencias():
         return sessao.exec(consulta).all()
 
 
+def contar_inconsistencias_ativas():
+    """Quantas Conferências da Fila do Motor estão pendentes AGORA, sem
+    filtro de tempo — alimenta o badge "+N" da aba. Henrique, 2026-08-13:
+    "não pode sumir só de entrar [na aba], permanece até alguém aprovar
+    ou negar" — diferente de contar_inconsistencias_novas (abaixo), que
+    zera ao visitar a aba (pensada originalmente pra esse badge, mas o
+    comportamento certo pra Conferência é ficar ligado até resolver de
+    verdade, igual já vale pro sininho de notificações)."""
+    with obter_sessao() as sessao:
+        consulta = select(func.count()).select_from(ChecagemFila).where(
+            ChecagemFila.status.in_(STATUS_INCONSISTENCIA)
+        )
+        return sessao.exec(consulta).one()
+
+
 def contar_inconsistencias_novas(desde):
     """Quantas Conferências da Fila do Motor (compartilhada, não é por
     usuário) surgiram desde `desde` — alimenta o badge "+N" (cor de

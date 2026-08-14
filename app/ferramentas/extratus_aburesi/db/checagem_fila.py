@@ -164,6 +164,16 @@ def listar_inconsistencias():
         return sessao.exec(consulta).all()
 
 
+def contar_inconsistencias_ativas():
+    """Ver docstring equivalente em app/ferramentas/extratus/db/
+    checagem_fila.py (Extratus - Relatórios) — mesma lógica."""
+    with obter_sessao() as sessao:
+        consulta = select(func.count()).select_from(ChecagemFila).where(
+            ChecagemFila.status.in_(STATUS_INCONSISTENCIA)
+        )
+        return sessao.exec(consulta).one()
+
+
 def contar_inconsistencias_novas(desde):
     """Ver docstring equivalente em app/ferramentas/extratus/db/
     checagem_fila.py (Extratus - Relatórios) — mesma lógica."""

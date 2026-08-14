@@ -341,7 +341,7 @@
 
             li.appendChild(criarBotaoDispensar(item.id));
         } else {
-            bolinha.classList.add("bolinha-verde");
+            bolinha.classList.add("bolinha-azul");
             bolinha.dataset.dica = "Gerando relatório";
             bolinha.setAttribute("aria-label", "Gerando relatório");
         }

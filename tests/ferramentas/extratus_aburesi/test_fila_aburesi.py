@@ -9,6 +9,7 @@ from app.ferramentas.extratus_aburesi.db.checagem_fila import (
     DUPLICADO_RELATORIO,
     NAO_ENCONTRADO,
     PENDENTE,
+    descartar,
     obter_registro,
 )
 from app.ferramentas.extratus_aburesi.db.models import ChecagemFila, RegistroConferencia
@@ -302,16 +303,25 @@ def test_descartar_conferencia_registro_inexistente_da_erro(cliente_logado):
     assert "erro=" in resp.headers["location"]
 
 
-def test_pagina_fila_mostra_badge_ambar_e_zera_ao_revisitar(cliente_logado, limpar_conferencia_teste):
+def test_pagina_fila_mostra_badge_ambar_ate_resolver(cliente_logado, limpar_conferencia_teste):
     # Ver comentário equivalente em tests/ferramentas/extratus/test_fila.py
-    # — mesma lógica. _criar_checagem já grava direto com o status
-    # pedido (atualizado_em nasce "agora"), então já conta como novo.
-    _criar_checagem(f"{PREFIXO_TESTE}badge_ambar.pdf", NAO_ENCONTRADO)
+    # — mesma lógica.
+    registro = _criar_checagem(f"{PREFIXO_TESTE}badge_ambar.pdf", NAO_ENCONTRADO)
+
+    # Texto exato do badge nesse tab específico (não só a classe CSS —
+    # ver comentário equivalente em tests/ferramentas/extratus/test_fila.py).
+    badge_fila_motor = 'Fila do Motor <span class="contagem-aba contagem-aba-revisao">+1</span>'
 
     primeira_visita = cliente_logado.get("/extratus-aburesi/fila")
     assert primeira_visita.status_code == 200
-    assert "contagem-aba-revisao" in primeira_visita.text
+    assert badge_fila_motor in primeira_visita.text
 
     segunda_visita = cliente_logado.get("/extratus-aburesi/fila")
     assert segunda_visita.status_code == 200
-    assert "contagem-aba-revisao" not in segunda_visita.text
+    assert badge_fila_motor in segunda_visita.text
+
+    descartar(registro.id)
+
+    depois_de_resolver = cliente_logado.get("/extratus-aburesi/fila")
+    assert depois_de_resolver.status_code == 200
+    assert badge_fila_motor not in depois_de_resolver.text

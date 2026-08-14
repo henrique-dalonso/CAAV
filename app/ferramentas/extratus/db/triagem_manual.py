@@ -288,6 +288,23 @@ def contar_registros_recentes_do_usuario(usuario_id, desde):
         return sessao.exec(consulta).one()
 
 
+def contar_inconsistencias_ativas_do_usuario(usuario_id):
+    """Quantas Conferências do PRÓPRIO usuário estão pendentes AGORA, sem
+    filtro de tempo — alimenta o badge "+N" da aba "Gerar seu Relatório".
+    Henrique, 2026-08-13: "não pode sumir só de entrar [na aba],
+    permanece até alguém aprovar ou negar" — diferente de
+    contar_inconsistencias_novas_do_usuario (abaixo), que zera ao visitar
+    a aba (pensada originalmente pra esse badge, mas o comportamento
+    certo pra Conferência é ficar ligado até resolver de verdade, igual
+    já vale pro sininho de notificações)."""
+    with obter_sessao() as sessao:
+        consulta = select(func.count()).select_from(TriagemManual).where(
+            TriagemManual.usuario_id == usuario_id,
+            TriagemManual.status.in_(STATUS_INCONSISTENCIA),
+        )
+        return sessao.exec(consulta).one()
+
+
 def contar_inconsistencias_novas_do_usuario(usuario_id, desde):
     """Quantas Conferências do PRÓPRIO usuário (inconsistência esperando
     decisão em "Gerar seu Relatório") surgiram desde `desde` — alimenta o

@@ -292,6 +292,19 @@ html[data-theme="escuro"] .aba .contagem-aba-revisao { background: #332b0f; colo
     background: #16a34a;
 }
 
+/* Azul pulsando = ainda em processamento de verdade — ver comentário
+   equivalente em app/ferramentas/extratus/web/static/extratus.css
+   (Extratus - Relatórios), mesma lógica. */
+@keyframes pulsar-processando {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+}
+
+.bolinha-azul {
+    background: #2563eb;
+    animation: pulsar-processando 1.4s ease-in-out infinite;
+}
+
 /* Vermelha = a checagem achou uma inconsistência de verdade e está
    esperando decisão humana no painel de Conferências — distinta da
    laranja de propósito (Henrique, 2026-08-07: sem essa distinção "não

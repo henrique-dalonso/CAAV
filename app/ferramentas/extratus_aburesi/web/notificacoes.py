@@ -1,3 +1,5 @@
+from urllib.parse import quote
+
 from app.ferramentas.extratus_aburesi.db.checagem_fila import (
     MENSAGENS_INCONSISTENCIA,
     listar_inconsistencias,
@@ -29,10 +31,16 @@ def listar_notificacoes():
 
     for job in listar_erros_nao_resolvidos_do_motor():
         motivo = job.erro_mensagem or job.tipo_erro or "falha desconhecida"
+        # Ver comentário equivalente em app/ferramentas/extratus/web/
+        # notificacoes.py (Extratus - Relatórios) — mesma lógica.
+        link = "/extratus-aburesi/relatorios-motor"
+        if job.processo:
+            link += "?processo=" + quote(job.processo)
+
         notificacoes.append({
             "mensagem": f'"{job.arquivo_pdf}": erro ao processar ({motivo})',
             "tipo": "erro",
-            "link": "/extratus-aburesi/erros",
+            "link": link,
         })
 
     return notificacoes

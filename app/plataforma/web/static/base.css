@@ -1643,6 +1643,15 @@ html[data-theme="escuro"] .selo-roxo {
     border-bottom-color: var(--cor-acento);
 }
 
+/* "Conferências" virou "Conferências Motor" (Henrique, 2026-08-14: deixar
+   explícito que essa aba é só do Motor, não de Conferências em geral) —
+   cada palavra na própria linha, centralizada, em vez de uma linha só
+   larga que desalinharia com "Sistema"/"Minhas" ao lado. */
+.aba-notificacoes-duas-linhas {
+    text-align: center;
+    line-height: 1.3;
+}
+
 /* Contador ao lado do título de cada aba do sininho — mesma ideia do
    .contagem-aba das abas "Gerar relatórios"/"Relatórios" de cada
    ferramenta, mas com a cor da categoria em vez de neutra (Henrique,

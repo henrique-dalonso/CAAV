@@ -736,7 +736,7 @@
     }
 
     function classeBolinha(item) {
-        if (item.status === "verde") { return "bolinha-verde"; }
+        if (item.status === "verde") { return "bolinha-azul"; }
         if (item.status === "aprovado") { return "bolinha-amarela"; }
         if (item.aguardando_conferencia) { return "bolinha-vermelha"; }
         return "bolinha-laranja";

@@ -69,7 +69,20 @@ def test_erro_do_motor_vira_notificacao(limpar_notificacoes_teste):
 
     assert achado is not None
     assert achado["tipo"] == "erro"
-    assert achado["link"] == "/extratus-aburesi/erros"
+    assert achado["link"] == "/extratus-aburesi/relatorios-motor"
+
+
+def test_erro_do_motor_com_processo_vira_notificacao_com_deep_link(limpar_notificacoes_teste):
+    # Ver comentário equivalente em tests/ferramentas/extratus/test_notificacoes.py
+    # — mesma lógica.
+    nome = f"{PREFIXO_TESTE}erro_motor_com_processo.pdf"
+    registrar_erro(nome, "0000000-00.2026.8.00.9999", "erro_ia", "processo grande demais", usuario_id=None)
+
+    itens = listar_notificacoes()
+    achado = next((i for i in itens if nome in i["mensagem"]), None)
+
+    assert achado is not None
+    assert achado["link"] == "/extratus-aburesi/relatorios-motor?processo=0000000-00.2026.8.00.9999"
 
 
 def test_erro_do_fluxo_manual_nao_vira_notificacao(limpar_notificacoes_teste):

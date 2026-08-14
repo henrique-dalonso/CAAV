@@ -245,20 +245,32 @@ def _usuario_id(nome_usuario):
     return buscar_usuario_por_nome_usuario(nome_usuario).id
 
 
-def test_pagina_inicial_mostra_badge_ambar_e_zera_ao_revisitar(clientes_logados, limpar_triagem_teste):
-    # Badge "+N" âmbar (Henrique, 2026-08-13) — só existe pra Conferências
-    # novas do fluxo manual, some depois que a própria página é visitada
-    # uma vez (marcar_aba_vista).
+def test_pagina_inicial_mostra_badge_ambar_ate_resolver(clientes_logados, limpar_triagem_teste):
+    # Badge "+N" âmbar (Henrique, 2026-08-13) — Conferências pendentes do
+    # próprio usuário no fluxo manual. Fica ligado até alguém aprovar ou
+    # descartar — só visitar a página não zera mais (achado 2026-08-13:
+    # o comportamento antigo, "zera ao revisitar", estava errado).
     cliente_a, _ = clientes_logados
     usuario_a_id = _usuario_id(NOME_USUARIO_A)
 
-    _criar_registro(f"{PREFIXO_TESTE}badge_ambar.pdf", usuario_a_id, status="processo_nao_encontrado")
+    registro = _criar_registro(f"{PREFIXO_TESTE}badge_ambar.pdf", usuario_a_id, status="processo_nao_encontrado")
+
+    # Texto exato do badge nesse tab específico (não só a classe CSS —
+    # "Relatórios do Motor" usa a MESMA classe pro badge dele, que é
+    # outra coisa; checar só a classe solta pega falso positivo/negativo
+    # se houver algum revisão real pendente lá também).
+    badge_gerar_relatorio = 'Gerar seu Relatório <span class="contagem-aba contagem-aba-revisao">+1</span>'
 
     primeira_visita = cliente_a.get("/extratus/")
     assert primeira_visita.status_code == 200
-    assert "contagem-aba-revisao" in primeira_visita.text
-    assert "+1" in primeira_visita.text
+    assert badge_gerar_relatorio in primeira_visita.text
 
     segunda_visita = cliente_a.get("/extratus/")
     assert segunda_visita.status_code == 200
-    assert "contagem-aba-revisao" not in segunda_visita.text
+    assert badge_gerar_relatorio in segunda_visita.text
+
+    db_triagem.descartar(registro.id)
+
+    depois_de_resolver = cliente_a.get("/extratus/")
+    assert depois_de_resolver.status_code == 200
+    assert badge_gerar_relatorio not in depois_de_resolver.text

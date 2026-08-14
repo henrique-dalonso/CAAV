@@ -21,12 +21,12 @@ do Motor" mostram os dois números (sucesso e revisão) lado a lado.
 
 from datetime import datetime
 
-from app.ferramentas.extratus.db.checagem_fila import contar_inconsistencias_novas
+from app.ferramentas.extratus.db.checagem_fila import contar_inconsistencias_ativas
 from app.ferramentas.extratus.db.jobs import (
     contar_relatorios_motor_novos,
     contar_relatorios_novos_do_usuario,
 )
-from app.ferramentas.extratus.db.triagem_manual import contar_inconsistencias_novas_do_usuario
+from app.ferramentas.extratus.db.triagem_manual import contar_inconsistencias_ativas_do_usuario
 from app.plataforma.db.usuarios import obter_ultimo_visto
 
 STATUS_LABELS = {
@@ -71,18 +71,17 @@ def rotulo_erro(tipo_erro):
 
 def contagem_nav_conferencias_manual(usuario):
     """Badge (só cor de revisão) da aba "Gerar seu Relatório" — quantas
-    Conferências novas (duplicidade, processo não encontrado etc.) do
-    próprio usuário surgiram desde a última visita."""
-    desde = obter_ultimo_visto(usuario.id, FERRAMENTA_SLUG, ABA_GERAR_RELATORIO) or _DESDE_SEMPRE
-    return contar_inconsistencias_novas_do_usuario(usuario.id, desde)
+    Conferências do próprio usuário estão pendentes AGORA (duplicidade,
+    processo não encontrado etc.). Fica ligado até alguém aprovar ou
+    descartar — só visitar a aba não zera (Henrique, 2026-08-13)."""
+    return contar_inconsistencias_ativas_do_usuario(usuario.id)
 
 
 def contagem_nav_conferencias_fila(usuario):
     """Badge (só cor de revisão) da aba "Fila do Motor" — quantas
-    Conferências novas (compartilhadas, não é por usuário) surgiram
-    desde a última visita DESSE usuário."""
-    desde = obter_ultimo_visto(usuario.id, FERRAMENTA_SLUG, ABA_FILA) or _DESDE_SEMPRE
-    return contar_inconsistencias_novas(desde)
+    Conferências (compartilhadas, não é por usuário) estão pendentes
+    AGORA. Mesmo comportamento "fica ligado até resolver" do item acima."""
+    return contar_inconsistencias_ativas()
 
 
 def contagem_nav_relatorios(usuario):

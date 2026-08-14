@@ -121,7 +121,7 @@
             <button type="button" class="aba-notificacoes aba-notificacoes-ativa" id="aba-sistema" data-aba="sistema">Sistema <span class="contagem-aba-notificacoes contagem-aba-sistema" id="contagem-aba-sistema" hidden>0</span></button>
             <button type="button" class="aba-notificacoes" id="aba-minhas" data-aba="minhas">Minhas <span class="contagem-aba-notificacoes" id="contagem-aba-minhas" style="background: {{ usuario.cor_perfil or "#4f46e5" }};" hidden>0</span></button>
             {% if usuario_tem_acesso_a_alguma_fila_motor(usuario) %}
-            <button type="button" class="aba-notificacoes" id="aba-conferencias" data-aba="conferencias">Conferências <span class="contagem-aba-notificacoes contagem-aba-conferencias" id="contagem-aba-conferencias" hidden>0</span></button>
+            <button type="button" class="aba-notificacoes aba-notificacoes-duas-linhas" id="aba-conferencias" data-aba="conferencias">Conferências<br>Motor <span class="contagem-aba-notificacoes contagem-aba-conferencias" id="contagem-aba-conferencias" hidden>0</span></button>
             {% endif %}
         </div>
         <div class="painel-notificacoes-conteudo">

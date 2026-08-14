@@ -10,6 +10,7 @@ from app.ferramentas.extratus.db.checagem_fila import (
     NAO_ENCONTRADO,
     PENDENTE,
     atualizar_apos_checagem,
+    descartar,
     obter_registro,
     sincronizar_registros,
 )
@@ -310,17 +311,31 @@ def test_descartar_conferencia_registro_inexistente_da_erro(cliente_logado):
     assert "erro=" in resp.headers["location"]
 
 
-def test_pagina_fila_mostra_badge_ambar_e_zera_ao_revisitar(cliente_logado, limpar_conferencia_teste):
-    # Badge "+N" âmbar (Henrique, 2026-08-13) — só existe pra Conferências
-    # novas da Fila do Motor, some depois que a própria página é visitada
-    # uma vez (marcar_aba_vista). Diferente de "Gerar seu Relatório", essa
-    # fila é compartilhada (não filtra por usuário).
-    _criar_checagem(f"{PREFIXO_TESTE}badge_ambar.pdf", NAO_ENCONTRADO)
+def test_pagina_fila_mostra_badge_ambar_ate_resolver(cliente_logado, limpar_conferencia_teste):
+    # Badge "+N" âmbar (Henrique, 2026-08-13) — Conferências pendentes da
+    # Fila do Motor (compartilhada, não filtra por usuário). Fica ligado
+    # até alguém aprovar/descartar — só visitar a página não zera mais
+    # (achado 2026-08-13: o comportamento antigo, "zera ao revisitar",
+    # estava errado — "não pode sumir só de entrar, permanece até
+    # alguém aprovar ou negar").
+    registro = _criar_checagem(f"{PREFIXO_TESTE}badge_ambar.pdf", NAO_ENCONTRADO)
+
+    # Texto exato do badge nesse tab específico (não só a classe CSS —
+    # "Relatórios do Motor" usa a MESMA classe pro badge dele, que é
+    # outra coisa; checar só a classe solta pega falso positivo/negativo
+    # se houver algum revisão real pendente lá também).
+    badge_fila_motor = 'Fila do Motor <span class="contagem-aba contagem-aba-revisao">+1</span>'
 
     primeira_visita = cliente_logado.get("/extratus/fila")
     assert primeira_visita.status_code == 200
-    assert "contagem-aba-revisao" in primeira_visita.text
+    assert badge_fila_motor in primeira_visita.text
 
     segunda_visita = cliente_logado.get("/extratus/fila")
     assert segunda_visita.status_code == 200
-    assert "contagem-aba-revisao" not in segunda_visita.text
+    assert badge_fila_motor in segunda_visita.text
+
+    descartar(registro.id)
+
+    depois_de_resolver = cliente_logado.get("/extratus/fila")
+    assert depois_de_resolver.status_code == 200
+    assert badge_fila_motor not in depois_de_resolver.text
