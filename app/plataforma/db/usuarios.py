@@ -247,9 +247,9 @@ def ferramenta_pela_url(caminho):
     """Qual ferramenta "dona" desse caminho de URL, se alguma — usado pra
     saber de qual ferramenta puxar a cor de identidade (ver
     cor_ferramenta_atual, templates_util.py) em qualquer sub-página dela
-    (não só a raiz, também funciona pra /extratus/motor, /extratus/fila
-    etc.), já que o middleware de "Mais utilizadas" só faz esse match
-    exato pra raiz, não serve pra isso."""
+    (não só a raiz, também funciona pra /extratus/configuracoes-motor,
+    /extratus/fila etc.), já que o middleware de "Mais utilizadas" só
+    faz esse match exato pra raiz, não serve pra isso."""
     with obter_sessao() as sessao:
         ferramentas = sessao.exec(select(Ferramenta)).all()
 

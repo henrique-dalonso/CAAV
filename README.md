@@ -19,9 +19,10 @@ ferramenta. Hoje tem três ferramentas:
 > Cada Extratus tem dois jeitos de processar: a fila manual (tempo real,
 > sempre síncrona) e o Motor (automático, via Batch API da Anthropic —
 > mais barato, mas assíncrono; só liga quando alguém ativa o interruptor
-> na aba Motor). Os dois usam IA real por padrão hoje
-> (`ia_provider: "claude"` em cada `config.json`) — trocar pra
-> `"simulado"` é útil só pra testar sem gastar crédito da API.
+> na aba Configurações do Motor). Os dois usam IA real sempre
+> (`ia_provider: "claude"` em cada `config.json`) — o "modo simulado" que
+> existia pra testar sem gastar crédito da API foi removido em 2026-08-11,
+> hoje todo processamento dispara uma chamada real e cobrada.
 
 ## Estrutura do projeto
 
@@ -70,7 +71,8 @@ perfil prontos — não precisa recriar nada disso numa ferramenta nova.
 | `/extratus/` | Extratus - Relatórios — enviar PDF e processar (fila manual) |
 | `/extratus/relatorios` | Extratus - Relatórios — relatórios já gerados (todo mundo com acesso vê) |
 | `/extratus/fila` | Extratus - Relatórios — fila do Motor (upload em lote) |
-| `/extratus/motor` | Extratus - Relatórios — liga/desliga o Motor, configurações, prompt |
+| `/extratus/configuracoes-motor` | Extratus - Relatórios — liga/desliga o Motor, configurações, prompt |
+| `/extratus/relatorios-motor` | Extratus - Relatórios — relatórios do Motor (Sucesso/Revisão/Erro) |
 | `/extratus/custos` | Extratus - Relatórios — histórico técnico com custo de IA por usuário (só admin) |
 | `/extratus-aburesi/...` | Extratus - Aburesi — mesmas rotas acima, módulo separado |
 | `/leitor-publicacoes/` | Leitor de Publicações — em construção |
@@ -157,4 +159,4 @@ Diferença prática: o Agendador não reinicia sozinho se o programa travar no m
 
 Já existe: login por usuário/senha (com senha em hash, nunca em texto puro), controle de quais ferramentas cada pessoa pode usar, área de administração restrita a admins, chaves sensíveis fora do controle de versão.
 
-Ainda falta antes de considerar isso "pronto pra produção pesada": HTTPS (hoje o tráfego não é criptografado, ok numa rede interna confiável, mas vale revisar), e a integração real de IA (com as decisões de custo/fornecedor e conformidade de dados ainda pendentes de aprovação da diretoria).
+Ainda falta antes de considerar isso "pronto pra produção pesada": HTTPS (hoje o tráfego não é criptografado, ok numa rede interna confiável, mas vale revisar) e backup automático do banco de dados e das pastas de relatórios. A integração real de IA já está ativa em produção (não é mais uma decisão pendente) — cada PDF processado, manual ou via Motor, dispara uma chamada real e cobrada à API da Anthropic.

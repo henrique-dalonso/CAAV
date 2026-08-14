@@ -20,9 +20,9 @@ CONFIG_PADRAO = {
 
     "ia_provider": "claude",
 
-    # Motor automático — ainda só liga/desliga uma bandeira (ver Motor no
-    # Extratus). O "vigiar a pasta sozinho de verdade" é o próximo passo,
-    # separado dessa tela de controle.
+    # Motor automático — essa bandeira liga/desliga o vigiar-pasta-sozinho
+    # de verdade (motor_watcher.py, rodando em segundo plano desde o
+    # startup do app) na tela de Configurações do Motor.
     "motor_ativo": False,
 
     # Pasta PRÓPRIA do motor — separada de pasta_entrada (que é a fila

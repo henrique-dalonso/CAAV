@@ -25,11 +25,11 @@ def listar_notificacoes():
     - Inconsistências da triagem: somem sozinhas quando o arquivo é
       corrigido/removido da fila (a linha em ChecagemFila deixa de
       existir) — sem ação manual nenhuma.
-    - Erros de PDF do Motor: ficam até alguém marcar como resolvido na
-      futura tela dedicada de Erros (ainda não construída, mesmo
-      tratamento "inacabado de propósito" já usado na triagem/
-      Conferências) — por isso sem janela de tempo, um erro não pode
-      sumir sozinho.
+    - Erros de PDF do Motor: aparecem na aba "Erro" de Relatórios do
+      Motor, mas ainda não existe ação de marcar como resolvido lá
+      (diferente do fluxo manual, que já tem
+      "/relatorios/{job_id}/marcar-notificacao-resolvida") — por isso
+      sem janela de tempo, um erro não pode sumir sozinho ainda.
     """
     notificacoes = []
 

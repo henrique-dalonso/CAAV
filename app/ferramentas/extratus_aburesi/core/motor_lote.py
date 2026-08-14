@@ -127,9 +127,9 @@ def _preparar_novo_lote(config):
     Só considera arquivo com checagem "aprovada" (checagem_lote.py, que
     roda muito mais rápido que o motor, em segundo plano) — nome
     duplicado, processo já processado noutro lugar, ou processo não
-    encontrado ficam de fora até o painel de Conferências (ainda não
-    construído) resolver. Reaproveita o processo/confiança já detectados
-    na checagem em vez de detectar tudo de novo aqui."""
+    encontrado ficam de fora até o painel de Conferências resolver.
+    Reaproveita o processo/confiança já detectados na checagem em vez
+    de detectar tudo de novo aqui."""
     pasta_motor = config.get("motor_pasta_entrada")
     pasta_erros = config.get("pasta_erros")
 
