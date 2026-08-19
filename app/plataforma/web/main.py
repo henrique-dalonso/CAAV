@@ -77,7 +77,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Centro de Experiência do Colaborador — Alonso & Verdiani",
+    title="CAAV — Célula Avançada Alonso & Verdiani",
     lifespan=lifespan,
     # Explorador de API automático do FastAPI é coisa de desenvolvimento —
     # não faz sentido expor /docs, /redoc, /openapi.json num site pronto

@@ -48,7 +48,7 @@ NOMES_CORES_PERFIL = {
 
 
 class Usuario(SQLModel, table=True):
-    """Um colaborador com acesso ao Centro de Experiência do Colaborador.
+    """Um colaborador com acesso ao CAAV (Célula Avançada Alonso & Verdiani).
 
     eh_admin dá acesso automático a todas as ferramentas e à área
     administrativa (custos, criação de usuário, etc.) — nível supremo,
@@ -97,7 +97,7 @@ class Usuario(SQLModel, table=True):
 
 
 class Ferramenta(SQLModel, table=True):
-    """Uma ferramenta disponível no Centro de Experiência (ex: Extratus).
+    """Uma ferramenta disponível no CAAV (ex: Extratus).
 
     suporta_fila_motor diz se essa ferramenta TEM o conceito de "fila do
     motor" pra começo de conversa (ex: os módulos do Extratus têm; Leitor

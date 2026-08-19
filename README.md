@@ -1,4 +1,4 @@
-# Centro de Experiência do Colaborador — Alonso & Verdiani
+# CAAV — Célula Avançada Alonso & Verdiani
 
 Plataforma interna do escritório, com login único e permissão por
 ferramenta. Hoje tem três ferramentas:

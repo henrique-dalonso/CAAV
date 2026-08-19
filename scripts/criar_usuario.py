@@ -1,5 +1,5 @@
 """
-Cria um usuário do Centro de Experiência do Colaborador.
+Cria um usuário do CAAV (Célula Avançada Alonso & Verdiani).
 
 Uso: rode a partir da pasta principal do projeto (mesma regra dos outros
 comandos do Extratus):
