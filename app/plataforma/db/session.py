@@ -1,5 +1,6 @@
 import re
 
+from sqlalchemy import event
 from sqlmodel import SQLModel, create_engine, Session
 
 from app.plataforma.logger import registrar_log
@@ -126,10 +127,27 @@ def _garantir_indices(engine):
         conexao.commit()
 
 
+def _configurar_conexao_sqlite(conexao_dbapi, _):
+    """Roda em toda conexão nova (SQLAlchemy usa um pool, várias conexões
+    reais por trás do mesmo `engine`) — sem isso, escritas concorrentes de
+    verdade (upload no site + Motor fechando lote ao mesmo tempo) podem
+    esbarrar no travamento padrão do SQLite e devolver "database is
+    locked" em vez de simplesmente esperar a vez. WAL deixa leitura e
+    escrita acontecerem ao mesmo tempo (só escrita-com-escrita ainda
+    espera); busy_timeout faz quem esbarrar num travamento esperar até 30s
+    em vez de falhar na hora."""
+    cursor = conexao_dbapi.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.execute("PRAGMA synchronous=NORMAL")
+    cursor.execute("PRAGMA busy_timeout=30000")
+    cursor.close()
+
+
 def _criar_engine():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
     engine = create_engine(f"sqlite:///{DB_PATH}")
+    event.listen(engine, "connect", _configurar_conexao_sqlite)
 
     SQLModel.metadata.create_all(engine)
     _garantir_colunas(engine)
