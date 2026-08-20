@@ -47,7 +47,7 @@ COLUNAS_PENDENTES = {
         "cor_acento_hover_escuro": "VARCHAR",
         "cor_acento_fraco_escuro": "VARCHAR",
         # Mesma retroatividade do usuario.tema/cor_perfil acima.
-        "suporta_fila_motor": "BOOLEAN DEFAULT 0",
+        "suporta_fila_robo": "BOOLEAN DEFAULT 0",
     },
     "job": {
         "notificacao_resolvida": "BOOLEAN DEFAULT 0",
@@ -64,7 +64,11 @@ COLUNAS_PENDENTES = {
     "usuarioferramenta": {
         # Mesma retroatividade do usuario.tema/cor_perfil acima.
         "admin_ferramenta": "BOOLEAN DEFAULT 0",
-        "fila_motor": "BOOLEAN DEFAULT 0",
+        "fila_robo": "BOOLEAN DEFAULT 0",
+        # Henrique, diretoria, 2026-08-19: controla o fluxo Manual/URGENTE
+        # (fila_robo acima não é mais lido — Robô virou padrão, ver
+        # docstring de UsuarioFerramenta em db/models.py).
+        "acesso_manual": "BOOLEAN DEFAULT 0",
     },
 }
 
@@ -127,10 +131,47 @@ def _garantir_indices(engine):
         conexao.commit()
 
 
+# Henrique, diretoria, 2026-08-19: "Motor" virou "Robô" em tudo,
+# inclusive nomes de tabela — {nome_antigo: nome_novo}. Diferente de
+# COLUNAS_PENDENTES (que só ADICIONA), aqui é RENAME de verdade (SQLite
+# suporta nativamente, preserva os dados e os índices da tabela) — tem
+# dado real de teste nessas 3 tabelas (lotes/itens do Robô, histórico de
+# upload da Fila), então criar tabela nova vazia do lado ia deixar tudo
+# isso órfão e invisível. Roda ANTES de create_all() de propósito: se a
+# tabela antiga já foi renomeada, create_all() não recria nada; se ainda
+# não, create_all() criaria a tabela nova vazia primeiro e o rename
+# encontraria as duas com o mesmo schema — mais confuso sem necessidade.
+TABELAS_RENOMEADAS = {
+    "lotemotor": "loterobo",
+    "itemlotemotor": "itemloterobo",
+    "uploadfilamotor": "uploadfilarobo",
+    "lotemotor_aburesi": "loterobo_aburesi",
+    "itemlotemotor_aburesi": "itemloterobo_aburesi",
+    "uploadfilamotor_aburesi": "uploadfilarobo_aburesi",
+}
+
+
+def _garantir_tabelas_renomeadas(engine):
+    with engine.connect() as conexao:
+        existentes = {
+            linha[0]
+            for linha in conexao.exec_driver_sql(
+                "SELECT name FROM sqlite_master WHERE type = 'table'"
+            )
+        }
+
+        for nome_antigo, nome_novo in TABELAS_RENOMEADAS.items():
+            if nome_antigo in existentes and nome_novo not in existentes:
+                conexao.exec_driver_sql(f"ALTER TABLE {nome_antigo} RENAME TO {nome_novo}")
+                registrar_log(f"Migração: tabela '{nome_antigo}' renomeada para '{nome_novo}'.")
+
+        conexao.commit()
+
+
 def _configurar_conexao_sqlite(conexao_dbapi, _):
     """Roda em toda conexão nova (SQLAlchemy usa um pool, várias conexões
     reais por trás do mesmo `engine`) — sem isso, escritas concorrentes de
-    verdade (upload no site + Motor fechando lote ao mesmo tempo) podem
+    verdade (upload no site + Robô fechando lote ao mesmo tempo) podem
     esbarrar no travamento padrão do SQLite e devolver "database is
     locked" em vez de simplesmente esperar a vez. WAL deixa leitura e
     escrita acontecerem ao mesmo tempo (só escrita-com-escrita ainda
@@ -149,6 +190,7 @@ def _criar_engine():
     engine = create_engine(f"sqlite:///{DB_PATH}")
     event.listen(engine, "connect", _configurar_conexao_sqlite)
 
+    _garantir_tabelas_renomeadas(engine)
     SQLModel.metadata.create_all(engine)
     _garantir_colunas(engine)
     _garantir_indices(engine)

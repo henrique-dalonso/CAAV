@@ -184,7 +184,7 @@ def test_listar_estado_do_usuario_separa_pendentes_e_processando_e_escopa_por_us
 
 def test_listar_estado_do_usuario_mantem_inconsistencia_em_pendentes():
     """Henrique, 2026-08-12: uma inconsistência NÃO some de Pendentes —
-    continua lá (bolinha vermelha na tela), igual à Fila do Motor, até
+    continua lá (bolinha vermelha na tela), igual à Fila do Robô, até
     ser resolvida em Conferências."""
     duplicado = _criar("teste_triagem_estado_duplicado.pdf", USUARIO_A)
     db_triagem.atualizar_apos_triagem(duplicado.id, db_triagem.DUPLICADO_RELATORIO, "123", "alta", "ok")

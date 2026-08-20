@@ -35,9 +35,9 @@ def montar_diagnostico_isolado(pdf):
     checagem_lote.analisar_pdf_isolado, e o motivo completo em
     pdf_isolado.executar_isolado). Reaparecida aqui em 2026-08-11: essa
     leitura de PDF (montar_diagnostico_com_triagem) roda dentro do loop
-    do Motor (asyncio.to_thread, ver motor_watcher.py), sem isolamento —
+    do Robô (asyncio.to_thread, ver robo_watcher.py), sem isolamento —
     lia PDF grande e travava o site inteiro pelo tempo da leitura, não só
-    o Motor. Função isolada (em vez de chamar `montar_diagnostico_com_
+    o Robô. Função isolada (em vez de chamar `montar_diagnostico_com_
     triagem` direto em `_preparar_novo_lote`) só pra manter o dispatch
     mockável nos testes, sem precisar de um processo de verdade rodando
     durante a suíte."""
@@ -50,7 +50,7 @@ def _obter_cliente():
     if not api_key:
         raise RuntimeError(
             "ANTHROPIC_API_KEY não configurada no .env. Configure a chave "
-            "antes de ligar o motor com IA real."
+            "antes de ligar o robô com IA real."
         )
 
     return anthropic.Anthropic(api_key=api_key)
@@ -65,7 +65,7 @@ def _coletar_lotes_pendentes(cliente, config):
     pasta_processados = config.get("pasta_processados")
     pasta_revisao = config.get("pasta_revisao")
     pasta_erros = config.get("pasta_erros")
-    pasta_motor = Path(config.get("motor_pasta_entrada"))
+    pasta_robo = Path(config.get("robo_pasta_entrada"))
 
     algum_ainda_em_andamento = False
 
@@ -88,7 +88,7 @@ def _coletar_lotes_pendentes(cliente, config):
                 )
                 continue
 
-            caminho_pdf = pasta_motor / item.arquivo_pdf
+            caminho_pdf = pasta_robo / item.arquivo_pdf
             confianca = {"nivel": item.confianca_nivel, "motivo": item.confianca_motivo}
 
             if resultado.result.type == "succeeded":
@@ -126,19 +126,19 @@ def _coletar_lotes_pendentes(cliente, config):
 
 
 def _preparar_novo_lote(config):
-    """Olha os PDFs em motor_pasta_entrada ainda não reivindicados por
+    """Olha os PDFs em robo_pasta_entrada ainda não reivindicados por
     nenhum lote (passado ou presente) e monta os itens elegíveis pra um
     lote novo. Arquivos que já estourarem os limites de segurança
     (digitalizado e grande demais, ou processo grande demais pro contexto)
     são tratados como erro na hora, sem entrar no lote.
 
     Só considera arquivo com checagem "aprovada" (checagem_lote.py, que
-    roda muito mais rápido que o motor, em segundo plano) — nome
+    roda muito mais rápido que o robô, em segundo plano) — nome
     duplicado, processo já processado noutro lugar, ou processo não
     encontrado ficam de fora até o painel de Conferências resolver.
     Reaproveita o processo/confiança já detectados na checagem em vez
     de detectar tudo de novo aqui."""
-    pasta_motor = config.get("motor_pasta_entrada")
+    pasta_robo = config.get("robo_pasta_entrada")
     pasta_erros = config.get("pasta_erros")
 
     ja_reivindicados = listar_arquivos_ja_reivindicados()
@@ -147,7 +147,7 @@ def _preparar_novo_lote(config):
 
     itens_para_lote = []
 
-    for pdf in listar_pdfs(pasta_motor):
+    for pdf in listar_pdfs(pasta_robo):
         if pdf.name in ja_reivindicados:
             continue
 
@@ -157,7 +157,7 @@ def _preparar_novo_lote(config):
             # Ainda não passou pela checagem, ou passou e não foi
             # aprovado — não é elegível ainda. Nada se perde: a checagem
             # roda a cada poucos segundos, então na prática já deve
-            # estar aprovado bem antes do motor sequer tentar de novo.
+            # estar aprovado bem antes do robô sequer tentar de novo.
             continue
 
         processo = checagem.processo_detectado
@@ -165,7 +165,7 @@ def _preparar_novo_lote(config):
 
         try:
             # Triagem de anexos de listagem de terceiros (ver
-            # ia_cliente.montar_diagnostico_com_triagem) roda pro Motor
+            # ia_cliente.montar_diagnostico_com_triagem) roda pro Robô
             # também — reduz custo e evita erro de "processo grande
             # demais" quando o anexo irrelevante é a causa. Se alguma
             # página foi removida, a confiança cai pra "revisão" na hora
@@ -209,21 +209,21 @@ def _submeter_lote(cliente, itens):
     lote = criar_lote(lote_anthropic.id, itens)
 
     registrar_log(
-        f"Lote enviado ao Motor: {lote_anthropic.id} ({len(itens)} arquivo(s))."
+        f"Lote enviado ao Robô: {lote_anthropic.id} ({len(itens)} arquivo(s))."
     )
 
     return lote
 
 
-def rodar_ciclo_motor():
-    """Um "tick" do vigia do Motor — chamado periodicamente pelo
-    `motor_watcher.py`. Fecha lote(s) já enviados pra Anthropic SEMPRE,
-    mesmo com `motor_ativo` desligado — um lote, uma vez enviado, continua
+def rodar_ciclo_robo():
+    """Um "tick" do vigia do Robô — chamado periodicamente pelo
+    `robo_watcher.py`. Fecha lote(s) já enviados pra Anthropic SEMPRE,
+    mesmo com `robo_ativo` desligado — um lote, uma vez enviado, continua
     rodando do lado da Anthropic independente do interruptor local; se a
-    coleta só acontecesse com o motor ligado, um lote que terminou depois
+    coleta só acontecesse com o robô ligado, um lote que terminou depois
     de alguém desligar a chave ficava preso pra sempre (nunca virava
     relatório, nunca saía da tela como "em andamento"). Só abrir lote NOVO
-    é que respeita `motor_ativo`."""
+    é que respeita `robo_ativo`."""
     config = carregar_config()
 
     algum_lote_em_andamento = False
@@ -232,7 +232,7 @@ def rodar_ciclo_motor():
         cliente = _obter_cliente()
         algum_lote_em_andamento = _coletar_lotes_pendentes(cliente, config)
 
-    if not config.get("motor_ativo"):
+    if not config.get("robo_ativo"):
         return
 
     if algum_lote_em_andamento:

@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 
-{% block titulo %}Seus Relatórios — Extratus - Relatórios{% endblock %}
-{% block nome_pagina %}Extratus - Relatórios{% endblock %}
+{% block titulo %}Relatórios URGENTES — Extratus - Relatórios{% endblock %}
 {% block css_pagina %}<link rel="stylesheet" href="/extratus/static/extratus.css?v={{ v }}">{% endblock %}
 
 {% from "_macros_extratus.html" import nav_abas_extratus %}
@@ -9,8 +8,8 @@
 {% block conteudo %}
 <div class="cabecalho-ferramenta">
     <div>
-        <h1>Seus Relatórios</h1>
-        <p>Relatórios de processos já gerados, prontos pra revisão e envio.</p>
+        <h1>Relatórios URGENTES</h1>
+        <p>Veja os relatórios URGENTES já prontos. Clique em um relatório para baixar e abrir.</p>
     </div>
 </div>
 
@@ -19,7 +18,7 @@
 <section class="cartao-secao">
     {% if jobs %}
     <div class="barra-filtros">
-        <input type="search" class="campo-busca" placeholder="Buscar por processo ou arquivo..." aria-label="Buscar por processo ou arquivo" id="campo-busca-relatorios" data-processo-inicial="{{ processo_busca or '' }}">
+        <input type="search" class="campo-busca" placeholder="Buscar por número de processo ou nome do arquivo..." aria-label="Buscar por número de processo ou nome do arquivo" id="campo-busca-relatorios" data-processo-inicial="{{ processo_busca or '' }}">
         <div class="chips-filtro">
             <button type="button" class="chip chip-ativo" data-status="todos">Todos</button>
             <button type="button" class="chip" data-status="sucesso">Sucesso</button>
@@ -52,7 +51,7 @@
                 <span class="motivo" data-dica="{{ job.erro_mensagem }}">{{ job.tipo_erro | rotulo_erro }}</span>
                 {% endif %}
                 {% if job.status == "revisao" and not job.notificacao_resolvida and job.usuario_id == usuario.id %}
-                <button type="button" class="botao-marcar-revisado" data-job-id="{{ job.id }}" data-dica="Tira do sino de notificações">Marcar como revisado</button>
+                <button type="button" class="botao-marcar-revisado" data-job-id="{{ job.id }}" data-dica="Remove a notificação do &quot;sininho&quot;">Marcar como revisado</button>
                 {% endif %}
             </div>
             <div class="relatorio-solicitante">
@@ -76,7 +75,7 @@
     </ul>
     <p class="vazio filtro-vazio" hidden>Nenhum relatório encontrado com esse filtro.</p>
     {% else %}
-    <p class="vazio">Nenhum processamento registrado ainda.</p>
+    <p class="vazio">Nenhum relatório URGENTE gerado ainda ou disponível.</p>
     {% endif %}
 </section>
 {% endblock %}

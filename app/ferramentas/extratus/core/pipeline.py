@@ -35,7 +35,7 @@ def ajustar_confianca_pos_ia(confianca, uso_ia):
     terceiros (ver ia_cliente.montar_diagnostico_com_triagem) — nos dois
     casos é um caminho mais novo e mais arriscado que o de chamada única
     normal, então nunca cai em "alta confiança" automática. Reaproveitada
-    tanto por `processar_pdf` (fluxo síncrono/Motor) quanto por
+    tanto por `processar_pdf` (fluxo síncrono/Robô) quanto por
     `core/pipeline_manual.py` (fluxo manual por gatilho), pra não haver
     dois lugares divergentes aplicando essa mesma regra."""
     motivos_revisao = []
@@ -61,9 +61,9 @@ def ajustar_confianca_pos_ia(confianca, uso_ia):
 def tratar_erro(pdf, processo, tipo_erro, erro, pasta_erros, usuario_id=None):
     """Registra uma falha de processamento (PDF, IA, docx ou movimentação)
     e move o PDF pra pasta de erros. Reaproveitada tanto pelo fluxo
-    síncrono (`processar_pdf`) quanto pelo Motor (itens de um lote do
+    síncrono (`processar_pdf`) quanto pelo Robô (itens de um lote do
     Batch API que falharam, ou arquivos rejeitados antes mesmo de entrar
-    num lote — ver `motor_lote.py`)."""
+    num lote — ver `robo_lote.py`)."""
     registrar_log(f"Erro ({tipo_erro}) ao processar {Path(pdf).name}: {erro}")
 
     destino_pdf = None
@@ -107,7 +107,7 @@ def finalizar_processamento(
     uma chamada em tempo real ou de um resultado de lote coletado depois):
     gera o .docx, move o PDF conforme a confiança da detecção, e registra
     o Job. Reaproveitada por `processar_pdf` (fluxo síncrono) e pela
-    coleta de resultados do Motor (`motor_lote.py`), pra não haver dois
+    coleta de resultados do Robô (`robo_lote.py`), pra não haver dois
     lugares divergentes fazendo a mesma coisa."""
     try:
         nome_relatorio = gerar_nome_relatorio(processo)

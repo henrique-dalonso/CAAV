@@ -28,7 +28,6 @@
             <div><dt>Perfil</dt><dd>{{ rotulo_perfil(usuario) }}</dd></div>
             <div><dt>Na plataforma desde</dt><dd>{{ usuario.criado_em.strftime("%d/%m/%Y") }}</dd></div>
         </dl>
-        <p class="aviso-discreto">Edição de dados ainda não existe por aqui — fale com um administrador se precisar corrigir alguma coisa.</p>
 
         {% elif aba_ativa == "senha" %}
         <h2>Alterar senha</h2>
@@ -132,13 +131,13 @@
                 </span>
                 <div>
                     <h3>Cor do perfil</h3>
-                    <p>Escolha a cor da bolinha com sua inicial, no canto superior direito da tela.</p>
+                    <p>Escolha a cor da bolinha de seu perfil, que contém sua inicial.</p>
                 </div>
             </div>
             <form action="/perfil/preferencias/cor" method="post" id="form-cor-perfil">
                 <div class="opcoes-cor-perfil">
                     {% for cor in cores_perfil %}
-                    <label class="opcao-cor" style="--cor-opcao: {{ cor }};">
+                    <label class="opcao-cor" style="--cor-opcao: {{ cor }};" data-dica="Cor {{ nomes_cores_perfil.get(cor, cor) }}">
                         <input type="radio" name="cor" value="{{ cor }}" aria-label="Cor {{ nomes_cores_perfil.get(cor, cor) }}" {{ "checked" if usuario.cor_perfil == cor or (not usuario.cor_perfil and loop.first) }}>
                         <span class="opcao-cor-check" aria-hidden="true">
                             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">

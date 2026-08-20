@@ -32,7 +32,7 @@ def test_garantir_ferramentas_padrao_cria_extratus_aburesi():
     assert ferramenta is not None
     assert ferramenta.nome == "Extratus - Aburesi"
     assert ferramenta.url == "/extratus-aburesi/"
-    assert ferramenta.suporta_fila_motor is True
+    assert ferramenta.suporta_fila_robo is True
 
 
 def test_garantir_ferramentas_padrao_renomeou_extratus_relatorios():
@@ -43,16 +43,16 @@ def test_garantir_ferramentas_padrao_renomeou_extratus_relatorios():
     assert ferramenta is not None
     assert ferramenta.nome == "Extratus - Relatórios"
     assert ferramenta.url == "/extratus/"  # slug/url nunca mudam
-    assert ferramenta.suporta_fila_motor is True
+    assert ferramenta.suporta_fila_robo is True
 
 
-def test_leitor_publicacoes_nao_suporta_fila_motor():
+def test_leitor_publicacoes_nao_suporta_fila_robo():
     seed.garantir_ferramentas_padrao()
 
     ferramenta = _buscar("leitor-publicacoes")
 
     assert ferramenta is not None
-    assert ferramenta.suporta_fila_motor is False
+    assert ferramenta.suporta_fila_robo is False
 
 
 def test_garantir_ferramentas_padrao_sincroniza_nome_de_ferramenta_existente(
@@ -68,7 +68,7 @@ def test_garantir_ferramentas_padrao_sincroniza_nome_de_ferramenta_existente(
             "slug": SLUG_TESTE,
             "descricao": "descricao original",
             "url": "/teste-seed-sync/",
-            "suporta_fila_motor": False,
+            "suporta_fila_robo": False,
         }],
     )
     seed.garantir_ferramentas_padrao()
@@ -82,7 +82,7 @@ def test_garantir_ferramentas_padrao_sincroniza_nome_de_ferramenta_existente(
             "slug": SLUG_TESTE,
             "descricao": "descricao atualizada",
             "url": "/teste-seed-sync/",
-            "suporta_fila_motor": False,
+            "suporta_fila_robo": False,
         }],
     )
     seed.garantir_ferramentas_padrao()

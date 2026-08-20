@@ -2,9 +2,12 @@
     "use strict";
 
     var campoBusca = document.querySelector(".campo-busca");
-    var abas = document.querySelectorAll(".aba-relatorios-motor");
+    var abas = document.querySelectorAll(".aba-relatorios-robo");
     var itens = document.querySelectorAll(".relatorio-item");
     var avisoVazio = document.querySelector(".filtro-vazio");
+    var listaEl = document.getElementById("lista-relatorios-robo");
+    var campoDataDe = document.getElementById("filtro-data-de");
+    var campoDataAte = document.getElementById("filtro-data-ate");
 
     if (!campoBusca || !itens.length) {
         return;
@@ -13,18 +16,25 @@
     // Sucesso é a aba padrão de propósito — Henrique, 2026-08-08: "o
     // intuito é o advogado que precisa desses relatorios ja ter em
     // facil acesso", depois Revisão, Erro por último ("em ordem de grau
-    // de fudido"). Sem "Todos" aqui — só uma aba por vez, diferente do
-    // chip "Todos" da Relatórios manual.
+    // de fudido"). "Todos" (Henrique, 2026-08-20) é só pra visão geral,
+    // não é o padrão — some pro mais antigo primeiro (column-reverse no
+    // CSS), diferente das outras 3 abas.
     var statusAtivo = "sucesso";
 
     function aplicarFiltros() {
         var termo = campoBusca.value.trim().toLowerCase();
+        var dataDe = campoDataDe ? campoDataDe.value : "";
+        var dataAte = campoDataAte ? campoDataAte.value : "";
         var visiveis = 0;
 
         itens.forEach(function (item) {
-            var passaStatus = item.dataset.status === statusAtivo;
+            var passaStatus = statusAtivo === "todos" || item.dataset.status === statusAtivo;
             var passaBusca = !termo || item.dataset.busca.indexOf(termo) !== -1;
-            var mostrar = passaStatus && passaBusca;
+            // Comparação de string funciona direto porque data-criado-em
+            // e o <input type="date"> usam o mesmo formato ISO (AAAA-MM-DD).
+            var passaData = (!dataDe || item.dataset.criadoEm >= dataDe)
+                && (!dataAte || item.dataset.criadoEm <= dataAte);
+            var mostrar = passaStatus && passaBusca && passaData;
 
             // Mesma pegadinha do [hidden] vs display de autor já
             // resolvida em relatorios_manuais.js — style.display direto
@@ -43,11 +53,23 @@
 
     campoBusca.addEventListener("input", aplicarFiltros);
 
+    if (campoDataDe) {
+        campoDataDe.addEventListener("change", aplicarFiltros);
+    }
+    if (campoDataAte) {
+        campoDataAte.addEventListener("change", aplicarFiltros);
+    }
+
     abas.forEach(function (aba) {
         aba.addEventListener("click", function () {
-            abas.forEach(function (a) { a.classList.remove("aba-relatorios-motor-ativa"); });
-            aba.classList.add("aba-relatorios-motor-ativa");
+            abas.forEach(function (a) { a.classList.remove("aba-relatorios-robo-ativa"); });
+            aba.classList.add("aba-relatorios-robo-ativa");
             statusAtivo = aba.dataset.status;
+
+            if (listaEl) {
+                listaEl.classList.toggle("lista-relatorios-invertida", statusAtivo === "todos");
+            }
+
             aplicarFiltros();
         });
     });
@@ -68,10 +90,10 @@
     if (processoInicial) {
         var alvoPreCheck = document.querySelector('.relatorio-item[data-processo="' + CSS.escape(processoInicial) + '"]');
         if (alvoPreCheck) {
-            var abaCerta = document.querySelector('.aba-relatorios-motor[data-status="' + alvoPreCheck.dataset.status + '"]');
+            var abaCerta = document.querySelector('.aba-relatorios-robo[data-status="' + alvoPreCheck.dataset.status + '"]');
             if (abaCerta) {
-                abas.forEach(function (a) { a.classList.remove("aba-relatorios-motor-ativa"); });
-                abaCerta.classList.add("aba-relatorios-motor-ativa");
+                abas.forEach(function (a) { a.classList.remove("aba-relatorios-robo-ativa"); });
+                abaCerta.classList.add("aba-relatorios-robo-ativa");
                 statusAtivo = alvoPreCheck.dataset.status;
             }
         }

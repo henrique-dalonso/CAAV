@@ -66,7 +66,7 @@ PRECOS_POR_MILHAO_USD = {
     MODELO_PEDACO: (1.00, 5.00),
 }
 
-# Batch API (usado só pelo Motor, ver motor_lote.py): 50% de desconto em
+# Batch API (usado só pelo Robô, ver robo_lote.py): 50% de desconto em
 # cima de TODOS os preços acima — entrada, saída e cache. Confirmado com
 # teste real em 2026-07-29.
 DESCONTO_BATCH_API = 0.5
@@ -81,8 +81,8 @@ DESCONTO_BATCH_API = 0.5
 # a ser bem mais rara, quando ainda assim for necessária (documentos
 # realmente enormes), pedaços maiores significam menos chamadas pagas por
 # documento. Só usado no fluxo síncrono (fila manual) por enquanto — o
-# Motor/Batch API não suporta uma sequência de chamadas dependentes dentro
-# de um único item de lote, então processos grandes no Motor continuam
+# Robô/Batch API não suporta uma sequência de chamadas dependentes dentro
+# de um único item de lote, então processos grandes no Robô continuam
 # caindo em erro claro, como hoje.
 TOKENS_POR_PEDACO_DIVISAO = 200_000
 
@@ -124,7 +124,7 @@ def filtrar_paginas_lista_de_terceiros(paginas):
     devolve também a lista de números de página excluídos, pra quem
     chamar registrar isso (log, aviso pra IA, forçar revisão humana —
     ver `montar_diagnostico_com_triagem`, `pipeline.processar_pdf` e
-    `motor_lote._preparar_novo_lote`)."""
+    `robo_lote._preparar_novo_lote`)."""
     relevantes = []
     excluidas = []
 
@@ -320,7 +320,7 @@ def _instrucao_formato():
 
 def extrair_dados_e_uso(resposta, via_batch=False):
     """`via_batch=True` quando `resposta` veio de um resultado do Batch API
-    (Motor) — aplica os 50% de desconto da Anthropic nesse caso; chamadas
+    (Robô) — aplica os 50% de desconto da Anthropic nesse caso; chamadas
     em tempo real (fila manual) usam o preço cheio normalmente.
 
     O preço usado é sempre o do modelo que respondeu de verdade
@@ -535,7 +535,7 @@ def gerar_relatorio_claude_dividido(caminho_pdf, processo_detectado, cliente, in
     página, manda cada um pra IA extrair só o que está naquele trecho
     (mapa), depois junta tudo numa chamada final que monta o relatório
     completo (redução). Só usada pelo fluxo síncrono (fila manual) — ver
-    nota em TOKENS_POR_PEDACO_DIVISAO sobre o Motor/Batch API.
+    nota em TOKENS_POR_PEDACO_DIVISAO sobre o Robô/Batch API.
 
     `paginas`, se vier preenchido, já passou pela triagem de anexos de
     listagem de terceiros (`montar_diagnostico_com_triagem`) — evita
@@ -589,7 +589,7 @@ def gerar_relatorio_claude_dividido(caminho_pdf, processo_detectado, cliente, in
 def montar_parametros_mensagem(caminho_pdf, processo_detectado, instrucoes, diagnostico=None):
     """Monta o dict de parâmetros pra uma chamada `messages.create` (sem
     disparar a chamada) — usado tanto pelo fluxo em tempo real (fila
-    manual) quanto pelo Batch API (Motor), que só diferem em COMO essa
+    manual) quanto pelo Batch API (Robô), que só diferem em COMO essa
     chamada é despachada (na hora vs. dentro de um lote).
 
     Extrai o texto do PDF localmente (de graça) e manda só o texto — muito

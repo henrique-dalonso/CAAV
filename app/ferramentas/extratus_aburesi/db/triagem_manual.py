@@ -9,7 +9,7 @@ from app.plataforma.web.eventos_sse import avisar_mudanca
 
 
 # Mesmo vocabulário de status que db/checagem_fila.py usa pra Fila do
-# Motor — ver TriagemManual (db/models.py) pro porquê de ser uma tabela
+# Robô — ver TriagemManual (db/models.py) pro porquê de ser uma tabela
 # separada (aqui é pessoal por usuário, e também acompanha a geração em
 # si, coisa que ChecagemFila nunca precisou fazer).
 PENDENTE = "pendente"

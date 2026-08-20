@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 
-{% block titulo %}Gerar seu Relatório — Extratus - Aburesi{% endblock %}
-{% block nome_pagina %}Extratus - Aburesi{% endblock %}
+{% block titulo %}Gerar Relatório URGENTE — Extratus - Aburesi{% endblock %}
 {% block css_pagina %}<link rel="stylesheet" href="/extratus-aburesi/static/extratus.css?v={{ v }}">{% endblock %}
 
 {% from "_macros_extratus.html" import nav_abas_extratus %}
@@ -9,10 +8,9 @@
 {% block conteudo %}
 <div class="cabecalho-ferramenta">
     <div>
-        <h1>Gerar seu Relatório</h1>
+        <h1>Gerar Relatório URGENTE</h1>
         <p>Resumo rápido de processo judicial para uso interno no atendimento do cliente Aburesi.</p>
     </div>
-    <span class="selo-status real">IA real ativada</span>
 </div>
 
 {{ nav_abas_extratus(usuario, "extratus-aburesi", "/extratus-aburesi", "gerar") }}
@@ -60,8 +58,8 @@
 </section>
 
 <section class="cartao-secao">
-    <h2>Enviar um processo</h2>
-    <p class="aviso-discreto">Até {{ maximo_arquivos }} PDFs por vez. Assim que confirmado o envio, a triagem começa sozinha — sem botão de "processar" nenhum.</p>
+    <h2>Enviar PDF do processo</h2>
+    <p class="aviso-discreto">Máximo de {{ maximo_arquivos }} PDFs por vez. Assim que confirmado o envio, a triagem começa sozinha, não será possível reverter a ação.</p>
     <form action="/extratus-aburesi/upload" method="post" enctype="multipart/form-data" id="form-upload-manual" data-confirm="" data-perigo="true">
         <label class="zona-soltar" for="campo-pdfs-manual" id="zona-soltar-manual">
             <input type="file" name="arquivos" accept=".pdf" id="campo-pdfs-manual" multiple hidden>

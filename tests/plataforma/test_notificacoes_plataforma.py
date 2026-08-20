@@ -42,42 +42,30 @@ def test_usuario_sem_acesso_a_nenhuma_ferramenta_nao_ve_nada(usuario_sem_acesso)
 
 
 def test_agrega_so_ferramentas_com_acesso_liberado():
+    # Henrique, diretoria, 2026-08-19: as 2 famílias (Sistema/erro e
+    # Minhas/pessoal) agora usam o MESMO critério — acesso básico à
+    # ferramenta, sem flag própria pra Fila do Robô. Um registro com as
+    # duas famílias por ferramenta prova que ambas respeitam o acesso.
+    item_pessoal_extratus = {
+        "mensagem": "c", "tipo": "pronto", "link": "/z",
+        "pessoal": True, "descartavel": True, "resolver": "/r",
+    }
     notificacoes_falsas = [
-        ("extratus", "Extratus - Relatórios", lambda: [{"mensagem": "a", "tipo": "erro", "link": "/x"}], lambda usuario_id: []),
+        ("extratus", "Extratus - Relatórios", lambda: [{"mensagem": "a", "tipo": "erro", "link": "/x"}], lambda usuario_id: [item_pessoal_extratus]),
         ("extratus-aburesi", "Extratus - Aburesi", lambda: [{"mensagem": "b", "tipo": "erro", "link": "/y"}], lambda usuario_id: []),
     ]
 
     with patch.object(
         notificacoes,
-        "usuario_tem_acesso_fila_motor",
+        "usuario_tem_acesso",
         side_effect=lambda usuario, slug: slug == "extratus",
-    ), patch.object(
-        notificacoes, "usuario_tem_acesso", return_value=False,
-    ), patch.object(notificacoes, "REGISTRO_NOTIFICACOES", notificacoes_falsas):
-        itens = notificacoes.notificacoes_do_usuario(object())
-
-    assert itens == [{"mensagem": "a", "tipo": "erro", "link": "/x", "ferramenta": "Extratus - Relatórios"}]
-
-
-def test_agrega_itens_pessoais_mesmo_sem_acesso_a_fila_motor():
-    """Henrique, 2026-08-13: a aba "Minhas" (fluxo manual) é justamente
-    pra quem não tem acesso à Fila do Motor também."""
-    item_pessoal = {
-        "mensagem": "c", "tipo": "pronto", "link": "/z",
-        "pessoal": True, "descartavel": True, "resolver": "/r",
-    }
-    notificacoes_falsas = [
-        ("extratus", "Extratus - Relatórios", lambda: [], lambda usuario_id: [item_pessoal]),
-    ]
-
-    with patch.object(
-        notificacoes, "usuario_tem_acesso_fila_motor", return_value=False,
-    ), patch.object(
-        notificacoes, "usuario_tem_acesso", return_value=True,
     ), patch.object(notificacoes, "REGISTRO_NOTIFICACOES", notificacoes_falsas):
         itens = notificacoes.notificacoes_do_usuario(SimpleNamespace(id=1))
 
-    assert itens == [{**item_pessoal, "ferramenta": "Extratus - Relatórios"}]
+    assert itens == [
+        {"mensagem": "a", "tipo": "erro", "link": "/x", "ferramenta": "Extratus - Relatórios"},
+        {**item_pessoal_extratus, "ferramenta": "Extratus - Relatórios"},
+    ]
 
 
 def test_endpoint_notificacoes_exige_login():

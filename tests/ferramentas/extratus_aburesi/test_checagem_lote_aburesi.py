@@ -12,7 +12,7 @@ from app.ferramentas.extratus_aburesi.db.checagem_fila import (
 
 
 CONFIG_EXEMPLO = {
-    "motor_pasta_entrada": "/pasta/motor",
+    "robo_pasta_entrada": "/pasta/robô",
     "pasta_erros": "/pasta/erros",
 }
 
@@ -26,14 +26,14 @@ def test_rodar_ciclo_checagem_sincroniza_e_checa_cada_pendente():
     registro = SimpleNamespace(id=1, nome_arquivo="a.pdf")
 
     with patch.object(checagem_lote, "carregar_config", return_value=CONFIG_EXEMPLO), \
-         patch.object(checagem_lote, "listar_pdfs", return_value=[Path("/pasta/motor/a.pdf")]), \
+         patch.object(checagem_lote, "listar_pdfs", return_value=[Path("/pasta/robô/a.pdf")]), \
          patch.object(checagem_lote, "listar_arquivos_ja_reivindicados", return_value=set()), \
          patch.object(checagem_lote, "sincronizar_registros", return_value=[registro]) as sincronizar_mock, \
          patch.object(checagem_lote, "_checar_um_arquivo") as checar_mock:
         checagem_lote.rodar_ciclo_checagem()
 
     sincronizar_mock.assert_called_once_with({"a.pdf"})
-    checar_mock.assert_called_once_with(registro, Path("/pasta/motor"), "/pasta/erros")
+    checar_mock.assert_called_once_with(registro, Path("/pasta/robô"), "/pasta/erros")
 
 
 def test_checar_um_arquivo_aprova_quando_tudo_ok():
@@ -43,7 +43,7 @@ def test_checar_um_arquivo_aprova_quando_tudo_ok():
          patch.object(checagem_lote, "existe_relatorio_gerado_para_processo", return_value=False), \
          patch.object(checagem_lote, "existe_conflito_de_processo", return_value=False), \
          patch.object(checagem_lote, "atualizar_apos_checagem") as atualizar_mock:
-        checagem_lote._checar_um_arquivo(registro, Path("/pasta/motor"), "/pasta/erros")
+        checagem_lote._checar_um_arquivo(registro, Path("/pasta/robô"), "/pasta/erros")
 
     atualizar_mock.assert_called_once_with(1, APROVADO, "123", "alta", "ok")
 
@@ -53,7 +53,7 @@ def test_checar_um_arquivo_marca_processo_nao_encontrado():
 
     with patch.object(checagem_lote, "analisar_pdf_isolado", return_value=_resultado(processo=None)), \
          patch.object(checagem_lote, "atualizar_apos_checagem") as atualizar_mock:
-        checagem_lote._checar_um_arquivo(registro, Path("/pasta/motor"), "/pasta/erros")
+        checagem_lote._checar_um_arquivo(registro, Path("/pasta/robô"), "/pasta/erros")
 
     assert atualizar_mock.call_args[0][1] == NAO_ENCONTRADO
     assert atualizar_mock.call_args[0][2] is None
@@ -65,7 +65,7 @@ def test_checar_um_arquivo_marca_duplicado_relatorio():
     with patch.object(checagem_lote, "analisar_pdf_isolado", return_value=_resultado(processo="123")), \
          patch.object(checagem_lote, "existe_relatorio_gerado_para_processo", return_value=True), \
          patch.object(checagem_lote, "atualizar_apos_checagem") as atualizar_mock:
-        checagem_lote._checar_um_arquivo(registro, Path("/pasta/motor"), "/pasta/erros")
+        checagem_lote._checar_um_arquivo(registro, Path("/pasta/robô"), "/pasta/erros")
 
     assert atualizar_mock.call_args[0][1] == DUPLICADO_RELATORIO
     assert atualizar_mock.call_args[0][2] == "123"
@@ -78,7 +78,7 @@ def test_checar_um_arquivo_marca_duplicado_em_andamento():
          patch.object(checagem_lote, "existe_relatorio_gerado_para_processo", return_value=False), \
          patch.object(checagem_lote, "existe_conflito_de_processo", return_value=True), \
          patch.object(checagem_lote, "atualizar_apos_checagem") as atualizar_mock:
-        checagem_lote._checar_um_arquivo(registro, Path("/pasta/motor"), "/pasta/erros")
+        checagem_lote._checar_um_arquivo(registro, Path("/pasta/robô"), "/pasta/erros")
 
     assert atualizar_mock.call_args[0][1] == DUPLICADO_EM_ANDAMENTO
 
@@ -89,7 +89,7 @@ def test_checar_um_arquivo_pdf_ilegivel_trata_como_erro_de_verdade():
     with patch.object(checagem_lote, "analisar_pdf_isolado", side_effect=RuntimeError("PDF corrompido")), \
          patch.object(checagem_lote, "tratar_erro") as tratar_erro_mock, \
          patch.object(checagem_lote, "atualizar_apos_checagem") as atualizar_mock:
-        checagem_lote._checar_um_arquivo(registro, Path("/pasta/motor"), "/pasta/erros")
+        checagem_lote._checar_um_arquivo(registro, Path("/pasta/robô"), "/pasta/erros")
 
     tratar_erro_mock.assert_called_once()
     assert tratar_erro_mock.call_args[0][2] == "erro_pdf"
@@ -102,7 +102,7 @@ def test_checar_um_arquivo_sumido_durante_o_ciclo_e_ignorado_sem_virar_erro():
     with patch.object(checagem_lote, "analisar_pdf_isolado", side_effect=FileNotFoundError()), \
          patch.object(checagem_lote, "tratar_erro") as tratar_erro_mock, \
          patch.object(checagem_lote, "atualizar_apos_checagem") as atualizar_mock:
-        checagem_lote._checar_um_arquivo(registro, Path("/pasta/motor"), "/pasta/erros")
+        checagem_lote._checar_um_arquivo(registro, Path("/pasta/robô"), "/pasta/erros")
 
     tratar_erro_mock.assert_not_called()
     atualizar_mock.assert_not_called()

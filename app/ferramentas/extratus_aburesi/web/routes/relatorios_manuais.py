@@ -9,17 +9,17 @@ from app.ferramentas.extratus_aburesi.web.rotulos import (
     contagem_nav_conferencias_fila,
     contagem_nav_conferencias_manual,
     contagem_nav_relatorios,
-    contagem_nav_relatorios_motor,
+    contagem_nav_relatorios_robo,
     rotulo_erro,
     rotulo_status,
 )
 from app.plataforma.db.models import Usuario
 from app.plataforma.db.usuarios import listar_todos_usuarios, marcar_aba_vista
-from app.plataforma.web.auth import exigir_acesso_ferramenta
+from app.plataforma.web.auth import exigir_acesso_manual
 from app.plataforma.web.templates_util import criar_templates
 
 
-router = APIRouter(dependencies=[Depends(exigir_acesso_ferramenta("extratus-aburesi"))])
+router = APIRouter(dependencies=[Depends(exigir_acesso_manual("extratus-aburesi"))])
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 PLATAFORMA_TEMPLATES_DIR = (
@@ -32,13 +32,13 @@ templates.env.filters["rotulo_erro"] = rotulo_erro
 templates.env.globals["contagem_nav_conferencias_manual"] = contagem_nav_conferencias_manual
 templates.env.globals["contagem_nav_conferencias_fila"] = contagem_nav_conferencias_fila
 templates.env.globals["contagem_nav_relatorios"] = contagem_nav_relatorios
-templates.env.globals["contagem_nav_relatorios_motor"] = contagem_nav_relatorios_motor
+templates.env.globals["contagem_nav_relatorios_robo"] = contagem_nav_relatorios_robo
 
 
 @router.get("/relatorios")
 def pagina_relatorios_manuais(
     request: Request,
-    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus-aburesi")),
+    usuario: Usuario = Depends(exigir_acesso_manual("extratus-aburesi")),
     processo: str | None = None,
 ):
     jobs = listar_jobs_manuais()
@@ -64,7 +64,7 @@ def pagina_relatorios_manuais(
 @router.post("/relatorios/{job_id}/marcar-notificacao-resolvida")
 def marcar_notificacao_resolvida_route(
     job_id: int,
-    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus-aburesi")),
+    usuario: Usuario = Depends(exigir_acesso_manual("extratus-aburesi")),
 ):
     """Ver docstring equivalente em app/ferramentas/extratus/web/routes/
     relatorios_manuais.py (Extratus - Relatórios) — mesma lógica."""

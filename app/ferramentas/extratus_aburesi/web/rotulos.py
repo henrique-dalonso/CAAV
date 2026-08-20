@@ -12,7 +12,7 @@ from datetime import datetime
 
 from app.ferramentas.extratus_aburesi.db.checagem_fila import contar_inconsistencias_ativas
 from app.ferramentas.extratus_aburesi.db.jobs import (
-    contar_relatorios_motor_novos,
+    contar_relatorios_robo_novos,
     contar_relatorios_novos_do_usuario,
 )
 from app.ferramentas.extratus_aburesi.db.triagem_manual import contar_inconsistencias_ativas_do_usuario
@@ -36,7 +36,7 @@ FERRAMENTA_SLUG = "extratus-aburesi"
 ABA_GERAR_RELATORIO = "inbox"
 ABA_FILA = "fila"
 ABA_RELATORIOS = "relatorios"
-ABA_RELATORIOS_MOTOR = "relatorios-motor"
+ABA_RELATORIOS_ROBO = "relatorios-robo"
 
 _DESDE_SEMPRE = datetime.min
 
@@ -68,8 +68,8 @@ def contagem_nav_relatorios(usuario):
     return contar_relatorios_novos_do_usuario(usuario.id, desde)
 
 
-def contagem_nav_relatorios_motor(usuario):
+def contagem_nav_relatorios_robo(usuario):
     """Ver docstring equivalente em app/ferramentas/extratus/web/
     rotulos.py (Extratus - Relatórios) — mesma lógica."""
-    desde = obter_ultimo_visto(usuario.id, FERRAMENTA_SLUG, ABA_RELATORIOS_MOTOR) or _DESDE_SEMPRE
-    return contar_relatorios_motor_novos(desde)
+    desde = obter_ultimo_visto(usuario.id, FERRAMENTA_SLUG, ABA_RELATORIOS_ROBO) or _DESDE_SEMPRE
+    return contar_relatorios_robo_novos(desde)

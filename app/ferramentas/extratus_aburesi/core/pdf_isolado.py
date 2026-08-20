@@ -19,5 +19,5 @@ def executar_isolado(funcao, *args):
     """Ver docstring equivalente em app/ferramentas/extratus/core/
     pdf_isolado.py (Extratus - Relatórios) — mesmo bug real (GIL do
     pypdf), mesma correção, compartilhado entre checagem_lote.py e
-    motor_lote.py."""
+    robo_lote.py."""
     return _obter_executor().submit(funcao, *args).result()

@@ -4,7 +4,7 @@
     // ---------------------------------------------------------------
     // Upload de PDFs — dropzone, cartões de arquivo, popover "+N",
     // dedupe client-side e envio via XHR (progresso real, sem recarregar
-    // a página até o fim). Ver [[extratus-fila-motor-redesign]].
+    // a página até o fim). Ver [[extratus-fila-robo-redesign]].
     // ---------------------------------------------------------------
 
     var LIMITE_CARTOES_VISIVEIS = 5;
@@ -440,7 +440,7 @@
                         quando: Date.now()
                     }));
                     window.location = form.action.replace(/\/upload$/, "") +
-                        "?sucesso=" + encodeURIComponent(enviadosOk + " PDF(s) enviado(s) pra fila do Motor.");
+                        "?sucesso=" + encodeURIComponent(enviadosOk + " PDF(s) enviado(s) pra fila do Robô.");
                     return;
                 }
 
@@ -540,7 +540,7 @@
     // "Desfazer último envio" — desfazer de verdade, depois que os
     // arquivos já foram pro servidor (diferente do "Desfazer" de cima,
     // que só desfaz montagem local do lote). Só funciona enquanto o
-    // Motor ainda não reivindicou os arquivos pro próximo lote (o
+    // Robô ainda não reivindicou os arquivos pro próximo lote (o
     // próprio POST /fila/remover-varios, já existente, ignora com
     // segurança qualquer arquivo já reivindicado e avisa isso na
     // mensagem — reaproveitado aqui sem nenhuma mudança no servidor).
@@ -714,7 +714,7 @@
 
     // "item" aqui é {nome, status, aguardando_conferencia} pra quem vem
     // de Pendentes (checagem_fila.py — "aprovado" é o único status que
-    // passa pro motor; "aguardando_conferencia" é true nas 3
+    // passa pro robô; "aguardando_conferencia" é true nas 3
     // inconsistências reais, que agora têm bolinha VERMELHA própria,
     // distinta do laranja de "ainda checando" — Henrique, 2026-08-07)
     // ou só {nome, status: "verde"} pra quem já está em Processando (não
@@ -743,8 +743,8 @@
     }
 
     function tituloBolinha(item) {
-        if (item.status === "verde") { return "Em processamento pelo Motor"; }
-        if (item.status === "aprovado") { return "Aguardando o Motor"; }
+        if (item.status === "verde") { return "Em processamento pelo Robô"; }
+        if (item.status === "aprovado") { return "Aguardando o Robô"; }
         if (item.aguardando_conferencia) { return "Aguardando conferência"; }
         return "Em checagem";
     }
@@ -933,7 +933,7 @@
             // certo (obrigatório) já cumpre esse papel, ver o listener
             // de submit mais abaixo.
             formAprovar.classList.add("form-conferencia-manual");
-            dicaAprovar = "Libera esse arquivo pra fila do Motor, com o número de processo informado";
+            dicaAprovar = "Libera esse arquivo pra fila do Robô, com o número de processo informado";
 
             var campo = document.createElement("div");
             campo.className = "conferencia-campo-processo";
@@ -957,7 +957,7 @@
             formAprovar.appendChild(campo);
         } else {
             formAprovar.dataset.confirm = "Confirma que quer liberar " + item.nome + " pra fila mesmo assim?";
-            dicaAprovar = "Libera esse arquivo pra fila do Motor, mesmo com a inconsistência encontrada";
+            dicaAprovar = "Libera esse arquivo pra fila do Robô, mesmo com a inconsistência encontrada";
         }
 
         var botaoAprovar = document.createElement("button");

@@ -18,7 +18,7 @@ async def processar_upload_manual(registro_id):
     """Agendada via `BackgroundTasks` uma vez por arquivo, logo depois do
     upload (web/routes/gerar_relatorio.py) — todas agendadas juntas rodam
     concorrentemente. `asyncio.to_thread` pra não travar o event loop do
-    servidor (mesmo padrão dos watchers em core/motor_watcher.py e
+    servidor (mesmo padrão dos watchers em core/robo_watcher.py e
     core/checagem_watcher.py)."""
     await asyncio.to_thread(_triar_e_processar, registro_id)
 
@@ -33,7 +33,7 @@ async def retomar_apos_conferencia(registro_id, processo_manual=None):
 
 def _triar_e_processar(registro_id):
     """Espelha core/checagem_lote.py::_checar_um_arquivo (mesma lógica de
-    duplicidade que a Fila do Motor usa — reaproveitada tal como está,
+    duplicidade que a Fila do Robô usa — reaproveitada tal como está,
     já é cross-origin por natureza), com uma diferença: aqui, assim que
     aprova, já segue direto pra geração do relatório na mesma chamada,
     em vez de esperar um próximo ciclo/lote pegar o arquivo depois."""
@@ -74,7 +74,7 @@ def _triar_e_processar(registro_id):
 
     relatorio_existente = obter_relatorio_existente_para_processo(processo)
     if relatorio_existente:
-        origem = "motor" if relatorio_existente.usuario_id is None else "manual"
+        origem = "robô" if relatorio_existente.usuario_id is None else "manual"
         db_triagem.atualizar_apos_triagem(
             registro_id, db_triagem.DUPLICADO_RELATORIO, processo, nivel,
             "Já existe um relatório gerado para esse número de processo.",
@@ -90,7 +90,7 @@ def _triar_e_processar(registro_id):
         return
 
     # Sinal verde da triagem — já é o próprio gatilho pra geração, sem
-    # passar por um estado "aprovado" à parte (aqui não tem Motor/lote
+    # passar por um estado "aprovado" à parte (aqui não tem Robô/lote
     # esperando pra pegar depois, então o próximo passo já é processar).
     registro = db_triagem.atualizar_apos_triagem(registro_id, db_triagem.PROCESSANDO, processo, nivel, motivo)
     _gerar_e_finalizar(registro, {"nivel": nivel, "motivo": motivo}, config)

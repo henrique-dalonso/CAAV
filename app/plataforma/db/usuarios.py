@@ -52,19 +52,19 @@ def _marcar_admin_ferramenta(sessao, usuario_id, ferramenta_ids_admin):
         sessao.add(vinculo)
 
 
-def _marcar_fila_motor(sessao, usuario_id, ferramenta_ids_fila):
-    if not ferramenta_ids_fila:
+def _marcar_acesso_manual(sessao, usuario_id, ferramenta_ids_manual):
+    if not ferramenta_ids_manual:
         return
 
     vinculos = sessao.exec(
         select(UsuarioFerramenta).where(
             UsuarioFerramenta.usuario_id == usuario_id,
-            UsuarioFerramenta.ferramenta_id.in_(ferramenta_ids_fila),
+            UsuarioFerramenta.ferramenta_id.in_(ferramenta_ids_manual),
         )
     ).all()
 
     for vinculo in vinculos:
-        vinculo.fila_motor = True
+        vinculo.acesso_manual = True
         sessao.add(vinculo)
 
 
@@ -105,7 +105,7 @@ def usuario_tem_acesso(usuario: Usuario, slug_ferramenta: str) -> bool:
 
 def usuario_eh_admin_da_ferramenta(usuario: Usuario, slug_ferramenta: str) -> bool:
     """Acesso à aba administrativa DENTRO de uma ferramenta específica
-    (Configurações do Motor, no Extratus — Henrique, 2026-08-11: "Custos"
+    (Configurações do Robô, no Extratus — Henrique, 2026-08-11: "Custos"
     deixou de ser uma delas, virou tela própria só pra admin da
     plataforma, ver app/plataforma/web/routes/admin.py) — não confundir
     com exigir_admin, que é a área de Administração da plataforma
@@ -138,7 +138,7 @@ def listar_ferramentas_admin_ids(usuario_id: int):
 
 def _agrupar_ferramenta_ids_por_usuario(condicao_extra=None):
     """Mesma ideia das 3 funções de um usuário só acima (liberadas/admin/
-    fila), mas pra TODOS de uma vez — 1 consulta no total em vez de 1 por
+    manual), mas pra TODOS de uma vez — 1 consulta no total em vez de 1 por
     usuário. Usada pela tela de Usuários do admin (Rodada 12, achado de
     qualidade de código: 3 consultas × N usuários listados, virou 3 no
     total)."""
@@ -162,15 +162,17 @@ def listar_ferramentas_admin_ids_por_usuario():
     return _agrupar_ferramenta_ids_por_usuario(UsuarioFerramenta.admin_ferramenta == True)  # noqa: E712
 
 
-def listar_ferramentas_fila_ids_por_usuario():
-    return _agrupar_ferramenta_ids_por_usuario(UsuarioFerramenta.fila_motor == True)  # noqa: E712
+def listar_ferramentas_manual_ids_por_usuario():
+    return _agrupar_ferramenta_ids_por_usuario(UsuarioFerramenta.acesso_manual == True)  # noqa: E712
 
 
-def usuario_tem_acesso_fila_motor(usuario: Usuario, slug_ferramenta: str) -> bool:
-    """Acesso à aba de Fila do motor (upload em lote pra pasta universal
-    do motor) — independente de admin_ferramenta: um coordenador admin da
-    ferramenta sempre tem, mas um colaborador também pode ter só isso,
-    sem ganhar acesso a ligar/desligar o motor nem às configs dele."""
+def usuario_tem_acesso_manual(usuario: Usuario, slug_ferramenta: str) -> bool:
+    """Acesso ao fluxo Manual/URGENTE (Gerar Relatório URGENTE, Relatórios
+    URGENTES) — Henrique, diretoria, 2026-08-19: virou exclusivo de quem
+    tem essa flag (na prática, coordenadores), já que o Robô passou a
+    ser o modo padrão pra todo mundo. Independente de admin_ferramenta:
+    um admin da ferramenta sempre tem, mas dá pra abrir exceção pontual
+    pra um colaborador específico também."""
     if usuario.eh_admin:
         return True
 
@@ -181,23 +183,28 @@ def usuario_tem_acesso_fila_motor(usuario: Usuario, slug_ferramenta: str) -> boo
             .where(
                 UsuarioFerramenta.usuario_id == usuario.id,
                 Ferramenta.slug == slug_ferramenta,
-                (UsuarioFerramenta.fila_motor == True)  # noqa: E712
+                (UsuarioFerramenta.acesso_manual == True)  # noqa: E712
                 | (UsuarioFerramenta.admin_ferramenta == True),  # noqa: E712
             )
         )
         return sessao.exec(consulta).first() is not None
 
 
-def usuario_tem_acesso_a_alguma_fila_motor(usuario: Usuario) -> bool:
-    """Versão "em qualquer ferramenta" de usuario_tem_acesso_fila_motor —
-    usada só pra decidir se a aba "Conferências" do sininho de
-    notificações aparece pra alguém (Henrique, 2026-08-07: "Ela só será
-    exibida para quem tiver acesso a pelo menos uma fila de Motor").
-    Filtra por Ferramenta.suporta_fila_motor em vez de uma lista fixa de
-    slugs — assim, uma ferramenta nova que ganhe fila do motor no futuro
-    já entra automaticamente aqui, sem precisar lembrar de atualizar
-    isso também (ver REGISTRO_NOTIFICACOES em web/notificacoes.py, que é
-    uma lista fixa por um motivo diferente: lá precisa do import de cada
+def usuario_tem_acesso_a_alguma_fila_robo(usuario: Usuario) -> bool:
+    """Versão "em qualquer ferramenta" de usuario_tem_acesso — usada só
+    pra decidir se a aba "Ferramentas" do sininho de notificações (antiga
+    "Conferências Robô", renomeada e ampliada 2026-08-19 — ver
+    web/notificacoes.py) aparece pra alguém (Henrique, 2026-08-07: "Ela
+    só será exibida para quem tiver acesso a pelo menos uma fila de
+    Robô"). Henrique, diretoria, 2026-08-19: Fila do Robô virou acesso
+    padrão de quem já usa a ferramenta — não filtra mais por uma flag
+    própria, só por ter acesso básico a uma ferramenta que suporta
+    Robô. Filtra por
+    Ferramenta.suporta_fila_robo em vez de uma lista fixa de slugs —
+    assim, uma ferramenta nova que ganhe fila do robô no futuro já
+    entra automaticamente aqui, sem precisar lembrar de atualizar isso
+    também (ver REGISTRO_NOTIFICACOES em web/notificacoes.py, que é uma
+    lista fixa por um motivo diferente: lá precisa do import de cada
     listar_notificacoes(), que não tem como descobrir sozinho)."""
     if usuario.eh_admin:
         return True
@@ -208,19 +215,17 @@ def usuario_tem_acesso_a_alguma_fila_motor(usuario: Usuario) -> bool:
             .join(Ferramenta, Ferramenta.id == UsuarioFerramenta.ferramenta_id)
             .where(
                 UsuarioFerramenta.usuario_id == usuario.id,
-                Ferramenta.suporta_fila_motor == True,  # noqa: E712
-                (UsuarioFerramenta.fila_motor == True)  # noqa: E712
-                | (UsuarioFerramenta.admin_ferramenta == True),  # noqa: E712
+                Ferramenta.suporta_fila_robo == True,  # noqa: E712
             )
         )
         return sessao.exec(consulta).first() is not None
 
 
-def listar_ferramentas_fila_ids(usuario_id: int):
+def listar_ferramentas_manual_ids(usuario_id: int):
     with obter_sessao() as sessao:
         consulta = select(UsuarioFerramenta.ferramenta_id).where(
             UsuarioFerramenta.usuario_id == usuario_id,
-            UsuarioFerramenta.fila_motor == True,  # noqa: E712
+            UsuarioFerramenta.acesso_manual == True,  # noqa: E712
         )
         return set(sessao.exec(consulta).all())
 
@@ -247,7 +252,7 @@ def ferramenta_pela_url(caminho):
     """Qual ferramenta "dona" desse caminho de URL, se alguma — usado pra
     saber de qual ferramenta puxar a cor de identidade (ver
     cor_ferramenta_atual, templates_util.py) em qualquer sub-página dela
-    (não só a raiz, também funciona pra /extratus/configuracoes-motor,
+    (não só a raiz, também funciona pra /extratus/configuracoes-robo,
     /extratus/fila etc.), já que o middleware de "Mais utilizadas" só
     faz esse match exato pra raiz, não serve pra isso."""
     with obter_sessao() as sessao:
@@ -357,13 +362,13 @@ def criar_usuario(
     cargo=CARGO_COLABORADOR,
     ferramenta_ids=None,
     ferramentas_admin_ids=None,
-    ferramentas_fila_ids=None,
+    ferramentas_manual_ids=None,
 ):
     if cargo not in CARGOS_VALIDOS:
         raise ValueError(f"Cargo inválido: {cargo!r}")
 
     ferramentas_admin_ids = set(ferramentas_admin_ids or [])
-    ferramentas_fila_ids = set(ferramentas_fila_ids or [])
+    ferramentas_manual_ids = set(ferramentas_manual_ids or [])
 
     with obter_sessao() as sessao:
         ja_existe = sessao.exec(
@@ -389,7 +394,7 @@ def criar_usuario(
 
         # Admin da plataforma tem acesso a tudo de forma inerente, nunca
         # via UsuarioFerramenta — por isso ignoramos ferramenta_ids/admin/
-        # fila aqui quando eh_admin=True, mesmo que algo tenha vindo
+        # manual aqui quando eh_admin=True, mesmo que algo tenha vindo
         # marcado no formulário (ex: o bloco de cargo/ferramentas é só
         # ESCONDIDO por CSS quando "Administrador? Sim" é escolhido, não
         # desabilitado — então checkboxes marcados antes de trocar pra
@@ -403,7 +408,7 @@ def criar_usuario(
                         usuario_id=usuario.id,
                         ferramenta_id=ferramenta_id,
                         admin_ferramenta=ferramenta_id in ferramentas_admin_ids,
-                        fila_motor=ferramenta_id in ferramentas_fila_ids,
+                        acesso_manual=ferramenta_id in ferramentas_manual_ids,
                     )
                 )
 
@@ -416,7 +421,7 @@ def criar_usuario(
             if cargo == CARGO_COORDENADOR and not ferramenta_ids:
                 _conceder_todas_ferramentas(sessao, usuario.id)
                 _marcar_admin_ferramenta(sessao, usuario.id, ferramentas_admin_ids)
-                _marcar_fila_motor(sessao, usuario.id, ferramentas_fila_ids)
+                _marcar_acesso_manual(sessao, usuario.id, ferramentas_manual_ids)
 
         sessao.commit()
         # Esse commit expira os atributos já carregados em "usuario" — sem
@@ -428,9 +433,9 @@ def criar_usuario(
         return usuario
 
 
-def definir_ferramentas(usuario_id, ferramenta_ids, ferramentas_admin_ids=None, ferramentas_fila_ids=None):
+def definir_ferramentas(usuario_id, ferramenta_ids, ferramentas_admin_ids=None, ferramentas_manual_ids=None):
     ferramentas_admin_ids = set(ferramentas_admin_ids or [])
-    ferramentas_fila_ids = set(ferramentas_fila_ids or [])
+    ferramentas_manual_ids = set(ferramentas_manual_ids or [])
 
     with obter_sessao() as sessao:
         atuais = sessao.exec(
@@ -446,7 +451,7 @@ def definir_ferramentas(usuario_id, ferramenta_ids, ferramentas_admin_ids=None, 
                     usuario_id=usuario_id,
                     ferramenta_id=ferramenta_id,
                     admin_ferramenta=ferramenta_id in ferramentas_admin_ids,
-                    fila_motor=ferramenta_id in ferramentas_fila_ids,
+                    acesso_manual=ferramenta_id in ferramentas_manual_ids,
                 )
             )
 
@@ -467,10 +472,10 @@ def alternar_admin(usuario_id):
     forma inerente (nunca via UsuarioFerramenta) — por isso, ao PROMOVER,
     apagamos qualquer vínculo por ferramenta que porventura já existisse
     (não tem mais função nenhuma, e ficar dormente aí é exatamente o que
-    causava o bug de "removi o admin e o Motor/Fila continuavam
+    causava o bug de "removi o admin e o Robô/Fila continuavam
     liberados", porque o vínculo antigo ressurgia assim que eh_admin virava
     False de novo). Ao REBAIXAR, devolvemos o acesso básico às ferramentas
-    (sem admin_ferramenta/fila_motor, que continuam precisando ser
+    (sem admin_ferramenta/acesso_manual, que continuam precisando ser
     concedidos à parte) — senão a pessoa ficaria sem usar nada."""
     with obter_sessao() as sessao:
         usuario = sessao.get(Usuario, usuario_id)

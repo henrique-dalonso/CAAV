@@ -32,11 +32,11 @@ def pagina_custos(
     info_por_id = {u.id: {"nome": u.nome, "login": u.nome_usuario} for u in listar_todos_usuarios()}
     custo_por_usuario = somar_custo_por_usuario()
 
-    custo_motor = custo_por_usuario.get(None, 0.0)
+    custo_robo = custo_por_usuario.get(None, 0.0)
     custo_colaboradores = sum(
         custo for usuario_id, custo in custo_por_usuario.items() if usuario_id is not None
     )
-    custo_total = custo_motor + custo_colaboradores
+    custo_total = custo_robo + custo_colaboradores
 
     colaboradores = sorted(
         (
@@ -61,7 +61,7 @@ def pagina_custos(
             "info_por_id": info_por_id,
             "colaboradores": colaboradores,
             "custo_colaboradores": custo_colaboradores,
-            "custo_motor": custo_motor,
+            "custo_robo": custo_robo,
             "custo_total": custo_total,
         },
     )

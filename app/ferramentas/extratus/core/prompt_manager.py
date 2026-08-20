@@ -7,7 +7,7 @@ from app.plataforma.paths import PROJECT_ROOT
 PROMPT_PATH = PROJECT_ROOT / "app" / "ferramentas" / "extratus" / "config" / "instrucoes_relatorio.txt"
 
 # Guarda uma cópia com carimbo de data/hora do prompt anterior toda vez que
-# alguém sobe um novo pela tela do Motor — se o novo vier errado, dá pra
+# alguém sobe um novo pela tela do Robô — se o novo vier errado, dá pra
 # recuperar o de antes sem precisar mexer no código.
 HISTORICO_PROMPTS_DIR = PROMPT_PATH.parent / "historico_prompts"
 
@@ -32,7 +32,7 @@ def extensao_esperada_prompt():
 
 def substituir_instrucoes_relatorio(conteudo: bytes):
     """Sobrescreve o prompt de instruções com um novo conteúdo (upload pela
-    tela do Motor). Valida que o conteúdo é texto de verdade (UTF-8) antes
+    tela do Robô). Valida que o conteúdo é texto de verdade (UTF-8) antes
     de gravar, e guarda uma cópia com carimbo de data/hora do prompt
     anterior em `historico_prompts/`, pra não perder o que havia antes se
     o arquivo novo estiver errado.

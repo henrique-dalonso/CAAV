@@ -9,7 +9,7 @@ from app.plataforma.web.eventos_sse import avisar_mudanca
 
 
 # Mesmo vocabulário de status que db/checagem_fila.py usa pra Fila do
-# Motor — ver TriagemManual (db/models.py) pro porquê de ser uma tabela
+# Robô — ver TriagemManual (db/models.py) pro porquê de ser uma tabela
 # separada (aqui é pessoal por usuário, e também acompanha a geração em
 # si, coisa que ChecagemFila nunca precisou fazer).
 PENDENTE = "pendente"
@@ -24,7 +24,7 @@ NAO_ENCONTRADO = "processo_nao_encontrado"
 # vermelha) igual às outras 3 inconsistências, até alguém decidir em
 # Conferências (Aprovar informando o processo na mão, ou Descartar).
 # Antes disso, uma falha de leitura ia direto pra Job "erro" e sumia da
-# tela sem chance de decisão humana — igual à Fila do Motor JÁ faz pras
+# tela sem chance de decisão humana — igual à Fila do Robô JÁ faz pras
 # inconsistências de duplicidade/processo não encontrado.
 FALHA_LEITURA = "falha_leitura"
 
@@ -67,12 +67,12 @@ def atualizar_apos_triagem(registro_id, status, processo_detectado, confianca_ni
     core/checagem_lote.py, reaproveitada em core/pipeline_manual.py) —
     usada tanto pras inconsistências (trava, espera Conferências) quanto
     pro caso aprovado (status=PROCESSANDO direto — aqui não existe um
-    estado "aprovado" à parte esperando o Motor pegar depois, então o
+    estado "aprovado" à parte esperando o Robô pegar depois, então o
     próprio pipeline_manual.py já segue pra geração em seguida).
 
-    `origem_duplicado` ("motor" ou "manual") só é usado quando
+    `origem_duplicado` ("robô" ou "manual") só é usado quando
     status=DUPLICADO_RELATORIO — diz pro botão "Ir ao relatório" (web/
-    routes/gerar_relatorio.py) se o duplicado mora em "Relatórios do Motor" ou
+    routes/gerar_relatorio.py) se o duplicado mora em "Relatórios do Robô" ou
     "Seus Relatórios".
 
     Henrique, 2026-08-13: quando `status` é PROCESSANDO, essa gravação
@@ -237,7 +237,7 @@ def listar_estado_do_usuario(usuario_id):
     """{"pendentes": [...], "processando": [...]} — todos os registros
     ativos do próprio usuário. Henrique, 2026-08-12: uma inconsistência
     (trava a triagem, espera Conferências) NÃO some de Pendentes — ela
-    continua lá, com bolinha vermelha, exatamente como a Fila do Motor já
+    continua lá, com bolinha vermelha, exatamente como a Fila do Robô já
     faz (ver web/routes/fila.py::_estado_atual_fila). Só sai de Pendentes
     quando é resolvida de verdade (Aprovar move pra "processando";
     Descartar apaga a linha). Concluído/erro entram em "processando"

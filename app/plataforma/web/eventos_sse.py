@@ -8,7 +8,7 @@ import threading
 # recebe um "algo mudou, confira de novo" sem conteúdo nenhum — quem
 # decide o que cada usuário pode ver continua sendo só o /notificacoes
 # de sempre (notificacoes_do_usuario, já filtra por acesso à fila do
-# motor por ferramenta). Fazer o hub saber "quem precisa ver o quê"
+# robô por ferramenta). Fazer o hub saber "quem precisa ver o quê"
 # duplicaria essa lógica de permissão num lugar novo, arriscando os dois
 # lados divergirem com o tempo — mais simples e mais seguro deixar o hub
 # saber só "aconteceu uma mudança relevante", ponto.
@@ -20,7 +20,7 @@ _conexoes: list[asyncio.Queue] = []
 
 # threading.Lock (não asyncio.Lock) de propósito — essa lista é mexida
 # tanto pelo event loop async das rotas SSE quanto pelos watchers do
-# Motor/Checagem, que rodam em thread OS separada (asyncio.to_thread).
+# Robô/Checagem, que rodam em thread OS separada (asyncio.to_thread).
 # Um lock de asyncio só protege contra outras coroutines do MESMO loop,
 # não contra outra thread real — sem essa trava, um registrar/remover
 # concorrente com um avisar_mudanca() rodando no watcher podia mudar o
@@ -49,7 +49,7 @@ def remover_conexao(fila: asyncio.Queue) -> None:
 
 def avisar_mudanca() -> None:
     """Chamado sempre que algo que pode afetar o sininho muda de verdade
-    — um Job novo (sucesso/revisão/erro, manual ou Motor), um ciclo de
+    — um Job novo (sucesso/revisão/erro, manual ou Robô), um ciclo de
     checagem que promoveu/resolveu uma inconsistência de triagem, ou uma
     decisão no painel de Conferências (aprovar/descartar/descartar
     todas/remover pendente). Acorda toda conexão SSE aberta pra buscar

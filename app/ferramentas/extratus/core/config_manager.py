@@ -20,15 +20,15 @@ CONFIG_PADRAO = {
 
     "ia_provider": "claude",
 
-    # Motor automático — essa bandeira liga/desliga o vigiar-pasta-sozinho
-    # de verdade (motor_watcher.py, rodando em segundo plano desde o
-    # startup do app) na tela de Configurações do Motor.
-    "motor_ativo": False,
+    # Robô automático — essa bandeira liga/desliga o vigiar-pasta-sozinho
+    # de verdade (robo_watcher.py, rodando em segundo plano desde o
+    # startup do app) na tela de Configurações do Robô.
+    "robo_ativo": False,
 
-    # Pasta PRÓPRIA do motor — separada de pasta_entrada (que é a fila
+    # Pasta PRÓPRIA do robô — separada de pasta_entrada (que é a fila
     # manual/individual). Universal: todo mundo com acesso à aba Fila
-    # do motor manda PDF pra cá, sem filtro por quem enviou.
-    "motor_pasta_entrada": "app/ferramentas/extratus/dados/motor_entrada_pdfs",
+    # do robô manda PDF pra cá, sem filtro por quem enviou.
+    "robo_pasta_entrada": "app/ferramentas/extratus/dados/robo_entrada_pdfs",
 }
 
 PASTAS_CONFIGURAVEIS = [
@@ -37,8 +37,19 @@ PASTAS_CONFIGURAVEIS = [
     "pasta_processados",
     "pasta_revisao",
     "pasta_erros",
-    "motor_pasta_entrada",
+    "robo_pasta_entrada",
 ]
+
+# Henrique, diretoria, 2026-08-19: "Motor" virou "Robô" em tudo — migração
+# automática pra quem já tinha um config.json salvo com os nomes antigos
+# (literalmente "motor_..." — string já gravada em arquivo real, não dá
+# pra "renomear" isso retroativamente), uma vez só (ver carregar_config
+# abaixo). NÃO renomear as chaves à ESQUERDA aqui — são o nome antigo de
+# verdade, do jeito que já está escrito no disco.
+_CHAVES_CONFIG_ANTIGAS = {
+    "motor_ativo": "robo_ativo",
+    "motor_pasta_entrada": "robo_pasta_entrada",
+}
 
 
 # Henrique, 2026-08-11: "modo simulado" foi removido — só existe o
@@ -46,6 +57,19 @@ PASTAS_CONFIGURAVEIS = [
 # constante única) porque um segundo provedor de IA REAL pode entrar
 # aqui no futuro, "se for preciso".
 PROVEDORES_IA_VALIDOS = ("claude",)
+
+
+def _migrar_chaves_config_antigas(config_bruto):
+    """Renomeia in-place as chaves antigas ("motor_...") pras novas
+    ("robo_...") num dict de config recém-lido do disco — só move o
+    valor se a chave nova ainda não tiver sido gravada por ninguém
+    (setdefault), e sempre remove a antiga, pra não sobrar lixo duplicado
+    no config.json na próxima gravação."""
+    for chave_antiga, chave_nova in _CHAVES_CONFIG_ANTIGAS.items():
+        if chave_antiga in config_bruto:
+            config_bruto.setdefault(chave_nova, config_bruto.pop(chave_antiga))
+
+    return config_bruto
 
 
 def salvar_config(config):
@@ -117,17 +141,26 @@ def carregar_config():
         salvar_config(config)
         return resolver_pastas(config)
 
+    # Comparação precisa ser contra uma CÓPIA de antes da migração —
+    # _migrar_chaves_config_antigas muda config_usuario in-place, então
+    # comparar depois seria comparar o dict já migrado com ele mesmo,
+    # nunca detectando que teve mudança nenhuma (achado real: o
+    # config.json nunca limpava as chaves antigas sozinho por causa
+    # disso, mesmo com o valor certo já em uso na memória).
+    config_usuario_original = dict(config_usuario)
+    config_usuario = _migrar_chaves_config_antigas(config_usuario)
+
     config = CONFIG_PADRAO.copy()
     config.update(config_usuario)
 
-    if config != config_usuario:
+    if config != config_usuario_original:
         salvar_config(config)
 
     return resolver_pastas(config)
 
 
-def definir_motor_ativo(ativo: bool):
-    """Liga/desliga a bandeira do motor automático — lê e grava o
+def definir_robo_ativo(ativo: bool):
+    """Liga/desliga a bandeira do robô automático — lê e grava o
     config.json em bruto (caminhos relativos), nunca a versão resolvida
     em caminho absoluto que carregar_config() devolve, senão corrompe o
     arquivo pra quem edita à mão depois.
@@ -140,17 +173,17 @@ def definir_motor_ativo(ativo: bool):
                 lido = json.load(arquivo)
 
             if isinstance(lido, dict):
-                config_bruto = lido
+                config_bruto = _migrar_chaves_config_antigas(lido)
         except (json.JSONDecodeError, OSError):
             config_bruto = {}
 
     config = CONFIG_PADRAO.copy()
     config.update(config_bruto)
-    config["motor_ativo"] = bool(ativo)
+    config["robo_ativo"] = bool(ativo)
 
     salvar_config(config)
 
-    return config["motor_ativo"]
+    return config["robo_ativo"]
 
 
 def _carregar_config_bruta():
@@ -162,7 +195,7 @@ def _carregar_config_bruta():
             lido = json.load(arquivo)
 
         if isinstance(lido, dict):
-            return lido
+            return _migrar_chaves_config_antigas(lido)
     except (json.JSONDecodeError, OSError):
         pass
 
@@ -179,9 +212,9 @@ def carregar_config_bruto():
     return config
 
 
-def atualizar_config_motor(pasta_entrada=None, ia_provider=None):
-    """Edita as configurações do motor (pasta própria + provedor de IA) —
-    mesmo padrão de leitura/gravação em bruto do definir_motor_ativo, pra
+def atualizar_config_robo(pasta_entrada=None, ia_provider=None):
+    """Edita as configurações do robô (pasta própria + provedor de IA) —
+    mesmo padrão de leitura/gravação em bruto do definir_robo_ativo, pra
     não sobrescrever o config.json com caminhos já resolvidos em absoluto.
     """
     if ia_provider is not None and ia_provider not in PROVEDORES_IA_VALIDOS:
@@ -194,9 +227,9 @@ def atualizar_config_motor(pasta_entrada=None, ia_provider=None):
         pasta_entrada = pasta_entrada.strip()
 
         if not pasta_entrada:
-            raise ValueError("Pasta de entrada do Motor não pode ficar vazia.")
+            raise ValueError("Pasta de entrada do Robô não pode ficar vazia.")
 
-        config["motor_pasta_entrada"] = pasta_entrada
+        config["robo_pasta_entrada"] = pasta_entrada
 
     if ia_provider is not None:
         config["ia_provider"] = ia_provider

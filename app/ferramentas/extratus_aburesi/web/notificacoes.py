@@ -5,7 +5,7 @@ from app.ferramentas.extratus_aburesi.db.checagem_fila import (
     listar_inconsistencias,
 )
 from app.ferramentas.extratus_aburesi.db.jobs import (
-    listar_erros_nao_resolvidos_do_motor,
+    listar_jobs_robo_nao_notificados,
     listar_relatorios_manuais_nao_notificados_do_usuario,
 )
 from app.ferramentas.extratus_aburesi.db.triagem_manual import (
@@ -29,19 +29,34 @@ def listar_notificacoes():
             "link": "/extratus-aburesi/fila",
         })
 
-    for job in listar_erros_nao_resolvidos_do_motor():
-        motivo = job.erro_mensagem or job.tipo_erro or "falha desconhecida"
+    for job in listar_jobs_robo_nao_notificados():
         # Ver comentário equivalente em app/ferramentas/extratus/web/
         # notificacoes.py (Extratus - Relatórios) — mesma lógica.
-        link = "/extratus-aburesi/relatorios-motor"
+        link = "/extratus-aburesi/relatorios-robo"
         if job.processo:
             link += "?processo=" + quote(job.processo)
 
-        notificacoes.append({
-            "mensagem": f'"{job.arquivo_pdf}": erro ao processar ({motivo})',
-            "tipo": "erro",
-            "link": link,
-        })
+        if job.status == "erro":
+            motivo = job.erro_mensagem or job.tipo_erro or "falha desconhecida"
+            notificacoes.append({
+                "mensagem": f'"{job.arquivo_pdf}": erro ao processar ({motivo})',
+                "tipo": "erro",
+                "link": link,
+            })
+        elif job.status == "sucesso":
+            notificacoes.append({
+                "mensagem": f'"{job.arquivo_pdf}": relatório do Robô pronto',
+                "tipo": "pronto",
+                "link": link,
+                "descartavel": True,
+                "resolver": f"/extratus-aburesi/relatorios-robo/{job.id}/marcar-notificacao-resolvida",
+            })
+        else:  # "revisao"
+            notificacoes.append({
+                "mensagem": f'"{job.arquivo_pdf}": relatório do Robô pronto, mas precisa de revisão',
+                "tipo": "revisao",
+                "link": link,
+            })
 
     return notificacoes
 

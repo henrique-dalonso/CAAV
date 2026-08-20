@@ -27,10 +27,11 @@ def _apagar_usuario_teste_e_vinculos():
 
 @pytest.fixture
 def cliente_colaborador_logado():
-    """Usuário comum (não-admin), com acesso à ferramenta "extratus" —
-    usado pra provocar um 403 de verdade (rota /admin exige `exigir_admin`,
-    ver admin.py) e um 404 com detail próprio (download de relatório
-    inexistente exige acesso à ferramenta, ver inbox.py)."""
+    """Usuário comum (não-admin), com acesso à ferramenta "extratus" E ao
+    fluxo Manual/URGENTE dela — usado pra provocar um 403 de verdade
+    (rota /admin exige `exigir_admin`, ver admin.py) e um 404 com detail
+    próprio (download de relatório inexistente exige acesso_manual, ver
+    relatorios_manuais.py)."""
     _apagar_usuario_teste_e_vinculos()
 
     with obter_sessao() as sessao:
@@ -43,6 +44,7 @@ def cliente_colaborador_logado():
         senha="senhaColab12345",
         eh_admin=False,
         ferramenta_ids=[ferramenta_extratus.id] if ferramenta_extratus else [],
+        ferramentas_manual_ids=[ferramenta_extratus.id] if ferramenta_extratus else [],
     )
 
     cliente = TestClient(app)

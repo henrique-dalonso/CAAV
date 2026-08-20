@@ -30,11 +30,11 @@ from app.ferramentas.extratus.web.rotulos import (
     contagem_nav_conferencias_fila,
     contagem_nav_conferencias_manual,
     contagem_nav_relatorios,
-    contagem_nav_relatorios_motor,
+    contagem_nav_relatorios_robo,
 )
 from app.plataforma.db.models import Usuario
 from app.plataforma.db.usuarios import marcar_aba_vista
-from app.plataforma.web.auth import exigir_acesso_fila_motor
+from app.plataforma.web.auth import exigir_acesso_ferramenta
 from app.plataforma.web.templates_util import criar_templates
 
 
@@ -46,9 +46,9 @@ from app.plataforma.web.templates_util import criar_templates
 PADRAO_CNJ = re.compile(f"^{PADRAO_CNJ_TEXTO}$")
 
 
-router = APIRouter(dependencies=[Depends(exigir_acesso_fila_motor("extratus"))])
+router = APIRouter(dependencies=[Depends(exigir_acesso_ferramenta("extratus"))])
 
-TAMANHO_MAXIMO_UPLOAD = 350 * 1024 * 1024  # 350 MB — a fila do motor aceita PDF bem maior que o manual
+TAMANHO_MAXIMO_UPLOAD = 350 * 1024 * 1024  # 350 MB — a fila do robô aceita PDF bem maior que o manual
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 PLATAFORMA_TEMPLATES_DIR = (
@@ -57,13 +57,13 @@ PLATAFORMA_TEMPLATES_DIR = (
 templates = criar_templates([TEMPLATES_DIR, PLATAFORMA_TEMPLATES_DIR])
 # Badges "+N" da navegação — ver mesmo comentário em gerar_relatorio.py. Cuidado:
 # essa página TAMBÉM tem seu próprio "total_pendentes" no contexto (a
-# fila do MOTOR, sem relação nenhuma com isso) — por isso as funções
+# fila do ROBÔ, sem relação nenhuma com isso) — por isso as funções
 # globais têm nome bem diferente (contagem_nav_*), pra nunca colidir com
 # esse outro.
 templates.env.globals["contagem_nav_conferencias_manual"] = contagem_nav_conferencias_manual
 templates.env.globals["contagem_nav_conferencias_fila"] = contagem_nav_conferencias_fila
 templates.env.globals["contagem_nav_relatorios"] = contagem_nav_relatorios
-templates.env.globals["contagem_nav_relatorios_motor"] = contagem_nav_relatorios_motor
+templates.env.globals["contagem_nav_relatorios_robo"] = contagem_nav_relatorios_robo
 
 
 def _redirecionar(erro=None, sucesso=None):
@@ -81,14 +81,14 @@ def _redirecionar(erro=None, sucesso=None):
 
 
 def _estado_atual_fila():
-    """Quem está pendente vs. já reivindicado pelo motor agora mesmo —
+    """Quem está pendente vs. já reivindicado pelo robô agora mesmo —
     usado tanto pra renderizar a página quanto pelo endpoint de polling
     (/fila/estado), sempre a mesma fonte de verdade.
 
     Pendentes vem como [{"nome": ..., "status": ..., "aguardando_conferencia": ...}],
     não só o nome — status é o da checagem (checagem_lote.py): "pendente"
     (bolinha laranja, ainda checando de verdade) ou "aprovado" (bolinha
-    amarela, elegível pro motor). "aguardando_conferencia" é True quando
+    amarela, elegível pro robô). "aguardando_conferencia" é True quando
     o status é uma das 3 inconsistências (bolinha VERMELHA, distinta da
     laranja de propósito — Henrique, 2026-08-07: "se fica só em
     checagem, não fica explícito que aquele em específico está
@@ -98,12 +98,12 @@ def _estado_atual_fila():
     segundos — ainda não rodou pra ele) conta como "pendente" por
     padrão, nunca some da lista por causa disso."""
     config = carregar_config()
-    pdfs_na_pasta = [pdf.name for pdf in listar_pdfs(config.get("motor_pasta_entrada", "motor_entrada_pdfs"))]
+    pdfs_na_pasta = [pdf.name for pdf in listar_pdfs(config.get("robo_pasta_entrada", "robo_entrada_pdfs"))]
     em_processamento = listar_arquivos_ja_reivindicados()
     status_checagem = estado_por_nome()
 
     # Separados fisicamente em duas colunas na tela (não só uma etiqueta):
-    # quem ainda espera o motor notar o arquivo vs. quem já foi
+    # quem ainda espera o robô notar o arquivo vs. quem já foi
     # reivindicado por um lote enviado à Anthropic.
     apenas_pendentes = [
         {
@@ -117,7 +117,7 @@ def _estado_atual_fila():
     apenas_processando = [nome for nome in pdfs_na_pasta if nome in em_processamento]
 
     # Vermelho (aguardando conferência) sobe pro topo — é o que precisa de
-    # uma decisão humana agora; amarelo (aprovado, só esperando o Motor
+    # uma decisão humana agora; amarelo (aprovado, só esperando o Robô
     # pegar) desce pro fim, já que não precisa de ação nenhuma; laranja
     # (ainda checando) fica no meio (Henrique, 2026-08-07: "fica melhor a
     # visualização"). sort() é estável — dentro do mesmo grupo, mantém a
@@ -136,7 +136,7 @@ def _estado_atual_fila():
 
 def _conferencias_pendentes():
     """Inconsistências da triagem esperando decisão humana no painel de
-    Conferências — só as DESTA ferramenta (cada Fila do Motor mostra
+    Conferências — só as DESTA ferramenta (cada Fila do Robô mostra
     exclusivamente as suas próprias, nunca mistura com outra ferramenta;
     isso é diferente do sininho de notificações, que é multi-ferramenta
     de propósito). Mesma fonte (`listar_inconsistencias`) usada pelo
@@ -156,7 +156,7 @@ def _conferencias_pendentes():
 @router.get("/fila")
 def pagina_fila(
     request: Request,
-    usuario: Usuario = Depends(exigir_acesso_fila_motor("extratus")),
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
     erro: str | None = None,
     sucesso: str | None = None,
 ):
@@ -202,10 +202,10 @@ def estado_fila():
 async def enviar_pdfs(
     request: Request,
     arquivos: list[UploadFile] = File(...),
-    usuario: Usuario = Depends(exigir_acesso_fila_motor("extratus")),
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
 ):
     config = carregar_config()
-    pasta_entrada = Path(config.get("motor_pasta_entrada", "motor_entrada_pdfs"))
+    pasta_entrada = Path(config.get("robo_pasta_entrada", "robo_entrada_pdfs"))
     pasta_entrada.mkdir(parents=True, exist_ok=True)
 
     enviados = 0
@@ -234,14 +234,14 @@ async def enviar_pdfs(
         # (pendente ou em processamento) — antes disso, um upload com nome
         # repetido apagava o arquivo anterior sem aviso nenhum.
         if caminho_destino.exists():
-            rejeitados.append(f'"{nome_seguro}" já existe na fila do Motor (não foi enviado de novo)')
+            rejeitados.append(f'"{nome_seguro}" já existe na fila do Robô (não foi enviado de novo)')
             continue
 
         caminho_destino.write_bytes(conteudo)
         registrar_upload(nome_seguro, usuario.id)
         enviados += 1
 
-    # A Fila do motor envia um arquivo por requisição (fila.js), pra um
+    # A Fila do robô envia um arquivo por requisição (fila.js), pra um
     # PDF ruim/duplicado não travar o lote inteiro nem perder o que já
     # deu certo se a conexão cair no meio. Nesse caso o JS só precisa de
     # um retrato objetivo do que aconteceu — devolver a página inteira
@@ -256,16 +256,16 @@ async def enviar_pdfs(
             erro=f"{enviados} enviado(s). Recusado(s): " + "; ".join(rejeitados)
         )
 
-    return _redirecionar(sucesso=f"{enviados} PDF(s) enviado(s) pra fila do Motor.")
+    return _redirecionar(sucesso=f"{enviados} PDF(s) enviado(s) pra fila do Robô.")
 
 
 @router.post("/fila/remover-varios")
 def remover_varios_da_fila(
     nomes: list[str] = Form(...),
-    usuario: Usuario = Depends(exigir_acesso_fila_motor("extratus")),
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
 ):
     config = carregar_config()
-    pasta_entrada = Path(config.get("motor_pasta_entrada", "motor_entrada_pdfs"))
+    pasta_entrada = Path(config.get("robo_pasta_entrada", "robo_entrada_pdfs"))
     em_processamento = listar_arquivos_ja_reivindicados()
 
     removidos = 0
@@ -274,7 +274,7 @@ def remover_varios_da_fila(
     for nome in nomes:
         nome_seguro = Path(nome).name
 
-        # Já reivindicado por um lote do motor (aguardando ou sendo
+        # Já reivindicado por um lote do robô (aguardando ou sendo
         # processado) — não dá pra "desenviar" o lote, então remover o
         # arquivo local aqui só criaria um erro confuso quando o
         # resultado chegasse. Ignora, silenciosamente contado à parte.
@@ -305,7 +305,7 @@ def remover_varios_da_fila(
     mensagem = f"{removidos} PDF(s) removido(s) da fila."
 
     if ignorados:
-        mensagem += f" {ignorados} já estava(m) em processamento pelo Motor e não foi(ram) removido(s)."
+        mensagem += f" {ignorados} já estava(m) em processamento pelo Robô e não foi(ram) removido(s)."
 
     return _redirecionar(sucesso=mensagem)
 
@@ -313,13 +313,13 @@ def remover_varios_da_fila(
 @router.post("/fila/conferencia/{registro_id}/aprovar")
 def aprovar_conferencia(
     registro_id: int,
-    usuario: Usuario = Depends(exigir_acesso_fila_motor("extratus")),
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
     processo: str | None = Form(None),
 ):
     """"Prosseguir" do painel de Conferências — pula a trava da checagem
-    automática e libera o arquivo pro Motor pegar no próximo ciclo. Quem
+    automática e libera o arquivo pro Robô pegar no próximo ciclo. Quem
     decidiu fica registrado pra sempre (RegistroConferencia), mesmo a
-    Fila do Motor sendo compartilhada por todo mundo com acesso."""
+    Fila do Robô sendo compartilhada por todo mundo com acesso."""
     registro = obter_registro(registro_id)
 
     if not registro or registro.status not in STATUS_INCONSISTENCIA:
@@ -342,13 +342,13 @@ def aprovar_conferencia(
 
     registrar_decisao(nome_arquivo, tipo_original, "aprovado", usuario.id, processo_informado=processo_informado)
 
-    return _redirecionar(sucesso=f'"{nome_arquivo}" liberado pra fila do Motor.')
+    return _redirecionar(sucesso=f'"{nome_arquivo}" liberado pra fila do Robô.')
 
 
 @router.post("/fila/conferencia/{registro_id}/descartar")
 def descartar_conferencia(
     registro_id: int,
-    usuario: Usuario = Depends(exigir_acesso_fila_motor("extratus")),
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
 ):
     """"Descartar" do painel de Conferências — remove o PDF de vez da
     fila (mesmo mecanismo de /fila/remover-varios) e registra quem
@@ -362,7 +362,7 @@ def descartar_conferencia(
     nome_arquivo = registro.nome_arquivo
 
     config = carregar_config()
-    caminho = Path(config.get("motor_pasta_entrada", "motor_entrada_pdfs")) / nome_arquivo
+    caminho = Path(config.get("robo_pasta_entrada", "robo_entrada_pdfs")) / nome_arquivo
 
     if caminho.exists():
         caminho.unlink()
@@ -375,7 +375,7 @@ def descartar_conferencia(
 
 @router.post("/fila/conferencia/descartar-todas")
 def descartar_todas_conferencias(
-    usuario: Usuario = Depends(exigir_acesso_fila_motor("extratus")),
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
 ):
     """"Descartar todas" do painel de Conferências — pra quando um lote
     inteiro foi enviado errado e não faz sentido descartar item por item
@@ -386,7 +386,7 @@ def descartar_todas_conferencias(
     exatamente como um descarte individual — só que em lote aqui, não um
     delete em massa sem rastro."""
     config = carregar_config()
-    pasta_entrada = Path(config.get("motor_pasta_entrada", "motor_entrada_pdfs"))
+    pasta_entrada = Path(config.get("robo_pasta_entrada", "robo_entrada_pdfs"))
 
     descartados = 0
 
@@ -409,9 +409,9 @@ def descartar_todas_conferencias(
 @router.get("/fila/conferencia/{registro_id}/ver")
 def ver_pdf_conferencia(
     registro_id: int,
-    usuario: Usuario = Depends(exigir_acesso_fila_motor("extratus")),
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
 ):
-    """Abre o PDF original (ainda em motor_pasta_entrada, nem processado
+    """Abre o PDF original (ainda em robo_pasta_entrada, nem processado
     ainda) numa nova guia do navegador, pra dar uma conferida rápida no
     conteúdo antes de Aprovar/Descartar — sem precisar baixar (Henrique,
     2026-08-07). Sem `filename=` no FileResponse de propósito: isso é o
@@ -424,7 +424,7 @@ def ver_pdf_conferencia(
         raise HTTPException(status_code=404, detail="Arquivo não encontrado.")
 
     config = carregar_config()
-    caminho = Path(config.get("motor_pasta_entrada", "motor_entrada_pdfs")) / registro.nome_arquivo
+    caminho = Path(config.get("robo_pasta_entrada", "robo_entrada_pdfs")) / registro.nome_arquivo
 
     if not caminho.exists():
         raise HTTPException(status_code=404, detail="Arquivo não encontrado.")

@@ -8,18 +8,18 @@ ferramenta. Hoje tem três ferramentas:
   ponta, com IA real (Claude) ligada por padrão.
 - **Extratus - Aburesi** — resumo rápido de processo pra uso interno no
   atendimento do cliente Aburesi. Mesma base técnica do Extratus -
-  Relatórios (pastas, banco e Motor completamente separados), com IA real
+  Relatórios (pastas, banco e Robô completamente separados), com IA real
   ligada — mas ainda usando o prompt de instruções provisório (cópia do
   Relatórios); o prompt definitivo (Max) ainda não foi enviado. Pode ser
-  trocado a qualquer momento pela tela do Motor, sem precisar de deploy.
+  trocado a qualquer momento pela tela do Robô, sem precisar de deploy.
 - **Leitor de Publicações** — pré-análise de publicações do NPJUR. Ainda
   em construção, só a casca existe (aparece no site marcado como "Em
   construção").
 
 > Cada Extratus tem dois jeitos de processar: a fila manual (tempo real,
-> sempre síncrona) e o Motor (automático, via Batch API da Anthropic —
+> sempre síncrona) e o Robô (automático, via Batch API da Anthropic —
 > mais barato, mas assíncrono; só liga quando alguém ativa o interruptor
-> na aba Configurações do Motor). Os dois usam IA real sempre
+> na aba Configurações do Robô). Os dois usam IA real sempre
 > (`ia_provider: "claude"` em cada `config.json`) — o "modo simulado" que
 > existia pra testar sem gastar crédito da API foi removido em 2026-08-11,
 > hoje todo processamento dispara uma chamada real e cobrada.
@@ -37,15 +37,15 @@ app/
 │       └── templates_util.py         (Jinja2Templates com os globals compartilhados)
 └── ferramentas/
     ├── extratus/                ← "Extratus - Relatórios"
-    │   ├── core/                    (lógica: detectar processo, gerar docx, Motor/lote...)
-    │   ├── db/                       (Job, LoteMotor — histórico de processamento)
+    │   ├── core/                    (lógica: detectar processo, gerar docx, Robô/lote...)
+    │   ├── db/                       (Job, LoteRobo — histórico de processamento)
     │   ├── web/                      (páginas do Extratus dentro do site)
     │   ├── config/                   (prompt, template Word, config.json)
     │   ├── dados/                    (entrada_pdfs, processados, erros...)
     │   ├── logs/
     │   └── scripts/
     ├── extratus_aburesi/        ← "Extratus - Aburesi" — cópia independente do
-    │   │                            Extratus acima (pastas/banco/Motor 100% separados),
+    │   │                            Extratus acima (pastas/banco/Robô 100% separados),
     │   │                            mesmo padrão interno, prompt de IA diferente
     └── leitor_publicacoes/      ← 3ª ferramenta, ainda em construção
 
@@ -70,9 +70,9 @@ perfil prontos — não precisa recriar nada disso numa ferramenta nova.
 | `/admin` | Administração — usuários, permissões, visão geral, custo de IA (só admin) |
 | `/extratus/` | Extratus - Relatórios — enviar PDF e processar (fila manual) |
 | `/extratus/relatorios` | Extratus - Relatórios — relatórios já gerados (todo mundo com acesso vê) |
-| `/extratus/fila` | Extratus - Relatórios — fila do Motor (upload em lote) |
-| `/extratus/configuracoes-motor` | Extratus - Relatórios — liga/desliga o Motor, configurações, prompt |
-| `/extratus/relatorios-motor` | Extratus - Relatórios — relatórios do Motor (Sucesso/Revisão/Erro) |
+| `/extratus/fila` | Extratus - Relatórios — fila do Robô (upload em lote) |
+| `/extratus/configuracoes-robo` | Extratus - Relatórios — liga/desliga o Robô, configurações, prompt |
+| `/extratus/relatorios-robo` | Extratus - Relatórios — relatórios do Robô (Sucesso/Revisão/Erro) |
 | `/extratus/custos` | Extratus - Relatórios — histórico técnico com custo de IA por usuário (só admin) |
 | `/extratus-aburesi/...` | Extratus - Aburesi — mesmas rotas acima, módulo separado |
 | `/leitor-publicacoes/` | Leitor de Publicações — em construção |
@@ -159,4 +159,4 @@ Diferença prática: o Agendador não reinicia sozinho se o programa travar no m
 
 Já existe: login por usuário/senha (com senha em hash, nunca em texto puro), controle de quais ferramentas cada pessoa pode usar, área de administração restrita a admins, chaves sensíveis fora do controle de versão.
 
-Ainda falta antes de considerar isso "pronto pra produção pesada": HTTPS (hoje o tráfego não é criptografado, ok numa rede interna confiável, mas vale revisar) e backup automático do banco de dados e das pastas de relatórios. A integração real de IA já está ativa em produção (não é mais uma decisão pendente) — cada PDF processado, manual ou via Motor, dispara uma chamada real e cobrada à API da Anthropic.
+Ainda falta antes de considerar isso "pronto pra produção pesada": HTTPS (hoje o tráfego não é criptografado, ok numa rede interna confiável, mas vale revisar) e backup automático do banco de dados e das pastas de relatórios. A integração real de IA já está ativa em produção (não é mais uma decisão pendente) — cada PDF processado, manual ou via Robô, dispara uma chamada real e cobrada à API da Anthropic.

@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 
 {% block titulo %}Custos — Extratus - Aburesi{% endblock %}
-{% block nome_pagina %}Extratus - Aburesi{% endblock %}
 {% block css_pagina %}<link rel="stylesheet" href="/extratus-aburesi/static/extratus.css?v={{ v }}">{% endblock %}
 
 {% block conteudo %}
@@ -20,8 +19,8 @@
             <strong>US$ {{ "%.4f"|format(custo_colaboradores) }}</strong>
         </li>
         <li>
-            <span>Motor automático</span>
-            <strong>US$ {{ "%.4f"|format(custo_motor) }}</strong>
+            <span>Robô automático</span>
+            <strong>US$ {{ "%.4f"|format(custo_robo) }}</strong>
         </li>
         <li class="lista-custos-total">
             <span>Total do sistema</span>
@@ -78,7 +77,7 @@
                     {{ info_por_id[job.usuario_id].nome }}
                     <span class="motivo">{{ info_por_id[job.usuario_id].login }}</span>
                     {% else %}
-                    Motor automático
+                    Robô automático
                     {% endif %}
                 </td>
                 <td class="truncavel" data-dica="{{ job.arquivo_pdf }}">{{ job.arquivo_pdf }}</td>

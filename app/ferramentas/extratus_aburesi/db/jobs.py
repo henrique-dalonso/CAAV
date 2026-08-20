@@ -21,7 +21,7 @@ def registrar_processado(
     `uso_ia`, se informado, é um dict com modelo/tokens_entrada/tokens_saida/
     custo_estimado_usd.
     `usuario_id` identifica quem disparou o processamento (upload/processar
-    tudo) — fica None pra execuções via linha de comando/motor automático.
+    tudo) — fica None pra execuções via linha de comando/robô automático.
     """
     status = "sucesso" if str(confianca).strip().lower() == "alta" else "revisao"
     uso_ia = uso_ia or {}
@@ -99,7 +99,7 @@ def listar_jobs_manuais(limite=100):
         return sessao.exec(consulta).all()
 
 
-def listar_jobs_motor(limite=100):
+def listar_jobs_robo(limite=100):
     """Ver docstring equivalente em app/ferramentas/extratus/db/jobs.py
     (Extratus - Relatórios) — mesma lógica."""
     with obter_sessao() as sessao:
@@ -127,13 +127,13 @@ def obter_relatorio_existente_para_processo(processo):
 
 def existe_relatorio_gerado_para_processo(processo):
     """Já existe um Job de verdade bem-sucedido pra esse número de
-    processo? Usado pela checagem da Fila do Motor (db/checagem_fila.py),
+    processo? Usado pela checagem da Fila do Robô (db/checagem_fila.py),
     que só precisa saber se existe, não onde."""
     return obter_relatorio_existente_para_processo(processo) is not None
 
 
-def listar_erros_nao_resolvidos_do_motor():
-    """Erros de PDF do Motor (usuario_id None — ver tratar_erro/
+def listar_erros_nao_resolvidos_do_robo():
+    """Erros de PDF do Robô (usuario_id None — ver tratar_erro/
     checagem_lote.py) que ainda não foram marcados como resolvidos —
     alimenta o sininho de notificações. Não tem janela de tempo de
     propósito (Henrique: um erro não pode sumir sozinho, alguém precisa
@@ -147,6 +147,35 @@ def listar_erros_nao_resolvidos_do_motor():
             Job.notificacao_resolvida == False,  # noqa: E712
         )
         return sessao.exec(consulta).all()
+
+
+def listar_jobs_robo_nao_notificados():
+    """Ver docstring equivalente em app/ferramentas/extratus/db/jobs.py
+    (Extratus - Relatórios) — mesma lógica."""
+    with obter_sessao() as sessao:
+        consulta = select(Job).where(
+            Job.usuario_id.is_(None),
+            Job.notificacao_resolvida == False,  # noqa: E712
+        )
+        return sessao.exec(consulta).all()
+
+
+def marcar_notificacao_resolvida_robo(job_id):
+    """Ver docstring equivalente em app/ferramentas/extratus/db/jobs.py
+    (Extratus - Relatórios) — mesma lógica."""
+    with obter_sessao() as sessao:
+        job = sessao.get(Job, job_id)
+
+        if not job or job.usuario_id is not None:
+            return False
+
+        job.notificacao_resolvida = True
+        sessao.add(job)
+        sessao.commit()
+
+        avisar_mudanca()
+
+        return True
 
 
 def listar_relatorios_manuais_nao_notificados_do_usuario(usuario_id):
@@ -219,7 +248,7 @@ def contar_relatorios_novos_do_usuario(usuario_id, desde):
     return {"sucesso": contagem.get("sucesso", 0), "revisao": contagem.get("revisao", 0)}
 
 
-def contar_relatorios_motor_novos(desde):
+def contar_relatorios_robo_novos(desde):
     """Ver docstring equivalente em app/ferramentas/extratus/db/jobs.py
     (Extratus - Relatórios) — mesma lógica."""
     with obter_sessao() as sessao:

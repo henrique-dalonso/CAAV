@@ -19,8 +19,12 @@
                     <img src="/static/marca/logo-av-marca.png" alt="Alonso &amp; Verdiani">
                 </a>
                 <div>
-                    <strong>{% block nome_pagina %}CAAV{% endblock %}</strong>
+                    <strong>CAAV</strong>
+                    {% if _cor_ferramenta %}
+                    <span class="marca-sistema-ferramenta">{{ _cor_ferramenta.nome }}</span>
+                    {% else %}
                     <span>Alonso &amp; Verdiani</span>
+                    {% endif %}
                 </div>
             </div>
 
@@ -110,7 +114,7 @@
     <div class="painel-notificacoes" id="painel-notificacoes" hidden>
         <div class="painel-notificacoes-cabecalho">
             <span>Notificações</span>
-            <button type="button" class="painel-notificacoes-fechar" id="fechar-notificacoes" aria-label="Fechar notificações">
+            <button type="button" class="painel-notificacoes-fechar" id="fechar-notificacoes" data-dica="Fechar notificações" aria-label="Fechar notificações">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <line x1="18" y1="6" x2="6" y2="18"></line>
                     <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -120,18 +124,18 @@
         <div class="painel-notificacoes-abas">
             <button type="button" class="aba-notificacoes aba-notificacoes-ativa" id="aba-sistema" data-aba="sistema">Sistema <span class="contagem-aba-notificacoes contagem-aba-sistema" id="contagem-aba-sistema" hidden>0</span></button>
             <button type="button" class="aba-notificacoes" id="aba-minhas" data-aba="minhas">Minhas <span class="contagem-aba-notificacoes" id="contagem-aba-minhas" style="background: {{ usuario.cor_perfil or "#4f46e5" }};" hidden>0</span></button>
-            {% if usuario_tem_acesso_a_alguma_fila_motor(usuario) %}
-            <button type="button" class="aba-notificacoes aba-notificacoes-duas-linhas" id="aba-conferencias" data-aba="conferencias">Conferências<br>Motor <span class="contagem-aba-notificacoes contagem-aba-conferencias" id="contagem-aba-conferencias" hidden>0</span></button>
+            {% if usuario_tem_acesso_a_alguma_fila_robo(usuario) %}
+            <button type="button" class="aba-notificacoes" id="aba-conferencias" data-aba="conferencias">Ferramentas <span class="contagem-aba-notificacoes contagem-aba-conferencias" id="contagem-aba-conferencias" hidden>0</span></button>
             {% endif %}
         </div>
         <div class="painel-notificacoes-conteudo">
             <ul class="lista-notificacoes" id="lista-notificacoes"></ul>
-            <p class="vazio painel-notificacoes-vazio" id="painel-notificacoes-vazio">Nenhuma pendência no momento.</p>
+            <p class="vazio painel-notificacoes-vazio" id="painel-notificacoes-vazio">Nenhum comunicado no momento.</p>
             <ul class="lista-notificacoes" id="lista-notificacoes-minhas" hidden></ul>
             <p class="vazio painel-notificacoes-vazio" id="painel-notificacoes-vazio-minhas" hidden>Nenhuma pendência sua no momento.</p>
-            {% if usuario_tem_acesso_a_alguma_fila_motor(usuario) %}
+            {% if usuario_tem_acesso_a_alguma_fila_robo(usuario) %}
             <ul class="lista-notificacoes" id="lista-notificacoes-conferencias" hidden></ul>
-            <p class="vazio painel-notificacoes-vazio" id="painel-notificacoes-vazio-conferencias" hidden>Nenhuma conferência pendente no momento.</p>
+            <p class="vazio painel-notificacoes-vazio" id="painel-notificacoes-vazio-conferencias" hidden>Nenhuma notificação de ferramentas no momento.</p>
             {% endif %}
         </div>
     </div>

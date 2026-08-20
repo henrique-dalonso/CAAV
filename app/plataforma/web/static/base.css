@@ -39,12 +39,12 @@
     --cor-erro-fundo: #fef2f2;
     --cor-erro-texto: #b91c1c;
     --cor-erro-borda: #fecaca;
-    /* Laranja do Motor — usado em toda marcação "isso é área do Motor"
-       (aba .aba-motor, checkbox de Fila do Motor no admin, interruptor
+    /* Laranja do Robô — usado em toda marcação "isso é área do Robô"
+       (aba .aba-robo, checkbox de Fila do Robô no admin, interruptor
        ligado). Era hardcoded e repetido em extratus.css (2 módulos) +
        admin.css, cada um com seu próprio bloco claro/escuro (Rodada 12,
        achado de qualidade de código) — centralizado aqui. */
-    --cor-motor: #c2410c;
+    --cor-robo: #c2410c;
     --raio: 16px;
     --raio-pequeno: 10px;
     --sombra: 0 20px 60px -15px rgb(17 24 39 / 0.15);
@@ -68,7 +68,7 @@
         --cor-erro-fundo: #2a1215;
         --cor-erro-texto: #fca5a5;
         --cor-erro-borda: #4c1d24;
-        --cor-motor: #fb923c;
+        --cor-robo: #fb923c;
         --sombra: 0 20px 60px -15px rgb(0 0 0 / 0.6);
         --sombra-suave: 0 8px 24px -8px rgb(0 0 0 / 0.5);
     }
@@ -95,7 +95,7 @@
     --cor-erro-fundo: #2a1215;
     --cor-erro-texto: #fca5a5;
     --cor-erro-borda: #4c1d24;
-    --cor-motor: #fb923c;
+    --cor-robo: #fb923c;
     --sombra: 0 20px 60px -15px rgb(0 0 0 / 0.6);
     --sombra-suave: 0 8px 24px -8px rgb(0 0 0 / 0.5);
 }
@@ -105,7 +105,7 @@
 }
 
 /* Barra de rolagem minimalista, sitewide — qualquer área que role (as
-   colunas da Fila do motor, o popover "+N", a lista de detalhes de um
+   colunas da Fila do robô, o popover "+N", a lista de detalhes de um
    aviso, uma tabela larga, e qualquer coisa nova que role no futuro)
    ganha essa aparência automaticamente, sem precisar marcar elemento
    por elemento. scrollbar-width/scrollbar-color é o padrão CSS (Firefox);
@@ -154,7 +154,7 @@
    isso sitewide (2026-08-07): um ::after posicionado com
    position:absolute é CORTADO por qualquer ancestral com
    overflow:auto/hidden, e boa parte do site é exatamente isso (colunas
-   da Fila do Motor, tabelas com .tabela-scroll) — a dica simplesmente
+   da Fila do Robô, tabelas com .tabela-scroll) — a dica simplesmente
    nunca aparecia visualmente ali, mesmo "funcionando" no código. Um
    único elemento position:fixed (relativo à janela, nunca cortado por
    scroll de nenhum ancestral), reaproveitado pra tudo e posicionado via
@@ -403,11 +403,11 @@ a {
     cursor: not-allowed;
 }
 
-/* Interruptor (switch) — pra estados liga/desliga de verdade (ex: Motor),
+/* Interruptor (switch) — pra estados liga/desliga de verdade (ex: Robô),
    em vez de um botão cujo texto troca. Checkbox real por baixo (funciona
    com teclado/leitor de tela), trilha+bolinha desenhadas em CSS. A cor
    "ligado" é passada por fora via --cor-interruptor-ligado (cada tela
-   define a cor da sua categoria — ex: laranja pro Motor); sem isso,
+   define a cor da sua categoria — ex: laranja pro Robô); sem isso,
    cai na cor de acento padrão. */
 .interruptor {
     display: inline-flex;
@@ -950,7 +950,7 @@ html[data-theme="escuro"] .banner-sucesso {
 /* Sub-bloco dentro de um cartao-secao — ícone + título + descrição no
    topo, conteúdo (formulário, controles) embaixo. Separa visualmente
    vários assuntos independentes empilhados no mesmo cartão (ex:
-   Configurações do Motor, Novo usuário no admin) — sem isso, texto
+   Configurações do Robô, Novo usuário no admin) — sem isso, texto
    explicativo solto entre um bloco e outro cria corte/sobreposição
    visual quando o texto é grande. Compartilhado (não só do Extratus),
    por isso mora aqui em vez de duplicado em cada CSS de ferramenta. */
@@ -1221,6 +1221,27 @@ html[data-theme="escuro"] .selo-roxo {
     display: block;
     font-size: 0.78rem;
     color: var(--cor-texto-suave);
+}
+
+/* Henrique, 2026-08-19: "CAAV" no cabeçalho nunca muda mais (era
+   substituído pelo nome da ferramenta antes) — em vez disso, dentro de
+   uma ferramenta aparece esse indicador pequeno "onde está no
+   diretório", com o nome dela na própria cor de identidade. */
+.marca-sistema .marca-sistema-ferramenta {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-weight: 600;
+    color: var(--cor-acento);
+}
+
+.marca-sistema-ferramenta::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--cor-acento);
+    flex-shrink: 0;
 }
 
 .menu-usuario {
@@ -1614,7 +1635,9 @@ html[data-theme="escuro"] .selo-roxo {
 }
 
 .painel-notificacoes-abas {
-    display: flex;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
     gap: 0.4rem;
     flex-shrink: 0;
     padding: 0.8rem 1.2rem 0;
@@ -1622,6 +1645,10 @@ html[data-theme="escuro"] .selo-roxo {
 }
 
 .aba-notificacoes {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
     padding: 0.5rem 0.2rem 0.7rem;
     background: none;
     border: none;
@@ -1641,15 +1668,6 @@ html[data-theme="escuro"] .selo-roxo {
 .aba-notificacoes-ativa:hover {
     color: var(--cor-acento);
     border-bottom-color: var(--cor-acento);
-}
-
-/* "Conferências" virou "Conferências Motor" (Henrique, 2026-08-14: deixar
-   explícito que essa aba é só do Motor, não de Conferências em geral) —
-   cada palavra na própria linha, centralizada, em vez de uma linha só
-   larga que desalinharia com "Sistema"/"Minhas" ao lado. */
-.aba-notificacoes-duas-linhas {
-    text-align: center;
-    line-height: 1.3;
 }
 
 /* Contador ao lado do título de cada aba do sininho — mesma ideia do

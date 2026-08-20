@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 
-{% block titulo %}Configurações do Motor — Extratus - Aburesi{% endblock %}
-{% block nome_pagina %}Extratus - Aburesi{% endblock %}
+{% block titulo %}Configurações do Robô — Extratus - Aburesi{% endblock %}
 {% block css_pagina %}<link rel="stylesheet" href="/extratus-aburesi/static/extratus.css?v={{ v }}">{% endblock %}
 
 {% from "_macros_extratus.html" import nav_abas_extratus %}
@@ -9,12 +8,12 @@
 {% block conteudo %}
 <div class="cabecalho-ferramenta">
     <div>
-        <h1>Configurações do Motor</h1>
+        <h1>Configurações do Robô</h1>
         <p>Controle do processamento automático — liga/desliga e configurações.</p>
     </div>
 </div>
 
-{{ nav_abas_extratus(usuario, "extratus-aburesi", "/extratus-aburesi", "configuracoes-motor") }}
+{{ nav_abas_extratus(usuario, "extratus-aburesi", "/extratus-aburesi", "configuracoes-robo") }}
 
 {% if erro %}
 <p class="banner-erro">⚠ {{ erro }}</p>
@@ -25,26 +24,26 @@
 
 <section class="cartao-secao">
     <h2>Status</h2>
-    <div class="motor-status">
-        <form action="/extratus-aburesi/configuracoes-motor/alternar" method="post" id="form-interruptor-motor">
+    <div class="robo-status">
+        <form action="/extratus-aburesi/configuracoes-robo/alternar" method="post" id="form-interruptor-robo">
             <label class="interruptor">
-                <input type="checkbox" id="interruptor-motor" {% if motor_ativo %}checked{% endif %}>
+                <input type="checkbox" id="interruptor-robo" {% if robo_ativo %}checked{% endif %}>
                 <span class="interruptor-trilha"></span>
-                <span class="interruptor-rotulo">{{ "Ligado" if motor_ativo else "Desligado" }}</span>
+                <span class="interruptor-rotulo">{{ "Ligado" if robo_ativo else "Desligado" }}</span>
             </label>
         </form>
-        <p class="aviso-discreto motor-descricao">
-            {% if motor_ativo %}
-            O Motor está ligado: a cada poucos minutos, ele confere a pasta "Fila do Motor" sozinho e
+        <p class="aviso-discreto robo-descricao">
+            {% if robo_ativo %}
+            O Robô está ligado: a cada poucos minutos, ele confere a pasta "Fila do Robô" sozinho e
             manda os PDFs novos em lote pra IA (mais barato, mas pode levar de minutos até 24h pra voltar).
             {% else %}
-            Desligado — o Motor não olha a pasta nem processa nada enquanto isso. Use "Processar tudo" na aba
+            Desligado — o Robô não olha a pasta nem processa nada enquanto isso. Use "Processar tudo" na aba
             Gerar relatórios pra continuar disparando manualmente (esse fluxo é sempre em tempo real, nunca em lote).
             {% endif %}
         </p>
     </div>
     {% if lotes_em_andamento %}
-    <div class="motor-lotes">
+    <div class="robo-lotes">
         <h3>Lote(s) em processamento</h3>
         <ul class="lista-arquivos">
             {% for entrada in lotes_em_andamento %}
@@ -55,7 +54,7 @@
             {% endfor %}
         </ul>
     </div>
-    {% elif motor_ativo %}
+    {% elif robo_ativo %}
     <p class="aviso-discreto">Nenhum lote em processamento no momento.</p>
     {% endif %}
 </section>
@@ -81,14 +80,14 @@
             </span>
             <div>
                 <h3>Pasta e modo de IA</h3>
-                <p>Pasta que a "Fila do Motor" usa pra depositar PDFs. Processamento é sempre em lote (mais barato, até 24h), nunca se mistura com a fila manual em tempo real.</p>
+                <p>Pasta que a "Fila do Robô" usa pra depositar PDFs. Processamento é sempre em lote (mais barato, até 24h), nunca se mistura com a fila manual em tempo real.</p>
             </div>
         </div>
-        <form action="/extratus-aburesi/configuracoes-motor/config" method="post">
+        <form action="/extratus-aburesi/configuracoes-robo/config" method="post">
             <div class="campo">
-                <label for="pasta_entrada">Pasta de entrada do Motor</label>
+                <label for="pasta_entrada">Pasta de entrada do Robô</label>
                 <div class="linha-campo-pasta">
-                    <input id="pasta_entrada" type="text" name="pasta_entrada" value="{{ config.motor_pasta_entrada }}" required>
+                    <input id="pasta_entrada" type="text" name="pasta_entrada" value="{{ config.robo_pasta_entrada }}" required>
                     <button type="button" class="botao-secundario" id="botao-escolher-pasta">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
@@ -128,7 +127,7 @@
                 <p>Texto que a IA usa pra montar o relatório. Precisa ser {{ extensao_prompt }} — a versão anterior fica guardada automaticamente, caso precise voltar atrás.</p>
             </div>
         </div>
-        <form action="/extratus-aburesi/configuracoes-motor/prompt" method="post" enctype="multipart/form-data" class="linha-upload">
+        <form action="/extratus-aburesi/configuracoes-robo/prompt" method="post" enctype="multipart/form-data" class="linha-upload">
             <div class="campo">
                 <label for="arquivo-prompt">Arquivo {{ extensao_prompt }}</label>
                 <input id="arquivo-prompt" type="file" name="arquivo" accept="{{ extensao_prompt }}" required>
@@ -158,9 +157,9 @@
 {% else %}
 <section class="cartao-secao">
     <h2>Configurações</h2>
-    <p class="aviso-discreto">A pasta e o modo de IA do Motor só podem ser alterados por um administrador da plataforma.</p>
+    <p class="aviso-discreto">A pasta e o modo de IA do Robô só podem ser alterados por um administrador da plataforma.</p>
 </section>
 {% endif %}
 {% endblock %}
 
-{% block js_pagina %}<script src="/extratus-aburesi/static/configuracoes_motor.js?v={{ v }}" defer></script>{% endblock %}
+{% block js_pagina %}<script src="/extratus-aburesi/static/configuracoes_robo.js?v={{ v }}" defer></script>{% endblock %}

@@ -25,8 +25,8 @@ app/ferramentas/extratus/dados/revisao/*
 !app/ferramentas/extratus/dados/revisao/.gitkeep
 app/ferramentas/extratus/dados/relatorios_prontos/*
 !app/ferramentas/extratus/dados/relatorios_prontos/.gitkeep
-app/ferramentas/extratus/dados/motor_entrada_pdfs/*
-!app/ferramentas/extratus/dados/motor_entrada_pdfs/.gitkeep
+app/ferramentas/extratus/dados/robo_entrada_pdfs/*
+!app/ferramentas/extratus/dados/robo_entrada_pdfs/.gitkeep
 
 # Mesma regra acima, espelhada pro módulo Extratus - Aburesi (pastas
 # completamente separadas, mesmo cuidado com dado real de cliente)
@@ -40,8 +40,8 @@ app/ferramentas/extratus_aburesi/dados/revisao/*
 !app/ferramentas/extratus_aburesi/dados/revisao/.gitkeep
 app/ferramentas/extratus_aburesi/dados/relatorios_prontos/*
 !app/ferramentas/extratus_aburesi/dados/relatorios_prontos/.gitkeep
-app/ferramentas/extratus_aburesi/dados/motor_entrada_pdfs/*
-!app/ferramentas/extratus_aburesi/dados/motor_entrada_pdfs/.gitkeep
+app/ferramentas/extratus_aburesi/dados/robo_entrada_pdfs/*
+!app/ferramentas/extratus_aburesi/dados/robo_entrada_pdfs/.gitkeep
 
 # Logs (contêm dado real de processamento)
 app/ferramentas/extratus/logs/*

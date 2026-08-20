@@ -5,12 +5,14 @@ from datetime import datetime, timedelta
 
 from app.ferramentas.extratus.db.jobs import (
     contar_jobs_manuais_do_usuario,
-    contar_relatorios_motor_novos,
+    contar_relatorios_robo_novos,
     contar_relatorios_novos_do_usuario,
     listar_jobs_manuais,
-    listar_jobs_motor,
+    listar_jobs_robo,
+    listar_jobs_robo_nao_notificados,
     listar_relatorios_manuais_nao_notificados_do_usuario,
     marcar_notificacao_resolvida,
+    marcar_notificacao_resolvida_robo,
     registrar_erro,
     registrar_processado,
     somar_custo_por_usuario,
@@ -69,12 +71,12 @@ def test_somar_custo_por_usuario_agrega_por_usuario(limpar_jobs_criados):
     assert depois[USUARIO_TESTE_A] == pytest.approx(custo_antes_a + 0.35)
 
 
-def test_somar_custo_por_usuario_agrupa_sem_usuario_como_motor_automatico(limpar_jobs_criados):
+def test_somar_custo_por_usuario_agrupa_sem_usuario_como_robo_automatico(limpar_jobs_criados):
     antes = somar_custo_por_usuario()
     custo_antes_none = antes.get(None, 0.0)
 
     job = registrar_processado(
-        arquivo_pdf="teste_custo_motor.pdf",
+        arquivo_pdf="teste_custo_robo.pdf",
         processo="0000000-00.2026.8.00.0002",
         relatorio_path=None,
         destino_pdf=None,
@@ -117,7 +119,7 @@ def test_somar_custo_por_usuario_ignora_jobs_sem_custo(limpar_jobs_criados):
     assert depois.get(USUARIO_TESTE_B, 0.0) == pytest.approx(custo_antes_b)
 
 
-def test_listar_jobs_manuais_exclui_jobs_do_motor(limpar_jobs_criados):
+def test_listar_jobs_manuais_exclui_jobs_do_robo(limpar_jobs_criados):
     job_manual = registrar_processado(
         arquivo_pdf="teste_relatorios_finalizados_manual.pdf",
         processo="0000000-00.2026.8.00.0020",
@@ -126,23 +128,23 @@ def test_listar_jobs_manuais_exclui_jobs_do_motor(limpar_jobs_criados):
         confianca="alta",
         usuario_id=USUARIO_TESTE_A,
     )
-    job_motor = registrar_processado(
-        arquivo_pdf="teste_relatorios_finalizados_motor.pdf",
+    job_robo = registrar_processado(
+        arquivo_pdf="teste_relatorios_finalizados_robo.pdf",
         processo="0000000-00.2026.8.00.0021",
         relatorio_path=None,
         destino_pdf=None,
         confianca="alta",
         usuario_id=None,
     )
-    limpar_jobs_criados.extend([job_manual.id, job_motor.id])
+    limpar_jobs_criados.extend([job_manual.id, job_robo.id])
 
     nomes = {job.arquivo_pdf for job in listar_jobs_manuais(limite=1000)}
 
     assert "teste_relatorios_finalizados_manual.pdf" in nomes
-    assert "teste_relatorios_finalizados_motor.pdf" not in nomes
+    assert "teste_relatorios_finalizados_robo.pdf" not in nomes
 
 
-def test_listar_jobs_motor_inclui_so_jobs_sem_usuario(limpar_jobs_criados):
+def test_listar_jobs_robo_inclui_so_jobs_sem_usuario(limpar_jobs_criados):
     job_manual = registrar_processado(
         arquivo_pdf="teste_relatorios_finalizados_manual2.pdf",
         processo="0000000-00.2026.8.00.0022",
@@ -151,26 +153,26 @@ def test_listar_jobs_motor_inclui_so_jobs_sem_usuario(limpar_jobs_criados):
         confianca="alta",
         usuario_id=USUARIO_TESTE_A,
     )
-    job_motor = registrar_processado(
-        arquivo_pdf="teste_relatorios_finalizados_motor2.pdf",
+    job_robo = registrar_processado(
+        arquivo_pdf="teste_relatorios_finalizados_robo2.pdf",
         processo="0000000-00.2026.8.00.0023",
         relatorio_path=None,
         destino_pdf=None,
         confianca="alta",
         usuario_id=None,
     )
-    limpar_jobs_criados.extend([job_manual.id, job_motor.id])
+    limpar_jobs_criados.extend([job_manual.id, job_robo.id])
 
-    nomes = {job.arquivo_pdf for job in listar_jobs_motor(limite=1000)}
+    nomes = {job.arquivo_pdf for job in listar_jobs_robo(limite=1000)}
 
-    assert "teste_relatorios_finalizados_motor2.pdf" in nomes
+    assert "teste_relatorios_finalizados_robo2.pdf" in nomes
     assert "teste_relatorios_finalizados_manual2.pdf" not in nomes
 
 
 def test_contar_jobs_manuais_do_usuario_so_conta_do_proprio_usuario(limpar_jobs_criados):
     """Henrique, 2026-08-12: o número da aba "Seus Relatórios" precisa
     contar só o que o PRÓPRIO usuário solicitou, não o total do
-    escritório (nem jobs do Motor, nem de outro colaborador)."""
+    escritório (nem jobs do Robô, nem de outro colaborador)."""
     antes_a = contar_jobs_manuais_do_usuario(USUARIO_TESTE_A)
 
     job_manual_a = registrar_processado(
@@ -189,15 +191,15 @@ def test_contar_jobs_manuais_do_usuario_so_conta_do_proprio_usuario(limpar_jobs_
         confianca="alta",
         usuario_id=USUARIO_TESTE_B,
     )
-    job_motor = registrar_processado(
-        arquivo_pdf="teste_contagem_motor.pdf",
+    job_robo = registrar_processado(
+        arquivo_pdf="teste_contagem_robo.pdf",
         processo="0000000-00.2026.8.00.0025",
         relatorio_path=None,
         destino_pdf=None,
         confianca="alta",
         usuario_id=None,
     )
-    limpar_jobs_criados.extend([job_manual_a.id, job_manual_b.id, job_motor.id])
+    limpar_jobs_criados.extend([job_manual_a.id, job_manual_b.id, job_robo.id])
 
     depois_a = contar_jobs_manuais_do_usuario(USUARIO_TESTE_A)
 
@@ -272,20 +274,20 @@ def test_contar_relatorios_novos_do_usuario_ignora_erro_e_outro_usuario(limpar_j
     assert novos == {"sucesso": 0, "revisao": 0}
 
 
-def test_contar_relatorios_motor_novos_conta_so_usuario_id_none(limpar_jobs_criados):
+def test_contar_relatorios_robo_novos_conta_so_usuario_id_none(limpar_jobs_criados):
     desde = datetime.now() - timedelta(seconds=1)
-    antes = contar_relatorios_motor_novos(desde)
+    antes = contar_relatorios_robo_novos(desde)
 
-    job_motor_sucesso = registrar_processado(
-        arquivo_pdf="teste_badge_motor_sucesso.pdf",
+    job_robo_sucesso = registrar_processado(
+        arquivo_pdf="teste_badge_robo_sucesso.pdf",
         processo="0000000-00.2026.8.00.0032",
         relatorio_path=None,
         destino_pdf=None,
         confianca="alta",
         usuario_id=None,
     )
-    job_motor_revisao = registrar_processado(
-        arquivo_pdf="teste_badge_motor_revisao.pdf",
+    job_robo_revisao = registrar_processado(
+        arquivo_pdf="teste_badge_robo_revisao.pdf",
         processo="0000000-00.2026.8.00.0033",
         relatorio_path=None,
         destino_pdf=None,
@@ -293,16 +295,16 @@ def test_contar_relatorios_motor_novos_conta_so_usuario_id_none(limpar_jobs_cria
         usuario_id=None,
     )
     job_manual = registrar_processado(
-        arquivo_pdf="teste_badge_motor_nao_conta_manual.pdf",
+        arquivo_pdf="teste_badge_robo_nao_conta_manual.pdf",
         processo="0000000-00.2026.8.00.0034",
         relatorio_path=None,
         destino_pdf=None,
         confianca="alta",
         usuario_id=USUARIO_TESTE_A,
     )
-    limpar_jobs_criados.extend([job_motor_sucesso.id, job_motor_revisao.id, job_manual.id])
+    limpar_jobs_criados.extend([job_robo_sucesso.id, job_robo_revisao.id, job_manual.id])
 
-    depois = contar_relatorios_motor_novos(desde)
+    depois = contar_relatorios_robo_novos(desde)
 
     assert depois["sucesso"] == antes["sucesso"] + 1
     assert depois["revisao"] == antes["revisao"] + 1
@@ -387,3 +389,84 @@ def test_marcar_notificacao_resolvida_recusa_dono_errado(limpar_jobs_criados):
 
 def test_marcar_notificacao_resolvida_job_inexistente_nao_quebra():
     assert marcar_notificacao_resolvida(999999999, USUARIO_TESTE_A) is False
+
+
+# --- Robô virou notificação plena (Henrique, diretoria, 2026-08-19) —
+# não só erro, também sucesso e revisão, sem dono. ---
+
+def test_listar_jobs_robo_nao_notificados_traz_sucesso_revisao_e_erro(limpar_jobs_criados):
+    job_sucesso = registrar_processado(
+        arquivo_pdf="teste_ferramentas_robo_sucesso.pdf",
+        processo="0000000-00.2026.8.00.0060",
+        relatorio_path=None,
+        destino_pdf=None,
+        confianca="alta",
+        usuario_id=None,
+    )
+    job_revisao = registrar_processado(
+        arquivo_pdf="teste_ferramentas_robo_revisao.pdf",
+        processo="0000000-00.2026.8.00.0061",
+        relatorio_path=None,
+        destino_pdf=None,
+        confianca="media",
+        usuario_id=None,
+    )
+    job_erro = registrar_erro(
+        arquivo_pdf="teste_ferramentas_robo_erro.pdf",
+        processo=None,
+        tipo_erro="erro_ia",
+        erro_mensagem="falha simulada",
+        usuario_id=None,
+    )
+    limpar_jobs_criados.extend([job_sucesso.id, job_revisao.id, job_erro.id])
+
+    nomes = {job.arquivo_pdf for job in listar_jobs_robo_nao_notificados()}
+
+    assert "teste_ferramentas_robo_sucesso.pdf" in nomes
+    assert "teste_ferramentas_robo_revisao.pdf" in nomes
+    assert "teste_ferramentas_robo_erro.pdf" in nomes
+
+
+def test_listar_jobs_robo_nao_notificados_ignora_ja_resolvido_e_job_com_dono(limpar_jobs_criados):
+    job_robo_resolvido = registrar_processado(
+        arquivo_pdf="teste_ferramentas_robo_ja_resolvido.pdf",
+        processo="0000000-00.2026.8.00.0062",
+        relatorio_path=None,
+        destino_pdf=None,
+        confianca="alta",
+        usuario_id=None,
+    )
+    job_manual = registrar_processado(
+        arquivo_pdf="teste_ferramentas_robo_com_dono.pdf",
+        processo="0000000-00.2026.8.00.0063",
+        relatorio_path=None,
+        destino_pdf=None,
+        confianca="alta",
+        usuario_id=USUARIO_TESTE_A,
+    )
+    limpar_jobs_criados.extend([job_robo_resolvido.id, job_manual.id])
+
+    assert marcar_notificacao_resolvida_robo(job_robo_resolvido.id) is True
+
+    nomes = {job.arquivo_pdf for job in listar_jobs_robo_nao_notificados()}
+
+    assert "teste_ferramentas_robo_ja_resolvido.pdf" not in nomes
+    assert "teste_ferramentas_robo_com_dono.pdf" not in nomes
+
+
+def test_marcar_notificacao_resolvida_robo_recusa_job_com_dono(limpar_jobs_criados):
+    job = registrar_processado(
+        arquivo_pdf="teste_ferramentas_robo_recusa_dono.pdf",
+        processo="0000000-00.2026.8.00.0064",
+        relatorio_path=None,
+        destino_pdf=None,
+        confianca="alta",
+        usuario_id=USUARIO_TESTE_A,
+    )
+    limpar_jobs_criados.append(job.id)
+
+    assert marcar_notificacao_resolvida_robo(job.id) is False
+
+
+def test_marcar_notificacao_resolvida_robo_job_inexistente_nao_quebra():
+    assert marcar_notificacao_resolvida_robo(999999999) is False

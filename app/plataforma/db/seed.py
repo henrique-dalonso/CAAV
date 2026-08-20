@@ -24,7 +24,7 @@ FERRAMENTAS_PADRAO = [
         "slug": "extratus",
         "descricao": "Produção de relatório completo de processo judicial para o cliente, com parecer.",
         "url": "/extratus/",
-        "suporta_fila_motor": True,
+        "suporta_fila_robo": True,
         **_SEM_COR_PROPRIA,
     },
     {
@@ -32,7 +32,7 @@ FERRAMENTAS_PADRAO = [
         "slug": "extratus-aburesi",
         "descricao": "Resumo rápido de processo judicial para uso interno no atendimento do cliente Aburesi.",
         "url": "/extratus-aburesi/",
-        "suporta_fila_motor": True,
+        "suporta_fila_robo": True,
         # Copiado 1:1 do :root que existia em
         # extratus_aburesi/web/static/extratus.css antes de virar campo
         # de banco — a cor em si não mudou, só de onde ela vem agora.
@@ -48,7 +48,7 @@ FERRAMENTAS_PADRAO = [
         "slug": "leitor-publicacoes",
         "descricao": "Pré-análise por IA de publicações, com sugestão de agendamento para revisão do advogado.",
         "url": "/leitor-publicacoes/",
-        "suporta_fila_motor": False,
+        "suporta_fila_robo": False,
         **_SEM_COR_PROPRIA,
     },
 ]
@@ -73,7 +73,7 @@ def garantir_ferramentas_padrao():
                 continue
 
             for campo in (
-                "nome", "descricao", "url", "suporta_fila_motor",
+                "nome", "descricao", "url", "suporta_fila_robo",
                 "cor_acento", "cor_acento_hover", "cor_acento_fraco",
                 "cor_acento_escuro", "cor_acento_hover_escuro", "cor_acento_fraco_escuro",
             ):

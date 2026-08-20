@@ -21,7 +21,7 @@ def registrar_processado(
     `uso_ia`, se informado, é um dict com modelo/tokens_entrada/tokens_saida/
     custo_estimado_usd.
     `usuario_id` identifica quem disparou o processamento (upload/processar
-    tudo) — fica None pra execuções via linha de comando/motor automático.
+    tudo) — fica None pra execuções via linha de comando/robô automático.
     """
     status = "sucesso" if str(confianca).strip().lower() == "alta" else "revisao"
     uso_ia = uso_ia or {}
@@ -87,12 +87,12 @@ def listar_jobs(limite=100):
 
 def listar_jobs_manuais(limite=100):
     """Só os relatórios gerados manualmente (usuario_id preenchido) —
-    usado pela tela "Relatórios". Os do Motor (usuario_id None) têm sua
-    própria tela, "Relatórios do Motor" (Henrique, 2026-08-08: "na
+    usado pela tela "Relatórios". Os do Robô (usuario_id None) têm sua
+    própria tela, "Relatórios do Robô" (Henrique, 2026-08-08: "na
     aba manual só aparecerão os relatórios realizados manualmente...
-    e na Relatórios do Motor será o repositório universal do motor").
+    e na Relatórios do Robô será o repositório universal do robô").
     `listar_jobs()` continua sem filtro nenhum — Custos (admin) precisa
-    ver tudo, Motor incluso."""
+    ver tudo, Robô incluso."""
     with obter_sessao() as sessao:
         consulta = (
             select(Job)
@@ -104,9 +104,9 @@ def listar_jobs_manuais(limite=100):
         return sessao.exec(consulta).all()
 
 
-def listar_jobs_motor(limite=100):
+def listar_jobs_robo(limite=100):
     """Só os relatórios (prontos, em revisão ou com erro) gerados pelo
-    Motor (usuario_id None) — alimenta "Relatórios do Motor"."""
+    Robô (usuario_id None) — alimenta "Relatórios do Robô"."""
     with obter_sessao() as sessao:
         consulta = (
             select(Job)
@@ -123,10 +123,10 @@ def obter_relatorio_existente_para_processo(processo):
     duas formas de "gerou relatório", só muda o nível de confiança) mais
     recente pra esse número de processo, ou None. Usado pela checagem
     manual (core/pipeline_manual.py) pra saber ONDE o duplicado mora —
-    `usuario_id` None = Motor ("Relatórios do Motor"), preenchido =
+    `usuario_id` None = Robô ("Relatórios do Robô"), preenchido =
     manual ("Seus Relatórios") — Henrique, 2026-08-12: o botão "Ir ao
     relatório" estava sempre mandando pra "Seus Relatórios" mesmo quando
-    o duplicado era do Motor, e lá ele nunca existe. Um Job com status
+    o duplicado era do Robô, e lá ele nunca existe. Um Job com status
     "erro" NÃO conta (a tentativa falhou, não gerou nada)."""
     with obter_sessao() as sessao:
         consulta = (
@@ -139,13 +139,13 @@ def obter_relatorio_existente_para_processo(processo):
 
 def existe_relatorio_gerado_para_processo(processo):
     """Já existe um Job de verdade bem-sucedido pra esse número de
-    processo? Usado pela checagem da Fila do Motor (db/checagem_fila.py),
+    processo? Usado pela checagem da Fila do Robô (db/checagem_fila.py),
     que só precisa saber se existe, não onde."""
     return obter_relatorio_existente_para_processo(processo) is not None
 
 
-def listar_erros_nao_resolvidos_do_motor():
-    """Erros de PDF do Motor (usuario_id None — ver tratar_erro/
+def listar_erros_nao_resolvidos_do_robo():
+    """Erros de PDF do Robô (usuario_id None — ver tratar_erro/
     checagem_lote.py) que ainda não foram marcados como resolvidos —
     alimenta o sininho de notificações. Não tem janela de tempo de
     propósito (Henrique: um erro não pode sumir sozinho, alguém precisa
@@ -161,6 +161,44 @@ def listar_erros_nao_resolvidos_do_motor():
         return sessao.exec(consulta).all()
 
 
+def listar_jobs_robo_nao_notificados():
+    """Jobs do Robô (usuario_id None) de QUALQUER status (sucesso,
+    revisão, erro) ainda não notificados — alimenta a aba "Ferramentas"
+    do sininho (Henrique, diretoria, 2026-08-19: essa aba passou a
+    cobrir tudo que o Robô gera, não só conferência/erro). Diferente
+    de listar_relatorios_manuais_nao_notificados_do_usuario, não filtra
+    por usuário — é uma fila compartilhada, sem dono."""
+    with obter_sessao() as sessao:
+        consulta = select(Job).where(
+            Job.usuario_id.is_(None),
+            Job.notificacao_resolvida == False,  # noqa: E712
+        )
+        return sessao.exec(consulta).all()
+
+
+def marcar_notificacao_resolvida_robo(job_id):
+    """Dispensa a notificação de um Job do Robô — compartilhado, sem
+    dono, então qualquer um com acesso à ferramenta pode dispensar (ao
+    contrário de marcar_notificacao_resolvida, que só o dono do
+    relatório manual pode). Hoje só usado pelo X de "sucesso" do Robô —
+    "revisão" e "erro" continuam sem dispensa própria de propósito
+    (mesma exigência de "não pode sumir sozinho sem alguém tratar" que
+    já existia)."""
+    with obter_sessao() as sessao:
+        job = sessao.get(Job, job_id)
+
+        if not job or job.usuario_id is not None:
+            return False
+
+        job.notificacao_resolvida = True
+        sessao.add(job)
+        sessao.commit()
+
+        avisar_mudanca()
+
+        return True
+
+
 def listar_relatorios_manuais_nao_notificados_do_usuario(usuario_id):
     """Relatórios manuais do PRÓPRIO usuário (sucesso ou revisão) que
     ainda não tiveram a notificação dispensada — alimenta a aba "Minhas"
@@ -168,7 +206,7 @@ def listar_relatorios_manuais_nao_notificados_do_usuario(usuario_id):
     própria notificação; "revisão" só sai daqui quando a pessoa clicar
     em "Marcar como revisado" no card do relatório (relatorios_manuais.
     html) — nunca pelo X, mesma exigência de "não pode sumir sozinho"
-    que o erro do Motor já tinha. As duas chamam marcar_notificacao_
+    que o erro do Robô já tinha. As duas chamam marcar_notificacao_
     resolvida por baixo."""
     with obter_sessao() as sessao:
         consulta = select(Job).where(
@@ -249,10 +287,10 @@ def contar_relatorios_novos_do_usuario(usuario_id, desde):
     return {"sucesso": contagem.get("sucesso", 0), "revisao": contagem.get("revisao", 0)}
 
 
-def contar_relatorios_motor_novos(desde):
+def contar_relatorios_robo_novos(desde):
     """Mesma ideia de `contar_relatorios_novos_do_usuario`, pros
-    relatórios do Motor (usuario_id None) — alimenta o badge duplo da
-    aba "Relatórios do Motor". A fila é compartilhada (não filtra por
+    relatórios do Robô (usuario_id None) — alimenta o badge duplo da
+    aba "Relatórios do Robô". A fila é compartilhada (não filtra por
     usuário), só o "desde" é pessoal — cada usuário vê como "novo" o que
     ainda não olhou, mesmo relatório sendo visível pra todo mundo."""
     with obter_sessao() as sessao:

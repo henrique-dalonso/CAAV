@@ -94,12 +94,12 @@ def test_triar_e_processar_falha_ao_ler_pdf_vira_inconsistencia_nao_erro_definit
     _limpar(registro.id)
 
 
-def test_triar_e_processar_duplicado_relatorio_do_motor_marca_origem_motor():
+def test_triar_e_processar_duplicado_relatorio_do_robo_marca_origem_robo():
     """Henrique, 2026-08-12: "Ir ao relatório" estava sempre mandando pra
-    "Seus Relatórios", mesmo quando o duplicado era do Motor (usuario_id
+    "Seus Relatórios", mesmo quando o duplicado era do Robô (usuario_id
     None) — onde ele nunca aparece. origem_duplicado precisa refletir
     onde o relatório existente realmente mora."""
-    registro = _criar_registro("teste_pipeline_manual_duplicado_motor.pdf")
+    registro = _criar_registro("teste_pipeline_manual_duplicado_robo.pdf")
 
     with patch.object(
         pipeline_manual, "analisar_pdf_isolado",
@@ -113,7 +113,7 @@ def test_triar_e_processar_duplicado_relatorio_do_motor_marca_origem_motor():
 
     atualizado = db_triagem.obter_registro(registro.id)
     assert atualizado.status == db_triagem.DUPLICADO_RELATORIO
-    assert atualizado.origem_duplicado == "motor"
+    assert atualizado.origem_duplicado == "robô"
 
     _limpar(registro.id)
 

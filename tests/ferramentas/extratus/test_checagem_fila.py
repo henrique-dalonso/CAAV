@@ -21,7 +21,7 @@ from app.ferramentas.extratus.db.checagem_fila import (
     sincronizar_registros,
 )
 from app.ferramentas.extratus.db.lotes import criar_lote, marcar_lote_concluido
-from app.ferramentas.extratus.db.models import ChecagemFila, ItemLoteMotor, LoteMotor
+from app.ferramentas.extratus.db.models import ChecagemFila, ItemLoteRobo, LoteRobo
 from app.plataforma.db.session import obter_sessao
 
 
@@ -35,8 +35,8 @@ def limpar_checagem_teste():
     with obter_sessao() as sessao:
         sessao.exec(delete(ChecagemFila).where(ChecagemFila.nome_arquivo.like(f"{PREFIXO_TESTE}%")))
         sessao.commit()
-        sessao.exec(delete(ItemLoteMotor).where(ItemLoteMotor.arquivo_pdf.like(f"{PREFIXO_TESTE}%")))
-        sessao.exec(delete(LoteMotor).where(LoteMotor.batch_id == BATCH_ID_TESTE))
+        sessao.exec(delete(ItemLoteRobo).where(ItemLoteRobo.arquivo_pdf.like(f"{PREFIXO_TESTE}%")))
+        sessao.exec(delete(LoteRobo).where(LoteRobo.batch_id == BATCH_ID_TESTE))
         sessao.commit()
 
 

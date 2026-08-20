@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 
-{% block titulo %}Relatórios do Motor — Extratus - Relatórios{% endblock %}
-{% block nome_pagina %}Extratus - Relatórios{% endblock %}
+{% block titulo %}Relatórios do Robô — Extratus - Relatórios{% endblock %}
 {% block css_pagina %}<link rel="stylesheet" href="/extratus/static/extratus.css?v={{ v }}">{% endblock %}
 
 {% from "_macros_extratus.html" import nav_abas_extratus %}
@@ -9,26 +8,33 @@
 {% block conteudo %}
 <div class="cabecalho-ferramenta">
     <div>
-        <h1>Relatórios do Motor</h1>
-        <p>Repositório universal do que o Motor já processou — prontos, em revisão ou com erro.</p>
+        <h1>Relatórios do Robô</h1>
+        <p>Veja os relatórios já prontos realizados pelo robô. Clique em um relatório para baixar e abrir.</p>
     </div>
 </div>
 
-{{ nav_abas_extratus(usuario, "extratus", "/extratus", "relatorios-motor") }}
+{{ nav_abas_extratus(usuario, "extratus", "/extratus", "relatorios-robo") }}
 
 <section class="cartao-secao">
     {% if jobs %}
-    <div class="abas-relatorios-motor">
-        <button type="button" class="aba-relatorios-motor aba-relatorios-motor-ativa" data-status="sucesso">Sucesso</button>
-        <button type="button" class="aba-relatorios-motor" data-status="revisao">Revisão</button>
-        <button type="button" class="aba-relatorios-motor" data-status="erro">Erro</button>
+    <div class="abas-relatorios-robo">
+        <button type="button" class="aba-relatorios-robo" data-status="todos">Todos</button>
+        <button type="button" class="aba-relatorios-robo aba-relatorios-robo-ativa" data-status="sucesso">Sucesso</button>
+        <button type="button" class="aba-relatorios-robo" data-status="revisao">Revisão</button>
+        <button type="button" class="aba-relatorios-robo" data-status="erro">Erro</button>
     </div>
     <div class="barra-filtros">
-        <input type="search" class="campo-busca" placeholder="Buscar por processo ou arquivo..." aria-label="Buscar por processo ou arquivo" id="campo-busca-relatorios-motor" data-processo-inicial="{{ processo_busca or '' }}">
+        <input type="search" class="campo-busca" placeholder="Buscar por processo ou nome de arquivo..." aria-label="Buscar por processo ou nome de arquivo" id="campo-busca-relatorios-robo" data-processo-inicial="{{ processo_busca or '' }}">
+        <div class="filtro-data">
+            <label for="filtro-data-de">De:</label>
+            <input type="date" id="filtro-data-de" class="campo-data">
+            <label for="filtro-data-ate">Até:</label>
+            <input type="date" id="filtro-data-ate" class="campo-data">
+        </div>
     </div>
-    <ul class="lista-relatorios">
+    <ul class="lista-relatorios" id="lista-relatorios-robo">
         {% for job in jobs %}
-        <li class="relatorio-item" data-status="{{ job.status }}" data-processo="{{ job.processo or '' }}" data-busca="{{ ((job.processo or '') ~ ' ' ~ job.arquivo_pdf) | lower }}">
+        <li class="relatorio-item" data-status="{{ job.status }}" data-processo="{{ job.processo or '' }}" data-busca="{{ ((job.processo or '') ~ ' ' ~ job.arquivo_pdf) | lower }}" data-criado-em="{{ job.criado_em.strftime('%Y-%m-%d') }}">
             <span class="status status-{{ job.status }}">{{ job.status | rotulo_status }}</span>
             <div class="relatorio-info{% if job.relatorio_path %} relatorio-info-clicavel{% endif %}"{% if job.relatorio_path %} data-download="download/{{ job.relatorio_path.split('\\')[-1].split('/')[-1] }}"{% endif %}>
                 {% if job.processo %}
@@ -60,9 +66,9 @@
     </ul>
     <p class="vazio filtro-vazio" hidden>Nenhum relatório encontrado com esse filtro.</p>
     {% else %}
-    <p class="vazio">Nenhum processamento do Motor registrado ainda.</p>
+    <p class="vazio">Nenhum processamento do Robô registrado ainda.</p>
     {% endif %}
 </section>
 {% endblock %}
 
-{% block js_pagina %}<script src="/extratus/static/relatorios_motor.js?v={{ v }}" defer></script>{% endblock %}
+{% block js_pagina %}<script src="/extratus/static/relatorios_robo.js?v={{ v }}" defer></script>{% endblock %}

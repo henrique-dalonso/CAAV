@@ -1,30 +1,31 @@
-{# Barra de navegação compartilhada pelas 5 telas de cada Extratus
-   (Gerar seu Relatório, Seus Relatórios, Relatórios do Motor, Fila do
-   Motor, Configurações do Motor) — extraída da Rodada 12 (achado de
-   qualidade de código: mesmo bloco de ~15 linhas colado em 10 arquivos,
-   5 telas × 2 módulos). Único ponto de verdade agora, tanto pro
-   Extratus - Relatórios quanto pro Aburesi (parametrizado por
-   ferramenta_slug/url_base).
+{# Barra de navegação compartilhada pelas 5 telas de cada Extratus, nessa
+   ordem (Henrique, diretoria, 2026-08-19): Fila do Robô, Relatórios do
+   Robô, Gerar Relatório URGENTE, Relatórios URGENTES, Configurações do
+   Robô — padrão "gerar" sempre antes de "prontos", nos dois pares —
+   extraída da Rodada 12
+   (achado de qualidade de código: mesmo bloco de ~15 linhas colado em
+   10 arquivos, 5 telas × 2 módulos). Único ponto de verdade agora,
+   tanto pro Extratus - Relatórios quanto pro Aburesi (parametrizado
+   por ferramenta_slug/url_base).
 
-   As 2 verificações de permissão (fila_motor / admin_ferramenta) rodam
-   SEMPRE, mesmo nas telas onde chegar até ali já implica ter a
-   permissão (fila.html, configuracoes_motor.html) — nesses casos elas
-   sempre avaliam verdadeiro, então o HTML final sai idêntico ao que
-   cada arquivo tinha escrito à mão antes; só configuracoes_motor.html
-   não tinha o if da Fila do Motor (inconsistência de template já
-   catalogada, sem efeito prático).
+   Henrique, diretoria, 2026-08-19: o Robô virou o modo padrão (Fila
+   do Robô e Relatórios do Robô sempre visíveis, sem checagem extra —
+   igual admin_ferramenta continua sendo só pra Configurações do
+   Robô). O fluxo Manual/URGENTE inverteu: agora É a exceção,
+   condicionado a usuario_tem_acesso_manual, com o nome da aba em
+   vermelho (classe aba-urgente) pra deixar claro que custa mais caro.
 
-   aba_ativa: "gerar" | "relatorios" | "relatorios-motor" | "fila" | "configuracoes-motor" #}
+   aba_ativa: "gerar" | "relatorios" | "relatorios-robo" | "fila" | "configuracoes-robo" #}
 {% macro nav_abas_extratus(usuario, ferramenta_slug, url_base, aba_ativa) %}
 <nav class="abas-extratus">
-    <a href="{{ url_base }}/" class="aba{% if aba_ativa == "gerar" %} aba-ativa{% endif %}">Gerar seu Relatório{% set conf_manual = contagem_nav_conferencias_manual(usuario) %}{% if conf_manual %} <span class="contagem-aba contagem-aba-revisao">+{{ conf_manual }}</span>{% endif %}</a>
-    <a href="{{ url_base }}/relatorios" class="aba{% if aba_ativa == "relatorios" %} aba-ativa{% endif %}">Seus Relatórios{% set novos_relatorios = contagem_nav_relatorios(usuario) %}{% if novos_relatorios.sucesso %} <span class="contagem-aba">+{{ novos_relatorios.sucesso }}</span>{% endif %}{% if novos_relatorios.revisao %} <span class="contagem-aba contagem-aba-revisao">+{{ novos_relatorios.revisao }}</span>{% endif %}</a>
-    <a href="{{ url_base }}/relatorios-motor" class="aba aba-motor{% if aba_ativa == "relatorios-motor" %} aba-ativa{% endif %}">Relatórios do Motor{% set novos_motor = contagem_nav_relatorios_motor(usuario) %}{% if novos_motor.sucesso %} <span class="contagem-aba">+{{ novos_motor.sucesso }}</span>{% endif %}{% if novos_motor.revisao %} <span class="contagem-aba contagem-aba-revisao">+{{ novos_motor.revisao }}</span>{% endif %}</a>
-    {% if usuario_tem_acesso_fila_motor(usuario, ferramenta_slug) %}
-    <a href="{{ url_base }}/fila" class="aba aba-motor{% if aba_ativa == "fila" %} aba-ativa{% endif %}">Fila do Motor{% set conf_fila = contagem_nav_conferencias_fila(usuario) %}{% if conf_fila %} <span class="contagem-aba contagem-aba-revisao">+{{ conf_fila }}</span>{% endif %}</a>
+    <a href="{{ url_base }}/fila" class="aba aba-robo{% if aba_ativa == "fila" %} aba-ativa{% endif %}">Fila do Robô{% set conf_fila = contagem_nav_conferencias_fila(usuario) %}{% if conf_fila %} <span class="contagem-aba contagem-aba-revisao">+{{ conf_fila }}</span>{% endif %}</a>
+    <a href="{{ url_base }}/relatorios-robo" class="aba aba-robo{% if aba_ativa == "relatorios-robo" %} aba-ativa{% endif %}">Relatórios do Robô{% set novos_robo = contagem_nav_relatorios_robo(usuario) %}{% if novos_robo.sucesso %} <span class="contagem-aba">+{{ novos_robo.sucesso }}</span>{% endif %}{% if novos_robo.revisao %} <span class="contagem-aba contagem-aba-revisao">+{{ novos_robo.revisao }}</span>{% endif %}</a>
+    {% if usuario_tem_acesso_manual(usuario, ferramenta_slug) %}
+    <a href="{{ url_base }}/" class="aba aba-urgente{% if aba_ativa == "gerar" %} aba-ativa{% endif %}">Gerar Relatório URGENTE{% set conf_manual = contagem_nav_conferencias_manual(usuario) %}{% if conf_manual %} <span class="contagem-aba contagem-aba-revisao">+{{ conf_manual }}</span>{% endif %}</a>
+    <a href="{{ url_base }}/relatorios" class="aba aba-urgente{% if aba_ativa == "relatorios" %} aba-ativa{% endif %}">Relatórios URGENTES{% set novos_relatorios = contagem_nav_relatorios(usuario) %}{% if novos_relatorios.sucesso %} <span class="contagem-aba">+{{ novos_relatorios.sucesso }}</span>{% endif %}{% if novos_relatorios.revisao %} <span class="contagem-aba contagem-aba-revisao">+{{ novos_relatorios.revisao }}</span>{% endif %}</a>
     {% endif %}
     {% if usuario_eh_admin_da_ferramenta(usuario, ferramenta_slug) %}
-    <a href="{{ url_base }}/configuracoes-motor" class="aba aba-motor aba-fixa-direita{% if aba_ativa == "configuracoes-motor" %} aba-ativa{% endif %}" data-dica="Configurações do Motor" aria-label="Configurações do Motor">
+    <a href="{{ url_base }}/configuracoes-robo" class="aba aba-robo aba-fixa-direita{% if aba_ativa == "configuracoes-robo" %} aba-ativa{% endif %}" data-dica="Configurações do Robô" aria-label="Configurações do Robô">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <circle cx="12" cy="12" r="3"></circle>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>

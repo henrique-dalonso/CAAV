@@ -4,10 +4,12 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import delete
 
+from sqlmodel import select
+
 from app.ferramentas.extratus.db import triagem_manual as db_triagem
 from app.ferramentas.extratus.db.models import RegistroConferencia, TriagemManual
 from app.ferramentas.extratus.web.routes import gerar_relatorio
-from app.plataforma.db.models import Usuario
+from app.plataforma.db.models import Ferramenta, Usuario, UsuarioFerramenta
 from app.plataforma.db.session import obter_sessao
 from app.plataforma.db.usuarios import criar_usuario
 from app.plataforma.web.main import app
@@ -256,10 +258,10 @@ def test_pagina_inicial_mostra_badge_ambar_ate_resolver(clientes_logados, limpar
     registro = _criar_registro(f"{PREFIXO_TESTE}badge_ambar.pdf", usuario_a_id, status="processo_nao_encontrado")
 
     # Texto exato do badge nesse tab específico (não só a classe CSS —
-    # "Relatórios do Motor" usa a MESMA classe pro badge dele, que é
+    # "Relatórios do Robô" usa a MESMA classe pro badge dele, que é
     # outra coisa; checar só a classe solta pega falso positivo/negativo
     # se houver algum revisão real pendente lá também).
-    badge_gerar_relatorio = 'Gerar seu Relatório <span class="contagem-aba contagem-aba-revisao">+1</span>'
+    badge_gerar_relatorio = 'Gerar Relatório URGENTE <span class="contagem-aba contagem-aba-revisao">+1</span>'
 
     primeira_visita = cliente_a.get("/extratus/")
     assert primeira_visita.status_code == 200
@@ -274,3 +276,94 @@ def test_pagina_inicial_mostra_badge_ambar_ate_resolver(clientes_logados, limpar
     depois_de_resolver = cliente_a.get("/extratus/")
     assert depois_de_resolver.status_code == 200
     assert badge_gerar_relatorio not in depois_de_resolver.text
+
+
+# --- Manual/URGENTE virou exceção, restrita a acesso_manual (Henrique,
+# diretoria, 2026-08-19) ---
+
+NOME_COLABORADOR_PADRAO_TESTE = "teste_gerar_relatorio_colaborador_padrao"
+NOME_COLABORADOR_MANUAL_TESTE = "teste_gerar_relatorio_colaborador_manual"
+
+
+def _apagar_usuario_e_vinculos(nome_usuario):
+    # Apaga UsuarioFerramenta ANTES do Usuario — sem isso, o vínculo fica
+    # órfão e "ressurge" num usuário novo que recicle o mesmo id (SQLite),
+    # quebrando testes sem relação nenhuma com este arquivo.
+    with obter_sessao() as sessao:
+        usuario = sessao.exec(select(Usuario).where(Usuario.nome_usuario == nome_usuario)).first()
+        if usuario:
+            sessao.exec(delete(UsuarioFerramenta).where(UsuarioFerramenta.usuario_id == usuario.id))
+        sessao.exec(delete(Usuario).where(Usuario.nome_usuario == nome_usuario))
+        sessao.commit()
+
+
+@pytest.fixture
+def cliente_colaborador_sem_acesso_manual():
+    """Colaborador comum, só com acesso básico à ferramenta (sem
+    acesso_manual) — prova que o fluxo Manual/URGENTE não é mais padrão."""
+    _apagar_usuario_e_vinculos(NOME_COLABORADOR_PADRAO_TESTE)
+
+    with obter_sessao() as sessao:
+        extratus_id = sessao.exec(select(Ferramenta.id).where(Ferramenta.slug == "extratus")).first()
+
+    criar_usuario(
+        nome="Teste Gerar Relatório Colaborador Padrão",
+        nome_usuario=NOME_COLABORADOR_PADRAO_TESTE,
+        email="teste_gerar_relatorio_colaborador_padrao@example.com",
+        senha=SENHA,
+        eh_admin=False,
+        ferramenta_ids=[extratus_id],
+    )
+
+    cliente = TestClient(app)
+    cliente.post("/login", data={"usuario_login": NOME_COLABORADOR_PADRAO_TESTE, "senha": SENHA})
+
+    yield cliente
+
+    _apagar_usuario_e_vinculos(NOME_COLABORADOR_PADRAO_TESTE)
+
+
+@pytest.fixture
+def cliente_colaborador_com_acesso_manual():
+    """Colaborador comum, com acesso_manual concedido explicitamente —
+    prova que o checkbox continua flexível (não travado a coordenador)."""
+    _apagar_usuario_e_vinculos(NOME_COLABORADOR_MANUAL_TESTE)
+
+    with obter_sessao() as sessao:
+        extratus_id = sessao.exec(select(Ferramenta.id).where(Ferramenta.slug == "extratus")).first()
+
+    criar_usuario(
+        nome="Teste Gerar Relatório Colaborador Manual",
+        nome_usuario=NOME_COLABORADOR_MANUAL_TESTE,
+        email="teste_gerar_relatorio_colaborador_manual@example.com",
+        senha=SENHA,
+        eh_admin=False,
+        ferramenta_ids=[extratus_id],
+        ferramentas_manual_ids=[extratus_id],
+    )
+
+    cliente = TestClient(app)
+    cliente.post("/login", data={"usuario_login": NOME_COLABORADOR_MANUAL_TESTE, "senha": SENHA})
+
+    yield cliente
+
+    _apagar_usuario_e_vinculos(NOME_COLABORADOR_MANUAL_TESTE)
+
+
+def test_colaborador_sem_acesso_manual_e_redirecionado_pra_fila(cliente_colaborador_sem_acesso_manual):
+    # Henrique, 2026-08-19: a Home/bandeja de apps sempre manda pra "/" —
+    # um colaborador sem acesso_manual não pode tomar um 403 seco só por
+    # ter clicado no ícone da ferramenta, tem que cair num lugar que ele
+    # realmente pode usar (Fila do Robô, o padrão de todo mundo).
+    resposta = cliente_colaborador_sem_acesso_manual.get("/extratus/", follow_redirects=False)
+    assert resposta.status_code == 303
+    assert resposta.headers["location"] == "/extratus/fila"
+
+    resposta_seguida = cliente_colaborador_sem_acesso_manual.get("/extratus/")
+    assert resposta_seguida.status_code == 200
+    assert "Fila do Robô" in resposta_seguida.text
+
+
+def test_colaborador_com_acesso_manual_acessa_gerar_relatorio(cliente_colaborador_com_acesso_manual):
+    resposta = cliente_colaborador_com_acesso_manual.get("/extratus/")
+    assert resposta.status_code == 200

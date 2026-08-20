@@ -35,7 +35,7 @@ class Job(SQLModel, table=True):
     tokens_saida: Optional[int] = None
     custo_estimado_usd: Optional[float] = None
 
-    # Só é usado em Jobs de erro (status "erro") do Motor (usuario_id
+    # Só é usado em Jobs de erro (status "erro") do Robô (usuario_id
     # None) — controla se esse erro ainda deve aparecer no sininho de
     # notificações. Marcado True na futura tela dedicada de Erros (ainda
     # não construída); até lá fica sempre False e o erro permanece
@@ -45,10 +45,10 @@ class Job(SQLModel, table=True):
     criado_em: datetime = Field(default_factory=datetime.now)
 
 
-class LoteMotor(SQLModel, table=True):
-    """Um lote enviado ao Batch API da Anthropic pelo Motor — cada lote
-    pode conter vários PDFs (um item por PDF, ver `ItemLoteMotor`). Só o
-    Motor usa Batch API; a fila manual continua em tempo real."""
+class LoteRobo(SQLModel, table=True):
+    """Um lote enviado ao Batch API da Anthropic pelo Robô — cada lote
+    pode conter vários PDFs (um item por PDF, ver `ItemLoteRobo`). Só o
+    Robô usa Batch API; a fila manual continua em tempo real."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
@@ -59,18 +59,18 @@ class LoteMotor(SQLModel, table=True):
     finalizado_em: Optional[datetime] = None
 
 
-class ItemLoteMotor(SQLModel, table=True):
-    """Um PDF dentro de um lote do Motor — liga o `custom_id` usado na
+class ItemLoteRobo(SQLModel, table=True):
+    """Um PDF dentro de um lote do Robô — liga o `custom_id` usado na
     chamada ao Batch API de volta ao arquivo/detecção original, pra quando
     o resultado do lote chegar (segundos, minutos ou até 24h depois) dar
     pra terminar o processamento (gerar .docx, mover PDF, registrar Job)."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
-    lote_id: int = Field(foreign_key="lotemotor.id")
+    lote_id: int = Field(foreign_key="loterobo.id")
     custom_id: str
 
-    arquivo_pdf: str  # nome do arquivo em motor_pasta_entrada
+    arquivo_pdf: str  # nome do arquivo em robo_pasta_entrada
     processo_detectado: Optional[str] = None
     confianca_nivel: Optional[str] = None
     confianca_motivo: Optional[str] = None
@@ -82,20 +82,20 @@ class ItemLoteMotor(SQLModel, table=True):
 
 class ChecagemFila(SQLModel, table=True):
     """Checagem de duplicidade (nome+processo) de cada PDF na Fila do
-    Motor, ANTES dele virar elegível pro Motor reivindicar — é a
+    Robô, ANTES dele virar elegível pro Robô reivindicar — é a
     "triagem" que Henrique pediu (2026-08-06). NÃO confundir com
     `ia_cliente.montar_diagnostico_com_triagem`, que é outra coisa (o
     filtro de anexo de listagem de terceiros), só compartilha o nome.
 
     Uma linha por nome_arquivo, criada assim que ele aparece em
-    motor_pasta_entrada (seja por upload no site ou qualquer outro jeito
+    robo_pasta_entrada (seja por upload no site ou qualquer outro jeito
     de o arquivo cair ali) e apagada quando ele sai da pasta (removido
     manualmente, ou já reivindicado por um lote). status começa
     "pendente" e vira um dos outros valores depois da checagem rodar —
     ver STATUS_* em db/checagem_fila.py.
 
     IMPORTANTE: hoje, qualquer status diferente de "aprovado" trava o
-    arquivo pra sempre (o Motor nunca reivindica) — inclusive
+    arquivo pra sempre (o Robô nunca reivindica) — inclusive
     "processo_nao_encontrado". O jeito de resolver isso (painel de
     Conferências, com "Prosseguir" ou "Descartar") é trabalho futuro,
     ainda não construído — combinado assim de propósito com Henrique.
@@ -119,11 +119,11 @@ class RegistroConferencia(SQLModel, table=True):
     Conferências (2026-08-07) — quem decidiu, o quê, e quando. Existe
     como tabela própria (não um campo a mais em `ChecagemFila` ou em
     `Job`) de propósito: a linha de `ChecagemFila` de um arquivo some
-    assim que ele sai de `motor_pasta_entrada` (aprovado e reivindicado,
+    assim que ele sai de `robo_pasta_entrada` (aprovado e reivindicado,
     ou descartado) — guardar a decisão só ali significaria perdê-la
     exatamente quando mais importaria (auditoria). E `Job.usuario_id` já
     tem um significado diferente que o sininho de notificações depende
-    (usuario_id None = erro do Motor automático, ver
+    (usuario_id None = erro do Robô automático, ver
     web/notificacoes.py) — reaproveitar esse campo pra "quem aprovou"
     quebraria esse filtro silenciosamente. Ver [[feedback-verificar-base-antes-de-construir]].
 
@@ -145,9 +145,9 @@ class RegistroConferencia(SQLModel, table=True):
     decidido_em: datetime = Field(default_factory=datetime.now)
 
 
-class UploadFilaMotor(SQLModel, table=True):
+class UploadFilaRobo(SQLModel, table=True):
     """Registro PERMANENTE de quem enviou cada arquivo pela tela da Fila
-    do Motor (POST /fila/upload) — só isso, não decide nada e não é lido
+    do Robô (POST /fila/upload) — só isso, não decide nada e não é lido
     por nenhum watcher. Existe porque, diferente de Aprovar/Descartar em
     Conferências (RegistroConferencia acima), o upload em si nunca
     guardava quem mandou o arquivo (achado de auditoria, Rodada 12,
@@ -167,18 +167,18 @@ class TriagemManual(SQLModel, table=True):
     """Checagem de duplicidade + acompanhamento de geração de cada PDF
     enviado pelo fluxo manual ("Gerar seu Relatório", 2026-08-11) — o
     equivalente pessoal/por-usuário de `ChecagemFila`, com um passo a
-    mais: aqui não existe Motor/Batch API pegando os aprovados depois,
+    mais: aqui não existe Robô/Batch API pegando os aprovados depois,
     então esta mesma linha também acompanha a geração do relatório em si
     (`job_id`/`erro_mensagem`), coisa que `ChecagemFila` nunca precisou
-    guardar (isso vivia em `LoteMotor`/`ItemLoteMotor`, que não existem
+    guardar (isso vivia em `LoteRobo`/`ItemLoteRobo`, que não existem
     aqui).
 
     Uma linha por upload. `usuario_id` é sempre preenchido (diferente de
-    `Job.usuario_id`, que usa None pra distinguir origem Motor — aqui só
+    `Job.usuario_id`, que usa None pra distinguir origem Robô — aqui só
     existe origem manual, não há ambiguidade pra resolver). Conferências
     manuais são pessoais: sempre filtradas por `usuario_id` nas consultas
     (web/routes/gerar_relatorio.py), nunca compartilhadas entre usuários como a
-    Fila do Motor é.
+    Fila do Robô é.
 
     status: "pendente" (triagem rodando) -> "processando" (IA rodando,
     só depois da triagem aprovar) -> "concluido"/"erro"; ou, se a triagem
@@ -199,10 +199,10 @@ class TriagemManual(SQLModel, table=True):
     confianca_nivel: Optional[str] = None
     confianca_motivo: Optional[str] = None
 
-    # Só preenchido quando status é DUPLICADO_RELATORIO — "motor" ou
+    # Só preenchido quando status é DUPLICADO_RELATORIO — "robô" ou
     # "manual", pra saber pra ONDE mandar o botão "Ir ao relatório"
     # (Henrique, 2026-08-12: ele sempre mandava pra "Seus Relatórios",
-    # mesmo quando o duplicado era do Motor — lá ele nunca existe. Ver
+    # mesmo quando o duplicado era do Robô — lá ele nunca existe. Ver
     # db/jobs.py::obter_relatorio_existente_para_processo).
     origem_duplicado: Optional[str] = None
 

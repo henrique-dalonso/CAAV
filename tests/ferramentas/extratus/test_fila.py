@@ -16,7 +16,7 @@ from app.ferramentas.extratus.db.checagem_fila import (
 )
 from app.ferramentas.extratus.db.models import ChecagemFila, RegistroConferencia
 from app.ferramentas.extratus.web.routes import fila
-from app.plataforma.db.models import Usuario
+from app.plataforma.db.models import Ferramenta, Usuario, UsuarioFerramenta
 from app.plataforma.db.session import obter_sessao
 from app.plataforma.db.usuarios import criar_usuario
 from app.plataforma.web.main import app
@@ -52,7 +52,7 @@ def cliente_logado():
 
 
 def _config_para(pasta):
-    return {"motor_pasta_entrada": str(pasta)}
+    return {"robo_pasta_entrada": str(pasta)}
 
 
 @pytest.fixture
@@ -313,7 +313,7 @@ def test_descartar_conferencia_registro_inexistente_da_erro(cliente_logado):
 
 def test_pagina_fila_mostra_badge_ambar_ate_resolver(cliente_logado, limpar_conferencia_teste):
     # Badge "+N" âmbar (Henrique, 2026-08-13) — Conferências pendentes da
-    # Fila do Motor (compartilhada, não filtra por usuário). Fica ligado
+    # Fila do Robô (compartilhada, não filtra por usuário). Fica ligado
     # até alguém aprovar/descartar — só visitar a página não zera mais
     # (achado 2026-08-13: o comportamento antigo, "zera ao revisitar",
     # estava errado — "não pode sumir só de entrar, permanece até
@@ -321,21 +321,72 @@ def test_pagina_fila_mostra_badge_ambar_ate_resolver(cliente_logado, limpar_conf
     registro = _criar_checagem(f"{PREFIXO_TESTE}badge_ambar.pdf", NAO_ENCONTRADO)
 
     # Texto exato do badge nesse tab específico (não só a classe CSS —
-    # "Relatórios do Motor" usa a MESMA classe pro badge dele, que é
+    # "Relatórios do Robô" usa a MESMA classe pro badge dele, que é
     # outra coisa; checar só a classe solta pega falso positivo/negativo
     # se houver algum revisão real pendente lá também).
-    badge_fila_motor = 'Fila do Motor <span class="contagem-aba contagem-aba-revisao">+1</span>'
+    badge_fila_robo = 'Fila do Robô <span class="contagem-aba contagem-aba-revisao">+1</span>'
 
     primeira_visita = cliente_logado.get("/extratus/fila")
     assert primeira_visita.status_code == 200
-    assert badge_fila_motor in primeira_visita.text
+    assert badge_fila_robo in primeira_visita.text
 
     segunda_visita = cliente_logado.get("/extratus/fila")
     assert segunda_visita.status_code == 200
-    assert badge_fila_motor in segunda_visita.text
+    assert badge_fila_robo in segunda_visita.text
 
     descartar(registro.id)
 
     depois_de_resolver = cliente_logado.get("/extratus/fila")
     assert depois_de_resolver.status_code == 200
-    assert badge_fila_motor not in depois_de_resolver.text
+    assert badge_fila_robo not in depois_de_resolver.text
+
+
+# --- Robô virou acesso padrão (Henrique, diretoria, 2026-08-19) ---
+
+NOME_COLABORADOR_PADRAO_TESTE = "teste_fila_colaborador_padrao"
+
+
+def _apagar_colaborador_padrao_teste():
+    # Apaga UsuarioFerramenta ANTES do Usuario — sem isso, o vínculo fica
+    # órfão e "ressurge" num usuário novo que recicle o mesmo id (SQLite),
+    # quebrando testes sem relação nenhuma com este arquivo.
+    with obter_sessao() as sessao:
+        usuario = sessao.exec(
+            select(Usuario).where(Usuario.nome_usuario == NOME_COLABORADOR_PADRAO_TESTE)
+        ).first()
+        if usuario:
+            sessao.exec(delete(UsuarioFerramenta).where(UsuarioFerramenta.usuario_id == usuario.id))
+        sessao.exec(delete(Usuario).where(Usuario.nome_usuario == NOME_COLABORADOR_PADRAO_TESTE))
+        sessao.commit()
+
+
+@pytest.fixture
+def cliente_colaborador_padrao():
+    """Colaborador comum, só com acesso básico à ferramenta (sem
+    admin_ferramenta, sem acesso_manual) — prova que a Fila do Robô não
+    exige mais flag nenhuma, só acesso à ferramenta em si."""
+    _apagar_colaborador_padrao_teste()
+
+    with obter_sessao() as sessao:
+        extratus_id = sessao.exec(select(Ferramenta.id).where(Ferramenta.slug == "extratus")).first()
+
+    criar_usuario(
+        nome="Teste Fila Colaborador Padrão",
+        nome_usuario=NOME_COLABORADOR_PADRAO_TESTE,
+        email="teste_fila_colaborador_padrao@example.com",
+        senha=SENHA,
+        eh_admin=False,
+        ferramenta_ids=[extratus_id],
+    )
+
+    cliente = TestClient(app)
+    cliente.post("/login", data={"usuario_login": NOME_COLABORADOR_PADRAO_TESTE, "senha": SENHA})
+
+    yield cliente
+
+    _apagar_colaborador_padrao_teste()
+
+
+def test_colaborador_sem_flag_nenhuma_acessa_fila_do_robo(cliente_colaborador_padrao):
+    resposta = cliente_colaborador_padrao.get("/extratus/fila")
+    assert resposta.status_code == 200

@@ -12,18 +12,18 @@ Henrique, 2026-08-13: o número deixou de ser uma contagem total (que só
 cresce) e virou um indicador de "algo novo desde a última vez que você
 abriu essa aba" — cada função aqui compara contra
 `usuarios.obter_ultimo_visto` (por usuário + aba). "Gerar seu Relatório"
-e "Fila do Motor" (as 2 "filas" do módulo — uma manual, outra do Motor)
+e "Fila do Robô" (as 2 "filas" do módulo — uma manual, outra do Robô)
 só mostram o número na cor de revisão, e só quando surge uma Conferência
 nova: tudo que aparece nelas foi o próprio usuário quem adicionou, não é
 "novidade" precisar contar os pendentes. "Seus Relatórios"/"Relatórios
-do Motor" mostram os dois números (sucesso e revisão) lado a lado.
+do Robô" mostram os dois números (sucesso e revisão) lado a lado.
 """
 
 from datetime import datetime
 
 from app.ferramentas.extratus.db.checagem_fila import contar_inconsistencias_ativas
 from app.ferramentas.extratus.db.jobs import (
-    contar_relatorios_motor_novos,
+    contar_relatorios_robo_novos,
     contar_relatorios_novos_do_usuario,
 )
 from app.ferramentas.extratus.db.triagem_manual import contar_inconsistencias_ativas_do_usuario
@@ -53,7 +53,7 @@ FERRAMENTA_SLUG = "extratus"
 ABA_GERAR_RELATORIO = "inbox"
 ABA_FILA = "fila"
 ABA_RELATORIOS = "relatorios"
-ABA_RELATORIOS_MOTOR = "relatorios-motor"
+ABA_RELATORIOS_ROBO = "relatorios-robo"
 
 # `obter_ultimo_visto` devolve None pra quem nunca visitou a aba — trata
 # como "desde sempre", pra tudo que já existir hoje contar como novo em
@@ -78,7 +78,7 @@ def contagem_nav_conferencias_manual(usuario):
 
 
 def contagem_nav_conferencias_fila(usuario):
-    """Badge (só cor de revisão) da aba "Fila do Motor" — quantas
+    """Badge (só cor de revisão) da aba "Fila do Robô" — quantas
     Conferências (compartilhadas, não é por usuário) estão pendentes
     AGORA. Mesmo comportamento "fica ligado até resolver" do item acima."""
     return contar_inconsistencias_ativas()
@@ -92,9 +92,9 @@ def contagem_nav_relatorios(usuario):
     return contar_relatorios_novos_do_usuario(usuario.id, desde)
 
 
-def contagem_nav_relatorios_motor(usuario):
-    """Badge duplo da aba "Relatórios do Motor" — {"sucesso": N, "revisao": N}
-    de relatórios do Motor (compartilhados) que terminaram desde a última
+def contagem_nav_relatorios_robo(usuario):
+    """Badge duplo da aba "Relatórios do Robô" — {"sucesso": N, "revisao": N}
+    de relatórios do Robô (compartilhados) que terminaram desde a última
     visita DESSE usuário."""
-    desde = obter_ultimo_visto(usuario.id, FERRAMENTA_SLUG, ABA_RELATORIOS_MOTOR) or _DESDE_SEMPRE
-    return contar_relatorios_motor_novos(desde)
+    desde = obter_ultimo_visto(usuario.id, FERRAMENTA_SLUG, ABA_RELATORIOS_ROBO) or _DESDE_SEMPRE
+    return contar_relatorios_robo_novos(desde)

@@ -8,7 +8,6 @@
 } %}
 
 {% block titulo %}{{ titulos_admin.get(aba_ativa, "Administração") }} — Administração — CAAV{% endblock %}
-{% block nome_pagina %}CAAV{% endblock %}
 {% block css_pagina %}
 <link rel="stylesheet" href="/static/admin.css?v={{ v }}">
 <!-- .grade-ferramentas/.cartao-ferramenta (grade de ícones da aba Ferramentas,
@@ -189,7 +188,7 @@
                         </span>
                         <div>
                             <h3>Cargo e ferramentas</h3>
-                            <p>Coordenador já sai com todas as ferramentas liberadas. "Admin da ferramenta" libera Configurações do Motor dela; "Fila do Motor" libera só o upload em lote (funciona pra colaborador também).</p>
+                            <p>Coordenador já sai com todas as ferramentas liberadas, e com Robô (padrão, mais barato) sempre disponível. "Admin da ferramenta" libera Configurações do Robô dela; "Modo Manual" libera o fluxo urgente/mais caro (funciona pra colaborador também).</p>
                         </div>
                     </div>
                     <div class="linha-cargo-ferramentas">
@@ -228,16 +227,16 @@
                                                 </svg>
                                             </span>
                                         </label>
-                                        <label class="ferramenta-tile-admin" data-dica="Acesso às Configurações do Motor desta ferramenta">
+                                        <label class="ferramenta-tile-admin" data-dica="Acesso às Configurações do Robô desta ferramenta">
                                             <input type="checkbox" name="ferramentas_admin_ids" value="{{ ferramenta.id }}" class="check-input">
                                             <span class="check-caixa check-caixa-pequena"></span>
                                             <span>Admin da ferramenta</span>
                                         </label>
-                                        {% if ferramenta.suporta_fila_motor %}
-                                        <label class="ferramenta-tile-fila" data-dica="Acesso à aba de fila do Motor (upload em lote)">
-                                            <input type="checkbox" name="ferramentas_fila_ids" value="{{ ferramenta.id }}" class="check-input">
+                                        {% if ferramenta.suporta_fila_robo %}
+                                        <label class="ferramenta-tile-fila" data-dica="Acesso ao fluxo Manual/URGENTE (mais caro, gera na hora) — sem isso, só o Robô (padrão, mais barato)">
+                                            <input type="checkbox" name="ferramentas_manual_ids" value="{{ ferramenta.id }}" class="check-input">
                                             <span class="check-caixa check-caixa-pequena"></span>
-                                            <span>Fila do Motor</span>
+                                            <span>Modo Manual</span>
                                         </label>
                                         {% endif %}
                                     </div>
@@ -402,19 +401,19 @@
                                                     </span>
                                                 </label>
                                                 {% if usuario_linha.cargo == "coordenador" %}
-                                                <label class="ferramenta-tile-admin" data-dica="Acesso às Configurações do Motor desta ferramenta">
+                                                <label class="ferramenta-tile-admin" data-dica="Acesso às Configurações do Robô desta ferramenta">
                                                     <input type="checkbox" name="ferramentas_admin_ids" value="{{ ferramenta.id }}" class="check-input"
                                                         {% if ferramenta.id in ferramentas_admin_por_usuario.get(usuario_linha.id, []) %}checked{% endif %}>
                                                     <span class="check-caixa check-caixa-pequena"></span>
                                                     <span>Admin da ferramenta</span>
                                                 </label>
                                                 {% endif %}
-                                                {% if ferramenta.suporta_fila_motor %}
-                                                <label class="ferramenta-tile-fila" data-dica="Acesso à aba de fila do Motor (upload em lote)">
-                                                    <input type="checkbox" name="ferramentas_fila_ids" value="{{ ferramenta.id }}" class="check-input"
-                                                        {% if ferramenta.id in ferramentas_fila_por_usuario.get(usuario_linha.id, []) %}checked{% endif %}>
+                                                {% if ferramenta.suporta_fila_robo %}
+                                                <label class="ferramenta-tile-fila" data-dica="Acesso ao fluxo Manual/URGENTE (mais caro, gera na hora) — sem isso, só o Robô (padrão, mais barato)">
+                                                    <input type="checkbox" name="ferramentas_manual_ids" value="{{ ferramenta.id }}" class="check-input"
+                                                        {% if ferramenta.id in ferramentas_manual_por_usuario.get(usuario_linha.id, []) %}checked{% endif %}>
                                                     <span class="check-caixa check-caixa-pequena"></span>
-                                                    <span>Fila do Motor</span>
+                                                    <span>Modo Manual</span>
                                                 </label>
                                                 {% endif %}
                                             </div>

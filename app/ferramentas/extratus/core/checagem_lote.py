@@ -30,17 +30,17 @@ def analisar_pdf_isolado(caminho):
 
 
 def rodar_ciclo_checagem():
-    """Um "tick" da checagem da Fila do Motor — a "triagem" de
+    """Um "tick" da checagem da Fila do Robô — a "triagem" de
     duplicidade que Henrique pediu (2026-08-06). Roda muito mais rápido
-    que o Motor (ver checagem_watcher.py, poucos segundos vs. 5 minutos)
+    que o Robô (ver checagem_watcher.py, poucos segundos vs. 5 minutos)
     porque é 100% local (ler PDF, comparar texto, consultar o banco) —
-    zero custo de API, então não tem motivo pra esperar o ritmo do Motor.
+    zero custo de API, então não tem motivo pra esperar o ritmo do Robô.
 
     NÃO confundir com `ia_cliente.montar_diagnostico_com_triagem` (outra
-    função, filtro de anexo de terceiros) nem com `motor_lote.py` (que
+    função, filtro de anexo de terceiros) nem com `robo_lote.py` (que
     continua cuidando só de enviar/coletar lotes do Batch API)."""
     config = carregar_config()
-    pasta = Path(config.get("motor_pasta_entrada", "motor_entrada_pdfs"))
+    pasta = Path(config.get("robo_pasta_entrada", "robo_entrada_pdfs"))
     pasta_erros = config.get("pasta_erros")
 
     nomes_no_disco = {pdf.name for pdf in listar_pdfs(pasta)}
@@ -48,7 +48,7 @@ def rodar_ciclo_checagem():
 
     # Um arquivo já reivindicado por um lote não precisa mais de
     # checagem nenhuma (é tarde demais pra travar ele, e o próprio
-    # motor_lote.py só o considerou porque já estava aprovado) — não
+    # robo_lote.py só o considerou porque já estava aprovado) — não
     # entra no sincronizar_registros, então a linha dele em ChecagemFila
     # (se existir) é apagada, mantendo a tabela sempre só com quem ainda
     # está "esperando" nalgum sentido.
@@ -82,14 +82,14 @@ def _checar_um_arquivo(registro, pasta, pasta_erros):
         registrar_log(f"Checagem: {registro.nome_arquivo} sumiu da fila durante o ciclo (ignorado).")
         return
     except Exception as erro:
-        # PDF corrompido/ilegível de verdade — como motor_lote.py agora
+        # PDF corrompido/ilegível de verdade — como robo_lote.py agora
         # só considera arquivo já aprovado aqui (nunca mais chama a
         # detecção sozinho), esse erro precisa ser tratado JÁ, na
         # checagem, senão o arquivo ficaria parado pra sempre sem nunca
         # aparecer como erro em lugar nenhum. Mesma função/mesmo destino
         # (pasta_erros, Job status "erro") que já era usado antes daqui
         # existir. A linha em ChecagemFila se limpa sozinha no próximo
-        # ciclo (o arquivo já não está mais em motor_pasta_entrada).
+        # ciclo (o arquivo já não está mais em robo_pasta_entrada).
         tratar_erro(caminho, None, "erro_pdf", erro, pasta_erros)
         registrar_log(f"Checagem: falha ao ler {registro.nome_arquivo}: {erro}")
         return

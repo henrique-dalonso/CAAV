@@ -262,7 +262,7 @@
 
     // Henrique, 2026-08-12: uma inconsistência (falha de leitura,
     // duplicidade, processo não encontrado) NÃO some de Pendentes — só
-    // vira bolinha vermelha, igual à Fila do Motor, até ser resolvida em
+    // vira bolinha vermelha, igual à Fila do Robô, até ser resolvida em
     // Conferências. `preencherItemPendente` também é usado pra ATUALIZAR
     // um <li> que já existia (ex: laranja virando vermelho sem precisar
     // recriar o elemento), não só pra montar um novo.

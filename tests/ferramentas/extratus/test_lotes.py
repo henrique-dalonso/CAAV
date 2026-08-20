@@ -9,7 +9,7 @@ from app.ferramentas.extratus.db.lotes import (
     marcar_item_concluido,
     marcar_lote_concluido,
 )
-from app.ferramentas.extratus.db.models import ItemLoteMotor, LoteMotor
+from app.ferramentas.extratus.db.models import ItemLoteRobo, LoteRobo
 from app.plataforma.db.session import obter_sessao
 
 
@@ -21,11 +21,11 @@ def limpar_lotes_teste():
     yield
     with obter_sessao() as sessao:
         lote = sessao.exec(
-            delete(LoteMotor).where(LoteMotor.batch_id == BATCH_ID_TESTE)
+            delete(LoteRobo).where(LoteRobo.batch_id == BATCH_ID_TESTE)
         )
         sessao.commit()
         sessao.exec(
-            delete(ItemLoteMotor).where(ItemLoteMotor.arquivo_pdf.like("teste_lote_%"))
+            delete(ItemLoteRobo).where(ItemLoteRobo.arquivo_pdf.like("teste_lote_%"))
         )
         sessao.commit()
 

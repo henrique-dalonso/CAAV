@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 
-{% block titulo %}Fila do Motor — Extratus - Relatórios{% endblock %}
-{% block nome_pagina %}Extratus - Relatórios{% endblock %}
+{% block titulo %}Fila do Robô — Extratus - Relatórios{% endblock %}
 {% block css_pagina %}<link rel="stylesheet" href="/extratus/static/extratus.css?v={{ v }}">{% endblock %}
 
 {% from "_macros_extratus.html" import nav_abas_extratus %}
@@ -9,8 +8,8 @@
 {% block conteudo %}
 <div class="cabecalho-ferramenta">
     <div>
-        <h1>Fila do Motor</h1>
-        <p>Envie vários PDFs de uma vez para processamento automático em segundo plano.</p>
+        <h1>Fila do Robô</h1>
+        <p>Envie lotes de PDFs de uma vez para processamento pelo robô. As solicitações aqui podem levar até 1 dia para serem concluídas.</p>
     </div>
 </div>
 
@@ -30,7 +29,7 @@
             <button type="submit" class="botao-minimal" data-dica="Remove da fila, de uma vez, todo arquivo que está aguardando uma decisão aqui">Descartar todas</button>
         </form>
     </h2>
-    <p class="aviso-discreto">Esses arquivos pararam na triagem automática e esperam uma decisão sua antes de seguir pro Motor.</p>
+    <p class="aviso-discreto">Esses arquivos pararam na triagem automática e esperam uma decisão sua antes de seguir pro Robô.</p>
     <ul class="lista-conferencias" id="lista-conferencias">
         {% for item in conferencias %}
         <li class="conferencia-item" data-id="{{ item.id }}" data-nome="{{ item.nome }}">
@@ -52,11 +51,11 @@
                     <div class="conferencia-campo-processo" hidden>
                         <input type="text" name="processo" placeholder="0000000-00.0000.0.00.0000" pattern="\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}" inputmode="numeric" autocomplete="off">
                     </div>
-                    <button type="submit" class="botao botao-pequeno botao-conferencia-aprovar" data-dica="Libera esse arquivo pra fila do Motor, com o número de processo informado">Aprovar</button>
+                    <button type="submit" class="botao botao-pequeno botao-conferencia-aprovar" data-dica="Libera esse arquivo pra fila do Robô, com o número de processo informado">Aprovar</button>
                 </form>
                 {% else %}
                 <form action="/extratus/fila/conferencia/{{ item.id }}/aprovar" method="post" class="form-conferencia" data-confirm="Confirma que quer liberar {{ item.nome }} pra fila mesmo assim?">
-                    <button type="submit" class="botao botao-pequeno botao-conferencia-aprovar" data-dica="Libera esse arquivo pra fila do Motor, mesmo com a inconsistência encontrada">Aprovar</button>
+                    <button type="submit" class="botao botao-pequeno botao-conferencia-aprovar" data-dica="Libera esse arquivo pra fila do Robô, mesmo com a inconsistência encontrada">Aprovar</button>
                 </form>
                 {% endif %}
                 <form action="/extratus/fila/conferencia/{{ item.id }}/descartar" method="post" class="form-conferencia" data-confirm="Descartar {{ item.nome }} da fila? Essa ação não pode ser desfeita." data-perigo="true">
@@ -70,7 +69,7 @@
 
 <section class="cartao-secao">
     <h2>Enviar PDFs</h2>
-    <p class="aviso-discreto">Essa fila é a do Motor — universal, compartilhada com quem mais tiver acesso aqui. Não é a sua fila pessoal de "Gerar relatórios".</p>
+    <p class="aviso-discreto">Anexe aqui os PDFs a serem processados pelo robô.</p>
     <form action="/extratus/fila/upload" method="post" enctype="multipart/form-data" id="form-upload-fila">
         <label class="zona-soltar" for="campo-pdfs-fila" id="zona-soltar-fila">
             <input type="file" name="arquivos" accept=".pdf" id="campo-pdfs-fila" multiple hidden>
@@ -153,7 +152,7 @@
                         <span class="check-caixa check-caixa-pequena"></span>
                     </label>
                     {% if item.status == "aprovado" %}
-                    <span class="bolinha-status bolinha-amarela" data-dica="Aguardando o Motor" aria-label="Aguardando o Motor"></span>
+                    <span class="bolinha-status bolinha-amarela" data-dica="Aguardando o Robô" aria-label="Aguardando o Robô"></span>
                     {% elif item.aguardando_conferencia %}
                     <span class="bolinha-status bolinha-vermelha" data-dica="Aguardando conferência" aria-label="Aguardando conferência"></span>
                     {% else %}
@@ -172,7 +171,7 @@
                 {% endfor %}
             </ul>
         </form>
-        <p class="vazio" id="vazio-pendentes" {% if apenas_pendentes %}hidden{% endif %}>Nenhum PDF aguardando o Motor.</p>
+        <p class="vazio" id="vazio-pendentes" {% if apenas_pendentes %}hidden{% endif %}>Nenhum PDF aguardando o Robô.</p>
     </section>
 
     <section class="cartao-secao fila-coluna">
@@ -182,7 +181,7 @@
         <ul class="lista-arquivos lista-fila fila-coluna-lista" id="lista-processando">
             {% for nome in apenas_processando %}
             <li data-nome="{{ nome }}">
-                <span class="bolinha-status bolinha-verde" data-dica="Em processamento pelo Motor" aria-label="Em processamento pelo Motor"></span>
+                <span class="bolinha-status bolinha-verde" data-dica="Em processamento pelo Robô" aria-label="Em processamento pelo Robô"></span>
                 <span class="fila-item-nome" data-dica="{{ nome }}">{{ nome }}</span>
             </li>
             {% endfor %}

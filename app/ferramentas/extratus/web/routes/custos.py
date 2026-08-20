@@ -14,7 +14,7 @@ from app.plataforma.web.templates_util import criar_templates
 # só é alcançável pelo painel de Administração (/admin/ferramentas), que
 # já exige admin da PLATAFORMA inteira. "Admin da ferramenta" (um
 # coordenador liberado só numa ferramenta específica) não abre mais essa
-# porta — só continua valendo pra Configurações do Motor (ver motor.py).
+# porta — só continua valendo pra Configurações do Robô (ver robô.py).
 router = APIRouter(dependencies=[Depends(exigir_admin)])
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
@@ -35,11 +35,11 @@ def pagina_custos(
     info_por_id = {u.id: {"nome": u.nome, "login": u.nome_usuario} for u in listar_todos_usuarios()}
     custo_por_usuario = somar_custo_por_usuario()
 
-    custo_motor = custo_por_usuario.get(None, 0.0)
+    custo_robo = custo_por_usuario.get(None, 0.0)
     custo_colaboradores = sum(
         custo for usuario_id, custo in custo_por_usuario.items() if usuario_id is not None
     )
-    custo_total = custo_motor + custo_colaboradores
+    custo_total = custo_robo + custo_colaboradores
 
     colaboradores = sorted(
         (
@@ -64,7 +64,7 @@ def pagina_custos(
             "info_por_id": info_por_id,
             "colaboradores": colaboradores,
             "custo_colaboradores": custo_colaboradores,
-            "custo_motor": custo_motor,
+            "custo_robo": custo_robo,
             "custo_total": custo_total,
         },
     )

@@ -78,7 +78,7 @@ def test_aba_ferramentas_carrega(cliente_admin_logado):
     # Grade de ícones (2026-08-11) — cada ferramenta com tela de custos
     # própria vira um link direto pra ela, não mais uma tabela de texto
     # nem o bloco "Configuração do Extratus" (removido, virou redundante
-    # com Configurações do Motor dentro da própria ferramenta).
+    # com Configurações do Robô dentro da própria ferramenta).
     assert "/extratus/custos" in resp.text
     assert "Configuração do Extratus" not in resp.text
 

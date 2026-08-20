@@ -29,11 +29,11 @@ from app.ferramentas.extratus_aburesi.web.rotulos import (
     contagem_nav_conferencias_fila,
     contagem_nav_conferencias_manual,
     contagem_nav_relatorios,
-    contagem_nav_relatorios_motor,
+    contagem_nav_relatorios_robo,
 )
 from app.plataforma.db.models import Usuario
-from app.plataforma.db.usuarios import marcar_aba_vista
-from app.plataforma.web.auth import exigir_acesso_ferramenta
+from app.plataforma.db.usuarios import marcar_aba_vista, usuario_tem_acesso_manual
+from app.plataforma.web.auth import exigir_acesso_ferramenta, exigir_acesso_manual
 from app.plataforma.web.templates_util import criar_templates
 
 
@@ -55,6 +55,14 @@ MAXIMO_ARQUIVOS_POR_ENVIO = 5
 JANELA_MINUTOS_LIMITE_UPLOAD = 10
 LIMITE_ARQUIVOS_POR_JANELA = MAXIMO_ARQUIVOS_POR_ENVIO * 8
 
+# Henrique, diretoria, 2026-08-19: o gate do router é só acesso BÁSICO —
+# cada rota individual continua com seu próprio Depends(exigir_acesso_manual)
+# pra exigir a permissão de verdade, EXCETO a raiz ("/"), que precisa ficar
+# alcançável por qualquer um com acesso à ferramenta pra poder redirecionar
+# graciosamente quem não tem acesso_manual pra Fila do Robô, em vez de dar
+# 403 puro (achado do Henrique testando: a Home/bandeja de apps sempre
+# aponta pra essa URL raiz, então um colaborador comum caía direto num
+# beco sem saída).
 router = APIRouter(dependencies=[Depends(exigir_acesso_ferramenta("extratus-aburesi"))])
 
 TAMANHO_MAXIMO_UPLOAD = 100 * 1024 * 1024  # 100 MB
@@ -67,7 +75,7 @@ templates = criar_templates([TEMPLATES_DIR, PLATAFORMA_TEMPLATES_DIR])
 templates.env.globals["contagem_nav_conferencias_manual"] = contagem_nav_conferencias_manual
 templates.env.globals["contagem_nav_conferencias_fila"] = contagem_nav_conferencias_fila
 templates.env.globals["contagem_nav_relatorios"] = contagem_nav_relatorios
-templates.env.globals["contagem_nav_relatorios_motor"] = contagem_nav_relatorios_motor
+templates.env.globals["contagem_nav_relatorios_robo"] = contagem_nav_relatorios_robo
 
 
 def _estado_atual(usuario_id):
@@ -114,8 +122,8 @@ def _redirecionar(erro=None, sucesso=None):
 def _link_relatorio_existente(registro):
     """Ver docstring equivalente em app/ferramentas/extratus/web/routes/
     gerar_relatorio.py (Extratus - Relatórios) — mesma lógica."""
-    if registro.origem_duplicado == "motor":
-        return "/extratus-aburesi/relatorios-motor"
+    if registro.origem_duplicado == "robô":
+        return "/extratus-aburesi/relatorios-robo"
     return "/extratus-aburesi/relatorios"
 
 
@@ -140,6 +148,16 @@ def pagina_inicial(
     erro: str | None = None,
     sucesso: str | None = None,
 ):
+    # Raiz da ferramenta — é pra onde a Home/bandeja de apps sempre manda
+    # (Ferramenta.url no banco continua "/extratus-aburesi/", usado também
+    # pra detectar a cor de identidade em toda sub-página — não dá pra
+    # trocar sem quebrar isso). Quem não tem acesso_manual não pode ficar
+    # aqui, mas também não pode tomar um 403 seco só por ter clicado no
+    # ícone da ferramenta — manda pra Fila do Robô, que é o padrão de
+    # todo mundo com acesso básico.
+    if not usuario_tem_acesso_manual(usuario, "extratus-aburesi"):
+        return RedirectResponse("/extratus-aburesi/fila", status_code=303)
+
     pendentes, processando = _estado_atual(usuario.id)
 
     # Renderiza PRIMEIRO, marca como visto DEPOIS — ver comentário
@@ -164,10 +182,10 @@ def pagina_inicial(
 
 
 @router.get("/estado")
-def estado_processamento(usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus-aburesi"))):
+def estado_processamento(usuario: Usuario = Depends(exigir_acesso_manual("extratus-aburesi"))):
     """Endpoint enxuto pro polling (gerar_relatorio.js) — mesmo formato que
     /fila/estado usa, escopado ao próprio usuário (Conferências e
-    processamento manual são pessoais, diferente da Fila do Motor)."""
+    processamento manual são pessoais, diferente da Fila do Robô)."""
     pendentes, processando = _estado_atual(usuario.id)
 
     return {
@@ -181,7 +199,7 @@ def estado_processamento(usuario: Usuario = Depends(exigir_acesso_ferramenta("ex
 async def enviar_pdfs(
     background_tasks: BackgroundTasks,
     arquivos: list[UploadFile] = File(...),
-    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus-aburesi")),
+    usuario: Usuario = Depends(exigir_acesso_manual("extratus-aburesi")),
 ):
     if len(arquivos) > MAXIMO_ARQUIVOS_POR_ENVIO:
         raise HTTPException(
@@ -224,7 +242,7 @@ async def enviar_pdfs(
 
         # Prefixo único por upload — a pasta é compartilhada no disco e
         # vários usuários (ou vários arquivos do mesmo lote) podem mandar
-        # nomes iguais ao mesmo tempo; diferente da Fila do Motor (um
+        # nomes iguais ao mesmo tempo; diferente da Fila do Robô (um
         # arquivo por requisição, sequencial), aqui todos sobem juntos.
         nome_no_disco = f"{uuid.uuid4().hex[:8]}_{nome_seguro}"
         caminho_destino = pasta_entrada / nome_no_disco
@@ -247,7 +265,7 @@ async def aprovar_conferencia(
     registro_id: int,
     background_tasks: BackgroundTasks,
     processo: str | None = Form(None),
-    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus-aburesi")),
+    usuario: Usuario = Depends(exigir_acesso_manual("extratus-aburesi")),
 ):
     registro = obter_registro(registro_id)
 
@@ -273,7 +291,7 @@ async def aprovar_conferencia(
 @router.post("/conferencia/{registro_id}/descartar")
 def descartar_conferencia(
     registro_id: int,
-    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus-aburesi")),
+    usuario: Usuario = Depends(exigir_acesso_manual("extratus-aburesi")),
 ):
     registro = obter_registro(registro_id)
 
@@ -296,7 +314,7 @@ def descartar_conferencia(
 @router.get("/conferencia/{registro_id}/ver")
 def ver_pdf_conferencia(
     registro_id: int,
-    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus-aburesi")),
+    usuario: Usuario = Depends(exigir_acesso_manual("extratus-aburesi")),
 ):
     registro = obter_registro(registro_id)
 
@@ -314,7 +332,7 @@ def ver_pdf_conferencia(
 @router.post("/processamento/{registro_id}/descartar")
 def dispensar_processamento_finalizado(
     registro_id: int,
-    usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus-aburesi")),
+    usuario: Usuario = Depends(exigir_acesso_manual("extratus-aburesi")),
 ):
     """Dispensa um card "Concluído"/"Erro" já finalizado — só some da
     tela, o Job/relatório já está seguro em outro lugar (Job/.docx)."""

@@ -99,11 +99,11 @@ class Usuario(SQLModel, table=True):
 class Ferramenta(SQLModel, table=True):
     """Uma ferramenta disponível no CAAV (ex: Extratus).
 
-    suporta_fila_motor diz se essa ferramenta TEM o conceito de "fila do
-    motor" pra começo de conversa (ex: os módulos do Extratus têm; Leitor
+    suporta_fila_robo diz se essa ferramenta TEM o conceito de "fila do
+    robô" pra começo de conversa (ex: os módulos do Extratus têm; Leitor
     de Publicações, por enquanto, não) — controla se a opção "Fila do
-    motor" aparece pra conceder no painel de usuários. Não confundir com
-    `UsuarioFerramenta.fila_motor` (se UM usuário específico tem esse
+    robô" aparece pra conceder no painel de usuários. Não confundir com
+    `UsuarioFerramenta.fila_robo` (se UM usuário específico tem esse
     acesso) — este campo aqui é sobre a ferramenta em si oferecer ou não
     essa possibilidade. `admin_ferramenta` não precisa do equivalente:
     faz sentido em qualquer ferramenta.
@@ -115,7 +115,7 @@ class Ferramenta(SQLModel, table=True):
     slug: str = Field(unique=True, index=True)
     descricao: Optional[str] = None
     url: str
-    suporta_fila_motor: bool = Field(default=False)
+    suporta_fila_robo: bool = Field(default=False)
 
     # Identidade visual da ferramenta (bolinha na bandeja de apps/home,
     # tarja acima do título, botões/abas dentro dela) — None em qualquer
@@ -138,14 +138,22 @@ class UsuarioFerramenta(SQLModel, table=True):
     admin_ferramenta é um nível extra, só relevante pra coordenador (admin
     já vê tudo por causa de eh_admin, colaborador não deveria ter isso
     marcado) — dá acesso às abas administrativas DENTRO daquela ferramenta
-    específica (ex: Custos e Motor no Extratus), sem dar acesso à área de
+    específica (ex: Custos e Robô no Extratus), sem dar acesso à área de
     Administração da plataforma inteira.
 
-    fila_motor é outro nível extra, independente de admin_ferramenta —
-    diferente dele, faz sentido pra colaborador também (ex: um estagiário
-    responsável só por alimentar a fila do motor). Dá acesso à aba de fila
-    (upload em lote pra pasta universal do motor), sem dar acesso a
-    ligar/desligar o motor nem às configurações dele.
+    acesso_manual é o nível extra que restringe o fluxo Manual/URGENTE
+    (Henrique, diretoria, 2026-08-19: o Robô virou o modo padrão — mais
+    barato, mas não instantâneo — e o Manual passou a ser exclusivo de
+    quem realmente precisa gerar algo na hora, custando mais caro por
+    isso). Igual admin_ferramenta, é um checkbox livre — na prática só
+    coordenador deve ganhar, mas nada impede abrir exceção pontual pra um
+    colaborador específico.
+
+    fila_robo NÃO é mais lido em lugar nenhum do código — a Fila do
+    Robô virou acesso padrão de quem já usa a ferramenta (mesmo nível de
+    "Relatórios do Robô", que já era assim). Coluna mantida no banco só
+    por segurança/histórico, sem migração de DROP COLUMN estabelecida
+    neste projeto — não reaproveitar esse campo pra nada novo.
     """
 
     usuario_id: Optional[int] = Field(
@@ -155,7 +163,8 @@ class UsuarioFerramenta(SQLModel, table=True):
         default=None, foreign_key="ferramenta.id", primary_key=True
     )
     admin_ferramenta: bool = Field(default=False)
-    fila_motor: bool = Field(default=False)
+    fila_robo: bool = Field(default=False)
+    acesso_manual: bool = Field(default=False)
 
 
 class AcessoFerramenta(SQLModel, table=True):

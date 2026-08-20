@@ -6,7 +6,12 @@ from app.ferramentas.extratus.db.checagem_fila import (
     DUPLICADO_RELATORIO,
     PENDENTE,
 )
-from app.ferramentas.extratus.db.jobs import marcar_notificacao_resolvida, registrar_erro, registrar_processado
+from app.ferramentas.extratus.db.jobs import (
+    marcar_notificacao_resolvida,
+    marcar_notificacao_resolvida_robo,
+    registrar_erro,
+    registrar_processado,
+)
 from app.ferramentas.extratus.db.models import ChecagemFila, Job, TriagemManual
 from app.ferramentas.extratus.db.triagem_manual import NAO_ENCONTRADO, atualizar_apos_triagem, criar_registro, marcar_erro
 from app.ferramentas.extratus.web.notificacoes import listar_notificacoes, listar_notificacoes_pessoais
@@ -61,8 +66,8 @@ def test_status_aprovado_e_pendente_nao_viram_notificacao(limpar_notificacoes_te
     assert nome_pendente not in mensagens
 
 
-def test_erro_do_motor_vira_notificacao(limpar_notificacoes_teste):
-    nome = f"{PREFIXO_TESTE}erro_motor.pdf"
+def test_erro_do_robo_vira_notificacao(limpar_notificacoes_teste):
+    nome = f"{PREFIXO_TESTE}erro_robo.pdf"
     registrar_erro(nome, None, "erro_pdf", "PDF corrompido", usuario_id=None)
 
     itens = listar_notificacoes()
@@ -70,22 +75,22 @@ def test_erro_do_motor_vira_notificacao(limpar_notificacoes_teste):
 
     assert achado is not None
     assert achado["tipo"] == "erro"
-    assert achado["link"] == "/extratus/relatorios-motor"
+    assert achado["link"] == "/extratus/relatorios-robo"
 
 
-def test_erro_do_motor_com_processo_vira_notificacao_com_deep_link(limpar_notificacoes_teste):
+def test_erro_do_robo_com_processo_vira_notificacao_com_deep_link(limpar_notificacoes_teste):
     # Achado 2026-08-13: o link precisa levar direto pro item certo (o
     # mesmo mecanismo de "Ir ao relatório", ?processo=..., que já troca
-    # de aba sozinho e dá scroll/destaque em relatorios_motor.js) — não
+    # de aba sozinho e dá scroll/destaque em relatorios_robo.js) — não
     # só pra página em branco.
-    nome = f"{PREFIXO_TESTE}erro_motor_com_processo.pdf"
+    nome = f"{PREFIXO_TESTE}erro_robo_com_processo.pdf"
     registrar_erro(nome, "0000000-00.2026.8.00.9999", "erro_ia", "processo grande demais", usuario_id=None)
 
     itens = listar_notificacoes()
     achado = next((i for i in itens if nome in i["mensagem"]), None)
 
     assert achado is not None
-    assert achado["link"] == "/extratus/relatorios-motor?processo=0000000-00.2026.8.00.9999"
+    assert achado["link"] == "/extratus/relatorios-robo?processo=0000000-00.2026.8.00.9999"
 
 
 def test_erro_do_fluxo_manual_nao_vira_notificacao(limpar_notificacoes_teste):
@@ -177,6 +182,63 @@ def test_relatorio_ja_notificado_nao_aparece_de_novo(limpar_notificacoes_teste):
 
     itens = listar_notificacoes_pessoais(USUARIO_TESTE)
 
+    assert not any(job.arquivo_pdf in i["mensagem"] for i in itens)
+
+
+def test_sucesso_do_robo_vira_notificacao_descartavel(limpar_notificacoes_teste):
+    # Henrique, diretoria, 2026-08-19: "Ferramentas" (antiga "Conferências
+    # Robô") passou a cobrir sucesso/revisão do Robô também, não só
+    # triagem/erro.
+    job = registrar_processado(
+        arquivo_pdf=f"{PREFIXO_TESTE}sucesso_robo.pdf",
+        processo="0000000-00.2026.8.00.0070",
+        relatorio_path=None,
+        destino_pdf=None,
+        confianca="alta",
+        usuario_id=None,
+    )
+
+    itens = listar_notificacoes()
+    achado = next((i for i in itens if job.arquivo_pdf in i["mensagem"]), None)
+
+    assert achado is not None
+    assert achado["tipo"] == "pronto"
+    assert achado["descartavel"] is True
+    assert achado["resolver"] == f"/extratus/relatorios-robo/{job.id}/marcar-notificacao-resolvida"
+
+
+def test_revisao_do_robo_vira_notificacao_nao_descartavel(limpar_notificacoes_teste):
+    job = registrar_processado(
+        arquivo_pdf=f"{PREFIXO_TESTE}revisao_robo.pdf",
+        processo="0000000-00.2026.8.00.0071",
+        relatorio_path=None,
+        destino_pdf=None,
+        confianca="media",
+        usuario_id=None,
+    )
+
+    itens = listar_notificacoes()
+    achado = next((i for i in itens if job.arquivo_pdf in i["mensagem"]), None)
+
+    assert achado is not None
+    assert achado["tipo"] == "revisao"
+    assert "descartavel" not in achado
+    assert "resolver" not in achado
+
+
+def test_sucesso_do_robo_resolvido_nao_vira_notificacao(limpar_notificacoes_teste):
+    job = registrar_processado(
+        arquivo_pdf=f"{PREFIXO_TESTE}sucesso_robo_resolvido.pdf",
+        processo="0000000-00.2026.8.00.0072",
+        relatorio_path=None,
+        destino_pdf=None,
+        confianca="alta",
+        usuario_id=None,
+    )
+
+    assert marcar_notificacao_resolvida_robo(job.id) is True
+
+    itens = listar_notificacoes()
     assert not any(job.arquivo_pdf in i["mensagem"] for i in itens)
 
 

@@ -418,9 +418,9 @@
     white-space: nowrap;
 }
 
-/* Fila do motor — mesmo esquema do "Admin da ferramenta", mas nunca
+/* Fila do robô — mesmo esquema do "Admin da ferramenta", mas nunca
    escondida (faz sentido pra colaborador também, não só coordenador) e
-   com o laranja do Motor em vez do cinza neutro, pra dar pra distinguir
+   com o laranja do Robô em vez do cinza neutro, pra dar pra distinguir
    rapidamente qual checkbox é qual quando os dois aparecem juntos. */
 .ferramenta-tile-fila {
     display: flex;
@@ -434,13 +434,13 @@
     text-align: left;
     font-size: 0.62rem;
     font-weight: 600;
-    color: var(--cor-motor);
+    color: var(--cor-robo);
     cursor: pointer;
 }
 
 .ferramenta-tile-fila .check-input:checked + .check-caixa {
-    background: var(--cor-motor);
-    border-color: var(--cor-motor);
+    background: var(--cor-robo);
+    border-color: var(--cor-robo);
 }
 
 .ferramenta-tile-emblema {

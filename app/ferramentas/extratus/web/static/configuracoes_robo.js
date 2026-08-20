@@ -1,14 +1,14 @@
 (function () {
     "use strict";
 
-    // Interruptor liga/desliga o motor — visível pra coordenador também
+    // Interruptor liga/desliga o robô — visível pra coordenador também
     // (não só admin), por isso fica fora da guarda abaixo (que só cobre
     // o navegador de pastas, admin-only).
-    var interruptorMotor = document.getElementById("interruptor-motor");
+    var interruptorRobo = document.getElementById("interruptor-robo");
 
-    if (interruptorMotor) {
-        interruptorMotor.addEventListener("change", function () {
-            interruptorMotor.closest("form").submit();
+    if (interruptorRobo) {
+        interruptorRobo.addEventListener("change", function () {
+            interruptorRobo.closest("form").submit();
         });
     }
 
@@ -26,8 +26,8 @@
     // achado ao renomear esse arquivo (Rodada 13, nomenclatura): a
     // cópia aburesi tinha essa URL fixa em "/extratus/..." (bug real,
     // buscava as pastas do módulo ERRADO), agora corrigido na raiz.
-    var formInterruptor = document.getElementById("form-interruptor-motor");
-    var baseUrl = formInterruptor ? formInterruptor.action.replace(/\/alternar$/, "") : "/extratus/configuracoes-motor";
+    var formInterruptor = document.getElementById("form-interruptor-robo");
+    var baseUrl = formInterruptor ? formInterruptor.action.replace(/\/alternar$/, "") : "/extratus/configuracoes-robo";
 
     var elementoAtual = document.getElementById("navegador-pastas-atual");
     var elementoLista = document.getElementById("navegador-pastas-lista");

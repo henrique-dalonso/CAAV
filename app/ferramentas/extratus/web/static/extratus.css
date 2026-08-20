@@ -9,42 +9,6 @@
    ferramenta nova pode fazer o mesmo, só redefinindo essas variáveis no
    topo do seu próprio CSS. */
 
-.selo-status {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.3rem 0.7rem;
-    border-radius: 999px;
-    font-size: 0.78rem;
-    font-weight: 600;
-    white-space: nowrap;
-}
-
-.selo-status::before {
-    content: "";
-    width: 6px;
-    height: 6px;
-    border-radius: 999px;
-    background: currentColor;
-}
-
-.selo-status.real {
-    background: #dcfce7;
-    color: #166534;
-}
-
-@media (prefers-color-scheme: dark) {
-    html:not([data-theme="claro"]) .selo-status.real {
-        background: #113321;
-        color: #86efac;
-    }
-}
-
-html[data-theme="escuro"] .selo-status.real {
-    background: #113321;
-    color: #86efac;
-}
-
 /* Abas do Extratus (Gerar relatórios / Relatórios) — navegação entre
    duas páginas de verdade, só desenhada como se fosse uma coisa só. */
 .abas-extratus {
@@ -52,8 +16,8 @@ html[data-theme="escuro"] .selo-status.real {
     gap: 0.25rem;
     border-bottom: 1px solid var(--cor-borda);
     margin-bottom: 1.5rem;
-    /* Nomes maiores + mais abas (2026-08-11: "Relatórios do Motor",
-       "Configurações do Motor" etc.) não cabem mais na largura fixa do
+    /* Nomes maiores + mais abas (2026-08-11: "Relatórios do Robô",
+       "Configurações do Robô" etc.) não cabem mais na largura fixa do
        conteúdo (~832px) em nenhum tamanho de janela — rolagem lateral
        é o remendo de hoje (Henrique optou por isso em vez de apertar o
        texto), até a reestruturação de layout mais ampla que já estava
@@ -141,7 +105,7 @@ html[data-theme="escuro"] .aba .contagem-aba-revisao { background: #332b0f; colo
 
 /* Empurra uma aba (e tudo depois dela, se houver) pra ponta direita da
    barra — Henrique, 2026-08-11: usado na engrenagem (Configurações do
-   Motor), que assumiu o lugar que "Custos (admin)" ocupava antes dela
+   Robô), que assumiu o lugar que "Custos (admin)" ocupava antes dela
    virar uma tela à parte, fora do Extratus (ver admin.html). Genérico
    de propósito (não amarrado à cor/categoria de nenhuma aba específica)
    pra qualquer aba futura que precise do mesmo comportamento. */
@@ -149,20 +113,34 @@ html[data-theme="escuro"] .aba .contagem-aba-revisao { background: #332b0f; colo
     margin-left: auto;
 }
 
-/* Aba do Motor — outra categoria de novo (admin + coordenador liberado),
+/* Aba do Robô — outra categoria de novo (admin + coordenador liberado),
    cor diferente da de Custos (âmbar) pra não confundir as duas: laranja.
-   --cor-motor (base.css) já resolve sozinha pro tom certo por tema. */
-.aba-motor,
-.aba-motor:hover {
-    color: var(--cor-motor);
+   --cor-robo (base.css) já resolve sozinha pro tom certo por tema. */
+.aba-robo,
+.aba-robo:hover {
+    color: var(--cor-robo);
 }
 
-.aba-motor.aba-ativa,
-.aba-motor.aba-ativa:hover {
-    border-bottom-color: var(--cor-motor);
+.aba-robo.aba-ativa,
+.aba-robo.aba-ativa:hover {
+    border-bottom-color: var(--cor-robo);
 }
 
-/* Lista da fila do motor — mesma .lista-arquivos, só com o nome ocupando
+/* Fluxo Manual/URGENTE (Henrique, diretoria, 2026-08-19) — vermelho de
+   propósito, mesma cor de erro do site (--cor-erro-texto), pra deixar
+   visualmente óbvio que esse modo custa mais caro e é exceção, não
+   padrão. Mesmo padrão de .aba-robo acima (cor na aba normal E ativa). */
+.aba-urgente,
+.aba-urgente:hover {
+    color: var(--cor-erro-texto);
+}
+
+.aba-urgente.aba-ativa,
+.aba-urgente.aba-ativa:hover {
+    border-bottom-color: var(--cor-erro-texto);
+}
+
+/* Lista da fila do robô — mesma .lista-arquivos, só com o nome ocupando
    o espaço todo pra empurrar o botão de remover pra direita. min-width:0
    é necessário pro corte com reticências funcionar dentro de um item
    flex (sem isso o item flex nunca encolhe menos que o nome inteiro). */
@@ -181,7 +159,7 @@ html[data-theme="escuro"] .aba .contagem-aba-revisao { background: #332b0f; colo
     transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-/* Fila do motor em duas colunas lado a lado (Pendentes | Processando) —
+/* Fila do robô em duas colunas lado a lado (Pendentes | Processando) —
    site é só pra uso em computador no escritório, então não tem variante
    estreita/empilhada: sempre lado a lado. Cada coluna rola por conta
    própria (max-height) em vez de esticar a página quando a fila crescer
@@ -312,7 +290,7 @@ html[data-theme="escuro"] .aba .contagem-aba-revisao { background: #332b0f; colo
     background: #16a34a;
 }
 
-/* Azul pulsando = ainda em processamento de verdade (Motor rodando o
+/* Azul pulsando = ainda em processamento de verdade (Robô rodando o
    lote, ou fluxo manual gerando o relatório) — antes usava a MESMA cor
    verde do "concluído", confundindo as duas coisas (Henrique,
    2026-08-14: "quando os casos estiverem sendo processados... a
@@ -382,7 +360,7 @@ html[data-theme="escuro"] .aba .contagem-aba-revisao { background: #332b0f; colo
 }
 
 .secao-conferencias h2 {
-    color: var(--cor-motor);
+    color: var(--cor-robo);
 }
 
 .lista-conferencias {
@@ -557,7 +535,7 @@ html[data-theme="escuro"] .aba .contagem-aba-revisao { background: #332b0f; colo
     display: none;
 }
 
-/* Campo de formulário simples (usado nas Configurações do Motor) — mesmo
+/* Campo de formulário simples (usado nas Configurações do Robô) — mesmo
    padrão visual do .campo de admin.css, duplicado aqui porque essa
    página carrega extratus.css, não admin.css. */
 .campo {
@@ -627,7 +605,7 @@ html[data-theme="escuro"] .aba .contagem-aba-revisao { background: #332b0f; colo
 }
 
 /* Navegador de pastas do servidor — só existe pro admin escolher a pasta
-   do motor sem precisar digitar o caminho à mão. */
+   do robô sem precisar digitar o caminho à mão. */
 .navegador-pastas {
     position: fixed;
     inset: 0;
@@ -1140,6 +1118,71 @@ html[data-theme="escuro"] .aba .contagem-aba-revisao { background: #332b0f; colo
     border-color: var(--cor-acento);
 }
 
+/* Filtro de intervalo de datas (Henrique, 2026-08-20: "De"/"até", pra
+   ver só relatórios prontos num período) — mesma altura/borda do campo
+   de busca ao lado, pra formar uma barra visualmente coesa. */
+.filtro-data {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--cor-texto-suave);
+    white-space: nowrap;
+}
+
+.campo-data {
+    padding: 0.5rem 0.6rem;
+    font-size: 0.85rem;
+    font-family: inherit;
+    color: var(--cor-texto);
+    background: var(--cor-fundo);
+    border: 1.5px solid var(--cor-borda);
+    border-radius: var(--raio-pequeno);
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+.campo-data:focus {
+    border-color: var(--cor-acento);
+}
+
+/* Ícone do seletor de data (Henrique, 2026-08-20: "impossível de ver no
+   modo escuro, sem hover pra indicar que é clicável") — o navegador
+   desenha esse ícone escuro fixo, sem herdar nenhuma cor do site;
+   invertido no escuro (::-webkit-calendar-picker-indicator é o único
+   jeito de alcançar esse pseudo-elemento). Fundo arredondado + hover na
+   cor de acento deixa claro que dá pra clicar ali, não só digitar. */
+.campo-data::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    padding: 3px;
+    margin-left: 2px;
+    border-radius: 4px;
+    transition: background-color 0.15s ease;
+}
+
+.campo-data::-webkit-calendar-picker-indicator:hover {
+    background-color: var(--cor-acento-fraco);
+}
+
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme="claro"]) .campo-data::-webkit-calendar-picker-indicator {
+        filter: invert(1);
+    }
+}
+
+html[data-theme="escuro"] .campo-data::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+}
+
+/* Aba "Todos" (Henrique, 2026-08-20): mostra do mais antigo pro mais
+   novo, ao contrário das outras abas (Sucesso/Revisão/Erro continuam
+   mais novo primeiro) — inverte só a ORDEM VISUAL da lista já
+   renderizada (column-reverse), sem precisar reordenar nada no
+   servidor nem duplicar a query. */
+.lista-relatorios-invertida {
+    flex-direction: column-reverse;
+}
+
 .chips-filtro {
     display: flex;
     gap: 0.4rem;
@@ -1177,19 +1220,19 @@ html[data-theme="escuro"] .aba .contagem-aba-revisao { background: #332b0f; colo
     margin-bottom: 1rem;
 }
 
-/* Abas de status da tela "Relatórios do Motor" — mesma ideia
+/* Abas de status da tela "Relatórios do Robô" — mesma ideia
    das abas Sistema/Minhas/Conferências do sininho, só que aqui trocam o
    status inteiro em vez de listas paralelas. Henrique, 2026-08-08:
    Sucesso primeiro (acesso rápido pro advogado), Revisão, Erro por
    último ("em ordem de grau de fudido"). */
-.abas-relatorios-motor {
+.abas-relatorios-robo {
     display: flex;
     gap: 1.2rem;
     border-bottom: 1px solid var(--cor-borda);
     margin-bottom: 1.1rem;
 }
 
-.aba-relatorios-motor {
+.aba-relatorios-robo {
     padding: 0.5rem 0.1rem 0.7rem;
     background: none;
     border: none;
@@ -1202,12 +1245,12 @@ html[data-theme="escuro"] .aba .contagem-aba-revisao { background: #332b0f; colo
     transition: color 0.15s ease, border-color 0.15s ease;
 }
 
-.aba-relatorios-motor:hover {
+.aba-relatorios-robo:hover {
     color: var(--cor-texto);
 }
 
-.aba-relatorios-motor-ativa,
-.aba-relatorios-motor-ativa:hover {
+.aba-relatorios-robo-ativa,
+.aba-relatorios-robo-ativa:hover {
     color: var(--cor-acento);
     border-bottom-color: var(--cor-acento);
 }
@@ -1619,25 +1662,25 @@ html[data-theme="escuro"] .status-revisao { background: #332b0f; color: #fde68a;
     font-weight: 700;
 }
 
-/* Tela do Motor. */
+/* Tela do Robô. */
 /* .grupo-config (ícone + título + descrição, usado nas Configurações do
-   Motor) agora mora em base.css — é reaproveitado em outras telas
+   Robô) agora mora em base.css — é reaproveitado em outras telas
    também (ex: Novo usuário no admin). */
-.motor-status {
+.robo-status {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     gap: 0.75rem;
 }
 
-.motor-descricao {
+.robo-descricao {
     max-width: 480px;
     margin: 0;
 }
 
-/* Interruptor do Motor usa a mesma cor laranja já usada na aba do Motor
-   (.aba-motor) quando ligado — reforça "isso é área do Motor" sem
+/* Interruptor do Robô usa a mesma cor laranja já usada na aba do Robô
+   (.aba-robo) quando ligado — reforça "isso é área do Robô" sem
    precisar pintar o resto da tela. */
-.motor-status .interruptor {
-    --cor-interruptor-ligado: var(--cor-motor);
+.robo-status .interruptor {
+    --cor-interruptor-ligado: var(--cor-robo);
 }

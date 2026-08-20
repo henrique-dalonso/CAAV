@@ -2,13 +2,13 @@ from datetime import datetime
 
 from sqlmodel import func, select, update
 
-from app.ferramentas.extratus.db.models import ChecagemFila, ItemLoteMotor, LoteMotor, UploadFilaMotor
+from app.ferramentas.extratus.db.models import ChecagemFila, ItemLoteRobo, LoteRobo, UploadFilaRobo
 from app.plataforma.db.session import obter_sessao
 from app.plataforma.web.eventos_sse import avisar_mudanca
 
 
 # Valores possíveis de ChecagemFila.status — só "aprovado" deixa um
-# arquivo elegível pro Motor reivindicar. Qualquer outro (inclusive
+# arquivo elegível pro Robô reivindicar. Qualquer outro (inclusive
 # NAO_ENCONTRADO) trava o arquivo até o painel de Conferências (ainda
 # não construído) resolver, de propósito — ver docstring de ChecagemFila.
 PENDENTE = "pendente"
@@ -33,16 +33,16 @@ MENSAGENS_INCONSISTENCIA = {
 
 def registrar_upload(nome_arquivo, usuario_id):
     """Grava PRA SEMPRE quem enviou esse arquivo pela tela da Fila do
-    Motor — ver docstring de UploadFilaMotor (db/models.py) pro porquê
+    Robô — ver docstring de UploadFilaRobo (db/models.py) pro porquê
     de ser uma tabela própria, não um campo em ChecagemFila."""
     with obter_sessao() as sessao:
-        sessao.add(UploadFilaMotor(nome_arquivo=nome_arquivo, usuario_id=usuario_id))
+        sessao.add(UploadFilaRobo(nome_arquivo=nome_arquivo, usuario_id=usuario_id))
         sessao.commit()
 
 
 def sincronizar_registros(nomes_no_disco):
     """Garante uma linha "pendente" pra todo nome novo em
-    motor_pasta_entrada (upload pelo site OU qualquer outro jeito do
+    robo_pasta_entrada (upload pelo site OU qualquer outro jeito do
     arquivo aparecer ali) e apaga a linha de quem já saiu da pasta
     (removido manualmente, ou já reivindicado por um lote — nesse ponto
     a checagem já cumpriu seu papel). Devolve as linhas com status
@@ -102,7 +102,7 @@ def atualizar_apos_checagem(registro_id, status, processo_detectado, confianca_n
 def existe_conflito_de_processo(processo, exceto_nome_arquivo):
     """Esse número de processo já está "em andamento" em outro arquivo
     (qualquer um exceto o próprio, sob checagem agora) — seja porque já
-    foi aprovado na checagem (esperando o motor pegar) ou porque já foi
+    foi aprovado na checagem (esperando o robô pegar) ou porque já foi
     reivindicado por um lote que ainda não terminou. Não olha lotes já
     concluídos aqui — se um relatório já saiu, isso é
     DUPLICADO_RELATORIO (ver db/jobs.py), categoria diferente."""
@@ -119,11 +119,11 @@ def existe_conflito_de_processo(processo, exceto_nome_arquivo):
             return True
 
         em_lote_ativo = sessao.exec(
-            select(ItemLoteMotor)
-            .join(LoteMotor, LoteMotor.id == ItemLoteMotor.lote_id)
+            select(ItemLoteRobo)
+            .join(LoteRobo, LoteRobo.id == ItemLoteRobo.lote_id)
             .where(
-                ItemLoteMotor.processo_detectado == processo,
-                LoteMotor.status == "enviado",
+                ItemLoteRobo.processo_detectado == processo,
+                LoteRobo.status == "enviado",
             )
         ).first()
 
@@ -143,8 +143,8 @@ def estado_por_nome():
 
 
 def listar_aprovados_por_nome():
-    """{nome_arquivo: ChecagemFila} só dos aprovados — usado pelo Motor
-    (motor_lote.py) pra saber quem pode entrar num lote novo, reaproveitando
+    """{nome_arquivo: ChecagemFila} só dos aprovados — usado pelo Robô
+    (robo_lote.py) pra saber quem pode entrar num lote novo, reaproveitando
     o processo/confiança já detectados aqui (não detecta de novo)."""
     with obter_sessao() as sessao:
         consulta = select(ChecagemFila).where(ChecagemFila.status == APROVADO)
@@ -177,7 +177,7 @@ def listar_inconsistencias():
 
 
 def contar_inconsistencias_ativas():
-    """Quantas Conferências da Fila do Motor estão pendentes AGORA, sem
+    """Quantas Conferências da Fila do Robô estão pendentes AGORA, sem
     filtro de tempo — alimenta o badge "+N" da aba. Henrique, 2026-08-13:
     "não pode sumir só de entrar [na aba], permanece até alguém aprovar
     ou negar" — diferente de contar_inconsistencias_novas (abaixo), que
@@ -192,7 +192,7 @@ def contar_inconsistencias_ativas():
 
 
 def contar_inconsistencias_novas(desde):
-    """Quantas Conferências da Fila do Motor (compartilhada, não é por
+    """Quantas Conferências da Fila do Robô (compartilhada, não é por
     usuário) surgiram desde `desde` — alimenta o badge "+N" (cor de
     revisão, único número dessa aba) em rotulos.py. `atualizado_em`, não
     `criado_em`, pelo mesmo motivo de `triagem_manual.
@@ -209,8 +209,8 @@ def contar_inconsistencias_novas(desde):
 
 def aprovar_manualmente(registro_id, processo_manual=None):
     """Ação "Prosseguir" do painel de Conferências — pula as travas
-    automáticas e libera o arquivo pro Motor pegar no próximo ciclo,
-    exatamente como um "aprovado" comum (motor_lote.py não precisa saber
+    automáticas e libera o arquivo pro Robô pegar no próximo ciclo,
+    exatamente como um "aprovado" comum (robo_lote.py não precisa saber
     que essa aprovação veio de um humano, não de checagem_lote.py).
 
     `processo_manual` só é usado no caso "processo não encontrado" (a

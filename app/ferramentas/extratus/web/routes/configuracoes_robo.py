@@ -4,23 +4,23 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import RedirectResponse
 
-from app.ferramentas.extratus_aburesi.core.config_manager import (
+from app.ferramentas.extratus.core.config_manager import (
     PROVEDORES_IA_VALIDOS,
-    atualizar_config_motor,
+    atualizar_config_robo,
     carregar_config,
     carregar_config_bruto,
-    definir_motor_ativo,
+    definir_robo_ativo,
 )
-from app.ferramentas.extratus_aburesi.core.prompt_manager import (
+from app.ferramentas.extratus.core.prompt_manager import (
     extensao_esperada_prompt,
     substituir_instrucoes_relatorio,
 )
-from app.ferramentas.extratus_aburesi.db.lotes import listar_itens_do_lote, listar_lotes_em_andamento
-from app.ferramentas.extratus_aburesi.web.rotulos import (
+from app.ferramentas.extratus.db.lotes import listar_itens_do_lote, listar_lotes_em_andamento
+from app.ferramentas.extratus.web.rotulos import (
     contagem_nav_conferencias_fila,
     contagem_nav_conferencias_manual,
     contagem_nav_relatorios,
-    contagem_nav_relatorios_motor,
+    contagem_nav_relatorios_robo,
 )
 from app.plataforma.db.models import Usuario
 from app.plataforma.paths import PROJECT_ROOT
@@ -28,7 +28,7 @@ from app.plataforma.web.auth import exigir_admin_ferramenta
 from app.plataforma.web.templates_util import criar_templates
 
 
-router = APIRouter(dependencies=[Depends(exigir_admin_ferramenta("extratus-aburesi"))])
+router = APIRouter(dependencies=[Depends(exigir_admin_ferramenta("extratus"))])
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 PLATAFORMA_TEMPLATES_DIR = (
@@ -39,13 +39,13 @@ templates = criar_templates([TEMPLATES_DIR, PLATAFORMA_TEMPLATES_DIR])
 templates.env.globals["contagem_nav_conferencias_manual"] = contagem_nav_conferencias_manual
 templates.env.globals["contagem_nav_conferencias_fila"] = contagem_nav_conferencias_fila
 templates.env.globals["contagem_nav_relatorios"] = contagem_nav_relatorios
-templates.env.globals["contagem_nav_relatorios_motor"] = contagem_nav_relatorios_motor
+templates.env.globals["contagem_nav_relatorios_robo"] = contagem_nav_relatorios_robo
 
 
-@router.get("/configuracoes-motor")
-def pagina_configuracoes_motor(
+@router.get("/configuracoes-robo")
+def pagina_configuracoes_robo(
     request: Request,
-    usuario: Usuario = Depends(exigir_admin_ferramenta("extratus-aburesi")),
+    usuario: Usuario = Depends(exigir_admin_ferramenta("extratus")),
     sucesso: str | None = None,
     erro: str | None = None,
 ):
@@ -59,10 +59,10 @@ def pagina_configuracoes_motor(
 
     return templates.TemplateResponse(
         request,
-        "configuracoes_motor.html",
+        "configuracoes_robo.html",
         {
             "usuario": usuario,
-            "motor_ativo": config.get("motor_ativo", False),
+            "robo_ativo": config.get("robo_ativo", False),
             "config": config_form,
             "provedores_ia": PROVEDORES_IA_VALIDOS,
             "lotes_em_andamento": lotes_em_andamento,
@@ -73,25 +73,25 @@ def pagina_configuracoes_motor(
     )
 
 
-@router.post("/configuracoes-motor/alternar")
-def alternar_motor_route():
+@router.post("/configuracoes-robo/alternar")
+def alternar_robo_route():
     config = carregar_config()
-    novo_estado = definir_motor_ativo(not config.get("motor_ativo", False))
+    novo_estado = definir_robo_ativo(not config.get("robo_ativo", False))
 
-    mensagem = "Motor ligado." if novo_estado else "Motor desligado."
+    mensagem = "Robô ligado." if novo_estado else "Robô desligado."
 
     return RedirectResponse(
-        url=f"/extratus-aburesi/configuracoes-motor?sucesso={quote(mensagem)}", status_code=303
+        url=f"/extratus/configuracoes-robo?sucesso={quote(mensagem)}", status_code=303
     )
 
 
-@router.get("/configuracoes-motor/pastas")
+@router.get("/configuracoes-robo/pastas")
 def listar_pastas_route(
     caminho: str | None = None,
-    usuario: Usuario = Depends(exigir_admin_ferramenta("extratus-aburesi")),
+    usuario: Usuario = Depends(exigir_admin_ferramenta("extratus")),
 ):
-    # Editar a pasta do motor é coisa de admin da plataforma — coordenador
-    # com acesso ao Motor só liga/desliga, não escolhe a pasta.
+    # Editar a pasta do robô é coisa de admin da plataforma — coordenador
+    # com acesso ao Robô só liga/desliga, não escolhe a pasta.
     if not usuario.eh_admin:
         raise HTTPException(status_code=403, detail="Acesso restrito a administradores.")
 
@@ -112,34 +112,34 @@ def listar_pastas_route(
     return {"caminho": str(base), "pai": pai, "pastas": pastas}
 
 
-@router.post("/configuracoes-motor/config")
-def atualizar_config_motor_route(
+@router.post("/configuracoes-robo/config")
+def atualizar_config_robo_route(
     pasta_entrada: str = Form(...),
     ia_provider: str = Form(...),
-    usuario: Usuario = Depends(exigir_admin_ferramenta("extratus-aburesi")),
+    usuario: Usuario = Depends(exigir_admin_ferramenta("extratus")),
 ):
     if not usuario.eh_admin:
         raise HTTPException(status_code=403, detail="Acesso restrito a administradores.")
 
     try:
-        atualizar_config_motor(pasta_entrada=pasta_entrada, ia_provider=ia_provider)
+        atualizar_config_robo(pasta_entrada=pasta_entrada, ia_provider=ia_provider)
     except ValueError as erro:
         return RedirectResponse(
-            url=f"/extratus-aburesi/configuracoes-motor?erro={quote(str(erro))}", status_code=303
+            url=f"/extratus/configuracoes-robo?erro={quote(str(erro))}", status_code=303
         )
 
     return RedirectResponse(
-        url="/extratus-aburesi/configuracoes-motor?sucesso=" + quote("Configurações do Motor salvas."),
+        url="/extratus/configuracoes-robo?sucesso=" + quote("Configurações do Robô salvas."),
         status_code=303,
     )
 
 
-@router.post("/configuracoes-motor/prompt")
-async def atualizar_prompt_motor_route(
+@router.post("/configuracoes-robo/prompt")
+async def atualizar_prompt_robo_route(
     arquivo: UploadFile = File(...),
-    usuario: Usuario = Depends(exigir_admin_ferramenta("extratus-aburesi")),
+    usuario: Usuario = Depends(exigir_admin_ferramenta("extratus")),
 ):
-    # Mesma regra das outras configs do motor (pasta, modo de IA): só
+    # Mesma regra das outras configs do robô (pasta, modo de IA): só
     # admin da plataforma, mesmo que o coordenador tenha acesso à página.
     if not usuario.eh_admin:
         raise HTTPException(status_code=403, detail="Acesso restrito a administradores.")
@@ -149,7 +149,7 @@ async def atualizar_prompt_motor_route(
 
     if not nome_seguro.lower().endswith(extensao_esperada):
         return RedirectResponse(
-            url="/extratus-aburesi/configuracoes-motor?erro=" + quote(
+            url="/extratus/configuracoes-robo?erro=" + quote(
                 f'"{nome_seguro}" não é um arquivo {extensao_esperada} — '
                 f"só é permitido enviar o prompt nesse formato."
             ),
@@ -162,10 +162,10 @@ async def atualizar_prompt_motor_route(
         substituir_instrucoes_relatorio(conteudo)
     except ValueError as erro:
         return RedirectResponse(
-            url=f"/extratus-aburesi/configuracoes-motor?erro={quote(str(erro))}", status_code=303
+            url=f"/extratus/configuracoes-robo?erro={quote(str(erro))}", status_code=303
         )
 
     return RedirectResponse(
-        url="/extratus-aburesi/configuracoes-motor?sucesso=" + quote("Prompt de instruções atualizado."),
+        url="/extratus/configuracoes-robo?sucesso=" + quote("Prompt de instruções atualizado."),
         status_code=303,
     )

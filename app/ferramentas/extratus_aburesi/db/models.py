@@ -42,7 +42,7 @@ class Job(SQLModel, table=True):
     tokens_saida: Optional[int] = None
     custo_estimado_usd: Optional[float] = None
 
-    # Só é usado em Jobs de erro (status "erro") do Motor (usuario_id
+    # Só é usado em Jobs de erro (status "erro") do Robô (usuario_id
     # None) — controla se esse erro ainda deve aparecer no sininho de
     # notificações. Marcado True na futura tela dedicada de Erros (ainda
     # não construída); até lá fica sempre False e o erro permanece
@@ -52,16 +52,16 @@ class Job(SQLModel, table=True):
     criado_em: datetime = Field(default_factory=datetime.now)
 
 
-class LoteMotor(SQLModel, table=True):
-    """Um lote enviado ao Batch API da Anthropic pelo Motor — cada lote
-    pode conter vários PDFs (um item por PDF, ver `ItemLoteMotor`). Só o
-    Motor usa Batch API; a fila manual continua em tempo real.
+class LoteRobo(SQLModel, table=True):
+    """Um lote enviado ao Batch API da Anthropic pelo Robô — cada lote
+    pode conter vários PDFs (um item por PDF, ver `ItemLoteRobo`). Só o
+    Robô usa Batch API; a fila manual continua em tempo real.
 
-    Tabela própria (sufixo `_aburesi`), isolada do Motor do Extratus -
-    Relatórios — cada módulo tem seu próprio Motor, rodando em paralelo.
+    Tabela própria (sufixo `_aburesi`), isolada do Robô do Extratus -
+    Relatórios — cada módulo tem seu próprio Robô, rodando em paralelo.
     """
 
-    __tablename__ = "lotemotor_aburesi"
+    __tablename__ = "loterobo_aburesi"
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
@@ -72,20 +72,20 @@ class LoteMotor(SQLModel, table=True):
     finalizado_em: Optional[datetime] = None
 
 
-class ItemLoteMotor(SQLModel, table=True):
-    """Um PDF dentro de um lote do Motor — liga o `custom_id` usado na
+class ItemLoteRobo(SQLModel, table=True):
+    """Um PDF dentro de um lote do Robô — liga o `custom_id` usado na
     chamada ao Batch API de volta ao arquivo/detecção original, pra quando
     o resultado do lote chegar (segundos, minutos ou até 24h depois) dar
     pra terminar o processamento (gerar .docx, mover PDF, registrar Job)."""
 
-    __tablename__ = "itemlotemotor_aburesi"
+    __tablename__ = "itemloterobo_aburesi"
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
-    lote_id: int = Field(foreign_key="lotemotor_aburesi.id")
+    lote_id: int = Field(foreign_key="loterobo_aburesi.id")
     custom_id: str
 
-    arquivo_pdf: str  # nome do arquivo em motor_pasta_entrada
+    arquivo_pdf: str  # nome do arquivo em robo_pasta_entrada
     processo_detectado: Optional[str] = None
     confianca_nivel: Optional[str] = None
     confianca_motivo: Optional[str] = None
@@ -97,20 +97,20 @@ class ItemLoteMotor(SQLModel, table=True):
 
 class ChecagemFila(SQLModel, table=True):
     """Checagem de duplicidade (nome+processo) de cada PDF na Fila do
-    Motor, ANTES dele virar elegível pro Motor reivindicar — é a
+    Robô, ANTES dele virar elegível pro Robô reivindicar — é a
     "triagem" que Henrique pediu (2026-08-06). NÃO confundir com
     `ia_cliente.montar_diagnostico_com_triagem`, que é outra coisa (o
     filtro de anexo de listagem de terceiros), só compartilha o nome.
 
     Uma linha por nome_arquivo, criada assim que ele aparece em
-    motor_pasta_entrada (seja por upload no site ou qualquer outro jeito
+    robo_pasta_entrada (seja por upload no site ou qualquer outro jeito
     de o arquivo cair ali) e apagada quando ele sai da pasta (removido
     manualmente, ou já reivindicado por um lote). status começa
     "pendente" e vira um dos outros valores depois da checagem rodar —
     ver STATUS_* em db/checagem_fila.py.
 
     IMPORTANTE: hoje, qualquer status diferente de "aprovado" trava o
-    arquivo pra sempre (o Motor nunca reivindica) — inclusive
+    arquivo pra sempre (o Robô nunca reivindica) — inclusive
     "processo_nao_encontrado". O jeito de resolver isso (painel de
     Conferências, com "Prosseguir" ou "Descartar") é trabalho futuro,
     ainda não construído — combinado assim de propósito com Henrique.
@@ -153,11 +153,11 @@ class RegistroConferencia(SQLModel, table=True):
     decidido_em: datetime = Field(default_factory=datetime.now)
 
 
-class UploadFilaMotor(SQLModel, table=True):
+class UploadFilaRobo(SQLModel, table=True):
     """Ver docstring equivalente em app/ferramentas/extratus/db/models.py
     (Extratus - Relatórios) — mesma lógica, tabela própria (`_aburesi`)."""
 
-    __tablename__ = "uploadfilamotor_aburesi"
+    __tablename__ = "uploadfilarobo_aburesi"
 
     id: Optional[int] = Field(default=None, primary_key=True)
 

@@ -30,7 +30,7 @@ from app.plataforma.db.usuarios import (
     desbloquear_usuario,
     excluir_usuario,
     listar_ferramentas_admin_ids_por_usuario,
-    listar_ferramentas_fila_ids_por_usuario,
+    listar_ferramentas_manual_ids_por_usuario,
     listar_ferramentas_liberadas_ids_por_usuario,
     listar_todos_usuarios,
 )
@@ -179,11 +179,11 @@ def pagina_usuarios(
     # default vazio cobre o usuário sem nenhuma ferramenta liberada.
     liberadas_bulk = listar_ferramentas_liberadas_ids_por_usuario()
     admin_bulk = listar_ferramentas_admin_ids_por_usuario()
-    fila_bulk = listar_ferramentas_fila_ids_por_usuario()
+    manual_bulk = listar_ferramentas_manual_ids_por_usuario()
 
     ferramentas_por_usuario = {u.id: liberadas_bulk.get(u.id, set()) for u in usuarios}
     ferramentas_admin_por_usuario = {u.id: admin_bulk.get(u.id, set()) for u in usuarios}
-    ferramentas_fila_por_usuario = {u.id: fila_bulk.get(u.id, set()) for u in usuarios}
+    ferramentas_manual_por_usuario = {u.id: manual_bulk.get(u.id, set()) for u in usuarios}
 
     return templates.TemplateResponse(
         request,
@@ -195,7 +195,7 @@ def pagina_usuarios(
             "ferramentas": ferramentas,
             "ferramentas_por_usuario": ferramentas_por_usuario,
             "ferramentas_admin_por_usuario": ferramentas_admin_por_usuario,
-            "ferramentas_fila_por_usuario": ferramentas_fila_por_usuario,
+            "ferramentas_manual_por_usuario": ferramentas_manual_por_usuario,
             "erro": erro,
             "sucesso": sucesso,
         },
@@ -212,7 +212,7 @@ def criar_usuario_route(
     cargo: str = Form(CARGO_COLABORADOR),
     ferramenta_ids: list[int] = Form([]),
     ferramentas_admin_ids: list[int] = Form([]),
-    ferramentas_fila_ids: list[int] = Form([]),
+    ferramentas_manual_ids: list[int] = Form([]),
 ):
     if len(senha) < TAMANHO_MINIMO_SENHA:
         return _redirecionar(
@@ -230,7 +230,7 @@ def criar_usuario_route(
             cargo=cargo,
             ferramenta_ids=ferramenta_ids,
             ferramentas_admin_ids=ferramentas_admin_ids,
-            ferramentas_fila_ids=ferramentas_fila_ids,
+            ferramentas_manual_ids=ferramentas_manual_ids,
         )
     except ValueError as erro:
         return _redirecionar("/admin/usuarios/novo", erro=str(erro))
@@ -255,9 +255,9 @@ def atualizar_ferramentas_route(
     usuario_id: int,
     ferramenta_ids: list[int] = Form([]),
     ferramentas_admin_ids: list[int] = Form([]),
-    ferramentas_fila_ids: list[int] = Form([]),
+    ferramentas_manual_ids: list[int] = Form([]),
 ):
-    definir_ferramentas(usuario_id, ferramenta_ids, ferramentas_admin_ids, ferramentas_fila_ids)
+    definir_ferramentas(usuario_id, ferramenta_ids, ferramentas_admin_ids, ferramentas_manual_ids)
     return _redirecionar("/admin/usuarios", sucesso="Ferramentas atualizadas.")
 
 

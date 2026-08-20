@@ -20,7 +20,7 @@
     // no lugar do ::after puro CSS que existia antes porque um
     // position:absolute ancorado no próprio elemento é cortado por
     // qualquer ancestral com overflow:auto/hidden (as colunas da Fila
-    // do Motor, as tabelas com .tabela-scroll — boa parte do site).
+    // do Robô, as tabelas com .tabela-scroll — boa parte do site).
     // ---------------------------------------------------------------
     var ATRASO_DICA_MS = 350;
 
@@ -337,7 +337,7 @@
         // Delegado no document (não um listener por form encontrado na
         // hora que a página carrega) — precisa cobrir formulário que
         // aparece DEPOIS, via polling (ex: painel de Conferências da
-        // Fila do Motor, 2026-08-07). Um `querySelectorAll` fixo nunca
+        // Fila do Robô, 2026-08-07). Um `querySelectorAll` fixo nunca
         // pegaria esses.
         document.addEventListener("submit", function (evento) {
             var form = evento.target;
@@ -472,7 +472,7 @@
     }
 
     // Exposto pra outras páginas montarem seu próprio painel flutuante
-    // (ex: o popover "+N" de arquivos da Fila do motor) reaproveitando
+    // (ex: o popover "+N" de arquivos da Fila do robô) reaproveitando
     // o mesmo mecanismo (um aberto por vez, fecha fora/Esc) em vez de
     // duplicar a lógica.
     window.configurarAlternador = configurarAlternador;
@@ -584,7 +584,7 @@
     }
 
     // ---------------------------------------------------------------
-    // Sininho de notificações — pendências da Fila do Motor (triagem +
+    // Sininho de notificações — pendências da Fila do Robô (triagem +
     // erros) de toda ferramenta que o usuário tem acesso, GET
     // /notificacoes (ver app/plataforma/web/notificacoes.py). Presente em
     // toda página logada (base.html), não só nas ferramentas.
@@ -648,12 +648,12 @@
         // no conteúdo, sem pedir nada novo ao servidor (os dados de todas
         // as abas já vêm juntos numa chamada só a /notificacoes, ver
         // renderizarNotificacoes). "Conferências" só existe no DOM pra
-        // quem tem acesso a pelo menos uma fila do motor (gate no próprio
-        // base.html, usuario_tem_acesso_a_alguma_fila_motor) — por isso
+        // quem tem acesso a pelo menos uma fila do robô (gate no próprio
+        // base.html, usuario_tem_acesso_a_alguma_fila_robo) — por isso
         // abaConferenciasEl pode ser null aqui, e cada entrada abaixo
         // sabe pular a si mesma nesse caso. "Minhas" (Henrique, 2026-08-13:
         // pendências do fluxo manual, pra quem não tem acesso à Fila do
-        // Motor também) reúne conferência/erro/pronto/revisão do próprio
+        // Robô também) reúne conferência/erro/pronto/revisão do próprio
         // usuário — identificados pelo item.pessoal === true vindo do
         // backend (ver item.pessoal em notificacoes_do_usuario).
         var ABAS_NOTIFICACOES = [
@@ -820,7 +820,7 @@
         // sem ter que clicar". Sistema e Conferências alertam em toasts
         // separados (mesma separação por categoria do resto do painel);
         // singular/plural escrito por extenso em cada bloco (não dá pra
-        // só grudar um "s" em "Motor"/"Conferências" sem estragar a
+        // só grudar um "s" em "Robô"/"Conferências" sem estragar a
         // concordância).
         function alertarNovasNotificacoes(novas) {
             if (novas.length === 0) {
@@ -840,26 +840,32 @@
                 atualizarTituloNotificacoes();
             }
 
+            // Henrique, diretoria, 2026-08-19: "Sistema" virou reservado
+            // pra comunicados administrativos (feature futura — nenhuma
+            // fonte emite tipo "comunicado" ainda, então fica vazio até
+            // essa tela nascer). "Ferramentas" (antiga "Conferências")
+            // passou a cobrir TUDO que não for pessoal nem comunicado —
+            // triagem, erro, sucesso e revisão do Robô juntos.
             var novasMinhas = novas.filter(function (item) { return item.pessoal === true; });
-            var novasSistema = novas.filter(function (item) { return !item.pessoal && item.tipo !== "triagem"; });
-            var novasConferencias = novas.filter(function (item) { return !item.pessoal && item.tipo === "triagem"; });
+            var novasSistema = novas.filter(function (item) { return !item.pessoal && item.tipo === "comunicado"; });
+            var novasFerramentas = novas.filter(function (item) { return !item.pessoal && item.tipo !== "comunicado"; });
 
             if (novasSistema.length === 1) {
-                window.mostrarBanner("Novo erro no Motor: " + novasSistema[0].mensagem, "erro");
+                window.mostrarBanner("Novo comunicado: " + novasSistema[0].mensagem, "erro");
             } else if (novasSistema.length > 1) {
                 window.mostrarBannerDetalhado(
-                    novasSistema.length + " novos erros no Motor — clique pra ver",
+                    novasSistema.length + " novos comunicados — clique pra ver",
                     novasSistema.map(function (item) { return { titulo: item.ferramenta, detalhe: item.mensagem }; }),
                     "erro"
                 );
             }
 
-            if (novasConferencias.length === 1) {
-                window.mostrarBanner("Nova pendência em Conferências: " + novasConferencias[0].mensagem, "erro");
-            } else if (novasConferencias.length > 1) {
+            if (novasFerramentas.length === 1) {
+                window.mostrarBanner("Nova notificação de Ferramentas: " + novasFerramentas[0].mensagem, "erro");
+            } else if (novasFerramentas.length > 1) {
                 window.mostrarBannerDetalhado(
-                    novasConferencias.length + " novas pendências em Conferências — clique pra ver",
-                    novasConferencias.map(function (item) { return { titulo: item.ferramenta, detalhe: item.mensagem }; }),
+                    novasFerramentas.length + " novas notificações de Ferramentas — clique pra ver",
+                    novasFerramentas.map(function (item) { return { titulo: item.ferramenta, detalhe: item.mensagem }; }),
                     "erro"
                 );
             }
@@ -948,18 +954,21 @@
             var novas = detectarNovasNotificacoes(itens);
 
             // item.pessoal (Henrique, 2026-08-13) vai pra "Minhas",
-            // independente do tipo — pendências do fluxo manual do
-            // PRÓPRIO usuário. Do restante, "triagem" (pendência esperando
-            // decisão humana na Fila do Motor) vai pra "Conferências";
-            // todo o resto ("erro" do Motor) continua em "Sistema". Se uma
-            // aba nem existe pra esse usuário (Conferências depende de
-            // acesso à Fila do Motor), não sobra item dela no payload
-            // mesmo (o backend já filtra antes de devolver — ver
-            // notificacoes_do_usuario), então separar aqui é sempre
-            // seguro, existindo a aba ou não.
+            // independente do tipo — pendências do fluxo Manual/URGENTE
+            // do PRÓPRIO usuário. Henrique, diretoria, 2026-08-19: do
+            // restante, "Ferramentas" (antiga "Conferências") passou a
+            // cobrir TUDO que o Robô gera — triagem, erro, sucesso,
+            // revisão; "Sistema" ficou reservado só pra comunicados
+            // administrativos (tipo "comunicado", feature futura — hoje
+            // nenhuma fonte emite isso, então a aba fica vazia até
+            // nascer). Se uma aba nem existe pra esse usuário
+            // (Ferramentas depende de acesso a alguma ferramenta com
+            // Robô), não sobra item dela no payload mesmo (o backend já
+            // filtra antes de devolver — ver notificacoes_do_usuario),
+            // então separar aqui é sempre seguro, existindo a aba ou não.
             var itensMinhas = itens.filter(function (item) { return item.pessoal === true; });
-            var itensSistema = itens.filter(function (item) { return !item.pessoal && item.tipo !== "triagem"; });
-            var itensConferencias = itens.filter(function (item) { return !item.pessoal && item.tipo === "triagem"; });
+            var itensSistema = itens.filter(function (item) { return !item.pessoal && item.tipo === "comunicado"; });
+            var itensConferencias = itens.filter(function (item) { return !item.pessoal && item.tipo !== "comunicado"; });
 
             preencherListaNotificacoes(listaNotificacoesEl, itensSistema);
             if (listaNotificacoesMinhasEl) {

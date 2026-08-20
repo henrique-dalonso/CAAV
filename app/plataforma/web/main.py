@@ -22,17 +22,17 @@ from app.plataforma.web.auth import NaoAutenticado
 from app.plataforma.web.routes import admin, auth, home, notificacoes, perfil
 from app.plataforma.web.templates_util import criar_templates
 from app.ferramentas.extratus.core.checagem_watcher import loop_checagem
-from app.ferramentas.extratus.core.motor_watcher import loop_motor
-from app.ferramentas.extratus.web.routes import configuracoes_motor, custos, fila, gerar_relatorio, relatorios_manuais, relatorios_motor
+from app.ferramentas.extratus.core.robo_watcher import loop_robo
+from app.ferramentas.extratus.web.routes import configuracoes_robo, custos, fila, gerar_relatorio, relatorios_manuais, relatorios_robo
 from app.ferramentas.extratus_aburesi.core.checagem_watcher import loop_checagem as loop_checagem_aburesi
-from app.ferramentas.extratus_aburesi.core.motor_watcher import loop_motor as loop_motor_aburesi
+from app.ferramentas.extratus_aburesi.core.robo_watcher import loop_robo as loop_robo_aburesi
 from app.ferramentas.extratus_aburesi.web.routes import (
-    configuracoes_motor as configuracoes_motor_aburesi,
+    configuracoes_robo as configuracoes_robo_aburesi,
     custos as custos_aburesi,
     fila as fila_aburesi,
     gerar_relatorio as gerar_relatorio_aburesi,
     relatorios_manuais as relatorios_manuais_aburesi,
-    relatorios_motor as relatorios_motor_aburesi,
+    relatorios_robo as relatorios_robo_aburesi,
 )
 from app.ferramentas.leitor_publicacoes.web.routes import home as leitor_publicacoes_home
 
@@ -54,24 +54,24 @@ garantir_ferramentas_padrao()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # O vigia do Motor só faz alguma coisa quando "motor_ativo" estiver
-    # ligado (ver motor_lote.rodar_ciclo_motor) — aqui só garantimos que
+    # O vigia do Robô só faz alguma coisa quando "robo_ativo" estiver
+    # ligado (ver robo_lote.rodar_ciclo_robo) — aqui só garantimos que
     # ele existe rodando em segundo plano enquanto o servidor estiver de
     # pé, prontinho pra agir assim que alguém ligar o interruptor. Cada
     # módulo (Extratus - Relatórios, Extratus - Aburesi, e qualquer futuro)
     # roda seu próprio vigia, em paralelo, de verdade — só mais uma linha
-    # aqui quando um módulo novo ganhar Motor.
-    tarefa_motor = asyncio.create_task(loop_motor())
-    tarefa_motor_aburesi = asyncio.create_task(loop_motor_aburesi())
+    # aqui quando um módulo novo ganhar Robô.
+    tarefa_robo = asyncio.create_task(loop_robo())
+    tarefa_robo_aburesi = asyncio.create_task(loop_robo_aburesi())
     # Checagem da Fila (a "triagem" de duplicidade nome+processo) — loop
-    # bem mais rápido que o do Motor, só leitura local, sem custo de API.
+    # bem mais rápido que o do Robô, só leitura local, sem custo de API.
     tarefa_checagem = asyncio.create_task(loop_checagem())
     tarefa_checagem_aburesi = asyncio.create_task(loop_checagem_aburesi())
 
     yield
 
-    tarefa_motor.cancel()
-    tarefa_motor_aburesi.cancel()
+    tarefa_robo.cancel()
+    tarefa_robo_aburesi.cancel()
     tarefa_checagem.cancel()
     tarefa_checagem_aburesi.cancel()
 
@@ -162,15 +162,15 @@ app.include_router(notificacoes.router)
 app.include_router(gerar_relatorio.router, prefix="/extratus")
 app.include_router(relatorios_manuais.router, prefix="/extratus")
 app.include_router(custos.router, prefix="/extratus")
-app.include_router(configuracoes_motor.router, prefix="/extratus")
+app.include_router(configuracoes_robo.router, prefix="/extratus")
 app.include_router(fila.router, prefix="/extratus")
-app.include_router(relatorios_motor.router, prefix="/extratus")
+app.include_router(relatorios_robo.router, prefix="/extratus")
 app.include_router(gerar_relatorio_aburesi.router, prefix="/extratus-aburesi")
 app.include_router(relatorios_manuais_aburesi.router, prefix="/extratus-aburesi")
 app.include_router(custos_aburesi.router, prefix="/extratus-aburesi")
-app.include_router(configuracoes_motor_aburesi.router, prefix="/extratus-aburesi")
+app.include_router(configuracoes_robo_aburesi.router, prefix="/extratus-aburesi")
 app.include_router(fila_aburesi.router, prefix="/extratus-aburesi")
-app.include_router(relatorios_motor_aburesi.router, prefix="/extratus-aburesi")
+app.include_router(relatorios_robo_aburesi.router, prefix="/extratus-aburesi")
 app.include_router(leitor_publicacoes_home.router, prefix="/leitor-publicacoes")
 
 
@@ -212,7 +212,7 @@ def _pagina_erro(request: Request, status_code: int, titulo: str, mensagem: str,
             "titulo": titulo,
             "mensagem": mensagem,
             "orientacao": orientacao,
-            "botao_texto": "Voltar para a Home",
+            "botao_texto": "Voltar para o Hub",
             "botao_link": "/",
         },
         status_code=status_code,
