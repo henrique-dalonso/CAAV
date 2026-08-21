@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from sqlmodel import func, select
 
 from app.ferramentas.extratus.db.models import Job
@@ -231,6 +233,31 @@ def marcar_notificacao_resolvida(job_id, usuario_id):
 
         job.notificacao_resolvida = True
         sessao.add(job)
+        sessao.commit()
+
+        avisar_mudanca()
+
+        return True
+
+
+def excluir_job(job_id):
+    """Exclui um relatório permanentemente — Henrique, diretoria,
+    2026-08-21: só admin da plataforma pode (ver exigir_admin na rota),
+    independente de quem gerou ou do status. Remove o arquivo físico do
+    relatório (.docx) e o PDF de origem já movido pra pasta final
+    (processados/revisão/erros), além da própria linha no banco. Devolve
+    False sem mudar nada se o job já não existir mais."""
+    with obter_sessao() as sessao:
+        job = sessao.get(Job, job_id)
+
+        if not job:
+            return False
+
+        for caminho in (job.relatorio_path, job.destino_pdf):
+            if caminho and Path(caminho).exists():
+                Path(caminho).unlink()
+
+        sessao.delete(job)
         sessao.commit()
 
         avisar_mudanca()

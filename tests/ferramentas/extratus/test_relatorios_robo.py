@@ -172,3 +172,71 @@ def test_marcar_notificacao_resolvida_robo_route_job_inexistente_da_404(cliente_
     resp = cliente_logado.post("/extratus/relatorios-robo/999999999/marcar-notificacao-resolvida")
 
     assert resp.status_code == 404
+
+
+def test_excluir_relatorio_robo_admin_apaga_de_verdade(cliente_logado):
+    job = registrar_processado(
+        arquivo_pdf="teste_excluir_relatorio_robo_admin.pdf",
+        processo="0000000-00.2026.8.00.0914",
+        relatorio_path=None, destino_pdf=None, confianca="alta",
+        usuario_id=None,
+    )
+
+    resp = cliente_logado.post(f"/extratus/relatorios-robo/{job.id}/excluir", follow_redirects=False)
+
+    assert resp.status_code == 303
+    assert "sucesso=" in resp.headers["location"]
+
+    with obter_sessao() as sessao:
+        assert sessao.get(Job, job.id) is None
+
+
+def test_excluir_relatorio_robo_inexistente_redireciona_com_erro(cliente_logado):
+    resp = cliente_logado.post("/extratus/relatorios-robo/999999999/excluir", follow_redirects=False)
+
+    assert resp.status_code == 303
+    assert "erro=" in resp.headers["location"]
+
+
+def test_excluir_relatorio_robo_recusa_nao_admin():
+    """Mesma regra do equivalente manual: só admin da plataforma exclui,
+    mesmo tendo acesso normal à tela de Relatórios do Robô (qualquer um
+    com a ferramenta liberada tem essa, sem precisar de fila_robo)."""
+    nome_usuario = "teste_relrobo_excluir_nao_admin"
+
+    with obter_sessao() as sessao:
+        usuario_antigo = sessao.exec(select(Usuario.id).where(Usuario.nome_usuario == nome_usuario)).first()
+        if usuario_antigo:
+            sessao.exec(delete(UsuarioFerramenta).where(UsuarioFerramenta.usuario_id == usuario_antigo))
+        sessao.exec(delete(Usuario).where(Usuario.nome_usuario == nome_usuario))
+        sessao.commit()
+        extratus_id = sessao.exec(select(Ferramenta.id).where(Ferramenta.slug == "extratus")).first()
+
+    criar_usuario(
+        nome="Teste RelRobo Excluir Não-Admin", nome_usuario=nome_usuario,
+        email="teste_relrobo_excluir_nao_admin@example.com", senha=SENHA, eh_admin=False,
+        ferramenta_ids=[extratus_id],
+    )
+
+    cliente = TestClient(app)
+    cliente.post("/login", data={"usuario_login": nome_usuario, "senha": SENHA})
+
+    job = registrar_processado(
+        arquivo_pdf="teste_excluir_relatorio_robo_nao_admin.pdf",
+        processo="0000000-00.2026.8.00.0915",
+        relatorio_path=None, destino_pdf=None, confianca="alta",
+        usuario_id=None,
+    )
+
+    resp = cliente.post(f"/extratus/relatorios-robo/{job.id}/excluir")
+
+    assert resp.status_code == 403
+
+    with obter_sessao() as sessao:
+        assert sessao.get(Job, job.id) is not None
+        sessao.exec(delete(Job).where(Job.id == job.id))
+        usuario_id = sessao.exec(select(Usuario.id).where(Usuario.nome_usuario == nome_usuario)).first()
+        if usuario_id:
+            sessao.exec(delete(UsuarioFerramenta).where(UsuarioFerramenta.usuario_id == usuario_id))
+        sessao.exec(delete(Usuario).where(Usuario.nome_usuario == nome_usuario))
+        sessao.commit()

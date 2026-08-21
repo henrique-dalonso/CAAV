@@ -1,21 +1,54 @@
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import delete
+from sqlmodel import delete, select
 
 from app.ferramentas.extratus_aburesi.db.jobs import registrar_processado
 from app.ferramentas.extratus_aburesi.db.models import Job
-from app.plataforma.db.models import Usuario
+from app.plataforma.db.models import Ferramenta, Usuario, UsuarioFerramenta
 from app.plataforma.db.session import obter_sessao
 from app.plataforma.db.usuarios import buscar_usuario_por_nome_usuario, criar_usuario
 from app.plataforma.web.main import app
 
 
 NOME_USUARIO_TESTE = "teste_relatorios_prontos_busca_aburesi"
+NOME_COLABORADOR_TESTE = "teste_relprontos_colaborador_aburesi"
 SENHA = "senhaTeste123"
 
 # ID negativo de propósito — não colide com usuário real, mesmo padrão de
 # tests/ferramentas/extratus_aburesi/test_jobs_aburesi.py.
 USUARIO_TESTE = -9304
+
+
+@pytest.fixture
+def cliente_colaborador_nao_admin():
+    """Ver docstring equivalente em
+    tests/ferramentas/extratus/test_relatorios_manuais.py — mesma lógica."""
+    with obter_sessao() as sessao:
+        usuario_antigo = sessao.exec(select(Usuario).where(Usuario.nome_usuario == NOME_COLABORADOR_TESTE)).first()
+        if usuario_antigo:
+            sessao.exec(delete(UsuarioFerramenta).where(UsuarioFerramenta.usuario_id == usuario_antigo.id))
+        sessao.exec(delete(Usuario).where(Usuario.nome_usuario == NOME_COLABORADOR_TESTE))
+        sessao.commit()
+        extratus_id = sessao.exec(select(Ferramenta.id).where(Ferramenta.slug == "extratus-aburesi")).first()
+
+    criar_usuario(
+        nome="Teste RelProntos Colaborador Não-Admin", nome_usuario=NOME_COLABORADOR_TESTE,
+        email="teste_relprontos_colaborador_aburesi@example.com", senha=SENHA, eh_admin=False,
+        ferramenta_ids=[extratus_id],
+        ferramentas_manual_ids=[extratus_id],
+    )
+
+    cliente = TestClient(app)
+    cliente.post("/login", data={"usuario_login": NOME_COLABORADOR_TESTE, "senha": SENHA})
+
+    yield cliente
+
+    with obter_sessao() as sessao:
+        usuario = sessao.exec(select(Usuario).where(Usuario.nome_usuario == NOME_COLABORADOR_TESTE)).first()
+        if usuario:
+            sessao.exec(delete(UsuarioFerramenta).where(UsuarioFerramenta.usuario_id == usuario.id))
+        sessao.exec(delete(Usuario).where(Usuario.nome_usuario == NOME_COLABORADOR_TESTE))
+        sessao.commit()
 
 
 @pytest.fixture
@@ -134,3 +167,52 @@ def test_marcar_notificacao_resolvida_route_404_pra_job_de_outro_usuario(cliente
     with obter_sessao() as sessao:
         sessao.exec(delete(Job).where(Job.id == job.id))
         sessao.commit()
+
+
+def test_excluir_relatorio_admin_apaga_de_verdade(cliente_logado):
+    job = registrar_processado(
+        arquivo_pdf="teste_excluir_relatorio_admin_aburesi.pdf",
+        processo="0000000-00.2026.8.00.0912",
+        relatorio_path=None, destino_pdf=None, confianca="alta",
+        usuario_id=USUARIO_TESTE,
+    )
+
+    resp = cliente_logado.post(f"/extratus-aburesi/relatorios/{job.id}/excluir", follow_redirects=False)
+
+    assert resp.status_code == 303
+    assert "sucesso=" in resp.headers["location"]
+
+    with obter_sessao() as sessao:
+        assert sessao.get(Job, job.id) is None
+
+
+def test_excluir_relatorio_inexistente_redireciona_com_erro(cliente_logado):
+    resp = cliente_logado.post("/extratus-aburesi/relatorios/999999999/excluir", follow_redirects=False)
+
+    assert resp.status_code == 303
+    assert "erro=" in resp.headers["location"]
+
+
+def test_excluir_relatorio_recusa_nao_admin(cliente_colaborador_nao_admin):
+    job = registrar_processado(
+        arquivo_pdf="teste_excluir_relatorio_nao_admin_aburesi.pdf",
+        processo="0000000-00.2026.8.00.0913",
+        relatorio_path=None, destino_pdf=None, confianca="alta",
+        usuario_id=USUARIO_TESTE,
+    )
+
+    resp = cliente_colaborador_nao_admin.post(f"/extratus-aburesi/relatorios/{job.id}/excluir")
+
+    assert resp.status_code == 403
+
+    with obter_sessao() as sessao:
+        assert sessao.get(Job, job.id) is not None
+        sessao.exec(delete(Job).where(Job.id == job.id))
+        sessao.commit()
+
+
+def test_botao_excluir_so_aparece_pro_admin(cliente_colaborador_nao_admin, job_manual_de_teste):
+    resp = cliente_colaborador_nao_admin.get("/extratus-aburesi/relatorios")
+
+    assert resp.status_code == 200
+    assert "botao-excluir" not in resp.text

@@ -1,8 +1,10 @@
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import RedirectResponse
 
-from app.ferramentas.extratus.db.jobs import listar_jobs_robo, marcar_notificacao_resolvida_robo
+from app.ferramentas.extratus.db.jobs import excluir_job, listar_jobs_robo, marcar_notificacao_resolvida_robo
 from app.ferramentas.extratus.web.rotulos import (
     ABA_RELATORIOS_ROBO,
     FERRAMENTA_SLUG,
@@ -15,7 +17,7 @@ from app.ferramentas.extratus.web.rotulos import (
 )
 from app.plataforma.db.models import Usuario
 from app.plataforma.db.usuarios import marcar_aba_vista
-from app.plataforma.web.auth import exigir_acesso_ferramenta
+from app.plataforma.web.auth import exigir_acesso_ferramenta, exigir_admin
 from app.plataforma.web.templates_util import criar_templates
 
 
@@ -47,6 +49,8 @@ def pagina_relatorios_robo(
     request: Request,
     usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
     processo: str | None = None,
+    erro: str | None = None,
+    sucesso: str | None = None,
 ):
     jobs = listar_jobs_robo()
 
@@ -64,11 +68,37 @@ def pagina_relatorios_robo(
             # (Sucesso/Revisão/Erro) e dá scroll/destaque, ver
             # relatorios_robo.js.
             "processo_busca": processo,
+            "erro": erro,
+            "sucesso": sucesso,
         },
     )
     marcar_aba_vista(usuario.id, FERRAMENTA_SLUG, ABA_RELATORIOS_ROBO)
 
     return resposta
+
+
+def _redirecionar(erro=None, sucesso=None):
+    partes = []
+
+    if erro:
+        partes.append(f"erro={quote(erro)}")
+
+    if sucesso:
+        partes.append(f"sucesso={quote(sucesso)}")
+
+    query = f"?{'&'.join(partes)}" if partes else ""
+
+    return RedirectResponse(url=f"/extratus/relatorios-robo{query}", status_code=303)
+
+
+@router.post("/relatorios-robo/{job_id}/excluir")
+def excluir_relatorio_robo_route(job_id: int, usuario: Usuario = Depends(exigir_admin)):
+    """Mesma regra do equivalente manual (relatorios_manuais.py): só
+    admin da plataforma exclui de verdade."""
+    if not excluir_job(job_id):
+        return _redirecionar(erro="Esse relatório não existe mais.")
+
+    return _redirecionar(sucesso="Relatório excluído permanentemente.")
 
 
 @router.post("/relatorios-robo/{job_id}/marcar-notificacao-resolvida")

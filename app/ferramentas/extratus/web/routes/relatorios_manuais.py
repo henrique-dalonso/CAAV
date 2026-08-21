@@ -1,8 +1,10 @@
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import RedirectResponse
 
-from app.ferramentas.extratus.db.jobs import listar_jobs_manuais, marcar_notificacao_resolvida
+from app.ferramentas.extratus.db.jobs import excluir_job, listar_jobs_manuais, marcar_notificacao_resolvida
 from app.ferramentas.extratus.web.rotulos import (
     ABA_RELATORIOS,
     FERRAMENTA_SLUG,
@@ -15,7 +17,7 @@ from app.ferramentas.extratus.web.rotulos import (
 )
 from app.plataforma.db.models import Usuario
 from app.plataforma.db.usuarios import listar_todos_usuarios, marcar_aba_vista
-from app.plataforma.web.auth import exigir_acesso_manual
+from app.plataforma.web.auth import exigir_acesso_manual, exigir_admin
 from app.plataforma.web.templates_util import criar_templates
 
 
@@ -40,6 +42,8 @@ def pagina_relatorios_manuais(
     request: Request,
     usuario: Usuario = Depends(exigir_acesso_manual("extratus")),
     processo: str | None = None,
+    erro: str | None = None,
+    sucesso: str | None = None,
 ):
     jobs = listar_jobs_manuais()
     nomes_por_id = {u.id: u.nome for u in listar_todos_usuarios()}
@@ -57,11 +61,38 @@ def pagina_relatorios_manuais(
             # manuais, web/routes/gerar_relatorio.py) — pré-preenche a busca e dá
             # scroll/destaque no item certo, ver relatorios_manuais.js.
             "processo_busca": processo,
+            "erro": erro,
+            "sucesso": sucesso,
         },
     )
     marcar_aba_vista(usuario.id, FERRAMENTA_SLUG, ABA_RELATORIOS)
 
     return resposta
+
+
+def _redirecionar(erro=None, sucesso=None):
+    partes = []
+
+    if erro:
+        partes.append(f"erro={quote(erro)}")
+
+    if sucesso:
+        partes.append(f"sucesso={quote(sucesso)}")
+
+    query = f"?{'&'.join(partes)}" if partes else ""
+
+    return RedirectResponse(url=f"/extratus/relatorios{query}", status_code=303)
+
+
+@router.post("/relatorios/{job_id}/excluir")
+def excluir_relatorio_route(job_id: int, usuario: Usuario = Depends(exigir_admin)):
+    """Henrique, diretoria, 2026-08-21: só admin da plataforma exclui
+    relatório de verdade (arquivo físico + PDF de origem + linha no
+    banco) — coordenador com admin_ferramenta não conta, de propósito."""
+    if not excluir_job(job_id):
+        return _redirecionar(erro="Esse relatório não existe mais.")
+
+    return _redirecionar(sucesso="Relatório excluído permanentemente.")
 
 
 @router.post("/relatorios/{job_id}/marcar-notificacao-resolvida")

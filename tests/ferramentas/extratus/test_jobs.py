@@ -7,6 +7,7 @@ from app.ferramentas.extratus.db.jobs import (
     contar_jobs_manuais_do_usuario,
     contar_relatorios_robo_novos,
     contar_relatorios_novos_do_usuario,
+    excluir_job,
     listar_jobs_manuais,
     listar_jobs_robo,
     listar_jobs_robo_nao_notificados,
@@ -470,3 +471,51 @@ def test_marcar_notificacao_resolvida_robo_recusa_job_com_dono(limpar_jobs_criad
 
 def test_marcar_notificacao_resolvida_robo_job_inexistente_nao_quebra():
     assert marcar_notificacao_resolvida_robo(999999999) is False
+
+
+def test_excluir_job_apaga_arquivos_fisicos_e_a_linha(tmp_path, limpar_jobs_criados):
+    relatorio = tmp_path / "relatorio_teste_excluir.docx"
+    relatorio.write_text("conteudo")
+    pdf_origem = tmp_path / "pdf_origem_teste_excluir.pdf"
+    pdf_origem.write_text("conteudo")
+
+    job = registrar_processado(
+        arquivo_pdf="teste_excluir_job.pdf",
+        processo="0000000-00.2026.8.00.0910",
+        relatorio_path=str(relatorio),
+        destino_pdf=str(pdf_origem),
+        confianca="alta",
+        usuario_id=USUARIO_TESTE_A,
+    )
+    limpar_jobs_criados.append(job.id)
+
+    assert excluir_job(job.id) is True
+    assert not relatorio.exists()
+    assert not pdf_origem.exists()
+
+    with obter_sessao() as sessao:
+        assert sessao.get(Job, job.id) is None
+
+
+def test_excluir_job_sem_arquivo_fisico_nao_quebra(limpar_jobs_criados):
+    """job.relatorio_path/destino_pdf apontando pra um arquivo que já não
+    existe mais (ex: alguém já mexeu na pasta manualmente) não pode
+    derrubar a exclusão — só ignora e segue apagando a linha."""
+    job = registrar_processado(
+        arquivo_pdf="teste_excluir_job_sem_arquivo.pdf",
+        processo="0000000-00.2026.8.00.0911",
+        relatorio_path="C:/caminho/que/nao/existe/relatorio.docx",
+        destino_pdf=None,
+        confianca="alta",
+        usuario_id=USUARIO_TESTE_A,
+    )
+    limpar_jobs_criados.append(job.id)
+
+    assert excluir_job(job.id) is True
+
+    with obter_sessao() as sessao:
+        assert sessao.get(Job, job.id) is None
+
+
+def test_excluir_job_inexistente_devolve_false():
+    assert excluir_job(999999999) is False

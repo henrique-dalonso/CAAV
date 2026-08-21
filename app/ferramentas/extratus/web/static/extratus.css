@@ -1340,6 +1340,33 @@ html[data-theme="escuro"] .campo-data::-webkit-calendar-picker-indicator {
     pointer-events: none;
 }
 
+/* Excluir relatório — só admin da plataforma vê esse botão (ver
+   template). Mesmo tamanho/formato do botao-download, cor de perigo em
+   vez da cor de acento, pra não confundir "baixar" com "apagar pra
+   sempre" mesmo de relance. */
+.botao-excluir {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 999px;
+    border: none;
+    background: transparent;
+    color: var(--cor-erro-texto);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.botao-excluir:hover {
+    background: var(--cor-erro-fundo);
+}
+
+.botao-excluir:active {
+    transform: scale(0.94);
+}
+
 /* Divisor discreto que fica DENTRO da pílula (não toca o topo/base) —
    separa a informação do processo do "quem pediu isso", que fica coladinho
    no botão de baixar. */
