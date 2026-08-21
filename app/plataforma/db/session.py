@@ -73,6 +73,43 @@ COLUNAS_PENDENTES = {
 }
 
 
+# Colunas que existiram num model antigo e foram substituídas por outra
+# (não só renomeadas via TABELAS_RENOMEADAS acima, que é pra tabela
+# inteira) — continuam fisicamente no banco em qualquer instalação que
+# rodou pelo menos uma vez ANTES da troca, e como não estão mais em
+# nenhum model, create_all()/_garantir_colunas() não sabem que elas
+# existem. Se a coluna antiga for NOT NULL sem valor padrão no schema
+# (comum, já que o default do SQLModel é só do lado do Python/ORM, não
+# vira DEFAULT de verdade na tabela), qualquer INSERT feito pelo model
+# novo — que nunca preenche essa coluna — quebra com "NOT NULL
+# constraint failed". Encontrado na prática (2026-08-20): banco criado
+# na VM com o código antes do rename fila_motor -> fila_robo, atualizado
+# pra depois do rename sem nunca ter rodado create_all numa tabela nova
+# (usuarioferramenta já existia) — promover alguém a coordenador falhava
+# com 500 ao inserir UsuarioFerramenta sem 'fila_motor'.
+COLUNAS_OBSOLETAS = {
+    "usuarioferramenta": ["fila_motor"],
+}
+
+
+def _remover_colunas_obsoletas(engine):
+    with engine.connect() as conexao:
+        for tabela, colunas in COLUNAS_OBSOLETAS.items():
+            existentes = {
+                linha[1]
+                for linha in conexao.exec_driver_sql(f"PRAGMA table_info({tabela})")
+            }
+
+            for nome in colunas:
+                if nome in existentes:
+                    conexao.exec_driver_sql(f"ALTER TABLE {tabela} DROP COLUMN {nome}")
+                    registrar_log(
+                        f"Migração: coluna obsoleta '{nome}' removida da tabela '{tabela}'."
+                    )
+
+        conexao.commit()
+
+
 def _garantir_colunas(engine):
     with engine.connect() as conexao:
         for tabela, colunas in COLUNAS_PENDENTES.items():
@@ -191,6 +228,7 @@ def _criar_engine():
     event.listen(engine, "connect", _configurar_conexao_sqlite)
 
     _garantir_tabelas_renomeadas(engine)
+    _remover_colunas_obsoletas(engine)
     SQLModel.metadata.create_all(engine)
     _garantir_colunas(engine)
     _garantir_indices(engine)
