@@ -376,3 +376,18 @@ def cliente_colaborador_padrao():
 def test_colaborador_sem_flag_nenhuma_acessa_fila_do_robo(cliente_colaborador_padrao):
     resposta = cliente_colaborador_padrao.get("/extratus-aburesi/fila")
     assert resposta.status_code == 200
+
+
+def test_pagina_fila_mostra_bolinha_azul_pulsando_pra_quem_esta_processando(cliente_logado, tmp_path):
+    """Ver docstring equivalente em tests/ferramentas/extratus/
+    test_fila.py (Extratus - Relatórios) — mesma lógica."""
+    nome_pdf = "teste_fila_processando_aburesi.pdf"
+    (tmp_path / nome_pdf).write_bytes(b"%PDF-1.4 conteudo")
+
+    with patch.object(fila, "carregar_config", return_value=_config_para(tmp_path)), \
+            patch.object(fila, "listar_arquivos_ja_reivindicados", return_value={nome_pdf}):
+        resp = cliente_logado.get("/extratus-aburesi/fila")
+
+    assert resp.status_code == 200
+    assert "bolinha-azul" in resp.text
+    assert "bolinha-verde" not in resp.text
