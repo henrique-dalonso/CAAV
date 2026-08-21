@@ -69,6 +69,14 @@
     });
 
     // Ver comentário equivalente em app/ferramentas/extratus/web/static/
+    // relatorios_manuais.js — nome do PDF de origem.
+    document.querySelectorAll(".link-pdf-original").forEach(function (link) {
+        link.addEventListener("click", function (evento) {
+            evento.stopPropagation();
+        });
+    });
+
+    // Ver comentário equivalente em app/ferramentas/extratus/web/static/
     // relatorios_manuais.js — botão "Marcar como revisado".
     document.querySelectorAll(".botao-marcar-revisado").forEach(function (botao) {
         botao.addEventListener("click", function (evento) {

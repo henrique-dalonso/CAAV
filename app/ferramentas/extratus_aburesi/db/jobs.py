@@ -210,6 +210,15 @@ def marcar_notificacao_resolvida(job_id, usuario_id):
         return True
 
 
+def obter_job(job_id):
+    """Busca um job pelo id, sem exigir dono — usado pela rota de "ver
+    PDF de origem" nas telas de Relatórios prontos (manual e Robô,
+    Henrique 2026-08-21), que são acervo compartilhado do escritório,
+    diferente da fila pessoal de Conferências."""
+    with obter_sessao() as sessao:
+        return sessao.get(Job, job_id)
+
+
 def excluir_job(job_id):
     """Exclui um relatório permanentemente — Henrique, diretoria,
     2026-08-21: só admin da plataforma pode (ver exigir_admin na rota),

@@ -225,3 +225,91 @@ def test_marcar_notificacao_resolvida_route_404_pra_job_de_outro_usuario(cliente
     with obter_sessao() as sessao:
         sessao.exec(delete(Job).where(Job.id == job.id))
         sessao.commit()
+
+
+def test_ver_pdf_relatorio_abre_o_arquivo_de_origem(cliente_logado, tmp_path):
+    pdf_origem = tmp_path / "processo_original.pdf"
+    pdf_origem.write_bytes(b"%PDF-1.4 conteudo de teste")
+
+    job = registrar_processado(
+        arquivo_pdf="processo_original.pdf",
+        processo="0000000-00.2026.8.00.0916",
+        relatorio_path=None, destino_pdf=str(pdf_origem), confianca="alta",
+        usuario_id=USUARIO_TESTE,
+    )
+
+    resp = cliente_logado.get(f"/extratus/relatorios/{job.id}/pdf")
+
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "application/pdf"
+    assert resp.content == b"%PDF-1.4 conteudo de teste"
+
+    with obter_sessao() as sessao:
+        sessao.exec(delete(Job).where(Job.id == job.id))
+        sessao.commit()
+
+
+def test_ver_pdf_relatorio_sem_destino_pdf_da_404(cliente_logado):
+    job = registrar_processado(
+        arquivo_pdf="processo_sem_pdf.pdf",
+        processo="0000000-00.2026.8.00.0917",
+        relatorio_path=None, destino_pdf=None, confianca="alta",
+        usuario_id=USUARIO_TESTE,
+    )
+
+    resp = cliente_logado.get(f"/extratus/relatorios/{job.id}/pdf")
+
+    assert resp.status_code == 404
+
+    with obter_sessao() as sessao:
+        sessao.exec(delete(Job).where(Job.id == job.id))
+        sessao.commit()
+
+
+def test_ver_pdf_relatorio_com_arquivo_removido_do_disco_da_404(cliente_logado, tmp_path):
+    job = registrar_processado(
+        arquivo_pdf="processo_removido.pdf",
+        processo="0000000-00.2026.8.00.0918",
+        relatorio_path=None, destino_pdf=str(tmp_path / "nao_existe.pdf"), confianca="alta",
+        usuario_id=USUARIO_TESTE,
+    )
+
+    resp = cliente_logado.get(f"/extratus/relatorios/{job.id}/pdf")
+
+    assert resp.status_code == 404
+
+    with obter_sessao() as sessao:
+        sessao.exec(delete(Job).where(Job.id == job.id))
+        sessao.commit()
+
+
+def test_ver_pdf_relatorio_job_inexistente_da_404(cliente_logado):
+    resp = cliente_logado.get("/extratus/relatorios/999999999/pdf")
+
+    assert resp.status_code == 404
+
+
+def test_pagina_relatorios_mostra_link_pdf_so_quando_ha_destino_pdf(cliente_logado, tmp_path):
+    pdf_origem = tmp_path / "com_link.pdf"
+    pdf_origem.write_bytes(b"%PDF-1.4")
+
+    job_com_pdf = registrar_processado(
+        arquivo_pdf="com_link.pdf", processo="0000000-00.2026.8.00.0919",
+        relatorio_path=None, destino_pdf=str(pdf_origem), confianca="alta",
+        usuario_id=USUARIO_TESTE,
+    )
+    job_sem_pdf = registrar_processado(
+        arquivo_pdf="sem_link.pdf", processo="0000000-00.2026.8.00.0920",
+        relatorio_path=None, destino_pdf=None, confianca="alta",
+        usuario_id=USUARIO_TESTE,
+    )
+
+    resp = cliente_logado.get("/extratus/relatorios")
+
+    assert resp.status_code == 200
+    assert f'/extratus/relatorios/{job_com_pdf.id}/pdf' in resp.text
+    assert f'/extratus/relatorios/{job_sem_pdf.id}/pdf' not in resp.text
+
+    with obter_sessao() as sessao:
+        sessao.exec(delete(Job).where(Job.id.in_([job_com_pdf.id, job_sem_pdf.id])))
+        sessao.commit()

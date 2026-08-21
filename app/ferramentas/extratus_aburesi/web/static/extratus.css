@@ -1419,6 +1419,18 @@ html[data-theme="escuro"] .campo-data::-webkit-calendar-picker-indicator {
     white-space: nowrap;
 }
 
+/* Nome do PDF de origem, quando clicável (Henrique, 2026-08-21) — herda
+   a cor do texto normal (não quero um azul de link padrão do
+   navegador), só sublinha no hover pra indicar que dá pra clicar. */
+.link-pdf-original {
+    color: inherit;
+    text-decoration: none;
+}
+
+.link-pdf-original:hover {
+    text-decoration: underline;
+}
+
 .status {
     display: inline-block;
     padding: 0.15rem 0.55rem;

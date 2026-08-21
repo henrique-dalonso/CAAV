@@ -216,3 +216,48 @@ def test_botao_excluir_so_aparece_pro_admin(cliente_colaborador_nao_admin, job_m
 
     assert resp.status_code == 200
     assert "botao-excluir" not in resp.text
+
+
+def test_ver_pdf_relatorio_abre_o_arquivo_de_origem(cliente_logado, tmp_path):
+    pdf_origem = tmp_path / "processo_original_aburesi.pdf"
+    pdf_origem.write_bytes(b"%PDF-1.4 conteudo de teste aburesi")
+
+    job = registrar_processado(
+        arquivo_pdf="processo_original_aburesi.pdf",
+        processo="0000000-00.2026.8.00.0916",
+        relatorio_path=None, destino_pdf=str(pdf_origem), confianca="alta",
+        usuario_id=USUARIO_TESTE,
+    )
+
+    resp = cliente_logado.get(f"/extratus-aburesi/relatorios/{job.id}/pdf")
+
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "application/pdf"
+    assert resp.content == b"%PDF-1.4 conteudo de teste aburesi"
+
+    with obter_sessao() as sessao:
+        sessao.exec(delete(Job).where(Job.id == job.id))
+        sessao.commit()
+
+
+def test_ver_pdf_relatorio_sem_destino_pdf_da_404(cliente_logado):
+    job = registrar_processado(
+        arquivo_pdf="processo_sem_pdf_aburesi.pdf",
+        processo="0000000-00.2026.8.00.0917",
+        relatorio_path=None, destino_pdf=None, confianca="alta",
+        usuario_id=USUARIO_TESTE,
+    )
+
+    resp = cliente_logado.get(f"/extratus-aburesi/relatorios/{job.id}/pdf")
+
+    assert resp.status_code == 404
+
+    with obter_sessao() as sessao:
+        sessao.exec(delete(Job).where(Job.id == job.id))
+        sessao.commit()
+
+
+def test_ver_pdf_relatorio_job_inexistente_da_404(cliente_logado):
+    resp = cliente_logado.get("/extratus-aburesi/relatorios/999999999/pdf")
+
+    assert resp.status_code == 404

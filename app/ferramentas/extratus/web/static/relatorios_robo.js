@@ -81,6 +81,14 @@
         });
     });
 
+    // Nome do PDF de origem — ver comentário equivalente em
+    // relatorios_manuais.js (Relatórios URGENTES) — mesma lógica.
+    document.querySelectorAll(".link-pdf-original").forEach(function (link) {
+        link.addEventListener("click", function (evento) {
+            evento.stopPropagation();
+        });
+    });
+
     // Deep-link do botão "Ir ao relatório" (Conferências manuais,
     // web/routes/gerar_relatorio.py, ?processo=...) — pré-preenche a busca, troca
     // pra aba certa (o item pode estar em Sucesso/Revisão/Erro — mesmo

@@ -2,9 +2,9 @@ from pathlib import Path
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse
 
-from app.ferramentas.extratus_aburesi.db.jobs import excluir_job, listar_jobs_robo, marcar_notificacao_resolvida_robo
+from app.ferramentas.extratus_aburesi.db.jobs import excluir_job, listar_jobs_robo, marcar_notificacao_resolvida_robo, obter_job
 from app.ferramentas.extratus_aburesi.web.rotulos import (
     ABA_RELATORIOS_ROBO,
     FERRAMENTA_SLUG,
@@ -64,6 +64,23 @@ def pagina_relatorios_robo(
     marcar_aba_vista(usuario.id, FERRAMENTA_SLUG, ABA_RELATORIOS_ROBO)
 
     return resposta
+
+
+@router.get("/relatorios-robo/{job_id}/pdf")
+def ver_pdf_relatorio_robo_route(job_id: int):
+    """Ver docstring equivalente em app/ferramentas/extratus/web/routes/
+    relatorios_robo.py (Extratus - Relatórios) — mesma lógica."""
+    job = obter_job(job_id)
+
+    if not job or not job.destino_pdf:
+        raise HTTPException(status_code=404, detail="PDF de origem não encontrado.")
+
+    caminho = Path(job.destino_pdf)
+
+    if not caminho.exists():
+        raise HTTPException(status_code=404, detail="PDF de origem não encontrado.")
+
+    return FileResponse(caminho, media_type="application/pdf")
 
 
 def _redirecionar(erro=None, sucesso=None):

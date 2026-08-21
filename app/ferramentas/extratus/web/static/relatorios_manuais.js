@@ -68,6 +68,17 @@
         });
     });
 
+    // Nome do PDF de origem (Henrique, 2026-08-21: "de onde saiu o
+    // relatório, de que pdf de processo") — abre em aba nova (target=
+    // _blank já cuida disso), mas precisa de stopPropagation senão o
+    // clique "vaza" pro .relatorio-info-clicavel do card e baixa o
+    // relatório (.docx) na aba atual junto, sem ninguém pedir isso.
+    document.querySelectorAll(".link-pdf-original").forEach(function (link) {
+        link.addEventListener("click", function (evento) {
+            evento.stopPropagation();
+        });
+    });
+
     // Botão "Marcar como revisado" — dispensa a notificação de revisão
     // do próprio relatório no sino (Henrique, 2026-08-13: só sai de lá
     // com uma ação explícita, nunca sozinha). stopPropagation pra não

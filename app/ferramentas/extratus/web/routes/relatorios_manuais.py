@@ -2,9 +2,9 @@ from pathlib import Path
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse
 
-from app.ferramentas.extratus.db.jobs import excluir_job, listar_jobs_manuais, marcar_notificacao_resolvida
+from app.ferramentas.extratus.db.jobs import excluir_job, listar_jobs_manuais, marcar_notificacao_resolvida, obter_job
 from app.ferramentas.extratus.web.rotulos import (
     ABA_RELATORIOS,
     FERRAMENTA_SLUG,
@@ -68,6 +68,27 @@ def pagina_relatorios_manuais(
     marcar_aba_vista(usuario.id, FERRAMENTA_SLUG, ABA_RELATORIOS)
 
     return resposta
+
+
+@router.get("/relatorios/{job_id}/pdf")
+def ver_pdf_relatorio_route(job_id: int):
+    """Abre o PDF original que gerou esse relatório, numa aba nova
+    (Henrique, 2026-08-21: "de onde saiu o relatório, de que pdf de
+    processo") — mesma ideia do "ver PDF" que Conferências já tem
+    (gerar_relatorio.py), mas sem exigir ser o dono: essa tela é acervo
+    compartilhado do escritório, diferente da fila pessoal de
+    Conferências."""
+    job = obter_job(job_id)
+
+    if not job or not job.destino_pdf:
+        raise HTTPException(status_code=404, detail="PDF de origem não encontrado.")
+
+    caminho = Path(job.destino_pdf)
+
+    if not caminho.exists():
+        raise HTTPException(status_code=404, detail="PDF de origem não encontrado.")
+
+    return FileResponse(caminho, media_type="application/pdf")
 
 
 def _redirecionar(erro=None, sucesso=None):
