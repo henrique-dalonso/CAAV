@@ -189,3 +189,26 @@ def test_aba_usuarios_mostra_botao_desbloquear_so_para_bloqueados(cliente_admin_
 
     admin_logado = buscar_usuario_por_nome_usuario(NOME_ADMIN_TESTE)
     assert f"/admin/usuarios/{admin_logado.id}/desbloquear" not in resp.text
+
+
+def test_aba_usuarios_tem_campo_de_busca_e_checkboxes_de_perfil(cliente_admin_logado):
+    resp = cliente_admin_logado.get("/admin/usuarios")
+
+    assert resp.status_code == 200
+    assert 'id="campo-busca-usuarios"' in resp.text
+    assert 'class="check-input check-filtro-cargo" value="colaborador"' in resp.text
+    assert 'class="check-input check-filtro-cargo" value="coordenador"' in resp.text
+    assert 'class="check-input check-filtro-cargo" value="admin"' in resp.text
+
+
+def test_aba_usuarios_data_perfil_e_data_busca_corretos_por_linha(cliente_admin_logado):
+    admin_logado = buscar_usuario_por_nome_usuario(NOME_ADMIN_TESTE)
+    alvo = buscar_usuario_por_nome_usuario(NOME_ALVO_TESTE)
+
+    resp = cliente_admin_logado.get("/admin/usuarios")
+
+    assert resp.status_code == 200
+    assert f'data-perfil="admin"' in resp.text
+    assert f'data-perfil="colaborador"' in resp.text
+    assert f'data-busca="{admin_logado.nome.lower()} {NOME_ADMIN_TESTE}"' in resp.text
+    assert f'data-busca="{alvo.nome.lower()} {NOME_ALVO_TESTE}"' in resp.text

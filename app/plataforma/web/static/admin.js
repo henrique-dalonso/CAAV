@@ -181,6 +181,49 @@
         });
     });
 
+    // Busca + filtro de perfil na tabela de Usuários (Henrique,
+    // 2026-08-21) — mesmo padrão das telas de Relatórios do Extratus
+    // (filtrar via style.display, não "hidden" — ver comentário
+    // equivalente em relatorios_manuais.js). Checkboxes de perfil são
+    // independentes: nenhum marcado mostra todo mundo; marcar 2 mostra a
+    // UNIÃO dos dois perfis (não é "E" no sentido de uma linha precisar
+    // bater com as duas ao mesmo tempo — nenhum usuário tem 2 perfis).
+    var campoBuscaUsuarios = document.getElementById("campo-busca-usuarios");
+    var linhasUsuarios = document.querySelectorAll(".admin-tabela-usuarios tbody tr");
+    var checksCargo = document.querySelectorAll(".check-filtro-cargo");
+    var avisoVazioUsuarios = document.querySelector(".filtro-vazio-usuarios");
+
+    if (campoBuscaUsuarios && linhasUsuarios.length) {
+        var aplicarFiltrosUsuarios = function () {
+            var termo = campoBuscaUsuarios.value.trim().toLowerCase();
+            var marcados = Array.prototype.filter.call(checksCargo, function (c) {
+                return c.checked;
+            }).map(function (c) { return c.value; });
+            var visiveis = 0;
+
+            linhasUsuarios.forEach(function (linha) {
+                var passaBusca = !termo || linha.dataset.busca.indexOf(termo) !== -1;
+                var passaCargo = marcados.length === 0 || marcados.indexOf(linha.dataset.perfil) !== -1;
+                var mostrar = passaBusca && passaCargo;
+
+                linha.style.display = mostrar ? "" : "none";
+
+                if (mostrar) {
+                    visiveis += 1;
+                }
+            });
+
+            if (avisoVazioUsuarios) {
+                avisoVazioUsuarios.style.display = visiveis === 0 ? "" : "none";
+            }
+        };
+
+        campoBuscaUsuarios.addEventListener("input", aplicarFiltrosUsuarios);
+        checksCargo.forEach(function (c) {
+            c.addEventListener("change", aplicarFiltrosUsuarios);
+        });
+    }
+
     // Form de criar usuário: "Administrador? Sim" esconde cargo +
     // ferramentas (não fazem sentido pra admin, que já tem acesso total).
     var segmentoAdmin = document.getElementById("segmento-admin");

@@ -496,6 +496,55 @@
     margin-top: 0.75rem;
 }
 
+/* Busca + filtro de perfil da tabela de Usuários (Henrique, 2026-08-21).
+   Campo de busca copiado do mesmo padrão usado nas telas de Relatórios
+   do Extratus (.campo-busca lá é idêntico) — reproduzido aqui em vez de
+   importado porque admin.html não carrega o CSS do Extratus. */
+.admin-filtros-usuarios {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.admin-filtros-usuarios .campo-busca {
+    flex: 1;
+    min-width: 220px;
+    padding: 0.55rem 0.85rem;
+    font-size: 0.85rem;
+    font-family: inherit;
+    color: var(--cor-texto);
+    background: var(--cor-fundo);
+    border: 1.5px solid var(--cor-borda);
+    border-radius: var(--raio-pequeno);
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+.admin-filtros-usuarios .campo-busca:focus {
+    border-color: var(--cor-acento);
+}
+
+.admin-filtros-cargo {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 1rem;
+}
+
+/* Checkboxes independentes (não é radio) — marcar mais de um mostra a
+   união dos perfis marcados, um não anula o outro (Henrique, 2026-08-21,
+   pedido explícito: "uma não anula a outra"). */
+.filtro-cargo {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    color: var(--cor-texto-suave);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
 /* Tabela de usuários — largura fixa em % pra sempre caber no card sem
    rolagem lateral; Nome/Usuário/E-mail truncam com "..." em vez de
    esticar a tabela (title="" no HTML mostra o valor completo no hover). */

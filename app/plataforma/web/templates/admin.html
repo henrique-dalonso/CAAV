@@ -260,6 +260,26 @@
         {% elif aba_ativa == "usuarios" %}
         <section class="cartao-secao">
             <h2>Usuários <span class="contagem">{{ usuarios|length }}</span></h2>
+            <div class="admin-filtros-usuarios">
+                <input type="search" class="campo-busca" id="campo-busca-usuarios" placeholder="Buscar por nome ou usuário..." aria-label="Buscar por nome ou usuário">
+                <div class="admin-filtros-cargo">
+                    <label class="filtro-cargo">
+                        <input type="checkbox" class="check-input check-filtro-cargo" value="colaborador">
+                        <span class="check-caixa"></span>
+                        Colaborador
+                    </label>
+                    <label class="filtro-cargo">
+                        <input type="checkbox" class="check-input check-filtro-cargo" value="coordenador">
+                        <span class="check-caixa"></span>
+                        Coordenador
+                    </label>
+                    <label class="filtro-cargo">
+                        <input type="checkbox" class="check-input check-filtro-cargo" value="admin">
+                        <span class="check-caixa"></span>
+                        Admin
+                    </label>
+                </div>
+            </div>
             <div class="tabela-scroll">
             <table class="tabela admin-tabela-usuarios">
                 <thead>
@@ -276,7 +296,9 @@
                 <tbody>
                     {% for usuario_linha in usuarios %}
                     {% set eh_proprio = usuario_linha.id == usuario.id %}
-                    <tr{{ ' class="admin-linha-bloqueada"' | safe if usuario_linha.bloqueado }}>
+                    <tr{{ ' class="admin-linha-bloqueada"' | safe if usuario_linha.bloqueado }}
+                        data-busca="{{ (usuario_linha.nome ~ ' ' ~ usuario_linha.nome_usuario) | lower }}"
+                        data-perfil="{{ 'admin' if usuario_linha.eh_admin else usuario_linha.cargo }}">
                         <td class="truncavel" data-dica="{{ usuario_linha.nome }}">{{ usuario_linha.nome }}</td>
                         <td class="truncavel" data-dica="{{ usuario_linha.nome_usuario }}">{{ usuario_linha.nome_usuario }}</td>
                         <td class="truncavel" data-dica="{{ usuario_linha.email }}">{{ usuario_linha.email }}</td>
@@ -431,6 +453,7 @@
                 </tbody>
             </table>
             </div>
+            <p class="vazio filtro-vazio-usuarios" hidden>Nenhum usuário encontrado com esse filtro.</p>
         </section>
         {% endif %}
     </div>
