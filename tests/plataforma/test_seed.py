@@ -31,7 +31,7 @@ def test_garantir_ferramentas_padrao_cria_extratus_aburesi():
 
     assert ferramenta is not None
     assert ferramenta.nome == "Extratus - Aburesi"
-    assert ferramenta.url == "/extratus-aburesi/"
+    assert ferramenta.url == "/extratus-aburesi/fila"
     assert ferramenta.suporta_fila_robo is True
 
 
@@ -42,7 +42,7 @@ def test_garantir_ferramentas_padrao_renomeou_extratus_relatorios():
 
     assert ferramenta is not None
     assert ferramenta.nome == "Extratus - Relatórios"
-    assert ferramenta.url == "/extratus/"  # slug/url nunca mudam
+    assert ferramenta.url == "/extratus/fila"  # slug nunca muda; url segue a 1a aba
     assert ferramenta.suporta_fila_robo is True
 
 

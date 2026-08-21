@@ -17,13 +17,19 @@ _SEM_COR_PROPRIA = {
 
 FERRAMENTAS_PADRAO = [
     {
-        # slug/url NUNCA mudam — permissões e favoritos de usuários já
-        # existentes estão amarrados a "extratus". Só nome/descrição são
-        # livres pra ajustar (ver garantir_ferramentas_padrao abaixo).
+        # slug NUNCA muda — permissões e favoritos de usuários já
+        # existentes estão amarrados a "extratus". nome/descrição/url são
+        # livres pra ajustar (ver garantir_ferramentas_padrao abaixo);
+        # nenhum dos dois é lido por permissão/favorito (esses usam
+        # slug/ferramenta_id), url é só o link de entrada do ícone.
         "nome": "Extratus - Relatórios",
         "slug": "extratus",
         "descricao": "Produção de relatório completo de processo judicial para o cliente, com parecer.",
-        "url": "/extratus/",
+        # Henrique, 2026-08-20: clicar no ícone deve levar direto pra
+        # primeira aba na ordem de navegação (Fila do Robô — ver
+        # nav_abas_extratus em _macros_extratus.html), não pra "Gerar
+        # Relatório URGENTE" que hoje mora na raiz "/extratus/".
+        "url": "/extratus/fila",
         "suporta_fila_robo": True,
         **_SEM_COR_PROPRIA,
     },
@@ -31,7 +37,7 @@ FERRAMENTAS_PADRAO = [
         "nome": "Extratus - Aburesi",
         "slug": "extratus-aburesi",
         "descricao": "Resumo rápido de processo judicial para uso interno no atendimento do cliente Aburesi.",
-        "url": "/extratus-aburesi/",
+        "url": "/extratus-aburesi/fila",
         "suporta_fila_robo": True,
         # Copiado 1:1 do :root que existia em
         # extratus_aburesi/web/static/extratus.css antes de virar campo

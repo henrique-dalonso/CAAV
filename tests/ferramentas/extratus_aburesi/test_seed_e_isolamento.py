@@ -22,7 +22,7 @@ def test_ferramenta_extratus_aburesi_registrada_com_dados_corretos():
 
     assert ferramenta is not None
     assert ferramenta.nome == "Extratus - Aburesi"
-    assert ferramenta.url == "/extratus-aburesi/"
+    assert ferramenta.url == "/extratus-aburesi/fila"
 
 
 def test_job_de_um_modulo_nao_aparece_no_outro():
