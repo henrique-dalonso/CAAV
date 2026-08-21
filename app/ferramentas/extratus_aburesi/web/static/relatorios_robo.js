@@ -13,13 +13,12 @@
         return;
     }
 
-    // Sucesso é a aba padrão de propósito — Henrique, 2026-08-08: "o
-    // intuito é o advogado que precisa desses relatorios ja ter em
-    // facil acesso", depois Revisão, Erro por último ("em ordem de grau
-    // de fudido"). "Todos" (Henrique, 2026-08-20) é só pra visão geral,
-    // não é o padrão — some pro mais antigo primeiro (column-reverse no
-    // CSS), diferente das outras 3 abas.
-    var statusAtivo = "sucesso";
+    // "Todos" é a aba padrão (Henrique, 2026-08-21, mudou de ideia em
+    // relação à decisão de 2026-08-08 abaixo) — mostra do mais antigo
+    // pro mais novo (column-reverse no CSS), diferente das outras 3
+    // abas (Sucesso, Revisão, Erro — essas continuam mais novo primeiro,
+    // "em ordem de grau de fudido").
+    var statusAtivo = "todos";
 
     function aplicarFiltros() {
         var termo = campoBusca.value.trim().toLowerCase();
@@ -84,8 +83,10 @@
 
     // Deep-link do botão "Ir ao relatório" (Conferências manuais,
     // web/routes/gerar_relatorio.py, ?processo=...) — pré-preenche a busca, troca
-    // pra aba certa (o item pode estar em Sucesso/Revisão/Erro, não só
-    // na aba padrão "Sucesso") e dá scroll+destaque no item certo.
+    // pra aba certa (o item pode estar em Sucesso/Revisão/Erro — mesmo
+    // com "Todos" sendo o padrão, um deep-link deve destacar a aba
+    // específica do item, não deixar em "Todos") e dá scroll+destaque no
+    // item certo.
     var processoInicial = campoBusca.dataset.processoInicial;
     if (processoInicial) {
         var alvoPreCheck = document.querySelector('.relatorio-item[data-processo="' + CSS.escape(processoInicial) + '"]');
@@ -98,6 +99,13 @@
             }
         }
         campoBusca.value = processoInicial;
+    }
+
+    // "Todos" é o padrão agora — aplica a inversão de lista já na carga
+    // inicial, não só quando alguém clica na aba (mesmo motivo do toggle
+    // dentro do listener de clique acima).
+    if (listaEl) {
+        listaEl.classList.toggle("lista-relatorios-invertida", statusAtivo === "todos");
     }
 
     aplicarFiltros();
