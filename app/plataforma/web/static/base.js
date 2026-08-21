@@ -182,10 +182,22 @@
         return caixa;
     }
 
+    // Henrique, 2026-08-21: popup tinha só 2 cores (verde/vermelho),
+    // enquanto a lista do sino já usava 4 (sucesso, triagem/conferência,
+    // revisão, erro — ver .item-notificacao-* em base.css) — inconsistente,
+    // e causava um sintoma real: sucesso do Robô saindo em vermelho.
+    // "sucesso"/"conferencia"/"revisao" reconhecidos explicitamente,
+    // qualquer outro valor (inclusive "erro") cai no tom de atenção padrão.
+    function classeBannerParaTom(tom) {
+        if (tom === "sucesso") { return "banner-sucesso"; }
+        if (tom === "conferencia") { return "banner-conferencia"; }
+        if (tom === "revisao") { return "banner-revisao"; }
+        return "banner-erro";
+    }
+
     window.mostrarBanner = function (mensagem, tipo) {
         var banner = document.createElement("p");
-        banner.className = tipo === "sucesso" ? "banner-sucesso" : "banner-erro";
-        banner.className += " banner-toast";
+        banner.className = classeBannerParaTom(tipo) + " banner-toast";
         banner.textContent = (tipo === "sucesso" ? "✓ " : "⚠ ") + mensagem;
 
         obterCaixaToasts().appendChild(banner);
@@ -201,7 +213,7 @@
     // <p>, porque precisa caber uma <ul> dentro sem quebrar o HTML.
     window.mostrarBannerDetalhado = function (resumo, itens, tipo) {
         var banner = document.createElement("div");
-        banner.className = (tipo === "sucesso" ? "banner-sucesso" : "banner-erro") + " banner-toast banner-expansivel";
+        banner.className = classeBannerParaTom(tipo) + " banner-toast banner-expansivel";
         banner.setAttribute("role", "alert");
 
         // .banner-linha segura só o resumo (fica sempre no topo, do
@@ -814,6 +826,30 @@
             botaoNotificacoesEl.classList.add("botao-notificacoes-chacoalhando");
         }
 
+        // Mesmo mapeamento tipo -> cor que .item-notificacao-* já usa na
+        // lista do sino (base.css) — replicado aqui pro popup ficar
+        // consistente com ela, em vez de só verde/vermelho.
+        function tomDoItemNotificacao(item) {
+            if (item.tipo === "pronto") { return "sucesso"; }
+            if (item.tipo === "triagem" || item.tipo === "conferencia_manual") { return "conferencia"; }
+            if (item.tipo === "revisao") { return "revisao"; }
+            return "erro";
+        }
+
+        // Um popup só, pra um lote de notificações que podem ser de
+        // tipos diferentes — só usa a cor específica (sucesso/conferência/
+        // revisão) quando TODAS as novidades do lote forem do mesmo tipo;
+        // um lote misturado (ex: 1 sucesso + 1 conferência juntos) cai no
+        // tom de atenção padrão (erro), mais seguro que arriscar mostrar
+        // verde quando nem tudo é boa notícia.
+        function tomDoLote(itens) {
+            var tons = itens.map(tomDoItemNotificacao);
+            var primeiro = tons[0];
+            var todosIguais = tons.every(function (tom) { return tom === primeiro; });
+
+            return todosIguais ? primeiro : "erro";
+        }
+
         // Toast (reaproveita window.mostrarBanner/mostrarBannerDetalhado,
         // já usados pelos avisos de upload da Fila) — Henrique, 2026-08-07:
         // "aparecer um popup... para notificar rapido que chegou algo...
@@ -860,23 +896,32 @@
                 );
             }
 
-            if (novasFerramentas.length === 1) {
-                window.mostrarBanner("Nova notificação de Ferramentas: " + novasFerramentas[0].mensagem, "erro");
-            } else if (novasFerramentas.length > 1) {
-                window.mostrarBannerDetalhado(
-                    novasFerramentas.length + " novas notificações de Ferramentas — clique pra ver",
-                    novasFerramentas.map(function (item) { return { titulo: item.ferramenta, detalhe: item.mensagem }; }),
-                    "erro"
-                );
+            // "Ferramentas" mistura sucesso do Robô (tipo "pronto") com
+            // triagem/conferência/revisão/erro — tomDoLote (acima) dá o
+            // tom certo pra cada tipo, igual à lista do sino já fazia.
+            // Bug real corrigido aqui (Henrique, 2026-08-21): antes era
+            // sempre "erro" fixo, então um sucesso do Robô saía em
+            // vermelho no popup.
+            if (novasFerramentas.length > 0) {
+                var tomFerramentas = tomDoLote(novasFerramentas);
+
+                if (novasFerramentas.length === 1) {
+                    window.mostrarBanner("Nova notificação de Ferramentas: " + novasFerramentas[0].mensagem, tomFerramentas);
+                } else {
+                    window.mostrarBannerDetalhado(
+                        novasFerramentas.length + " novas notificações de Ferramentas — clique pra ver",
+                        novasFerramentas.map(function (item) { return { titulo: item.ferramenta, detalhe: item.mensagem }; }),
+                        tomFerramentas
+                    );
+                }
             }
 
             // "Minhas" mistura boas notícias ("pronto") com pendências
-            // (erro/revisão/conferência) — só usa o tom de sucesso (✓,
-            // verde) quando TODAS as novidades da vez forem "pronto";
-            // qualquer coisa que precise de ação junto já puxa pro tom de
-            // atenção padrão.
+            // (erro/revisão/conferência) — tomDoLote dá o tom certo pra
+            // cada tipo; só sai verde quando TODAS as novidades da vez
+            // forem "pronto".
             if (novasMinhas.length > 0) {
-                var tomMinhas = novasMinhas.every(function (item) { return item.tipo === "pronto"; }) ? "sucesso" : "erro";
+                var tomMinhas = tomDoLote(novasMinhas);
 
                 if (novasMinhas.length === 1) {
                     window.mostrarBanner(novasMinhas[0].mensagem, tomMinhas);
