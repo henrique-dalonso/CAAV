@@ -21,6 +21,16 @@ REGISTRO_NOTIFICACOES = [
 ]
 
 
+def _com_ponto_final(mensagem):
+    """Cada módulo monta sua própria mensagem (dict fixo ou f-string) sem
+    se preocupar com pontuação final — normaliza aqui, no único lugar por
+    onde toda notificação passa antes de chegar no sino, em vez de mexer
+    string por string em cada módulo."""
+    if mensagem and mensagem[-1] not in ".!?":
+        return mensagem + "."
+    return mensagem
+
+
 def notificacoes_do_usuario(usuario):
     """Notificações de todas as ferramentas do usuário, de 2 famílias
     (Henrique, 2026-08-13; ajustado 2026-08-19 quando Fila do Robô
@@ -46,9 +56,9 @@ def notificacoes_do_usuario(usuario):
             continue
 
         for item in listar():
-            notificacoes.append({**item, "ferramenta": nome_ferramenta})
+            notificacoes.append({**item, "mensagem": _com_ponto_final(item["mensagem"]), "ferramenta": nome_ferramenta})
 
         for item in listar_pessoais(usuario.id):
-            notificacoes.append({**item, "ferramenta": nome_ferramenta})
+            notificacoes.append({**item, "mensagem": _com_ponto_final(item["mensagem"]), "ferramenta": nome_ferramenta})
 
     return notificacoes
