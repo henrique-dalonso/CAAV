@@ -139,17 +139,58 @@ def filtrar_paginas_lista_de_terceiros(paginas):
     return relevantes, excluidas
 
 
+# Extração de texto quebrada: às vezes o pypdf não consegue decodificar a
+# fonte usada numa página específica (visto em tabelas de cálculo/planilha
+# de contadoria anexadas a um processo real) — o "texto" extraído vira uma
+# sequência de códigos de glifo sem nenhum significado (ex: "/2 /3 /4 /5
+# /6 ? /8 /3"), mas ainda tem caracteres suficientes pra passar
+# despercebido pela régua de MINIMO_CARACTERES_PAGINA_COM_TEXTO — sem
+# filtrar isso, o sistema paga pra mandar puro ruído pra IA à toa.
+# Validado em 2026-08-21 (Henrique) contra 15 processos judiciais reais
+# (~4.700 páginas no total): o padrão nunca apareceu numa página de texto
+# legítimo — só nas 26 páginas de fato quebradas encontradas (confirmado
+# lendo o texto bruto de cada ocorrência antes de aprovar o filtro).
+PADRAO_TOKEN_GLIFO_QUEBRADO = re.compile(r"^/\d+$")
+PROPORCAO_MINIMA_TOKENS_QUEBRADOS_PARA_SUSPEITA = 0.5
+
+
+def _pagina_parece_extracao_quebrada(texto_pagina):
+    palavras = texto_pagina.split()
+    if not palavras:
+        return False
+
+    quebradas = sum(1 for palavra in palavras if PADRAO_TOKEN_GLIFO_QUEBRADO.fullmatch(palavra))
+    return (quebradas / len(palavras)) > PROPORCAO_MINIMA_TOKENS_QUEBRADOS_PARA_SUSPEITA
+
+
+def filtrar_paginas_extracao_quebrada(paginas):
+    """Mesmo princípio de `filtrar_paginas_lista_de_terceiros`: nunca
+    descarta escondido, sempre devolve também os números das páginas
+    excluídas."""
+    relevantes = []
+    excluidas = []
+
+    for pagina in paginas:
+        if _pagina_parece_extracao_quebrada(pagina["texto_bruto"]):
+            excluidas.append(pagina["numero"])
+        else:
+            relevantes.append(pagina)
+
+    return relevantes, excluidas
+
+
 def montar_diagnostico_com_triagem(caminho_pdf):
     """Extrai o diagnóstico do PDF e, se não for um PDF digitalizado,
-    aplica o filtro de anexos de listagem de terceiros antes de decidir
-    o que fazer com o processo. A checagem de "parece digitalizado"
-    sempre olha TODAS as páginas (antes do filtro) — filtrar primeiro
-    poderia distorcer essa proporção à toa, já que a triagem só faz
-    sentido pro caminho de texto extraído.
+    aplica 2 filtros antes de decidir o que fazer com o processo: anexos
+    de listagem de terceiros e páginas com extração de texto quebrada
+    (ver os dois `filtrar_paginas_*` acima). A checagem de "parece
+    digitalizado" sempre olha TODAS as páginas (antes de qualquer
+    filtro) — filtrar primeiro poderia distorcer essa proporção à toa,
+    já que a triagem só faz sentido pro caminho de texto extraído.
 
     Devolve (diagnostico, paginas_relevantes_ou_None, paginas_excluidas).
-    `paginas_relevantes` só vem preenchido quando o filtro rodou (não é
-    PDF digitalizado) — evita quem chamar precisar reextrair/refiltrar
+    `paginas_relevantes` só vem preenchido quando os filtros rodaram (não
+    é PDF digitalizado) — evita quem chamar precisar reextrair/refiltrar
     de novo se for pro caminho de divisão em pedaços."""
     caminho_pdf = Path(caminho_pdf)
     diagnostico_original = extrair_texto_pdf_com_diagnostico(caminho_pdf)
@@ -158,22 +199,36 @@ def montar_diagnostico_com_triagem(caminho_pdf):
         return diagnostico_original, None, []
 
     paginas, _ = extrair_paginas_pdf(caminho_pdf)
-    paginas_relevantes, paginas_excluidas = filtrar_paginas_lista_de_terceiros(paginas)
+    paginas_relevantes, excluidas_terceiros = filtrar_paginas_lista_de_terceiros(paginas)
+    paginas_relevantes, excluidas_quebradas = filtrar_paginas_extracao_quebrada(paginas_relevantes)
+    paginas_excluidas = excluidas_terceiros + excluidas_quebradas
 
     if not paginas_excluidas:
         return diagnostico_original, paginas, []
 
     texto_filtrado = "\n\n".join(p["texto_marcado"] for p in paginas_relevantes)
-    aviso = (
-        f"(Aviso: {len(paginas_excluidas)} página(s) deste processo foram identificadas "
-        "como um anexo de listagem de terceiros não relacionados ao caso (ex: cessão de "
-        "carteira de crédito entre instituições financeiras) e foram removidas desta "
-        "análise para reduzir custo. Se isso for um engano, considere que informações "
-        "relevantes podem estar ausentes.)\n\n"
-    )
+    avisos = []
+
+    if excluidas_terceiros:
+        avisos.append(
+            f"(Aviso: {len(excluidas_terceiros)} página(s) deste processo foram identificadas "
+            "como um anexo de listagem de terceiros não relacionados ao caso (ex: cessão de "
+            "carteira de crédito entre instituições financeiras) e foram removidas desta "
+            "análise para reduzir custo. Se isso for um engano, considere que informações "
+            "relevantes podem estar ausentes.)"
+        )
+
+    if excluidas_quebradas:
+        avisos.append(
+            f"(Aviso: {len(excluidas_quebradas)} página(s) deste processo (provavelmente uma "
+            "tabela/planilha de cálculo) tiveram a extração de texto malsucedida — o PDF usa uma "
+            "fonte que não pôde ser decodificada corretamente — e foram removidas desta análise "
+            "para não gastar tokens com texto sem sentido. Se algum valor ou cálculo relevante "
+            "estiver disponível só nessas páginas, ele pode estar ausente deste relatório.)"
+        )
 
     diagnostico_filtrado = {
-        "texto": aviso + texto_filtrado,
+        "texto": "\n\n".join(avisos) + "\n\n" + texto_filtrado,
         "total_paginas": diagnostico_original["total_paginas"],
         "paginas_sem_texto": diagnostico_original["paginas_sem_texto"],
         "caracteres": len(texto_filtrado),

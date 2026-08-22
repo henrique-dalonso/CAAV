@@ -173,8 +173,8 @@ def _preparar_novo_lote(config):
             confianca = {
                 "nivel": "revisao",
                 "motivo": (
-                    f"{len(paginas_excluidas_triagem)} página(s) removida(s) automaticamente "
-                    "por parecerem um anexo de listagem de terceiros."
+                    f"{len(paginas_excluidas_triagem)} página(s) removida(s) automaticamente da "
+                    "análise (anexo de listagem de terceiros e/ou falha na extração de texto de página)."
                 ),
             }
 

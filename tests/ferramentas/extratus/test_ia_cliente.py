@@ -10,10 +10,12 @@ from app.ferramentas.extratus.core.ia_cliente import (
     _dividir_paginas_em_pedacos,
     _montar_parametros_pedaco,
     _montar_parametros_reducao,
+    _pagina_parece_extracao_quebrada,
     _pagina_parece_lista_de_terceiros,
     cabe_no_limite_pdf_nativo,
     estimar_tokens_texto,
     extrair_dados_e_uso,
+    filtrar_paginas_extracao_quebrada,
     filtrar_paginas_lista_de_terceiros,
     gerar_relatorio_claude_dividido,
     montar_diagnostico_com_triagem,
@@ -323,6 +325,101 @@ def test_filtrar_paginas_sem_nenhuma_suspeita_devolve_tudo():
 
     assert relevantes == paginas
     assert excluidas == []
+
+
+# --- Triagem de páginas com extração de texto quebrada (fonte não decodificável) ---
+
+def _texto_glifo_quebrado(quantidade=40):
+    # Igual ao padrão real encontrado (Henrique, 2026-08-21): sequência de
+    # tokens "/N" sem nenhum significado, típico de fonte sem mapa unicode.
+    return " ".join(f"/{i}" for i in range(quantidade))
+
+
+def test_pagina_parece_extracao_quebrada_com_puro_glifo():
+    assert _pagina_parece_extracao_quebrada(_texto_glifo_quebrado()) is True
+
+
+def test_pagina_normal_nao_parece_extracao_quebrada():
+    texto = "Vistos. Defiro o pedido de busca e apreensão do bem em 01/02/2019."
+    assert _pagina_parece_extracao_quebrada(texto) is False
+
+
+def test_pagina_vazia_nao_parece_extracao_quebrada():
+    assert _pagina_parece_extracao_quebrada("") is False
+
+
+def test_pagina_com_poucos_tokens_quebrados_nao_e_suspeita():
+    # Só alguns tokens soltos no meio de texto normal não deve disparar.
+    texto = "Vistos. /1 Defiro o pedido /2 de busca e apreensão do bem."
+    assert _pagina_parece_extracao_quebrada(texto) is False
+
+
+def test_filtrar_paginas_extracao_quebrada_separa_sem_perder_nenhuma():
+    paginas = [
+        {"numero": 1, "texto_bruto": "Vistos. Defiro o pedido."},
+        {"numero": 2, "texto_bruto": _texto_glifo_quebrado()},
+        {"numero": 3, "texto_bruto": "Intime-se a parte ré."},
+    ]
+
+    relevantes, excluidas = filtrar_paginas_extracao_quebrada(paginas)
+
+    assert [p["numero"] for p in relevantes] == [1, 3]
+    assert excluidas == [2]
+
+
+def test_montar_diagnostico_remove_pagina_com_extracao_quebrada():
+    paginas_fake = [
+        _pagina_fake_completa(1, "Vistos. Defiro o pedido de busca e apreensão."),
+        _pagina_fake_completa(2, _texto_glifo_quebrado()),
+    ]
+    diagnostico_original_fake = {
+        "texto": "\n\n".join(p["texto_marcado"] for p in paginas_fake),
+        "total_paginas": 2,
+        "paginas_sem_texto": 0,
+        "caracteres": 500,
+    }
+
+    with patch(
+        "app.ferramentas.extratus.core.ia_cliente.extrair_texto_pdf_com_diagnostico",
+        return_value=diagnostico_original_fake,
+    ), patch(
+        "app.ferramentas.extratus.core.ia_cliente.extrair_paginas_pdf",
+        return_value=(paginas_fake, 2),
+    ):
+        diagnostico, paginas_relevantes, paginas_excluidas = montar_diagnostico_com_triagem("qualquer.pdf")
+
+    assert paginas_excluidas == [2]
+    assert [p["numero"] for p in paginas_relevantes] == [1]
+    assert "Vistos" in diagnostico["texto"]
+    assert "extração de texto malsucedida" in diagnostico["texto"]
+
+
+def test_montar_diagnostico_com_terceiros_e_extracao_quebrada_juntos():
+    paginas_fake = [
+        _pagina_fake_completa(1, "Vistos. Defiro o pedido de busca e apreensão."),
+        _pagina_fake_completa(2, _texto_lista_terceiros(15)),
+        _pagina_fake_completa(3, _texto_glifo_quebrado()),
+    ]
+    diagnostico_original_fake = {
+        "texto": "\n\n".join(p["texto_marcado"] for p in paginas_fake),
+        "total_paginas": 3,
+        "paginas_sem_texto": 0,
+        "caracteres": 700,
+    }
+
+    with patch(
+        "app.ferramentas.extratus.core.ia_cliente.extrair_texto_pdf_com_diagnostico",
+        return_value=diagnostico_original_fake,
+    ), patch(
+        "app.ferramentas.extratus.core.ia_cliente.extrair_paginas_pdf",
+        return_value=(paginas_fake, 3),
+    ):
+        diagnostico, paginas_relevantes, paginas_excluidas = montar_diagnostico_com_triagem("qualquer.pdf")
+
+    assert sorted(paginas_excluidas) == [2, 3]
+    assert [p["numero"] for p in paginas_relevantes] == [1]
+    assert "removidas desta análise" in diagnostico["texto"]
+    assert "extração de texto malsucedida" in diagnostico["texto"]
 
 
 def _pagina_fake_completa(numero, texto_bruto):

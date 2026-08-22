@@ -40,8 +40,8 @@ def ajustar_confianca_pos_ia(confianca, uso_ia):
         )
     if uso_ia.get("paginas_excluidas_triagem"):
         motivos_revisao.append(
-            f"{len(uso_ia['paginas_excluidas_triagem'])} página(s) removida(s) automaticamente por "
-            "parecerem um anexo de listagem de terceiros"
+            f"{len(uso_ia['paginas_excluidas_triagem'])} página(s) removida(s) automaticamente da "
+            "análise (anexo de listagem de terceiros e/ou falha na extração de texto de página)"
         )
 
     if motivos_revisao:
