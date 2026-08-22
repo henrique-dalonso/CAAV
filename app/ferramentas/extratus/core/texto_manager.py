@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 from pypdf import PdfReader
@@ -6,6 +7,27 @@ from pypdf import PdfReader
 # Abaixo disso, consideramos que a página "não tem texto de verdade" —
 # só um cabeçalho/carimbo solto, não o conteúdo real da página.
 MINIMO_CARACTERES_PAGINA_COM_TEXTO = 30
+
+# Carimbo de rodapé que o eproc/TJ grava em toda página de um evento com
+# PDF anexado — inclusive em páginas cujo conteúdo real é só uma imagem
+# escaneada, sem nenhuma camada de texto por trás. Descoberto em
+# 2026-08-21 (Henrique, processo real de 274 páginas): 217 delas (79%)
+# eram só esse carimbo, cada uma com ~60-70 caracteres — acima da régua
+# de MINIMO_CARACTERES_PAGINA_COM_TEXTO — então a régua sozinha achava
+# que a página "tinha texto", quando na verdade era 100% imagem (e o
+# relatório saía com buracos silenciosos nessas páginas). Precisa
+# remover o carimbo ANTES de medir.
+PADRAO_CARIMBO_PAGINA_EPROC = re.compile(
+    r"Processo\s+[\d.\-]+,\s*Evento\s+\d+,\s*\w+,\s*P[áa]gina\s+\d+",
+    re.IGNORECASE,
+)
+
+
+def _texto_real_da_pagina(texto_bruto):
+    """Texto de uma página descontando o carimbo de rodapé do eproc (ver
+    PADRAO_CARIMBO_PAGINA_EPROC) — usado só pra MEDIR se a página tem
+    conteúdo de verdade, não altera o texto enviado pra IA."""
+    return PADRAO_CARIMBO_PAGINA_EPROC.sub("", texto_bruto).strip()
 
 
 def extrair_paginas_pdf(caminho_pdf):
@@ -43,7 +65,7 @@ def extrair_texto_pdf_com_diagnostico(caminho_pdf):
 
     paginas_sem_texto = sum(
         1 for pagina in paginas
-        if len(pagina["texto_bruto"].strip()) < MINIMO_CARACTERES_PAGINA_COM_TEXTO
+        if len(_texto_real_da_pagina(pagina["texto_bruto"])) < MINIMO_CARACTERES_PAGINA_COM_TEXTO
     )
     texto_completo = "\n\n".join(pagina["texto_marcado"] for pagina in paginas)
 
