@@ -865,13 +865,32 @@
         // Reordena pra bater com a ordem que o servidor mandou (em
         // Pendentes, prioriza vermelho > laranja > amarelo — Henrique,
         // 2026-08-07) e, de quebra, entra quem ainda não estava na tela.
-        // appendChild com um nó que já existe no DOM só MOVE ele pra nova
-        // posição (não duplica) — por isso um loop só resolve as duas
-        // coisas: reordenar quem já existia e inserir os novos no lugar
-        // certo. Quem está saindo (acima) fica de fora desse loop de
-        // propósito — não faz sentido mover um item que já está sumindo.
+        // SÓ mexe no DOM quando a posição realmente muda: um item que já
+        // está no lugar certo não sofre nenhuma chamada de
+        // appendChild/insertBefore. Isso importa porque reinserir um nó
+        // que já existe no DOM (mesmo "no mesmo lugar") ainda reinicia
+        // qualquer animação CSS pendurada nele — e a classe
+        // .fila-item-entrando nunca é removida depois que a animação
+        // termina, então reordenar à toa fazia TODO item da lista piscar
+        // de novo a cada tick do polling (5s), mesmo sem nada ter mudado.
+        // Bug real reportado por Henrique, 2026-08-24. Pula nós
+        // "saindo" ao comparar (ver loop acima) — eles não fazem parte
+        // de itensNovos e não vale a pena mover quem já está sumindo.
+        function proximoRelevante(no) {
+            while (no && no.classList.contains("fila-item-saindo")) {
+                no = no.nextElementSibling;
+            }
+            return no;
+        }
+
+        var cursor = proximoRelevante(listaEl.firstElementChild);
         itensNovos.forEach(function (item) {
-            listaEl.appendChild(existentes[item.nome] || criarItemFila(item, comCheckbox));
+            var el = existentes[item.nome] || criarItemFila(item, comCheckbox);
+            if (el === cursor) {
+                cursor = proximoRelevante(cursor.nextElementSibling);
+            } else {
+                listaEl.insertBefore(el, cursor);
+            }
         });
     }
 
