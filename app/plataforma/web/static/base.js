@@ -936,6 +936,13 @@
         }
 
         function preencherListaNotificacoes(listaEl, itens) {
+            // Reconstrói a lista inteira a cada atualização (mais simples
+            // que diffar por item, e sem animação de entrada aqui pra
+            // "piscar") — mas isso zera o scroll sozinho, então quem
+            // estiver lendo mais pra baixo no painel (aberto durante uma
+            // atualização ao vivo) voltava pro topo do nada. Guarda e
+            // devolve a posição de leitura (Henrique, 2026-08-24).
+            var scrollAnterior = listaEl.scrollTop;
             listaEl.innerHTML = "";
 
             itens.forEach(function (item) {
@@ -989,6 +996,8 @@
 
                 listaEl.appendChild(linkEl);
             });
+
+            listaEl.scrollTop = scrollAnterior;
         }
 
         function renderizarNotificacoes(itens) {
