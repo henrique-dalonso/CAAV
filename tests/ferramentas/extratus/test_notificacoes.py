@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 from sqlmodel import delete
 
@@ -91,6 +93,30 @@ def test_erro_do_robo_com_processo_vira_notificacao_com_deep_link(limpar_notific
 
     assert achado is not None
     assert achado["link"] == "/extratus/relatorios-robo?processo=0000000-00.2026.8.00.9999"
+
+
+def test_notificacao_de_triagem_carrega_criado_em_valido(limpar_notificacoes_teste):
+    # Henrique, 2026-08-24: "X minutos atrás" no sino — precisa de um
+    # timestamp ISO válido pra JS calcular o tempo relativo.
+    nome = f"{PREFIXO_TESTE}com_timestamp.pdf"
+    _criar_checagem(nome, DUPLICADO_RELATORIO)
+
+    itens = listar_notificacoes()
+    achado = next((i for i in itens if nome in i["mensagem"]), None)
+
+    assert achado is not None
+    assert datetime.fromisoformat(achado["criado_em"])
+
+
+def test_notificacao_de_erro_do_robo_carrega_criado_em_valido(limpar_notificacoes_teste):
+    nome = f"{PREFIXO_TESTE}erro_com_timestamp.pdf"
+    registrar_erro(nome, None, "erro_pdf", "PDF corrompido", usuario_id=None)
+
+    itens = listar_notificacoes()
+    achado = next((i for i in itens if nome in i["mensagem"]), None)
+
+    assert achado is not None
+    assert datetime.fromisoformat(achado["criado_em"])
 
 
 def test_erro_do_fluxo_manual_nao_vira_notificacao(limpar_notificacoes_teste):

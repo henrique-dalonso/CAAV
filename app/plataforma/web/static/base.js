@@ -935,6 +935,34 @@
             }
         }
 
+        // "5 minutos atrás" etc. — item.criado_em vem como ISO sem fuso
+        // (mesmo horário local do servidor, igual o resto do site já usa
+        // em datetime.now()), então new Date() já interpreta certo aqui
+        // dentro do escritório (servidor e navegador no mesmo fuso).
+        function tempoRelativo(isoString) {
+            if (!isoString) {
+                return "";
+            }
+
+            var diffMs = new Date() - new Date(isoString);
+            var diffMin = Math.floor(diffMs / 60000);
+
+            if (diffMin < 1) {
+                return "agora mesmo";
+            }
+            if (diffMin < 60) {
+                return diffMin + (diffMin === 1 ? " minuto atrás" : " minutos atrás");
+            }
+
+            var diffHoras = Math.floor(diffMin / 60);
+            if (diffHoras < 24) {
+                return diffHoras + (diffHoras === 1 ? " hora atrás" : " horas atrás");
+            }
+
+            var diffDias = Math.floor(diffHoras / 24);
+            return diffDias + (diffDias === 1 ? " dia atrás" : " dias atrás");
+        }
+
         function preencherListaNotificacoes(listaEl, itens) {
             // Reconstrói a lista inteira a cada atualização (mais simples
             // que diffar por item, e sem animação de entrada aqui pra
@@ -963,6 +991,13 @@
 
                 linkEl.appendChild(origemEl);
                 linkEl.appendChild(textoEl);
+
+                if (item.criado_em) {
+                    var tempoEl = document.createElement("span");
+                    tempoEl.className = "item-notificacao-tempo";
+                    tempoEl.textContent = tempoRelativo(item.criado_em);
+                    linkEl.appendChild(tempoEl);
+                }
 
                 // X só em notificações "não importantes" (Henrique,
                 // 2026-08-13: "pronto" pode ser descartado na hora;

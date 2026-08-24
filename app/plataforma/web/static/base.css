@@ -1837,6 +1837,11 @@ html[data-theme="escuro"] .selo-roxo {
     overflow: visible;
 }
 
+.item-notificacao-tempo {
+    font-size: 0.68rem;
+    color: var(--cor-texto-suave);
+}
+
 .item-notificacao-expandir {
     align-self: flex-start;
     padding: 0;

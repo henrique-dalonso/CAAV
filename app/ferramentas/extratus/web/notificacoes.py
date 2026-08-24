@@ -46,6 +46,7 @@ def listar_notificacoes():
             "mensagem": f'"{registro.nome_arquivo}": {motivo}',
             "tipo": "triagem",
             "link": "/extratus/fila",
+            "criado_em": registro.atualizado_em.isoformat(),
         })
 
     for job in listar_jobs_robo_nao_notificados():
@@ -66,6 +67,7 @@ def listar_notificacoes():
                 "mensagem": f'"{job.arquivo_pdf}": erro ao processar ({motivo})',
                 "tipo": "erro",
                 "link": link,
+                "criado_em": job.criado_em.isoformat(),
             })
         elif job.status == "sucesso":
             notificacoes.append({
@@ -74,12 +76,14 @@ def listar_notificacoes():
                 "link": link,
                 "descartavel": True,
                 "resolver": f"/extratus/relatorios-robo/{job.id}/marcar-notificacao-resolvida",
+                "criado_em": job.criado_em.isoformat(),
             })
         else:  # "revisao"
             notificacoes.append({
                 "mensagem": f'"{job.arquivo_pdf}": relatório do Robô pronto, mas precisa de revisão',
                 "tipo": "revisao",
                 "link": link,
+                "criado_em": job.criado_em.isoformat(),
             })
 
     return notificacoes
@@ -115,6 +119,7 @@ def listar_notificacoes_pessoais(usuario_id):
             "link": "/extratus/",
             "pessoal": True,
             "descartavel": False,
+            "criado_em": registro.atualizado_em.isoformat(),
         })
 
     for registro in listar_erros_do_usuario(usuario_id):
@@ -124,6 +129,7 @@ def listar_notificacoes_pessoais(usuario_id):
             "link": "/extratus/",
             "pessoal": True,
             "descartavel": False,
+            "criado_em": registro.atualizado_em.isoformat(),
         })
 
     for job in listar_relatorios_manuais_nao_notificados_do_usuario(usuario_id):
@@ -135,6 +141,7 @@ def listar_notificacoes_pessoais(usuario_id):
                 "pessoal": True,
                 "descartavel": True,
                 "resolver": f"/extratus/relatorios/{job.id}/marcar-notificacao-resolvida",
+                "criado_em": job.criado_em.isoformat(),
             })
         else:
             notificacoes.append({
@@ -143,6 +150,7 @@ def listar_notificacoes_pessoais(usuario_id):
                 "link": "/extratus/relatorios",
                 "pessoal": True,
                 "descartavel": False,
+                "criado_em": job.criado_em.isoformat(),
             })
 
     return notificacoes
