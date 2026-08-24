@@ -87,7 +87,18 @@ app = FastAPI(
     openapi_url=None,
 )
 
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+# Henrique, 2026-08-24: "quero que as pessoas loguem o menos possível,
+# mas deve renovar se ela acessar" — sessão desliza (ver
+# auth.usuario_logado, que "toca" a sessão a cada requisição autenticada
+# pra resetar esse relógio), com folga de 1 dia e meio de INATIVIDADE:
+# cobre tranquilo um intervalo de um dia pro outro (sai às 18h, volta às
+# 8h — só ~14h de folga já bastaria, mas 36h dá margem sem risco de
+# expirar à toa no meio da noite), mas ainda expira no fim de semana —
+# quem acessa sexta e só volta segunda passa ~60h sem acessar, bem acima
+# das 36h, então loga normalmente de novo na segunda, como pedido.
+SESSAO_MAX_IDADE_SEGUNDOS = 36 * 60 * 60
+
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, max_age=SESSAO_MAX_IDADE_SEGUNDOS)
 
 
 @app.middleware("http")

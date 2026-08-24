@@ -23,6 +23,18 @@ def usuario_logado(request: Request):
     if not usuario_id:
         return None
 
+    # Reatribuir a mesma chave marca a sessão como "modificada" (ver
+    # Session.__setitem__ do Starlette, que marca modified=True em
+    # qualquer __setitem__, mesmo reatribuindo o mesmo valor) — isso faz
+    # o SessionMiddleware reenviar o cookie com Max-Age novo a cada
+    # requisição autenticada, "resetando o relógio" da expiração. Sem
+    # isso, a sessão expiraria num prazo FIXO a partir do login, nunca
+    # renovado pelo uso (ver SESSAO_MAX_IDADE_SEGUNDOS em main.py).
+    # usuario_logado é chamado (via exigir_login) por praticamente toda
+    # rota protegida do site — único lugar por onde passa qualquer
+    # requisição de alguém logado, então basta tocar aqui.
+    request.session["usuario_id"] = usuario_id
+
     return buscar_usuario_por_id(usuario_id)
 
 
