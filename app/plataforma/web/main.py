@@ -144,7 +144,14 @@ async def middleware_rastrear_pagina_anterior(request: Request, call_next):
     Só GET conta como "página visitada" (POST de formulário — Salvar
     configurações, etc. — não deveria virar destino de "Voltar"); só
     pra usuário logado; nunca pra /login (nem como destino faz sentido,
-    ver _PAGINAS_SEM_BOTAO_VOLTAR em templates_util.py)."""
+    ver _PAGINAS_SEM_BOTAO_VOLTAR em templates_util.py); e só se a
+    resposta for HTML de verdade — achado real, 2026-08-25: sem esse
+    filtro, /notificacoes/eventos (o SSE do sininho, aberto sozinho em
+    segundo plano pelo navegador, nunca por navegação de verdade) virava
+    "ultima_pagina" e o botão "Voltar" mandava pra um stream de eventos
+    cru em vez de pra tela anterior de verdade. content-type descarta
+    isso (e qualquer outro endpoint de API/JSON) sem precisar listar
+    rota por rota."""
     if "/static/" in request.url.path:
         return await call_next(request)
 
@@ -154,6 +161,7 @@ async def middleware_rastrear_pagina_anterior(request: Request, call_next):
         request.method == "GET"
         and request.session.get("usuario_id")
         and request.url.path != "/login"
+        and resposta.headers.get("content-type", "").startswith("text/html")
     ):
         request.session["ultima_pagina"] = {
             "url": request.url.path,

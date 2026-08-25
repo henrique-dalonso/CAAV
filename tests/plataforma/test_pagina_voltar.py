@@ -81,3 +81,25 @@ def test_pagina_sem_nome_cadastrado_mostra_botao_generico(cliente_logado):
     assert 'href="/rota-sem-nome-cadastrado"' in botao
     assert ">Voltar<" in botao
     assert "Voltar para" not in botao
+
+
+def test_endpoint_json_nao_vira_pagina_de_voltar(cliente_logado):
+    """Regressão de um bug real, 2026-08-25: endpoints como /notificacoes
+    (JSON, chamado sozinho pelo navegador em segundo plano — sininho do
+    cabeçalho — não é navegação de verdade) ou /notificacoes/eventos (o
+    SSE do mesmo sininho) viravam "ultima_pagina" sem o filtro de
+    content-type, e o botão "Voltar" mandava pra um endpoint de API cru
+    em vez de pra tela anterior real. /notificacoes é só JSON — mais
+    simples de testar que o SSE (stream infinito), mesma lógica de
+    exclusão (content-type não começa com text/html)."""
+    cliente_logado.get("/admin/ferramentas")
+
+    resp_json = cliente_logado.get("/notificacoes")
+    assert resp_json.headers["content-type"].startswith("application/json")
+
+    resp = cliente_logado.get("/admin/ferramentas/extratus-relatorios")
+
+    botao = _botao_voltar(resp.text)
+    assert botao is not None
+    assert "/notificacoes" not in botao
+    assert 'href="/admin/ferramentas"' in botao

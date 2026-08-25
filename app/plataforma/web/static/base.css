@@ -1262,14 +1262,8 @@ html[data-theme="escuro"] .selo-roxo {
        em tela que se vê 1x por sessão (login), senão vira demora chata. */
 }
 
-.barra-superior-esquerda {
-    display: flex;
-    align-items: center;
-    gap: 1.1rem;
-    min-width: 0;
-}
-
 .marca-sistema {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 0.75rem;
@@ -1285,8 +1279,20 @@ html[data-theme="escuro"] .selo-roxo {
    com o nome da última tela) — nome vem de nomes_paginas.py; sem nome
    cadastrado mostra só "Voltar" (ver pagina_voltar, templates_util.py).
    max-width com ellipsis pra não estourar o cabeçalho com um nome de
-   ferramenta comprido ("Fila do Robô — Extratus - Relatórios"). */
+   ferramenta comprido ("Fila do Robô — Extratus - Relatórios").
+
+   position:absolute de propósito (Henrique, 2026-08-25: "não é pra
+   empurrar a logo pro lado... coloca esse elemento fora da div
+   principal") — fica ancorado em .marca-sistema (position:relative,
+   acima), mas FORA do fluxo flex normal, então nunca muda a largura
+   calculada de .marca-sistema nem empurra a logo/o texto CAAV pro
+   lado, apareça o botão ou não. */
 .botao-voltar-topo {
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-left: 1rem;
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;

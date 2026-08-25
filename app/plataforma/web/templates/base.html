@@ -15,7 +15,19 @@
 <body class="{% block corpo_classe %}fundo-degrade{% endblock %}">
     <div class="pagina">
         <header class="barra-superior">
-            <div class="barra-superior-esquerda">
+            <div class="marca-sistema">
+                <a href="/" class="selo-marca marca-sistema-logo">
+                    <img src="/static/marca/logo-av-marca.png" alt="Alonso &amp; Verdiani">
+                </a>
+                <div>
+                    <strong>CAAV</strong>
+                    {% if _cor_ferramenta %}
+                    <span class="marca-sistema-ferramenta">{{ _cor_ferramenta.nome }}</span>
+                    {% else %}
+                    <span>Alonso &amp; Verdiani</span>
+                    {% endif %}
+                </div>
+
                 {% set _voltar = pagina_voltar(request) %}
                 {% if _voltar %}
                 <a href="{{ _voltar.url }}" class="botao-voltar-topo" {% if _voltar.nome %}data-dica="Voltar para {{ _voltar.nome }}"{% endif %}>
@@ -25,20 +37,6 @@
                     <span>{{ "Voltar para " ~ _voltar.nome if _voltar.nome else "Voltar" }}</span>
                 </a>
                 {% endif %}
-
-                <div class="marca-sistema">
-                    <a href="/" class="selo-marca marca-sistema-logo">
-                        <img src="/static/marca/logo-av-marca.png" alt="Alonso &amp; Verdiani">
-                    </a>
-                    <div>
-                        <strong>CAAV</strong>
-                        {% if _cor_ferramenta %}
-                        <span class="marca-sistema-ferramenta">{{ _cor_ferramenta.nome }}</span>
-                        {% else %}
-                        <span>Alonso &amp; Verdiani</span>
-                        {% endif %}
-                    </div>
-                </div>
             </div>
 
             <div class="menu-usuario">
