@@ -41,6 +41,27 @@ def listar_lotes_em_andamento():
         return sessao.exec(consulta).all()
 
 
+def obter_estatisticas_lotes():
+    """Resumo rápido pra tela de Configurações (admin) — total de lotes já
+    concluídos e quando foi o último, sem precisar abrir Relatórios do
+    Robô pra ter essa noção. `None` em ultimo_concluido_em quando o Robô
+    nunca terminou um lote ainda (site novo, ou nunca foi ligado)."""
+    with obter_sessao() as sessao:
+        total_concluidos = sessao.exec(
+            select(LoteRobo).where(LoteRobo.status == "concluido")
+        ).all()
+
+        ultimo_concluido_em = max(
+            (lote.finalizado_em for lote in total_concluidos if lote.finalizado_em),
+            default=None,
+        )
+
+        return {
+            "total_concluidos": len(total_concluidos),
+            "ultimo_concluido_em": ultimo_concluido_em,
+        }
+
+
 def listar_itens_do_lote(lote_id):
     with obter_sessao() as sessao:
         consulta = select(ItemLoteRobo).where(ItemLoteRobo.lote_id == lote_id)

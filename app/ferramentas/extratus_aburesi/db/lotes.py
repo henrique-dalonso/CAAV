@@ -41,6 +41,25 @@ def listar_lotes_em_andamento():
         return sessao.exec(consulta).all()
 
 
+def obter_estatisticas_lotes():
+    """Ver docstring equivalente em app/ferramentas/extratus/db/lotes.py
+    (Extratus - Relatórios) — mesma lógica."""
+    with obter_sessao() as sessao:
+        total_concluidos = sessao.exec(
+            select(LoteRobo).where(LoteRobo.status == "concluido")
+        ).all()
+
+        ultimo_concluido_em = max(
+            (lote.finalizado_em for lote in total_concluidos if lote.finalizado_em),
+            default=None,
+        )
+
+        return {
+            "total_concluidos": len(total_concluidos),
+            "ultimo_concluido_em": ultimo_concluido_em,
+        }
+
+
 def listar_itens_do_lote(lote_id):
     with obter_sessao() as sessao:
         consulta = select(ItemLoteRobo).where(ItemLoteRobo.lote_id == lote_id)

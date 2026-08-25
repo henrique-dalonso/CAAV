@@ -25,58 +25,72 @@
 <p class="banner-sucesso">✓ {{ sucesso }}</p>
 {% endif %}
 
-<section class="cartao-secao">
-    <h2>Status</h2>
-    <div class="robo-status">
-        <form action="/admin/ferramentas/{{ chave }}/alternar" method="post" id="form-interruptor-robo">
-            <label class="interruptor">
+<section class="cartao-secao robo-hero{{ ' robo-hero-ligado' if robo_ativo }}">
+    <div class="robo-hero-topo">
+        <div class="robo-hero-icone" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="4" y="9" width="16" height="11" rx="2.5"></rect>
+                <path d="M9 9V6a3 3 0 0 1 6 0v3"></path>
+                <line x1="9" y1="14" x2="9" y2="15"></line>
+                <line x1="15" y1="14" x2="15" y2="15"></line>
+                <line x1="9" y1="17.5" x2="15" y2="17.5"></line>
+                <line x1="12" y1="3" x2="12" y2="1.5"></line>
+            </svg>
+        </div>
+        <div class="robo-hero-info">
+            <span class="robo-hero-rotulo">Status do Robô</span>
+            <h2 class="robo-hero-titulo">{{ "Ligado" if robo_ativo else "Desligado" }}</h2>
+            <p class="robo-hero-descricao">
+                {% if robo_ativo %}
+                A cada poucos minutos, ele confere a pasta "Fila do Robô" sozinho e manda os PDFs novos em
+                lote pra IA (mais barato, mas pode levar de minutos até 24h pra voltar).
+                {% else %}
+                Não olha a pasta nem processa nada enquanto estiver assim.
+                {% endif %}
+            </p>
+        </div>
+        <form action="/admin/ferramentas/{{ chave }}/alternar" method="post" id="form-interruptor-robo" class="robo-hero-interruptor">
+            <label class="interruptor interruptor-grande">
                 <input type="checkbox" id="interruptor-robo" {% if robo_ativo %}checked{% endif %}>
                 <span class="interruptor-trilha"></span>
-                <span class="interruptor-rotulo">{{ "Ligado" if robo_ativo else "Desligado" }}</span>
             </label>
         </form>
-        <p class="aviso-discreto robo-descricao">
-            {% if robo_ativo %}
-            O Robô está ligado: a cada poucos minutos, ele confere a pasta "Fila do Robô" sozinho e
-            manda os PDFs novos em lote pra IA (mais barato, mas pode levar de minutos até 24h pra voltar).
-            {% else %}
-            Desligado — o Robô não olha a pasta nem processa nada enquanto isso.
-            {% endif %}
-        </p>
     </div>
+
+    <div class="robo-stats">
+        <div class="robo-stat">
+            <span class="robo-stat-valor">{{ lotes_em_andamento|length }}</span>
+            <span class="robo-stat-rotulo">lote(s) em processamento</span>
+        </div>
+        <div class="robo-stat">
+            <span class="robo-stat-valor">{{ estatisticas_lotes.total_concluidos }}</span>
+            <span class="robo-stat-rotulo">lote(s) concluído(s) no total</span>
+        </div>
+        <div class="robo-stat">
+            <span class="robo-stat-valor robo-stat-valor-pequeno">{{ estatisticas_lotes.ultimo_concluido_em.strftime("%d/%m/%Y %H:%M") if estatisticas_lotes.ultimo_concluido_em else "Nunca" }}</span>
+            <span class="robo-stat-rotulo">último lote concluído</span>
+        </div>
+    </div>
+
     {% if lotes_em_andamento %}
-    <div class="robo-lotes">
-        <h3>Lote(s) em processamento</h3>
-        <ul class="lista-custos">
-            {% for entrada in lotes_em_andamento %}
-            <li>
-                <span>Lote enviado em {{ entrada.lote.criado_em.strftime("%d/%m/%Y %H:%M") }}</span>
-                <strong>{{ entrada.total_itens }} arquivo(s)</strong>
-            </li>
-            {% endfor %}
-        </ul>
-    </div>
-    {% elif robo_ativo %}
-    <p class="aviso-discreto">Nenhum lote em processamento no momento.</p>
+    <ul class="robo-lotes-lista">
+        {% for entrada in lotes_em_andamento %}
+        <li class="robo-lote-item">
+            <span class="robo-lote-pulso" aria-hidden="true"></span>
+            <span>Lote enviado em {{ entrada.lote.criado_em.strftime("%d/%m/%Y %H:%M") }}</span>
+            <strong>{{ entrada.total_itens }} arquivo(s)</strong>
+        </li>
+        {% endfor %}
+    </ul>
     {% endif %}
 </section>
 
-<section class="cartao-secao">
-    <h2>Configurações</h2>
-
-    <div class="grupo-config">
-        <div class="grupo-config-cabecalho">
-            <span class="grupo-config-icone">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <line x1="4" y1="21" x2="4" y2="14"></line>
-                    <line x1="4" y1="10" x2="4" y2="3"></line>
-                    <line x1="12" y1="21" x2="12" y2="12"></line>
-                    <line x1="12" y1="8" x2="12" y2="3"></line>
-                    <line x1="20" y1="21" x2="20" y2="16"></line>
-                    <line x1="20" y1="12" x2="20" y2="3"></line>
-                    <line x1="1" y1="14" x2="7" y2="14"></line>
-                    <line x1="9" y1="8" x2="15" y2="8"></line>
-                    <line x1="17" y1="16" x2="23" y2="16"></line>
+<div class="config-grade">
+    <section class="cartao-secao config-cartao">
+        <div class="config-cartao-cabecalho">
+            <span class="config-cartao-icone config-cartao-icone-pasta" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"></path>
                 </svg>
             </span>
             <div>
@@ -84,16 +98,15 @@
                 <p>Pasta que a "Fila do Robô" usa pra depositar PDFs. Processamento é sempre em lote (mais barato, até 24h), nunca se mistura com a fila manual em tempo real.</p>
             </div>
         </div>
-        <form action="/admin/ferramentas/{{ chave }}/config" method="post">
+        <form action="/admin/ferramentas/{{ chave }}/config" method="post" class="config-form">
             <div class="campo">
                 <label for="pasta_entrada">Pasta de entrada do Robô</label>
                 <div class="linha-campo-pasta">
                     <input id="pasta_entrada" type="text" name="pasta_entrada" value="{{ config.robo_pasta_entrada }}" required>
-                    <button type="button" class="botao-secundario" id="botao-escolher-pasta">
+                    <button type="button" class="botao-secundario botao-icone-quadrado" id="botao-escolher-pasta" data-dica="Escolher no disco" aria-label="Escolher pasta no disco">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                         </svg>
-                        Escolher no disco
                     </button>
                 </div>
             </div>
@@ -112,27 +125,49 @@
                 Salvar configurações
             </button>
         </form>
-    </div>
+    </section>
 
-    <div class="grupo-config">
-        <div class="grupo-config-cabecalho">
-            <span class="grupo-config-icone">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="17 8 12 3 7 8"></polyline>
-                    <line x1="12" y1="3" x2="12" y2="15"></line>
+    <section class="cartao-secao config-cartao">
+        <div class="config-cartao-cabecalho">
+            <span class="config-cartao-icone config-cartao-icone-prompt" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <path d="M14 2v6h6"></path>
+                    <path d="M9 15l1.8 1.8L15 13"></path>
                 </svg>
             </span>
             <div>
                 <h3>Prompt de instruções</h3>
-                <p>Texto que a IA usa pra montar o relatório. Precisa ser {{ extensao_prompt }} — a versão anterior fica guardada automaticamente, caso precise voltar atrás.</p>
+                <p>Texto que a IA usa pra montar o relatório. Precisa ser {{ extensao_prompt }}.</p>
             </div>
         </div>
-        <form action="/admin/ferramentas/{{ chave }}/prompt" method="post" enctype="multipart/form-data" class="linha-upload">
-            <div class="campo">
-                <label for="arquivo-prompt">Arquivo {{ extensao_prompt }}</label>
-                <input id="arquivo-prompt" type="file" name="arquivo" accept="{{ extensao_prompt }}" required>
-            </div>
+
+        <div class="prompt-meta">
+            <span class="prompt-meta-item">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 16 14"></polyline></svg>
+                {% if metadados_prompt.atualizado_em %}
+                Atualizado em {{ metadados_prompt.atualizado_em.strftime("%d/%m/%Y %H:%M") }}
+                {% else %}
+                Nunca atualizado
+                {% endif %}
+            </span>
+            <span class="prompt-meta-item" data-dica="Cada envio guarda uma cópia da versão anterior, caso precise voltar atrás">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"></path><polyline points="3 4 3 9 8 9"></polyline></svg>
+                {{ metadados_prompt.total_versoes_anteriores }} versão(ões) anterior(es) guardada(s)
+            </span>
+        </div>
+
+        <form action="/admin/ferramentas/{{ chave }}/prompt" method="post" enctype="multipart/form-data" class="config-form">
+            <label class="zona-soltar" for="arquivo-prompt" id="zona-soltar-prompt">
+                <input id="arquivo-prompt" type="file" name="arquivo" accept="{{ extensao_prompt }}" required hidden>
+                <svg class="zona-soltar-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="17 8 12 3 7 8"></polyline>
+                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <p class="zona-soltar-titulo" id="zona-soltar-prompt-texto">Arraste o arquivo {{ extensao_prompt }} aqui, ou clique pra selecionar</p>
+                <p class="zona-soltar-legenda">Substitui o prompt atual — a versão anterior fica guardada</p>
+            </label>
             <button type="submit" class="botao">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -142,8 +177,8 @@
                 Enviar novo prompt
             </button>
         </form>
-    </div>
-</section>
+    </section>
+</div>
 
 <div class="navegador-pastas" id="navegador-pastas" hidden>
     <div class="navegador-pastas-caixa">

@@ -42,3 +42,19 @@ def test_substituir_instrucoes_relatorio_rejeita_conteudo_nao_utf8(prompt_de_tes
 
     # Conteudo original preservado -- upload invalido nao pode corromper o prompt.
     assert prompt_manager.carregar_instrucoes_relatorio() == "instrucoes originais"
+
+
+def test_metadados_prompt_sem_historico_ainda(prompt_de_teste):
+    metadados = prompt_manager.obter_metadados_prompt()
+
+    assert metadados["atualizado_em"] is not None
+    assert metadados["total_versoes_anteriores"] == 0
+
+
+def test_metadados_prompt_conta_versoes_apos_substituicoes(prompt_de_teste):
+    prompt_manager.substituir_instrucoes_relatorio("versao 2".encode("utf-8"))
+    prompt_manager.substituir_instrucoes_relatorio("versao 3".encode("utf-8"))
+
+    metadados = prompt_manager.obter_metadados_prompt()
+
+    assert metadados["total_versoes_anteriores"] == 2

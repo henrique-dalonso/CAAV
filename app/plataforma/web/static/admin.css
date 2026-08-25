@@ -964,11 +964,20 @@ html[data-theme="escuro"] .cartao-config:hover {
 .linha-campo-pasta input {
     flex: 1;
     max-width: none;
+    min-width: 0;
 }
 
 .linha-campo-pasta .botao {
     flex-shrink: 0;
     white-space: nowrap;
+}
+
+/* Botão só com ícone (2026-08-25) — usado no "Escolher no disco" da
+   tela de Configurações, onde o cartão ficou estreito demais (grade de
+   2 colunas) pra caber ícone+texto sem espremer o campo de pasta. */
+.botao-icone-quadrado {
+    padding: 0.6rem;
+    flex-shrink: 0;
 }
 
 .navegador-pastas {
@@ -1038,22 +1047,300 @@ html[data-theme="escuro"] .cartao-config:hover {
     align-items: center;
 }
 
-.robo-status {
+/* Tela de Configurações (admin_ferramentas_detalhe.html) — redesenho
+   completo 2026-08-25, pedido de Henrique: "moderna, com ícones e
+   botões modernos e intuitivos, bonito e funcional, útil". Hero de
+   status (com estatísticas reais — lotes concluídos, último lote — ver
+   db/lotes.py:obter_estatisticas_lotes) + os 2 cartões de configuração
+   lado a lado, cada um com identidade de cor própria (não genéricos
+   como antes). */
+.robo-hero {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
+    gap: 1.35rem;
 }
 
-.robo-descricao {
-    max-width: 480px;
+.robo-hero-topo {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.robo-hero-icone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    flex-shrink: 0;
+    border-radius: var(--raio);
+    background: var(--cor-fundo);
+    color: var(--cor-texto-suave);
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.robo-hero-ligado .robo-hero-icone {
+    background: color-mix(in srgb, var(--cor-robo) 16%, transparent);
+    color: var(--cor-robo);
+}
+
+.robo-hero-info {
+    flex: 1;
+    min-width: 220px;
+}
+
+.robo-hero-rotulo {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--cor-texto-suave);
+    margin-bottom: 0.15rem;
+}
+
+.robo-hero-titulo {
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin: 0 0 0.35rem;
+    color: var(--cor-texto-suave);
+}
+
+.robo-hero-ligado .robo-hero-titulo {
+    color: var(--cor-robo);
+}
+
+.robo-hero-descricao {
+    max-width: 520px;
     margin: 0;
 }
 
-/* Interruptor do Robô usa a mesma cor laranja já usada na aba do Robô
-   (era .aba-robo, agora só o emblema/friso de card) quando ligado. */
-.robo-status .interruptor {
+.robo-hero-interruptor {
+    flex-shrink: 0;
+    align-self: center;
+}
+
+/* Interruptor maior — o padrão (usado em Preferências, etc.) fica
+   pequeno demais como peça central de destaque de uma tela inteira. */
+.interruptor-grande .interruptor-trilha {
+    width: 58px;
+    height: 32px;
+}
+
+.interruptor-grande .interruptor-trilha::before {
+    top: 4px;
+    left: 4px;
+    width: 24px;
+    height: 24px;
+}
+
+.interruptor-grande input:checked ~ .interruptor-trilha::before {
+    translate: 26px 0;
+}
+
+/* Cor laranja do Robô (mesma de .aba-robo/emblema) no interruptor. */
+.robo-hero .interruptor {
     --cor-interruptor-ligado: var(--cor-robo);
+}
+
+.robo-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.75rem;
+}
+
+.robo-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.85rem 1rem;
+    background: var(--cor-fundo);
+    border-radius: var(--raio-pequeno);
+}
+
+.robo-stat-valor {
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
+.robo-stat-valor-pequeno {
+    font-size: 0.95rem;
+}
+
+.robo-stat-rotulo {
+    font-size: 0.76rem;
+    color: var(--cor-texto-suave);
+}
+
+.robo-lotes-lista {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.robo-lote-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 0.85rem;
+    background: color-mix(in srgb, var(--cor-robo) 8%, var(--cor-fundo));
+    border-radius: var(--raio-pequeno);
+    font-size: 0.87rem;
+}
+
+.robo-lote-item strong {
+    margin-left: auto;
+}
+
+.robo-lote-pulso {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--cor-robo);
+    flex-shrink: 0;
+    animation: robo-lote-pulso-anim 1.6s ease-in-out infinite;
+}
+
+@keyframes robo-lote-pulso-anim {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 color-mix(in srgb, var(--cor-robo) 45%, transparent); }
+    50% { opacity: 0.6; box-shadow: 0 0 0 4px transparent; }
+}
+
+.config-grade {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 1.25rem;
+    align-items: start;
+}
+
+.config-cartao {
+    margin-bottom: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.config-cartao-cabecalho {
+    display: flex;
+    gap: 0.85rem;
+    align-items: flex-start;
+    margin-bottom: 1.25rem;
+}
+
+.config-cartao-icone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    border-radius: var(--raio-pequeno);
+}
+
+.config-cartao-icone-pasta {
+    background: color-mix(in srgb, var(--cor-acento) 14%, transparent);
+    color: var(--cor-acento);
+}
+
+.config-cartao-icone-prompt {
+    background: color-mix(in srgb, #9333ea 14%, transparent);
+    color: #9333ea;
+}
+
+.config-cartao-cabecalho h3 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin: 0 0 0.25rem;
+}
+
+.config-cartao-cabecalho p {
+    font-size: 0.82rem;
+    color: var(--cor-texto-suave);
+    margin: 0;
+}
+
+.config-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: auto;
+}
+
+.config-form .campo {
+    margin-bottom: 0;
+}
+
+.config-form > .botao {
+    align-self: flex-start;
+}
+
+.prompt-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-bottom: 1.25rem;
+}
+
+.prompt-meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.7rem;
+    background: var(--cor-fundo);
+    border-radius: 999px;
+    font-size: 0.78rem;
+    color: var(--cor-texto-suave);
+}
+
+.prompt-meta-item svg {
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+
+/* .zona-soltar (arrastar-e-soltar arquivo) é definida em extratus.css,
+   não em admin.css — mesmo motivo de .motivo/.aviso-discreto acima:
+   reaproveitada aqui (prompt do Robô) sem carregar extratus.css. */
+.zona-soltar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    text-align: center;
+    padding: 1.9rem 1.5rem;
+    border: 2px dashed var(--cor-borda);
+    border-radius: var(--raio);
+    background: var(--cor-fundo);
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.zona-soltar:hover,
+.zona-soltar.arrastando {
+    border-color: var(--cor-acento);
+    background: var(--cor-acento-fraco);
+}
+
+.zona-soltar-icone {
+    width: 34px;
+    height: 34px;
+    color: var(--cor-acento);
+    margin-bottom: 0.2rem;
+}
+
+.zona-soltar-titulo {
+    margin: 0;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--cor-texto);
+}
+
+.zona-soltar-legenda {
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--cor-texto-suave);
 }
 
 /* .motivo (texto pequeno e discreto embaixo de um valor — login abaixo

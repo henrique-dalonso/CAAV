@@ -9,12 +9,14 @@ from app.ferramentas.extratus.core import prompt_manager as _prompt_extratus
 from app.ferramentas.extratus.db.lotes import (
     listar_itens_do_lote as _listar_itens_do_lote_extratus,
     listar_lotes_em_andamento as _listar_lotes_em_andamento_extratus,
+    obter_estatisticas_lotes as _obter_estatisticas_lotes_extratus,
 )
 from app.ferramentas.extratus_aburesi.core import config_manager as _config_aburesi
 from app.ferramentas.extratus_aburesi.core import prompt_manager as _prompt_aburesi
 from app.ferramentas.extratus_aburesi.db.lotes import (
     listar_itens_do_lote as _listar_itens_do_lote_aburesi,
     listar_lotes_em_andamento as _listar_lotes_em_andamento_aburesi,
+    obter_estatisticas_lotes as _obter_estatisticas_lotes_aburesi,
 )
 from app.plataforma.db.models import Usuario
 from app.plataforma.db.usuarios import listar_todas_ferramentas, listar_todos_usuarios
@@ -38,6 +40,7 @@ CONFIGURACOES_POR_CHAVE = {
         "prompt_manager": _prompt_extratus,
         "listar_lotes_em_andamento": _listar_lotes_em_andamento_extratus,
         "listar_itens_do_lote": _listar_itens_do_lote_extratus,
+        "obter_estatisticas_lotes": _obter_estatisticas_lotes_extratus,
     },
     "extratus-aburesi": {
         "nome": "Extratus - Aburesi",
@@ -45,6 +48,7 @@ CONFIGURACOES_POR_CHAVE = {
         "prompt_manager": _prompt_aburesi,
         "listar_lotes_em_andamento": _listar_lotes_em_andamento_aburesi,
         "listar_itens_do_lote": _listar_itens_do_lote_aburesi,
+        "obter_estatisticas_lotes": _obter_estatisticas_lotes_aburesi,
     },
 }
 
@@ -116,7 +120,9 @@ def pagina_ferramenta_detalhe(chave: str, request: Request, usuario: Usuario = D
             "config": config_form,
             "provedores_ia": entrada["config_manager"].PROVEDORES_IA_VALIDOS,
             "lotes_em_andamento": lotes_em_andamento,
+            "estatisticas_lotes": entrada["obter_estatisticas_lotes"](),
             "extensao_prompt": entrada["prompt_manager"].extensao_esperada_prompt(),
+            "metadados_prompt": entrada["prompt_manager"].obter_metadados_prompt(),
             "sucesso": sucesso,
             "erro": erro,
         },

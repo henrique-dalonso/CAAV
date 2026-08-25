@@ -8,6 +8,7 @@ from app.ferramentas.extratus.db.lotes import (
     listar_lotes_em_andamento,
     marcar_item_concluido,
     marcar_lote_concluido,
+    obter_estatisticas_lotes,
 )
 from app.ferramentas.extratus.db.models import ItemLoteRobo, LoteRobo
 from app.plataforma.db.session import obter_sessao
@@ -92,3 +93,17 @@ def test_arquivos_reivindicados_inclui_itens_de_qualquer_lote(limpar_lotes_teste
     assert "teste_lote_a.pdf" in reivindicados
     assert "teste_lote_b.pdf" in reivindicados
     assert "teste_lote_nunca_enviado.pdf" not in reivindicados
+
+
+def test_estatisticas_lotes_conta_so_concluidos_e_pega_o_mais_recente(limpar_lotes_teste):
+    antes = obter_estatisticas_lotes()
+
+    lote = criar_lote(BATCH_ID_TESTE, _itens_exemplo())
+    # Ainda "enviado" (em voo) — não deve contar como concluído.
+    assert obter_estatisticas_lotes()["total_concluidos"] == antes["total_concluidos"]
+
+    marcar_lote_concluido(lote.id)
+    depois = obter_estatisticas_lotes()
+
+    assert depois["total_concluidos"] == antes["total_concluidos"] + 1
+    assert depois["ultimo_concluido_em"] is not None
