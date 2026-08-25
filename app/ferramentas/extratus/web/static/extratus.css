@@ -9,63 +9,43 @@
    ferramenta nova pode fazer o mesmo, só redefinindo essas variáveis no
    topo do seu próprio CSS. */
 
-/* Abas do Extratus (Gerar relatórios / Relatórios) — navegação entre
-   duas páginas de verdade, só desenhada como se fosse uma coisa só. */
+/* Abas do Extratus (Fila/Relatórios do Robô, Gerar/Relatórios URGENTE)
+   — navegação entre páginas de verdade, só desenhada como se fosse uma
+   coisa só. Henrique, 2026-08-24: com a engrenagem de Configurações do
+   Robô removida daqui (foi pro admin), a barra virou grid de colunas
+   iguais — mesmo padrão do painel de notificações
+   (.painel-notificacoes-abas, base.css) — sempre esticando pra ocupar a
+   largura toda do conteúdo, centralizada, se ajustando sozinha a 2
+   colunas (só Robô) ou 4 (Robô + Urgente). Substitui o esquema antigo de
+   rolagem lateral. */
 .abas-extratus {
-    display: flex;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
     gap: 0.25rem;
     border-bottom: 1px solid var(--cor-borda);
     margin-bottom: 1.5rem;
-    /* Nomes maiores + mais abas (2026-08-11: "Relatórios do Robô",
-       "Configurações do Robô" etc.) não cabem mais na largura fixa do
-       conteúdo (~832px) em nenhum tamanho de janela — rolagem lateral
-       é o remendo de hoje (Henrique optou por isso em vez de apertar o
-       texto), até a reestruturação de layout mais ampla que já estava
-       pendente (mesma conversa do painel de notificações). Sem essa
-       correção, o texto quebrava em 2 linhas dentro da própria aba, o
-       que ficava pior ainda ("torto"). Barra de rolagem sempre visível
-       (não escondida, padrão de alguns SOs) — única pista de que tem
-       mais aba pra ver além da borda. */
-    overflow-x: auto;
-    /* Sem isso o overflow-y "herda" auto do overflow-x (regra da spec de
-       CSS quando só um dos dois eixos é visible) e abre rolagem vertical
-       indesejada, cortando o topo das abas. */
-    overflow-y: hidden;
-    scrollbar-width: thin;
-}
-
-.abas-extratus::-webkit-scrollbar {
-    height: 6px;
-}
-
-.abas-extratus::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.abas-extratus::-webkit-scrollbar-thumb {
-    background: var(--cor-borda);
-    border-radius: 999px;
 }
 
 .aba {
     display: flex;
     align-items: center;
+    justify-content: center;
+    text-align: center;
     gap: 0.4rem;
-    padding: 0.65rem 1rem;
+    /* min-height (não só padding) garante que uma aba cujo texto quebre
+       em 2 linhas em telas mais estreitas fique com a MESMA altura das
+       vizinhas de 1 linha só — sem isso, linhas de tamanhos diferentes
+       ficavam desalinhadas ("torto", achado real 2026-08-11 com o
+       esquema antigo). */
+    min-height: 2.75rem;
+    padding: 0.5rem 0.75rem;
     font-size: 0.88rem;
     font-weight: 600;
     color: var(--cor-texto-suave);
     text-decoration: none;
     border-bottom: 2px solid transparent;
     margin-bottom: -1px;
-    /* Henrique, 2026-08-11: com nomes de aba maiores, o texto quebrava
-       em 2 linhas dentro da própria aba — abas vizinhas com quantidades
-       de linhas diferentes ficavam desalinhadas ("torto, quebrado").
-       nowrap + flex-shrink:0 mantém toda aba numa linha só, sempre no
-       tamanho natural do texto; a barra rola de lado (.abas-extratus)
-       se um dia não couber tudo, em vez de espremer/quebrar o texto. */
-    white-space: nowrap;
-    flex-shrink: 0;
     transition: color 0.15s ease, border-color 0.15s ease;
 }
 
@@ -102,16 +82,6 @@
 }
 
 html[data-theme="escuro"] .aba .contagem-aba-revisao { background: #332b0f; color: #fde68a; }
-
-/* Empurra uma aba (e tudo depois dela, se houver) pra ponta direita da
-   barra — Henrique, 2026-08-11: usado na engrenagem (Configurações do
-   Robô), que assumiu o lugar que "Custos (admin)" ocupava antes dela
-   virar uma tela à parte, fora do Extratus (ver admin.html). Genérico
-   de propósito (não amarrado à cor/categoria de nenhuma aba específica)
-   pra qualquer aba futura que precise do mesmo comportamento. */
-.aba-fixa-direita {
-    margin-left: auto;
-}
 
 /* Aba do Robô — outra categoria de novo (admin + coordenador liberado),
    cor diferente da de Custos (âmbar) pra não confundir as duas: laranja.
@@ -582,95 +552,6 @@ html[data-theme="escuro"] .aba .contagem-aba-revisao { background: #332b0f; colo
 .botao-pequeno {
     padding: 0.4rem 0.75rem;
     font-size: 0.78rem;
-}
-
-.linha-campo-pasta {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-}
-
-.linha-campo-pasta input {
-    flex: 1;
-    /* .campo input tem max-width:420px pensado pra campo de texto comum —
-       aqui o input já é controlado pelo flex (ao lado do botão "Escolher
-       no disco"), então esse teto sobrava e cortava caminhos de pasta
-       compridos. */
-    max-width: none;
-}
-
-.linha-campo-pasta .botao {
-    flex-shrink: 0;
-    white-space: nowrap;
-}
-
-/* Navegador de pastas do servidor — só existe pro admin escolher a pasta
-   do robô sem precisar digitar o caminho à mão. */
-.navegador-pastas {
-    position: fixed;
-    inset: 0;
-    z-index: 50;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.35);
-}
-
-.navegador-pastas[hidden] {
-    display: none;
-}
-
-.navegador-pastas-caixa {
-    width: min(480px, 90vw);
-    max-height: 80vh;
-    display: flex;
-    flex-direction: column;
-    background: var(--cor-cartao);
-    border: 1px solid var(--cor-borda);
-    border-radius: var(--raio);
-    box-shadow: var(--sombra);
-    padding: 1rem;
-}
-
-.navegador-pastas-atual {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--cor-texto-suave);
-    margin: 0 0 0.6rem;
-    word-break: break-all;
-}
-
-.navegador-pastas-lista {
-    flex: 1;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-    margin-bottom: 0.75rem;
-}
-
-.navegador-pastas-item {
-    display: block;
-    width: 100%;
-    text-align: left;
-    padding: 0.5rem 0.6rem;
-    font-size: 0.85rem;
-    border-radius: var(--raio-pequeno);
-    background: none;
-    border: none;
-    color: var(--cor-texto);
-    cursor: pointer;
-    font-family: inherit;
-}
-
-.navegador-pastas-item:hover {
-    background: var(--cor-fundo);
-}
-
-.navegador-pastas-acoes {
-    display: flex;
-    gap: 0.6rem;
-    align-items: center;
 }
 
 .cartao-secao h2 .contagem {
@@ -1536,190 +1417,8 @@ html[data-theme="escuro"] .status-revisao { background: #332b0f; color: #fde68a;
    tamanho), truncando com "..." (clique expande, .truncavel global)
    em vez de quebrar linha. inline-block pra max-width fazer efeito
    (span solto não obedece largura pra fins de corte de texto). */
-.detalhe-texto {
-    display: inline-block;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    vertical-align: middle;
-    color: var(--cor-texto-suave);
-    font-size: 0.78rem;
-}
-
-/* Histórico (admin) — tabela técnica com custo de IA, só pra quem
-   administra a ferramenta. */
 .aviso-discreto {
     font-size: 0.82rem;
     color: var(--cor-texto-suave);
     margin: -0.5rem 0 1.25rem;
-}
-
-.tabela-custos {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
-    font-size: 0.85rem;
-}
-
-.tabela-custos th {
-    text-align: center;
-    font-size: 0.72rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--cor-texto-suave);
-    padding: 0 0.6rem 0.6rem;
-    border-bottom: 1px solid var(--cor-borda);
-}
-
-.tabela-custos td {
-    padding: 0.7rem 0.6rem;
-    border-bottom: 1px solid var(--cor-borda);
-    /* middle, mesmo motivo do .tabela td em base.css — mesma linha,
-       mesmo eixo, independente do tipo de conteúdo de cada célula. */
-    vertical-align: middle;
-    text-align: center;
-    overflow-wrap: break-word;
-}
-
-.tabela-custos tr:last-child td {
-    border-bottom: none;
-}
-
-.tabela-custos tbody tr:hover {
-    background: var(--cor-fundo);
-}
-
-.tabela-custos th:nth-child(1), .tabela-custos td:nth-child(1) { width: 100px; }
-.tabela-custos th:nth-child(2), .tabela-custos td:nth-child(2) { width: 14%; }
-.tabela-custos th:nth-child(3), .tabela-custos td:nth-child(3) { width: 16%; }
-.tabela-custos th:nth-child(4), .tabela-custos td:nth-child(4) { width: 12%; }
-.tabela-custos th:nth-child(5), .tabela-custos td:nth-child(5) { width: 80px; }
-.tabela-custos th:nth-child(6), .tabela-custos td:nth-child(6) { width: 100px; }
-.tabela-custos th:nth-child(7), .tabela-custos td:nth-child(7) { width: 140px; }
-/* Coluna própria pro botão de baixar, sem título — posição sempre fixa
-   no fim da linha, não muda mais dependendo do tamanho do texto de
-   Detalhe do lado (era isso que fazia o botão "pular" de lugar). */
-.tabela-custos th:nth-child(8), .tabela-custos td:nth-child(8) { width: 52px; }
-
-/* Arquivo e Processo são identificadores usados pra conferência — não
-   podem centralizar. A tabela é table-layout:fixed, então nowrap sem
-   overflow:hidden vazava visualmente por cima da célula vizinha (bug
-   visto na prática); com ellipsis, corta certinho dentro da própria
-   coluna e o clique (.truncavel, aplicado no HTML) expande pra ver o
-   valor inteiro, quebrando linha dentro da célula em vez de vazar. */
-.tabela-custos td:nth-child(3),
-.tabela-custos td:nth-child(4) {
-    text-align: left;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-/* Glossário/seletor de colaboradores — busca por nome + checkbox que
-   filtra a tabela de baixo. Existe pra não precisar decorar login de
-   ninguém, e pra não listar 70 nomes soltos no resumo de custo. */
-.campo-busca-colaborador {
-    width: 100%;
-    margin-bottom: 0.9rem;
-}
-
-.lista-colaboradores {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    max-height: 280px;
-    overflow-y: auto;
-}
-
-.colaborador-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0.55rem 0.75rem;
-    background: var(--cor-fundo);
-    border-radius: var(--raio-pequeno);
-    font-size: 0.87rem;
-}
-
-.colaborador-item label {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 0.55rem;
-    cursor: pointer;
-    min-width: 0;
-}
-
-.colaborador-nome {
-    font-weight: 600;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.colaborador-login {
-    color: var(--cor-texto-suave);
-    font-size: 0.78rem;
-    white-space: nowrap;
-}
-
-.colaborador-item strong {
-    flex-shrink: 0;
-}
-
-/* Resumo de gasto por usuário — acima da tabela detalhada. */
-.lista-custos {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-}
-
-.lista-custos li {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.55rem 0.75rem;
-    background: var(--cor-fundo);
-    border-radius: var(--raio-pequeno);
-    font-size: 0.87rem;
-}
-
-.lista-custos li.lista-custos-total {
-    border-top: 1px dashed var(--cor-borda);
-    margin-top: 0.3rem;
-    padding-top: 0.75rem;
-    background: transparent;
-    font-weight: 700;
-}
-
-/* Tela do Robô. */
-/* .grupo-config (ícone + título + descrição, usado nas Configurações do
-   Robô) agora mora em base.css — é reaproveitado em outras telas
-   também (ex: Novo usuário no admin). */
-.robo-status {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
-}
-
-.robo-descricao {
-    max-width: 480px;
-    margin: 0;
-}
-
-/* Interruptor do Robô usa a mesma cor laranja já usada na aba do Robô
-   (.aba-robo) quando ligado — reforça "isso é área do Robô" sem
-   precisar pintar o resto da tela. */
-.robo-status .interruptor {
-    --cor-interruptor-ligado: var(--cor-robo);
 }

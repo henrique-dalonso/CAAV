@@ -135,25 +135,27 @@ class Ferramenta(SQLModel, table=True):
 class UsuarioFerramenta(SQLModel, table=True):
     """Liga um usuário a uma ferramenta que ele tem permissão de usar.
 
-    admin_ferramenta é um nível extra, só relevante pra coordenador (admin
-    já vê tudo por causa de eh_admin, colaborador não deveria ter isso
-    marcado) — dá acesso às abas administrativas DENTRO daquela ferramenta
-    específica (ex: Custos e Robô no Extratus), sem dar acesso à área de
-    Administração da plataforma inteira.
-
     acesso_manual é o nível extra que restringe o fluxo Manual/URGENTE
     (Henrique, diretoria, 2026-08-19: o Robô virou o modo padrão — mais
     barato, mas não instantâneo — e o Manual passou a ser exclusivo de
     quem realmente precisa gerar algo na hora, custando mais caro por
-    isso). Igual admin_ferramenta, é um checkbox livre — na prática só
-    coordenador deve ganhar, mas nada impede abrir exceção pontual pra um
-    colaborador específico.
+    isso). É um checkbox livre — na prática só coordenador deve ganhar,
+    mas nada impede abrir exceção pontual pra um colaborador específico.
 
     fila_robo NÃO é mais lido em lugar nenhum do código — a Fila do
     Robô virou acesso padrão de quem já usa a ferramenta (mesmo nível de
     "Relatórios do Robô", que já era assim). Coluna mantida no banco só
     por segurança/histórico, sem migração de DROP COLUMN estabelecida
     neste projeto — não reaproveitar esse campo pra nada novo.
+
+    admin_ferramenta (nível extra "admin só desta ferramenta", dava acesso
+    a Configurações do Robô sem ser admin da plataforma) foi REMOVIDO por
+    completo (Henrique, diretoria, 2026-08-24): configurar uma ferramenta
+    agora exige eh_admin sempre, sem meio-termo — "área extremamente
+    sensível". Diferente de fila_robo, esse campo saiu do model E foi
+    dropado do banco de verdade (ver COLUNAS_OBSOLETAS, db/session.py),
+    porque era uma permissão ativa (afetava quem tinha acesso a quê), não
+    só uma coluna morta.
     """
 
     usuario_id: Optional[int] = Field(
@@ -162,7 +164,6 @@ class UsuarioFerramenta(SQLModel, table=True):
     ferramenta_id: Optional[int] = Field(
         default=None, foreign_key="ferramenta.id", primary_key=True
     )
-    admin_ferramenta: bool = Field(default=False)
     fila_robo: bool = Field(default=False)
     acesso_manual: bool = Field(default=False)
 

@@ -4,22 +4,8 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 
-# A tela de admin ainda soma métricas direto das 2 ferramentas que já têm
-# Job/custo hoje, em vez de algo genérico onde cada ferramenta expõe suas
-# próprias métricas (não existe esse contrato ainda). Rodada 12,
-# 2026-08-13: a tela de Custos ficava cega ao Aburesi (só importava do
-# Extratus) — os dois entram aqui agora.
-from app.ferramentas.extratus.db.jobs import (
-    contar_por_status as _contar_por_status_extratus,
-    somar_custo_por_usuario as _somar_custo_por_usuario_extratus,
-)
-from app.ferramentas.extratus_aburesi.db.jobs import (
-    contar_por_status as _contar_por_status_aburesi,
-    somar_custo_por_usuario as _somar_custo_por_usuario_aburesi,
-)
 from app.plataforma.auth import gerar_hash_senha
-from app.plataforma.db.session import obter_sessao
-from app.plataforma.db.models import CARGO_COLABORADOR, CARGOS_VALIDOS, Ferramenta, Usuario
+from app.plataforma.db.models import CARGO_COLABORADOR, CARGOS_VALIDOS, Usuario
 from app.plataforma.db.usuarios import (
     alternar_admin,
     alternar_ativo,
@@ -29,14 +15,13 @@ from app.plataforma.db.usuarios import (
     definir_ferramentas,
     desbloquear_usuario,
     excluir_usuario,
-    listar_ferramentas_admin_ids_por_usuario,
     listar_ferramentas_manual_ids_por_usuario,
     listar_ferramentas_liberadas_ids_por_usuario,
+    listar_todas_ferramentas,
     listar_todos_usuarios,
 )
 from app.plataforma.web.auth import exigir_admin
 from app.plataforma.web.templates_util import criar_templates
-from sqlmodel import select
 
 
 router = APIRouter(dependencies=[Depends(exigir_admin)])
@@ -45,11 +30,6 @@ TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 templates = criar_templates(TEMPLATES_DIR)
 
 TAMANHO_MINIMO_SENHA = 6
-
-
-def _listar_ferramentas():
-    with obter_sessao() as sessao:
-        return sessao.exec(select(Ferramenta)).all()
 
 
 def _redirecionar(destino, erro=None, sucesso=None):
@@ -73,77 +53,13 @@ def _contexto_base(usuario):
     return {
         "usuario": usuario,
         "total_usuarios": len(listar_todos_usuarios()),
-        "total_ferramentas": len(_listar_ferramentas()),
+        "total_ferramentas": len(listar_todas_ferramentas()),
     }
 
 
 @router.get("/admin")
 def admin_raiz():
     return RedirectResponse(url="/admin/custos", status_code=303)
-
-
-@router.get("/admin/custos")
-def pagina_custos(
-    request: Request,
-    usuario: Usuario = Depends(exigir_admin),
-    erro: str | None = None,
-    sucesso: str | None = None,
-):
-    usuarios = listar_todos_usuarios()
-
-    metricas_extratus = _contar_por_status_extratus()
-    metricas_aburesi = _contar_por_status_aburesi()
-    metricas = {
-        chave: metricas_extratus.get(chave, 0) + metricas_aburesi.get(chave, 0)
-        for chave in set(metricas_extratus) | set(metricas_aburesi)
-    }
-
-    custo_total = (
-        sum(_somar_custo_por_usuario_extratus().values())
-        + sum(_somar_custo_por_usuario_aburesi().values())
-    )
-
-    return templates.TemplateResponse(
-        request,
-        "admin.html",
-        {
-            **_contexto_base(usuario),
-            "aba_ativa": "custos",
-            "total_usuarios_ativos": sum(1 for u in usuarios if u.ativo),
-            "metricas": metricas,
-            "custo_total": custo_total,
-            "erro": erro,
-            "sucesso": sucesso,
-        },
-    )
-
-
-# Henrique, 2026-08-11: "Custos" deixou de ser uma aba dentro de cada
-# ferramenta — agora só se chega lá por aqui. Registro manual de quem
-# tem uma tela própria e onde fica (mesmo padrão do
-# REGISTRO_NOTIFICACOES em app/plataforma/web/notificacoes.py) — nem
-# toda ferramenta tem uma ainda (ex: Leitor de Publicações), então só
-# entram aqui as que já têm de verdade.
-URL_CUSTOS_POR_FERRAMENTA = {
-    "extratus": "/extratus/custos",
-    "extratus-aburesi": "/extratus-aburesi/custos",
-}
-
-
-@router.get("/admin/ferramentas")
-def pagina_ferramentas(request: Request, usuario: Usuario = Depends(exigir_admin)):
-    ferramentas = _listar_ferramentas()
-
-    return templates.TemplateResponse(
-        request,
-        "admin.html",
-        {
-            **_contexto_base(usuario),
-            "aba_ativa": "ferramentas",
-            "ferramentas_com_custos": [f for f in ferramentas if f.slug in URL_CUSTOS_POR_FERRAMENTA],
-            "url_custos_por_ferramenta": URL_CUSTOS_POR_FERRAMENTA,
-        },
-    )
 
 
 @router.get("/admin/usuarios/novo")
@@ -158,7 +74,7 @@ def pagina_novo_usuario(
         {
             **_contexto_base(usuario),
             "aba_ativa": "novo-usuario",
-            "ferramentas": _listar_ferramentas(),
+            "ferramentas": listar_todas_ferramentas(),
             "erro": erro,
         },
     )
@@ -172,17 +88,15 @@ def pagina_usuarios(
     sucesso: str | None = None,
 ):
     usuarios = listar_todos_usuarios()
-    ferramentas = _listar_ferramentas()
+    ferramentas = listar_todas_ferramentas()
 
-    # 3 consultas no TOTAL (não 3 por usuário listado) — cada função já
+    # 2 consultas no TOTAL (não 2 por usuário listado) — cada função já
     # devolve um dict usuario_id -> set(ferramenta_id) pronto; .get com
     # default vazio cobre o usuário sem nenhuma ferramenta liberada.
     liberadas_bulk = listar_ferramentas_liberadas_ids_por_usuario()
-    admin_bulk = listar_ferramentas_admin_ids_por_usuario()
     manual_bulk = listar_ferramentas_manual_ids_por_usuario()
 
     ferramentas_por_usuario = {u.id: liberadas_bulk.get(u.id, set()) for u in usuarios}
-    ferramentas_admin_por_usuario = {u.id: admin_bulk.get(u.id, set()) for u in usuarios}
     ferramentas_manual_por_usuario = {u.id: manual_bulk.get(u.id, set()) for u in usuarios}
 
     return templates.TemplateResponse(
@@ -194,7 +108,6 @@ def pagina_usuarios(
             "usuarios": usuarios,
             "ferramentas": ferramentas,
             "ferramentas_por_usuario": ferramentas_por_usuario,
-            "ferramentas_admin_por_usuario": ferramentas_admin_por_usuario,
             "ferramentas_manual_por_usuario": ferramentas_manual_por_usuario,
             "erro": erro,
             "sucesso": sucesso,
@@ -211,7 +124,6 @@ def criar_usuario_route(
     eh_admin: bool = Form(False),
     cargo: str = Form(CARGO_COLABORADOR),
     ferramenta_ids: list[int] = Form([]),
-    ferramentas_admin_ids: list[int] = Form([]),
     ferramentas_manual_ids: list[int] = Form([]),
 ):
     if len(senha) < TAMANHO_MINIMO_SENHA:
@@ -229,7 +141,6 @@ def criar_usuario_route(
             eh_admin=eh_admin,
             cargo=cargo,
             ferramenta_ids=ferramenta_ids,
-            ferramentas_admin_ids=ferramentas_admin_ids,
             ferramentas_manual_ids=ferramentas_manual_ids,
         )
     except ValueError as erro:
@@ -254,10 +165,9 @@ def definir_cargo_route(usuario_id: int, cargo: str = Form(...), usuario: Usuari
 def atualizar_ferramentas_route(
     usuario_id: int,
     ferramenta_ids: list[int] = Form([]),
-    ferramentas_admin_ids: list[int] = Form([]),
     ferramentas_manual_ids: list[int] = Form([]),
 ):
-    definir_ferramentas(usuario_id, ferramenta_ids, ferramentas_admin_ids, ferramentas_manual_ids)
+    definir_ferramentas(usuario_id, ferramenta_ids, ferramentas_manual_ids)
     return _redirecionar("/admin/usuarios", sucesso="Ferramentas atualizadas.")
 
 

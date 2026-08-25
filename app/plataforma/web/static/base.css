@@ -45,6 +45,12 @@
        admin.css, cada um com seu próprio bloco claro/escuro (Rodada 12,
        achado de qualidade de código) — centralizado aqui. */
     --cor-robo: #c2410c;
+    /* Verde de Custos — identidade própria da aba de Custos do admin
+       (2026-08-24), pra se diferenciar visualmente de Ferramentas
+       (assume a cor de cada ferramenta) e não virar "duas telas iguais".
+       Mesmo tom já usado em .selo-positivo, só nomeado como variável
+       pra reaproveitar em ícone/tarja de cartão. */
+    --cor-custos: #16a34a;
     --raio: 16px;
     --raio-pequeno: 10px;
     --sombra: 0 20px 60px -15px rgb(17 24 39 / 0.15);
@@ -69,6 +75,7 @@
         --cor-erro-texto: #fca5a5;
         --cor-erro-borda: #4c1d24;
         --cor-robo: #fb923c;
+        --cor-custos: #4ade80;
         --sombra: 0 20px 60px -15px rgb(0 0 0 / 0.6);
         --sombra-suave: 0 8px 24px -8px rgb(0 0 0 / 0.5);
     }
@@ -96,6 +103,7 @@
     --cor-erro-texto: #fca5a5;
     --cor-erro-borda: #4c1d24;
     --cor-robo: #fb923c;
+    --cor-custos: #4ade80;
     --sombra: 0 20px 60px -15px rgb(0 0 0 / 0.6);
     --sombra-suave: 0 8px 24px -8px rgb(0 0 0 / 0.5);
 }

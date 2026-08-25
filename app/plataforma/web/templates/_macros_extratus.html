@@ -1,21 +1,29 @@
-{# Barra de navegação compartilhada pelas 5 telas de cada Extratus, nessa
+{# Barra de navegação compartilhada pelas telas de cada Extratus, nessa
    ordem (Henrique, diretoria, 2026-08-19): Fila do Robô, Relatórios do
-   Robô, Gerar Relatório URGENTE, Relatórios URGENTES, Configurações do
-   Robô — padrão "gerar" sempre antes de "prontos", nos dois pares —
-   extraída da Rodada 12
+   Robô, Gerar Relatório URGENTE, Relatórios URGENTES — padrão "gerar"
+   sempre antes de "prontos", nos dois pares — extraída da Rodada 12
    (achado de qualidade de código: mesmo bloco de ~15 linhas colado em
    10 arquivos, 5 telas × 2 módulos). Único ponto de verdade agora,
    tanto pro Extratus - Relatórios quanto pro Aburesi (parametrizado
    por ferramenta_slug/url_base).
 
-   Henrique, diretoria, 2026-08-19: o Robô virou o modo padrão (Fila
-   do Robô e Relatórios do Robô sempre visíveis, sem checagem extra —
-   igual admin_ferramenta continua sendo só pra Configurações do
-   Robô). O fluxo Manual/URGENTE inverteu: agora É a exceção,
-   condicionado a usuario_tem_acesso_manual, com o nome da aba em
-   vermelho (classe aba-urgente) pra deixar claro que custa mais caro.
+   Henrique, diretoria, 2026-08-19: o Robô virou o modo padrão (Fila do
+   Robô e Relatórios do Robô sempre visíveis, sem checagem extra). O
+   fluxo Manual/URGENTE inverteu: agora É a exceção, condicionado a
+   usuario_tem_acesso_manual, com o nome da aba em vermelho (classe
+   aba-urgente) pra deixar claro que custa mais caro.
 
-   aba_ativa: "gerar" | "relatorios" | "relatorios-robo" | "fila" | "configuracoes-robo" #}
+   Henrique, 2026-08-24: "Configurações do Robô" saiu daqui de vez —
+   virou tela só de admin da plataforma, dentro do painel de
+   Administração (ver admin_ferramentas.py). Sem essa aba (que antes
+   era empurrada pra ponta direita com .aba-fixa-direita, a única razão
+   de a barra não ser simétrica), a barra virou grid de colunas iguais
+   — mesmo padrão do painel de notificações (.painel-notificacoes-abas)
+   — 2 colunas pra quem só tem Robô, 4 pra quem também tem acesso
+   Urgente. Sempre a largura toda do conteúdo, nunca mais precisa rolar
+   de lado.
+
+   aba_ativa: "gerar" | "relatorios" | "relatorios-robo" | "fila" #}
 {% macro nav_abas_extratus(usuario, ferramenta_slug, url_base, aba_ativa) %}
 <nav class="abas-extratus">
     <a href="{{ url_base }}/fila" class="aba aba-robo{% if aba_ativa == "fila" %} aba-ativa{% endif %}">Fila do Robô{% set conf_fila = contagem_nav_conferencias_fila(usuario) %}{% if conf_fila %} <span class="contagem-aba contagem-aba-revisao">+{{ conf_fila }}</span>{% endif %}</a>
@@ -23,14 +31,6 @@
     {% if usuario_tem_acesso_manual(usuario, ferramenta_slug) %}
     <a href="{{ url_base }}/" class="aba aba-urgente{% if aba_ativa == "gerar" %} aba-ativa{% endif %}">Gerar Relatório URGENTE{% set conf_manual = contagem_nav_conferencias_manual(usuario) %}{% if conf_manual %} <span class="contagem-aba contagem-aba-revisao">+{{ conf_manual }}</span>{% endif %}</a>
     <a href="{{ url_base }}/relatorios" class="aba aba-urgente{% if aba_ativa == "relatorios" %} aba-ativa{% endif %}">Relatórios URGENTES{% set novos_relatorios = contagem_nav_relatorios(usuario) %}{% if novos_relatorios.sucesso %} <span class="contagem-aba">+{{ novos_relatorios.sucesso }}</span>{% endif %}{% if novos_relatorios.revisao %} <span class="contagem-aba contagem-aba-revisao">+{{ novos_relatorios.revisao }}</span>{% endif %}</a>
-    {% endif %}
-    {% if usuario_eh_admin_da_ferramenta(usuario, ferramenta_slug) %}
-    <a href="{{ url_base }}/configuracoes-robo" class="aba aba-robo aba-fixa-direita{% if aba_ativa == "configuracoes-robo" %} aba-ativa{% endif %}" data-dica="Configurações do Robô" aria-label="Configurações do Robô">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="3"></circle>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-        </svg>
-    </a>
     {% endif %}
 </nav>
 {% endmacro %}

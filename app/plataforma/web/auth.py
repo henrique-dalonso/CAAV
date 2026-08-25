@@ -3,7 +3,6 @@ from fastapi import Depends, HTTPException, Request
 from app.plataforma.db.models import Usuario
 from app.plataforma.db.usuarios import (
     buscar_usuario_por_id,
-    usuario_eh_admin_da_ferramenta,
     usuario_tem_acesso,
     usuario_tem_acesso_manual,
 )
@@ -63,25 +62,6 @@ def exigir_acesso_ferramenta(slug_ferramenta: str):
             raise HTTPException(
                 status_code=403,
                 detail="Você não tem permissão para usar esta ferramenta.",
-            )
-
-        return usuario
-
-    return dependencia
-
-
-def exigir_admin_ferramenta(slug_ferramenta: str):
-    """Aba administrativa DENTRO de uma ferramenta (Configurações do
-    Robô — "Custos" não é mais uma delas, ver admin.py) — admin da
-    plataforma sempre passa; coordenador só se foi liberado pra essa
-    ferramenta específica (ver Usuario.eh_admin vs admin_ferramenta em
-    UsuarioFerramenta)."""
-
-    def dependencia(usuario: Usuario = Depends(exigir_login)) -> Usuario:
-        if not usuario_eh_admin_da_ferramenta(usuario, slug_ferramenta):
-            raise HTTPException(
-                status_code=403,
-                detail="Acesso restrito a administradores desta ferramenta.",
             )
 
         return usuario

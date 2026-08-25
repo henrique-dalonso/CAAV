@@ -350,7 +350,7 @@
 /* .ferramenta-tile é o quadradinho inteiro (moldura); dentro dele tem
    dois controles independentes que NÃO podem ser o mesmo <label> (senão
    clicar num aciona o outro): a seleção principal (ferramenta-tile-selecao)
-   e, só quando faz sentido (coordenador), o "admin desta ferramenta". */
+   e, só quando a ferramenta suporta, o Modo Urgente (ferramenta-tile-fila). */
 .ferramenta-tile {
     position: relative;
     display: flex;
@@ -389,39 +389,14 @@
     height: 0;
 }
 
-.ferramenta-tile-admin {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    margin-top: 0.15rem;
-    padding-top: 0.3rem;
-    border-top: 1px dashed var(--cor-borda);
-    width: 100%;
-    justify-content: flex-start;
-    text-align: left;
-    font-size: 0.62rem;
-    font-weight: 600;
-    color: var(--cor-texto-suave);
-    cursor: pointer;
-}
-
-/* "display: flex" acima é regra de autor e vence [hidden] do navegador —
-   mesma pegadinha já vista antes (bandeja de apps, painel de ferramentas). */
-.ferramenta-tile-admin[hidden] {
-    display: none;
-}
-
-.ferramenta-tile-admin span:last-child,
 .ferramenta-tile-fila span:last-child {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-/* Fila do robô — mesmo esquema do "Admin da ferramenta", mas nunca
-   escondida (faz sentido pra colaborador também, não só coordenador) e
-   com o laranja do Robô em vez do cinza neutro, pra dar pra distinguir
-   rapidamente qual checkbox é qual quando os dois aparecem juntos. */
+/* Modo Urgente — checkbox de exceção dentro do quadradinho da
+   ferramenta, laranja pra chamar atenção que é o fluxo mais caro. */
 .ferramenta-tile-fila {
     display: flex;
     align-items: center;
@@ -717,4 +692,347 @@
 
 .admin-form-senha input:focus {
     border-color: var(--cor-acento);
+}
+
+/* Custos e Ferramentas (admin, 2026-08-24) reaproveitam a mesma
+   grade/cartão da home (.grade-ferramentas/.cartao-ferramenta, home.css)
+   mas cada aba ganha identidade própria — Henrique: "não quero que
+   fiquem parecendo duas telas iguais". Custos: friso verde
+   (--cor-custos) + valor de gasto em destaque. Ferramentas: friso na
+   cor de cada ferramenta (mesmo par --acento-cartao/--acento-cartao-
+   escuro que --emblema-cor já usa, só reaplicado no cartão inteiro, não
+   só no emblema) + status do Robô. min-height/padding extra corrige o
+   cartão "quase cropando" o subtítulo (achado ao vivo, mesma sessão) —
+   o cartão genérico da home é compacto de propósito (emblema + nome +
+   1 linha), mas aqui cada cartão carrega mais informação, precisa de
+   mais respiro. */
+.cartao-custos,
+.cartao-config {
+    min-height: 156px;
+    padding: 1.5rem 1.5rem 1.35rem;
+    gap: 0.75rem;
+    border-top-width: 3px;
+}
+
+.cartao-custos {
+    border-top-color: var(--cor-custos);
+}
+
+.cartao-config {
+    border-top-color: var(--acento-cartao, var(--cor-acento));
+}
+
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme="claro"]) .cartao-config {
+        border-top-color: var(--acento-cartao-escuro, var(--cor-acento));
+    }
+}
+
+html[data-theme="escuro"] .cartao-config {
+    border-top-color: var(--acento-cartao-escuro, var(--cor-acento));
+}
+
+.cartao-ferramenta-topo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.cartao-custos-valor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    margin-top: auto;
+}
+
+.cartao-custos-valor strong {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--cor-custos);
+}
+
+.cartao-custos-rotulo {
+    font-size: 0.78rem;
+    color: var(--cor-texto-suave);
+}
+
+.cartao-config-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--cor-texto-suave);
+    margin-top: auto;
+}
+
+.cartao-config-status-ponto {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--cor-borda);
+    flex-shrink: 0;
+}
+
+.cartao-config-status-ligado .cartao-config-status-ponto {
+    background: var(--cor-robo);
+}
+
+.cartao-ferramenta-vazio {
+    font-size: 0.82rem;
+    color: var(--cor-texto-suave);
+    font-style: italic;
+    margin-top: auto;
+}
+
+/* Tela de detalhe de Custos (admin_custos_detalhe.html) — movida de
+   dentro de cada ferramenta (extratus.css) pra cá em 2026-08-24, junto
+   com o resto da realocação de /extratus/custos, /extratus-aburesi/custos
+   pra /admin/custos/<chave>. Era código específico da tela, não da
+   identidade visual de nenhuma ferramenta — só um lugar mais correto
+   pra morar agora. */
+.detalhe-texto {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+    color: var(--cor-texto-suave);
+    font-size: 0.78rem;
+}
+
+.tabela-custos {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 0.85rem;
+}
+
+.tabela-custos th {
+    text-align: center;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--cor-texto-suave);
+    padding: 0 0.6rem 0.6rem;
+    border-bottom: 1px solid var(--cor-borda);
+}
+
+.tabela-custos td {
+    padding: 0.7rem 0.6rem;
+    border-bottom: 1px solid var(--cor-borda);
+    vertical-align: middle;
+    text-align: center;
+    overflow-wrap: break-word;
+}
+
+.tabela-custos tr:last-child td {
+    border-bottom: none;
+}
+
+.tabela-custos tbody tr:hover {
+    background: var(--cor-fundo);
+}
+
+.tabela-custos th:nth-child(1), .tabela-custos td:nth-child(1) { width: 100px; }
+.tabela-custos th:nth-child(2), .tabela-custos td:nth-child(2) { width: 14%; }
+.tabela-custos th:nth-child(3), .tabela-custos td:nth-child(3) { width: 16%; }
+.tabela-custos th:nth-child(4), .tabela-custos td:nth-child(4) { width: 12%; }
+.tabela-custos th:nth-child(5), .tabela-custos td:nth-child(5) { width: 80px; }
+.tabela-custos th:nth-child(6), .tabela-custos td:nth-child(6) { width: 100px; }
+.tabela-custos th:nth-child(7), .tabela-custos td:nth-child(7) { width: 140px; }
+.tabela-custos th:nth-child(8), .tabela-custos td:nth-child(8) { width: 52px; }
+
+.tabela-custos td:nth-child(3),
+.tabela-custos td:nth-child(4) {
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.campo-busca-colaborador {
+    width: 100%;
+    margin-bottom: 0.9rem;
+}
+
+.lista-colaboradores {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.colaborador-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.55rem 0.75rem;
+    background: var(--cor-fundo);
+    border-radius: var(--raio-pequeno);
+    font-size: 0.87rem;
+}
+
+.colaborador-item label {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    cursor: pointer;
+    min-width: 0;
+}
+
+.colaborador-nome {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.colaborador-login {
+    color: var(--cor-texto-suave);
+    font-size: 0.78rem;
+    white-space: nowrap;
+}
+
+.colaborador-item strong {
+    flex-shrink: 0;
+}
+
+.lista-custos {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.lista-custos li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.55rem 0.75rem;
+    background: var(--cor-fundo);
+    border-radius: var(--raio-pequeno);
+    font-size: 0.87rem;
+}
+
+.lista-custos li.lista-custos-total {
+    border-top: 1px dashed var(--cor-borda);
+    margin-top: 0.3rem;
+    padding-top: 0.75rem;
+    background: transparent;
+    font-weight: 700;
+}
+
+/* Tela de detalhe de Ferramentas/Configurações (admin_ferramentas_detalhe.html)
+   — movida de dentro de cada ferramenta (Configurações do Robô, engrenagem
+   própria) pra cá em 2026-08-24, mesma realocação da tela de Custos acima. */
+.linha-campo-pasta {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.linha-campo-pasta input {
+    flex: 1;
+    max-width: none;
+}
+
+.linha-campo-pasta .botao {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.navegador-pastas {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.navegador-pastas[hidden] {
+    display: none;
+}
+
+.navegador-pastas-caixa {
+    width: min(480px, 90vw);
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--cor-cartao);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio);
+    box-shadow: var(--sombra);
+    padding: 1rem;
+}
+
+.navegador-pastas-atual {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--cor-texto-suave);
+    margin: 0 0 0.6rem;
+    word-break: break-all;
+}
+
+.navegador-pastas-lista {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    margin-bottom: 0.75rem;
+}
+
+.navegador-pastas-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 0.5rem 0.6rem;
+    font-size: 0.85rem;
+    border-radius: var(--raio-pequeno);
+    background: none;
+    border: none;
+    color: var(--cor-texto);
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.navegador-pastas-item:hover {
+    background: var(--cor-fundo);
+}
+
+.navegador-pastas-acoes {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+}
+
+.robo-status {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.robo-descricao {
+    max-width: 480px;
+    margin: 0;
+}
+
+/* Interruptor do Robô usa a mesma cor laranja já usada na aba do Robô
+   (era .aba-robo, agora só o emblema/friso de card) quando ligado. */
+.robo-status .interruptor {
+    --cor-interruptor-ligado: var(--cor-robo);
 }

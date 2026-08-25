@@ -94,7 +94,7 @@ def test_pagina_relatorios_robo_acessivel_sem_acesso_a_fila():
     """Henrique, 2026-08-11: ver o acervo do Robô não deveria mais exigir
     acesso à Fila do Robô — só acesso à ferramenta, igual "Seus
     Relatórios". Testa exatamente o caso que antes dava 403: usuário com
-    a ferramenta liberada, mas sem `fila_robo`/`admin_ferramenta`."""
+    a ferramenta liberada, mas sem `fila_robo`."""
     with obter_sessao() as sessao:
         usuario_antigo = sessao.exec(select(Usuario.id).where(Usuario.nome_usuario == NOME_USUARIO_SEM_FILA)).first()
         if usuario_antigo:

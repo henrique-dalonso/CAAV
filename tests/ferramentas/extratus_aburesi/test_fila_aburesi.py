@@ -349,8 +349,8 @@ def _apagar_colaborador_padrao_teste():
 @pytest.fixture
 def cliente_colaborador_padrao():
     """Colaborador comum, só com acesso básico à ferramenta (sem
-    admin_ferramenta, sem acesso_manual) — prova que a Fila do Robô não
-    exige mais flag nenhuma, só acesso à ferramenta em si."""
+    acesso_manual) — prova que a Fila do Robô não exige mais flag
+    nenhuma, só acesso à ferramenta em si."""
     _apagar_colaborador_padrao_teste()
 
     with obter_sessao() as sessao:

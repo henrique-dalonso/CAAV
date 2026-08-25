@@ -1,19 +1,22 @@
 {% extends "base.html" %}
 
-{% block titulo %}Configurações do Robô — Extratus - Aburesi{% endblock %}
-{% block css_pagina %}<link rel="stylesheet" href="/extratus-aburesi/static/extratus.css?v={{ v }}">{% endblock %}
-
-{% from "_macros_extratus.html" import nav_abas_extratus %}
+{% block titulo %}Configurações — {{ nome_ferramenta }} — Administração — CAAV{% endblock %}
+{% block css_pagina %}<link rel="stylesheet" href="/static/admin.css?v={{ v }}">{% endblock %}
 
 {% block conteudo %}
 <div class="cabecalho-ferramenta">
     <div>
-        <h1>Configurações do Robô</h1>
-        <p>Controle do processamento automático — liga/desliga e configurações.</p>
+        <h1>Configurações — {{ nome_ferramenta }}</h1>
+        <p>Controle do processamento automático do Robô — liga/desliga e configurações. Só admin da plataforma.</p>
     </div>
+    <a href="/admin/ferramentas" class="botao-secundario">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        Todas as ferramentas
+    </a>
 </div>
-
-{{ nav_abas_extratus(usuario, "extratus-aburesi", "/extratus-aburesi", "configuracoes-robo") }}
 
 {% if erro %}
 <p class="banner-erro">⚠ {{ erro }}</p>
@@ -25,7 +28,7 @@
 <section class="cartao-secao">
     <h2>Status</h2>
     <div class="robo-status">
-        <form action="/extratus-aburesi/configuracoes-robo/alternar" method="post" id="form-interruptor-robo">
+        <form action="/admin/ferramentas/{{ chave }}/alternar" method="post" id="form-interruptor-robo">
             <label class="interruptor">
                 <input type="checkbox" id="interruptor-robo" {% if robo_ativo %}checked{% endif %}>
                 <span class="interruptor-trilha"></span>
@@ -37,19 +40,18 @@
             O Robô está ligado: a cada poucos minutos, ele confere a pasta "Fila do Robô" sozinho e
             manda os PDFs novos em lote pra IA (mais barato, mas pode levar de minutos até 24h pra voltar).
             {% else %}
-            Desligado — o Robô não olha a pasta nem processa nada enquanto isso. Use "Processar tudo" na aba
-            Gerar relatórios pra continuar disparando manualmente (esse fluxo é sempre em tempo real, nunca em lote).
+            Desligado — o Robô não olha a pasta nem processa nada enquanto isso.
             {% endif %}
         </p>
     </div>
     {% if lotes_em_andamento %}
     <div class="robo-lotes">
         <h3>Lote(s) em processamento</h3>
-        <ul class="lista-arquivos">
+        <ul class="lista-custos">
             {% for entrada in lotes_em_andamento %}
             <li>
-                Lote enviado em {{ entrada.lote.criado_em.strftime("%d/%m/%Y %H:%M") }} —
-                {{ entrada.total_itens }} arquivo(s), aguardando a Anthropic terminar.
+                <span>Lote enviado em {{ entrada.lote.criado_em.strftime("%d/%m/%Y %H:%M") }}</span>
+                <strong>{{ entrada.total_itens }} arquivo(s)</strong>
             </li>
             {% endfor %}
         </ul>
@@ -59,7 +61,6 @@
     {% endif %}
 </section>
 
-{% if usuario.eh_admin %}
 <section class="cartao-secao">
     <h2>Configurações</h2>
 
@@ -83,7 +84,7 @@
                 <p>Pasta que a "Fila do Robô" usa pra depositar PDFs. Processamento é sempre em lote (mais barato, até 24h), nunca se mistura com a fila manual em tempo real.</p>
             </div>
         </div>
-        <form action="/extratus-aburesi/configuracoes-robo/config" method="post">
+        <form action="/admin/ferramentas/{{ chave }}/config" method="post">
             <div class="campo">
                 <label for="pasta_entrada">Pasta de entrada do Robô</label>
                 <div class="linha-campo-pasta">
@@ -127,7 +128,7 @@
                 <p>Texto que a IA usa pra montar o relatório. Precisa ser {{ extensao_prompt }} — a versão anterior fica guardada automaticamente, caso precise voltar atrás.</p>
             </div>
         </div>
-        <form action="/extratus-aburesi/configuracoes-robo/prompt" method="post" enctype="multipart/form-data" class="linha-upload">
+        <form action="/admin/ferramentas/{{ chave }}/prompt" method="post" enctype="multipart/form-data" class="linha-upload">
             <div class="campo">
                 <label for="arquivo-prompt">Arquivo {{ extensao_prompt }}</label>
                 <input id="arquivo-prompt" type="file" name="arquivo" accept="{{ extensao_prompt }}" required>
@@ -154,12 +155,6 @@
         </div>
     </div>
 </div>
-{% else %}
-<section class="cartao-secao">
-    <h2>Configurações</h2>
-    <p class="aviso-discreto">A pasta e o modo de IA do Robô só podem ser alterados por um administrador da plataforma.</p>
-</section>
-{% endif %}
 {% endblock %}
 
-{% block js_pagina %}<script src="/extratus-aburesi/static/configuracoes_robo.js?v={{ v }}" defer></script>{% endblock %}
+{% block js_pagina %}<script src="/static/admin_ferramentas.js?v={{ v }}" defer></script>{% endblock %}

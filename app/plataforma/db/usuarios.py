@@ -36,22 +36,6 @@ def _conceder_todas_ferramentas(sessao, usuario_id):
             )
 
 
-def _marcar_admin_ferramenta(sessao, usuario_id, ferramenta_ids_admin):
-    if not ferramenta_ids_admin:
-        return
-
-    vinculos = sessao.exec(
-        select(UsuarioFerramenta).where(
-            UsuarioFerramenta.usuario_id == usuario_id,
-            UsuarioFerramenta.ferramenta_id.in_(ferramenta_ids_admin),
-        )
-    ).all()
-
-    for vinculo in vinculos:
-        vinculo.admin_ferramenta = True
-        sessao.add(vinculo)
-
-
 def _marcar_acesso_manual(sessao, usuario_id, ferramenta_ids_manual):
     if not ferramenta_ids_manual:
         return
@@ -103,39 +87,6 @@ def usuario_tem_acesso(usuario: Usuario, slug_ferramenta: str) -> bool:
         return sessao.exec(consulta).first() is not None
 
 
-def usuario_eh_admin_da_ferramenta(usuario: Usuario, slug_ferramenta: str) -> bool:
-    """Acesso à aba administrativa DENTRO de uma ferramenta específica
-    (Configurações do Robô, no Extratus — Henrique, 2026-08-11: "Custos"
-    deixou de ser uma delas, virou tela própria só pra admin da
-    plataforma, ver app/plataforma/web/routes/admin.py) — não confundir
-    com exigir_admin, que é a área de Administração da plataforma
-    inteira. Admin da plataforma sempre tem isso também; coordenador só
-    se foi liberado explicitamente ferramenta por ferramenta."""
-    if usuario.eh_admin:
-        return True
-
-    with obter_sessao() as sessao:
-        consulta = (
-            select(UsuarioFerramenta)
-            .join(Ferramenta, Ferramenta.id == UsuarioFerramenta.ferramenta_id)
-            .where(
-                UsuarioFerramenta.usuario_id == usuario.id,
-                Ferramenta.slug == slug_ferramenta,
-                UsuarioFerramenta.admin_ferramenta == True,  # noqa: E712
-            )
-        )
-        return sessao.exec(consulta).first() is not None
-
-
-def listar_ferramentas_admin_ids(usuario_id: int):
-    with obter_sessao() as sessao:
-        consulta = select(UsuarioFerramenta.ferramenta_id).where(
-            UsuarioFerramenta.usuario_id == usuario_id,
-            UsuarioFerramenta.admin_ferramenta == True,  # noqa: E712
-        )
-        return set(sessao.exec(consulta).all())
-
-
 def _agrupar_ferramenta_ids_por_usuario(condicao_extra=None):
     """Mesma ideia das 3 funções de um usuário só acima (liberadas/admin/
     manual), mas pra TODOS de uma vez — 1 consulta no total em vez de 1 por
@@ -158,10 +109,6 @@ def listar_ferramentas_liberadas_ids_por_usuario():
     return _agrupar_ferramenta_ids_por_usuario()
 
 
-def listar_ferramentas_admin_ids_por_usuario():
-    return _agrupar_ferramenta_ids_por_usuario(UsuarioFerramenta.admin_ferramenta == True)  # noqa: E712
-
-
 def listar_ferramentas_manual_ids_por_usuario():
     return _agrupar_ferramenta_ids_por_usuario(UsuarioFerramenta.acesso_manual == True)  # noqa: E712
 
@@ -170,9 +117,11 @@ def usuario_tem_acesso_manual(usuario: Usuario, slug_ferramenta: str) -> bool:
     """Acesso ao fluxo Manual/URGENTE (Gerar Relatório URGENTE, Relatórios
     URGENTES) — Henrique, diretoria, 2026-08-19: virou exclusivo de quem
     tem essa flag (na prática, coordenadores), já que o Robô passou a
-    ser o modo padrão pra todo mundo. Independente de admin_ferramenta:
-    um admin da ferramenta sempre tem, mas dá pra abrir exceção pontual
-    pra um colaborador específico também."""
+    ser o modo padrão pra todo mundo. Henrique, 2026-08-24: o OR com
+    admin_ferramenta que existia aqui era um resto de código de antes do
+    redesenho de acesso (Robô virou padrão, Urgente virou a exceção) —
+    admin_ferramenta nunca teve relação de verdade com o modo Urgente,
+    era engano. Removido junto da remoção de admin_ferramenta em si."""
     if usuario.eh_admin:
         return True
 
@@ -183,8 +132,7 @@ def usuario_tem_acesso_manual(usuario: Usuario, slug_ferramenta: str) -> bool:
             .where(
                 UsuarioFerramenta.usuario_id == usuario.id,
                 Ferramenta.slug == slug_ferramenta,
-                (UsuarioFerramenta.acesso_manual == True)  # noqa: E712
-                | (UsuarioFerramenta.admin_ferramenta == True),  # noqa: E712
+                UsuarioFerramenta.acesso_manual == True,  # noqa: E712
             )
         )
         return sessao.exec(consulta).first() is not None
@@ -252,9 +200,9 @@ def ferramenta_pela_url(caminho):
     """Qual ferramenta "dona" desse caminho de URL, se alguma — usado pra
     saber de qual ferramenta puxar a cor de identidade (ver
     cor_ferramenta_atual, templates_util.py) em qualquer sub-página dela
-    (não só a raiz, também funciona pra /extratus/configuracoes-robo,
-    /extratus/fila etc.), já que o middleware de "Mais utilizadas" só
-    faz esse match exato pra raiz, não serve pra isso."""
+    (não só a raiz, também funciona pra /extratus/fila, /extratus/relatorios
+    etc.), já que o middleware de "Mais utilizadas" só faz esse match
+    exato pra raiz, não serve pra isso."""
     with obter_sessao() as sessao:
         ferramentas = sessao.exec(select(Ferramenta)).all()
 
@@ -345,6 +293,11 @@ def listar_todos_usuarios():
         return sessao.exec(select(Usuario).order_by(Usuario.nome)).all()
 
 
+def listar_todas_ferramentas():
+    with obter_sessao() as sessao:
+        return sessao.exec(select(Ferramenta)).all()
+
+
 def listar_ferramentas_liberadas_ids(usuario_id: int):
     with obter_sessao() as sessao:
         consulta = select(UsuarioFerramenta.ferramenta_id).where(
@@ -361,13 +314,11 @@ def criar_usuario(
     eh_admin,
     cargo=CARGO_COLABORADOR,
     ferramenta_ids=None,
-    ferramentas_admin_ids=None,
     ferramentas_manual_ids=None,
 ):
     if cargo not in CARGOS_VALIDOS:
         raise ValueError(f"Cargo inválido: {cargo!r}")
 
-    ferramentas_admin_ids = set(ferramentas_admin_ids or [])
     ferramentas_manual_ids = set(ferramentas_manual_ids or [])
 
     with obter_sessao() as sessao:
@@ -407,7 +358,6 @@ def criar_usuario(
                     UsuarioFerramenta(
                         usuario_id=usuario.id,
                         ferramenta_id=ferramenta_id,
-                        admin_ferramenta=ferramenta_id in ferramentas_admin_ids,
                         acesso_manual=ferramenta_id in ferramentas_manual_ids,
                     )
                 )
@@ -420,7 +370,6 @@ def criar_usuario(
             # como o script de bootstrap).
             if cargo == CARGO_COORDENADOR and not ferramenta_ids:
                 _conceder_todas_ferramentas(sessao, usuario.id)
-                _marcar_admin_ferramenta(sessao, usuario.id, ferramentas_admin_ids)
                 _marcar_acesso_manual(sessao, usuario.id, ferramentas_manual_ids)
 
         sessao.commit()
@@ -433,8 +382,7 @@ def criar_usuario(
         return usuario
 
 
-def definir_ferramentas(usuario_id, ferramenta_ids, ferramentas_admin_ids=None, ferramentas_manual_ids=None):
-    ferramentas_admin_ids = set(ferramentas_admin_ids or [])
+def definir_ferramentas(usuario_id, ferramenta_ids, ferramentas_manual_ids=None):
     ferramentas_manual_ids = set(ferramentas_manual_ids or [])
 
     with obter_sessao() as sessao:
@@ -450,7 +398,6 @@ def definir_ferramentas(usuario_id, ferramenta_ids, ferramentas_admin_ids=None, 
                 UsuarioFerramenta(
                     usuario_id=usuario_id,
                     ferramenta_id=ferramenta_id,
-                    admin_ferramenta=ferramenta_id in ferramentas_admin_ids,
                     acesso_manual=ferramenta_id in ferramentas_manual_ids,
                 )
             )
@@ -475,8 +422,8 @@ def alternar_admin(usuario_id):
     causava o bug de "removi o admin e o Robô/Fila continuavam
     liberados", porque o vínculo antigo ressurgia assim que eh_admin virava
     False de novo). Ao REBAIXAR, devolvemos o acesso básico às ferramentas
-    (sem admin_ferramenta/acesso_manual, que continuam precisando ser
-    concedidos à parte) — senão a pessoa ficaria sem usar nada."""
+    (sem acesso_manual, que continua precisando ser concedido à parte) —
+    senão a pessoa ficaria sem usar nada."""
     with obter_sessao() as sessao:
         usuario = sessao.get(Usuario, usuario_id)
         usuario.eh_admin = not usuario.eh_admin

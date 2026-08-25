@@ -64,23 +64,28 @@ def test_admin_raiz_redireciona_pra_aba_custos(cliente_admin_logado):
     assert resp.headers["location"] == "/admin/custos"
 
 
-def test_aba_custos_carrega_visao_geral(cliente_admin_logado):
+def test_aba_custos_carrega_grade(cliente_admin_logado):
     resp = cliente_admin_logado.get("/admin/custos")
 
     assert resp.status_code == 200
-    assert "Visão geral" in resp.text
+    # Grade de ícones (realocada de dentro de cada ferramenta em
+    # 2026-08-24) — cada ferramenta com custo de IA rastreado vira um
+    # link direto pra /admin/custos/<chave>, não mais /extratus/custos.
+    assert "/admin/custos/extratus-relatorios" in resp.text
+    assert "/admin/custos/extratus-aburesi" in resp.text
+    assert "/extratus/custos" not in resp.text
 
 
 def test_aba_ferramentas_carrega(cliente_admin_logado):
     resp = cliente_admin_logado.get("/admin/ferramentas")
 
     assert resp.status_code == 200
-    # Grade de ícones (2026-08-11) — cada ferramenta com tela de custos
-    # própria vira um link direto pra ela, não mais uma tabela de texto
-    # nem o bloco "Configuração do Extratus" (removido, virou redundante
-    # com Configurações do Robô dentro da própria ferramenta).
-    assert "/extratus/custos" in resp.text
-    assert "Configuração do Extratus" not in resp.text
+    # Ferramentas virou a tela de CONFIGURAÇÃO de cada ferramenta
+    # (absorveu "Configurações do Robô", que saiu de dentro de cada
+    # ferramenta em 2026-08-24) — não mais um link pra tela de custos.
+    assert "/admin/ferramentas/extratus-relatorios" in resp.text
+    assert "/admin/ferramentas/extratus-aburesi" in resp.text
+    assert "/extratus/custos" not in resp.text
 
 
 def test_aba_novo_usuario_carrega_formulario(cliente_admin_logado):

@@ -18,14 +18,12 @@ from app.plataforma.db.usuarios import (
     definir_cargo,
     definir_ferramentas,
     excluir_usuario,
-    listar_ferramentas_admin_ids,
     listar_ferramentas_manual_ids,
     listar_ferramentas_liberadas_ids,
     listar_ferramentas_mais_usadas,
     marcar_aba_vista,
     obter_ultimo_visto,
     registrar_acesso_ferramenta,
-    usuario_eh_admin_da_ferramenta,
     usuario_tem_acesso_a_alguma_fila_robo,
     usuario_tem_acesso_manual,
 )
@@ -205,77 +203,10 @@ def test_emblema_ferramenta_vazio():
     assert emblema_ferramenta("") == ""
 
 
-def test_criar_coordenador_com_admin_ferramenta_marca_o_flag(limpar_usuarios_teste):
-    extratus_id = _buscar_ferramenta_id_por_slug("extratus")
-
-    usuario = criar_usuario(
-        nome="Teste Coordenador",
-        nome_usuario=NOME_COORDENADOR_TESTE,
-        email="teste_usuarios_coord@example.com",
-        senha="senhaTeste123",
-        eh_admin=False,
-        cargo=CARGO_COORDENADOR,
-        ferramenta_ids=[extratus_id],
-        ferramentas_admin_ids=[extratus_id],
-    )
-
-    assert listar_ferramentas_admin_ids(usuario.id) == {extratus_id}
-    assert usuario_eh_admin_da_ferramenta(usuario, "extratus") is True
-
-
-def test_coordenador_sem_admin_ferramenta_nao_tem_acesso_admin(limpar_usuarios_teste):
-    extratus_id = _buscar_ferramenta_id_por_slug("extratus")
-
-    usuario = criar_usuario(
-        nome="Teste Coordenador",
-        nome_usuario=NOME_COORDENADOR_TESTE,
-        email="teste_usuarios_coord@example.com",
-        senha="senhaTeste123",
-        eh_admin=False,
-        cargo=CARGO_COORDENADOR,
-        ferramenta_ids=[extratus_id],
-    )
-
-    assert listar_ferramentas_admin_ids(usuario.id) == set()
-    assert usuario_eh_admin_da_ferramenta(usuario, "extratus") is False
-
-
-def test_admin_da_plataforma_eh_sempre_admin_de_qualquer_ferramenta(limpar_usuarios_teste):
-    usuario = criar_usuario(
-        nome="Teste Admin",
-        nome_usuario=NOME_COORDENADOR_TESTE,
-        email="teste_usuarios_coord@example.com",
-        senha="senhaTeste123",
-        eh_admin=True,
-    )
-
-    assert usuario_eh_admin_da_ferramenta(usuario, "extratus") is True
-    assert usuario_eh_admin_da_ferramenta(usuario, "ferramenta-que-nao-existe") is True
-
-
-def test_definir_ferramentas_com_admin_ids_marca_o_flag(limpar_usuarios_teste):
-    extratus_id = _buscar_ferramenta_id_por_slug("extratus")
-
-    usuario = criar_usuario(
-        nome="Teste Colaborador",
-        nome_usuario=NOME_COLABORADOR_TESTE,
-        email="teste_usuarios_colab@example.com",
-        senha="senhaTeste123",
-        eh_admin=False,
-        cargo=CARGO_COLABORADOR,
-    )
-    assert listar_ferramentas_admin_ids(usuario.id) == set()
-
-    definir_ferramentas(usuario.id, [extratus_id], [extratus_id])
-
-    assert listar_ferramentas_admin_ids(usuario.id) == {extratus_id}
-    assert usuario_eh_admin_da_ferramenta(usuario, "extratus") is True
-
-
 def test_colaborador_com_acesso_manual_tem_modo_manual(limpar_usuarios_teste):
-    # Caso do "estagiário liberado pra urgência": colaborador comum, sem
-    # admin_ferramenta, mas com acesso_manual — só pode usar o fluxo
-    # Manual/URGENTE, não ligar/desligar o robô nem ver custos.
+    # Caso do "estagiário liberado pra urgência": colaborador comum, com
+    # acesso_manual — só pode usar o fluxo Manual/URGENTE, não configurar
+    # o robô (isso agora é admin-da-plataforma-only, ver admin_ferramentas.py).
     extratus_id = _buscar_ferramenta_id_por_slug("extratus")
 
     usuario = criar_usuario(
@@ -291,7 +222,6 @@ def test_colaborador_com_acesso_manual_tem_modo_manual(limpar_usuarios_teste):
 
     assert listar_ferramentas_manual_ids(usuario.id) == {extratus_id}
     assert usuario_tem_acesso_manual(usuario, "extratus") is True
-    assert usuario_eh_admin_da_ferramenta(usuario, "extratus") is False
 
 
 def test_colaborador_sem_acesso_manual_nao_tem_manual(limpar_usuarios_teste):
@@ -335,10 +265,10 @@ def test_criar_admin_ignora_ferramentas_mesmo_se_vierem_marcadas(limpar_usuarios
     # criar usuário só fica ESCONDIDO (CSS) quando "Administrador? Sim" é
     # escolhido, não desabilitado — então checkboxes marcados antes de
     # trocar pra "Sim" ainda chegavam no POST. Isso criava vínculos
-    # dormentes com admin_ferramenta/acesso_manual=True que "ressurgiam"
-    # como acesso indevido assim que a pessoa fosse rebaixada de admin
-    # depois. criar_usuario tem que ignorar esses campos por completo
-    # quando eh_admin=True, não só confiar que o front-end não vai mandá-los.
+    # dormentes com acesso_manual=True que "ressurgiam" como acesso
+    # indevido assim que a pessoa fosse rebaixada de admin depois.
+    # criar_usuario tem que ignorar esses campos por completo quando
+    # eh_admin=True, não só confiar que o front-end não vai mandá-los.
     extratus_id = _buscar_ferramenta_id_por_slug("extratus")
 
     usuario = criar_usuario(
@@ -349,12 +279,10 @@ def test_criar_admin_ignora_ferramentas_mesmo_se_vierem_marcadas(limpar_usuarios
         eh_admin=True,
         cargo=CARGO_COORDENADOR,
         ferramenta_ids=[extratus_id],
-        ferramentas_admin_ids=[extratus_id],
         ferramentas_manual_ids=[extratus_id],
     )
 
     assert listar_ferramentas_liberadas_ids(usuario.id) == set()
-    assert listar_ferramentas_admin_ids(usuario.id) == set()
     assert listar_ferramentas_manual_ids(usuario.id) == set()
 
 
@@ -369,23 +297,20 @@ def test_promover_a_admin_apaga_vinculos_de_ferramenta_existentes(limpar_usuario
         eh_admin=False,
         cargo=CARGO_COORDENADOR,
         ferramenta_ids=[extratus_id],
-        ferramentas_admin_ids=[extratus_id],
         ferramentas_manual_ids=[extratus_id],
     )
-    assert listar_ferramentas_admin_ids(usuario.id) == {extratus_id}
+    assert listar_ferramentas_manual_ids(usuario.id) == {extratus_id}
 
     alternar_admin(usuario.id)  # promove a admin da plataforma
 
     assert listar_ferramentas_liberadas_ids(usuario.id) == set()
-    assert listar_ferramentas_admin_ids(usuario.id) == set()
     assert listar_ferramentas_manual_ids(usuario.id) == set()
 
 
-def test_rebaixar_de_admin_nao_ressuscita_admin_ferramenta_antigo(limpar_usuarios_teste):
+def test_rebaixar_de_admin_nao_ressuscita_acesso_manual_antigo(limpar_usuarios_teste):
     # Este é o bug relatado por Henrique, reproduzido de ponta a ponta:
     # promover a admin (que apaga vínculos antigos) e depois rebaixar não
-    # pode devolver admin_ferramenta/acesso_manual — só acesso básico à
-    # ferramenta.
+    # pode devolver acesso_manual — só acesso básico à ferramenta.
     extratus_id = _buscar_ferramenta_id_por_slug("extratus")
 
     usuario = criar_usuario(
@@ -396,7 +321,6 @@ def test_rebaixar_de_admin_nao_ressuscita_admin_ferramenta_antigo(limpar_usuario
         eh_admin=False,
         cargo=CARGO_COORDENADOR,
         ferramenta_ids=[extratus_id],
-        ferramentas_admin_ids=[extratus_id],
         ferramentas_manual_ids=[extratus_id],
     )
 
@@ -406,11 +330,9 @@ def test_rebaixar_de_admin_nao_ressuscita_admin_ferramenta_antigo(limpar_usuario
     atualizado = buscar_usuario_por_nome_usuario(NOME_COORDENADOR_TESTE)
 
     # Acesso básico à ferramenta volta (senão a pessoa fica sem usar nada),
-    # mas admin_ferramenta/acesso_manual NÃO devem vir de graça de novo.
+    # mas acesso_manual NÃO deve vir de graça de novo.
     assert listar_ferramentas_liberadas_ids(usuario.id) == _todos_ferramenta_ids()
-    assert listar_ferramentas_admin_ids(usuario.id) == set()
     assert listar_ferramentas_manual_ids(usuario.id) == set()
-    assert usuario_eh_admin_da_ferramenta(atualizado, "extratus") is False
     assert usuario_tem_acesso_manual(atualizado, "extratus") is False
 
 
@@ -456,25 +378,6 @@ def test_admin_da_plataforma_sempre_tem_acesso_a_alguma_fila(limpar_usuarios_tes
     )
 
     assert usuario_tem_acesso_a_alguma_fila_robo(usuario) is True
-
-
-def test_admin_ferramenta_tambem_tem_acesso_manual(limpar_usuarios_teste):
-    # admin_ferramenta (pode ligar/desligar o robô) sempre também pode
-    # usar o fluxo Manual/URGENTE — não faria sentido o contrário.
-    extratus_id = _buscar_ferramenta_id_por_slug("extratus")
-
-    usuario = criar_usuario(
-        nome="Teste Coordenador",
-        nome_usuario=NOME_COORDENADOR_TESTE,
-        email="teste_usuarios_coord@example.com",
-        senha="senhaTeste123",
-        eh_admin=False,
-        cargo=CARGO_COORDENADOR,
-        ferramenta_ids=[extratus_id],
-        ferramentas_admin_ids=[extratus_id],
-    )
-
-    assert usuario_tem_acesso_manual(usuario, "extratus") is True
 
 
 def test_registrar_acesso_incrementa_contagem(limpar_usuarios_teste):

@@ -1,14 +1,21 @@
 {% extends "base.html" %}
 
-{% block titulo %}Custos — Extratus - Relatórios{% endblock %}
-{% block css_pagina %}<link rel="stylesheet" href="/extratus/static/extratus.css?v={{ v }}">{% endblock %}
+{% block titulo %}Custos — {{ nome_ferramenta }} — Administração — CAAV{% endblock %}
+{% block css_pagina %}<link rel="stylesheet" href="/static/admin.css?v={{ v }}">{% endblock %}
 
 {% block conteudo %}
 <div class="cabecalho-ferramenta">
     <div>
-        <h1>Custos — Extratus - Relatórios</h1>
-        <p>Área dedicada de custos — todo processamento, com custo de IA e detalhe técnico. Acessível só por administradores da plataforma, pelo painel de Administração.</p>
+        <h1>Custos — {{ nome_ferramenta }}</h1>
+        <p>Todo processamento, com custo de IA e detalhe técnico. Acessível só por administradores da plataforma.</p>
     </div>
+    <a href="/admin/custos" class="botao-secundario">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        Todas as ferramentas
+    </a>
 </div>
 
 <section class="cartao-secao">
@@ -82,7 +89,7 @@
                 </td>
                 <td class="truncavel" data-dica="{{ job.arquivo_pdf }}">{{ job.arquivo_pdf }}</td>
                 <td class="truncavel" data-dica="{{ job.processo or '—' }}">{{ job.processo or "—" }}</td>
-                <td><span class="status status-{{ job.status }}">{{ job.status | rotulo_status }}</span></td>
+                <td><span class="status status-{{ job.status }}">{{ rotulo_status(job.status) }}</span></td>
                 <td>
                     {% if job.custo_estimado_usd %}
                     US$ {{ "%.4f"|format(job.custo_estimado_usd) }}
@@ -102,7 +109,7 @@
                 </td>
                 <td>
                     {% if job.relatorio_path %}
-                    <a href="download/{{ job.relatorio_path.split('\\')[-1].split('/')[-1] }}" class="botao-download botao-download-pequeno" data-dica="Baixar relatório" aria-label="Baixar relatório">
+                    <a href="{{ url_base }}/download/{{ job.relatorio_path.split('\\')[-1].split('/')[-1] }}" class="botao-download botao-download-pequeno" data-dica="Baixar relatório" aria-label="Baixar relatório">
                         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                             <polyline points="7 10 12 15 17 10"></polyline>
@@ -130,4 +137,4 @@
 </section>
 {% endblock %}
 
-{% block js_pagina %}<script src="/extratus/static/custos.js?v={{ v }}" defer></script>{% endblock %}
+{% block js_pagina %}<script src="/static/admin_custos.js?v={{ v }}" defer></script>{% endblock %}

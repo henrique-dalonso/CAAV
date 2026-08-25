@@ -71,50 +71,57 @@
     <div class="admin-conteudo">
         {% if aba_ativa == "custos" %}
         <section class="cartao-secao">
-            <h2>Visão geral</h2>
-            <div class="admin-stats">
-                <div class="admin-stat">
-                    <strong>{{ total_usuarios_ativos }}</strong>
-                    <span>usuário(s) ativo(s)</span>
-                </div>
-                <div class="admin-stat">
-                    <strong>{{ metricas.sucesso }}</strong>
-                    <span>relatórios com sucesso</span>
-                </div>
-                <div class="admin-stat">
-                    <strong>{{ metricas.revisao }}</strong>
-                    <span>aguardando revisão</span>
-                </div>
-                <div class="admin-stat">
-                    <strong>{{ metricas.erro }}</strong>
-                    <span>processamentos com erro</span>
-                </div>
-                <div class="admin-stat">
-                    <strong>US$ {{ "%.2f"|format(custo_total) }}</strong>
-                    <span>custo de IA (total, Relatórios + Aburesi) —
-                        <a href="/extratus/custos" class="link-suave">Relatórios</a> ·
-                        <a href="/extratus-aburesi/custos" class="link-suave">Aburesi</a>
-                    </span>
-                </div>
+            <h2>Custos <span class="contagem">{{ custos_por_chave|length }}</span></h2>
+            <p class="aviso-discreto">Gasto de IA por ferramenta — clique pra ver o detalhe completo, por colaborador e por processamento. Total do sistema: <strong>US$ {{ "%.2f"|format(custo_total_geral) }}</strong>.</p>
+            <div class="grade-ferramentas">
+                {% for ferramenta in ferramentas %}
+                {% set chave = chave_por_slug.get(ferramenta.slug) %}
+                {% if chave and chave in custos_por_chave %}
+                <a class="cartao-ferramenta cartao-custos" href="/admin/custos/{{ chave }}" data-slug="{{ ferramenta.slug }}">
+                    <div class="cartao-ferramenta-topo">
+                        <div class="emblema"{% if ferramenta.cor_acento %} style="--emblema-cor:{{ ferramenta.cor_acento }};--emblema-cor-hover:{{ ferramenta.cor_acento_hover }};--emblema-cor-escuro:{{ ferramenta.cor_acento_escuro }};--emblema-cor-hover-escuro:{{ ferramenta.cor_acento_hover_escuro }};"{% endif %}>{{ ferramenta.nome|emblema_ferramenta }}</div>
+                        <strong>{{ ferramenta.nome }}</strong>
+                    </div>
+                    <div class="cartao-custos-valor">
+                        <strong>US$ {{ "%.2f"|format(custo_total_por_chave[chave]) }}</strong>
+                        <span class="cartao-custos-rotulo">gasto total de IA</span>
+                    </div>
+                    <span class="seta">&rarr;</span>
+                </a>
+                {% endif %}
+                {% else %}
+                <p class="vazio">Nenhuma ferramenta com custo de IA rastreado ainda.</p>
+                {% endfor %}
             </div>
         </section>
 
         {% elif aba_ativa == "ferramentas" %}
         <section class="cartao-secao">
-            <h2>Ferramentas <span class="contagem">{{ ferramentas_com_custos|length }}</span></h2>
-            <p class="aviso-discreto">Custos de IA e detalhe técnico de cada ferramenta — clique pra abrir a tela de custos dela.</p>
+            <h2>Ferramentas <span class="contagem">{{ ferramentas|length }}</span></h2>
+            <p class="aviso-discreto">Configuração de cada ferramenta (pasta do Robô, modo de IA, prompt) — só admin da plataforma.</p>
             <div class="grade-ferramentas">
-                {% for ferramenta in ferramentas_com_custos %}
-                <a class="cartao-ferramenta" href="{{ url_custos_por_ferramenta[ferramenta.slug] }}" data-slug="{{ ferramenta.slug }}">
-                    <div class="emblema"{% if ferramenta.cor_acento %} style="--emblema-cor:{{ ferramenta.cor_acento }};--emblema-cor-hover:{{ ferramenta.cor_acento_hover }};--emblema-cor-escuro:{{ ferramenta.cor_acento_escuro }};--emblema-cor-hover-escuro:{{ ferramenta.cor_acento_hover_escuro }};"{% endif %}>{{ ferramenta.nome|emblema_ferramenta }}</div>
-                    <div>
-                        <strong>{{ ferramenta.nome }}</strong><br>
-                        <span>Custos e detalhe técnico</span>
+                {% for ferramenta in ferramentas %}
+                {% set chave = chave_por_slug.get(ferramenta.slug) %}
+                {% set tem_config = chave and chave in configuracoes_por_chave %}
+                <a class="cartao-ferramenta cartao-config{{ '' if tem_config else ' desabilitada' }}"
+                   {% if tem_config %}href="/admin/ferramentas/{{ chave }}"{% endif %}
+                   data-slug="{{ ferramenta.slug }}"
+                   {% if ferramenta.cor_acento %}style="--acento-cartao:{{ ferramenta.cor_acento }};--acento-cartao-escuro:{{ ferramenta.cor_acento_escuro }};"{% endif %}>
+                    <div class="cartao-ferramenta-topo">
+                        <div class="emblema"{% if ferramenta.cor_acento %} style="--emblema-cor:{{ ferramenta.cor_acento }};--emblema-cor-hover:{{ ferramenta.cor_acento_hover }};--emblema-cor-escuro:{{ ferramenta.cor_acento_escuro }};--emblema-cor-hover-escuro:{{ ferramenta.cor_acento_hover_escuro }};"{% endif %}>{{ ferramenta.nome|emblema_ferramenta }}</div>
+                        <strong>{{ ferramenta.nome }}</strong>
                     </div>
+                    {% if tem_config %}
+                    {% set ligado = robo_ativo_por_chave.get(chave, False) %}
+                    <span class="cartao-config-status{{ ' cartao-config-status-ligado' if ligado }}">
+                        <span class="cartao-config-status-ponto"></span>
+                        Robô {{ "ligado" if ligado else "desligado" }}
+                    </span>
+                    {% else %}
+                    <span class="cartao-ferramenta-vazio">Sem configuração própria ainda</span>
+                    {% endif %}
                     <span class="seta">&rarr;</span>
                 </a>
-                {% else %}
-                <p class="vazio">Nenhuma ferramenta com tela de custos própria ainda.</p>
                 {% endfor %}
             </div>
         </section>
@@ -188,7 +195,7 @@
                         </span>
                         <div>
                             <h3>Cargo e ferramentas</h3>
-                            <p>Coordenador já sai com todas as ferramentas liberadas, e com Robô (padrão, mais barato) sempre disponível. "Admin da ferramenta" libera Configurações do Robô dela; "Modo Manual" libera o fluxo urgente/mais caro (funciona pra colaborador também).</p>
+                            <p>Coordenador já sai com todas as ferramentas liberadas, e com Robô (padrão, mais barato) sempre disponível. "Modo Urgente" libera o fluxo manual/mais caro, que gera na hora (funciona pra colaborador também).</p>
                         </div>
                     </div>
                     <div class="linha-cargo-ferramentas">
@@ -227,16 +234,11 @@
                                                 </svg>
                                             </span>
                                         </label>
-                                        <label class="ferramenta-tile-admin" data-dica="Acesso às Configurações do Robô desta ferramenta">
-                                            <input type="checkbox" name="ferramentas_admin_ids" value="{{ ferramenta.id }}" class="check-input">
-                                            <span class="check-caixa check-caixa-pequena"></span>
-                                            <span>Admin da ferramenta</span>
-                                        </label>
                                         {% if ferramenta.suporta_fila_robo %}
-                                        <label class="ferramenta-tile-fila" data-dica="Acesso ao fluxo Manual/URGENTE (mais caro, gera na hora) — sem isso, só o Robô (padrão, mais barato)">
+                                        <label class="ferramenta-tile-fila" data-dica="Acesso ao Modo Urgente (mais caro, gera na hora) — sem isso, só o Robô (padrão, mais barato)">
                                             <input type="checkbox" name="ferramentas_manual_ids" value="{{ ferramenta.id }}" class="check-input">
                                             <span class="check-caixa check-caixa-pequena"></span>
-                                            <span>Modo Manual</span>
+                                            <span>Modo Urgente</span>
                                         </label>
                                         {% endif %}
                                     </div>
@@ -422,20 +424,12 @@
                                                         </svg>
                                                     </span>
                                                 </label>
-                                                {% if usuario_linha.cargo == "coordenador" %}
-                                                <label class="ferramenta-tile-admin" data-dica="Acesso às Configurações do Robô desta ferramenta">
-                                                    <input type="checkbox" name="ferramentas_admin_ids" value="{{ ferramenta.id }}" class="check-input"
-                                                        {% if ferramenta.id in ferramentas_admin_por_usuario.get(usuario_linha.id, []) %}checked{% endif %}>
-                                                    <span class="check-caixa check-caixa-pequena"></span>
-                                                    <span>Admin da ferramenta</span>
-                                                </label>
-                                                {% endif %}
                                                 {% if ferramenta.suporta_fila_robo %}
-                                                <label class="ferramenta-tile-fila" data-dica="Acesso ao fluxo Manual/URGENTE (mais caro, gera na hora) — sem isso, só o Robô (padrão, mais barato)">
+                                                <label class="ferramenta-tile-fila" data-dica="Acesso ao Modo Urgente (mais caro, gera na hora) — sem isso, só o Robô (padrão, mais barato)">
                                                     <input type="checkbox" name="ferramentas_manual_ids" value="{{ ferramenta.id }}" class="check-input"
                                                         {% if ferramenta.id in ferramentas_manual_por_usuario.get(usuario_linha.id, []) %}checked{% endif %}>
                                                     <span class="check-caixa check-caixa-pequena"></span>
-                                                    <span>Modo Manual</span>
+                                                    <span>Modo Urgente</span>
                                                 </label>
                                                 {% endif %}
                                             </div>

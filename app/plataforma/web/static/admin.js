@@ -257,12 +257,9 @@
         atualizarBlocoCargo();
 
         // Coordenador já sai com tudo marcado (admin só desmarca o que
-        // não quiser) — Colaborador volta pra tudo desmarcado. O checkbox
-        // "Admin da ferramenta" só faz sentido (e só aparece) pra
-        // coordenador — pra colaborador some e é desmarcado.
+        // não quiser) — Colaborador volta pra tudo desmarcado.
         var radiosCargo = blocoCargo.querySelectorAll('input[name="cargo"]');
         var checksFerramentas = blocoCargo.querySelectorAll(".ferramenta-tile-input");
-        var linhasAdminFerramenta = blocoCargo.querySelectorAll(".ferramenta-tile-admin");
 
         if (radiosCargo.length && checksFerramentas.length) {
             radiosCargo.forEach(function (r) {
@@ -273,29 +270,12 @@
                         c.checked = ehCoordenador;
                     });
 
-                    linhasAdminFerramenta.forEach(function (linha) {
-                        linha.hidden = !ehCoordenador;
-
-                        if (!ehCoordenador) {
-                            var checkAdmin = linha.querySelector('input[type="checkbox"]');
-                            if (checkAdmin) {
-                                checkAdmin.checked = false;
-                            }
-                        }
-                    });
-
                     // Dispara "change" num deles só pra atualizar o
                     // contador do botão (o listener já existe lá em cima).
                     if (checksFerramentas[0]) {
                         checksFerramentas[0].dispatchEvent(new Event("change"));
                     }
                 });
-            });
-
-            // Estado inicial (colaborador é o padrão marcado) — some com
-            // as linhas de admin-de-ferramenta até escolher coordenador.
-            linhasAdminFerramenta.forEach(function (linha) {
-                linha.hidden = true;
             });
         }
     }

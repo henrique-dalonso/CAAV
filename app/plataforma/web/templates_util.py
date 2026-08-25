@@ -5,7 +5,6 @@ from fastapi.templating import Jinja2Templates
 from app.plataforma.db.usuarios import (
     ferramenta_pela_url,
     listar_ferramentas_do_usuario,
-    usuario_eh_admin_da_ferramenta,
     usuario_tem_acesso_a_alguma_fila_robo,
     usuario_tem_acesso_manual,
 )
@@ -35,9 +34,7 @@ def criar_templates(directory):
     """Cria um Jinja2Templates com os globals que toda tela logada precisa
     — a lista de ferramentas do usuário pro seletor de apps, o rótulo de
     hierarquia (Administrador/Coordenador/Colaborador) pro card de perfil,
-    as checagens de admin-de-ferramenta (aba Configurações do Robô,
-    dentro de cada ferramenta — "Custos" não é mais uma delas, ver
-    admin.py) e acesso-manual (abas Gerar Relatório URGENTE/Relatórios
+    a checagem de acesso-manual (abas Gerar Relatório URGENTE/Relatórios
     URGENTES), e o emblema (1-2 letras) de cada ferramenta. Usar isso em
     vez de instanciar Jinja2Templates direto garante que qualquer tela
     nova já sai com isso funcionando, sem precisar lembrar de passar
@@ -46,7 +43,6 @@ def criar_templates(directory):
     templates = Jinja2Templates(directory=directory)
     templates.env.globals["ferramentas_do_usuario"] = listar_ferramentas_do_usuario
     templates.env.globals["rotulo_perfil"] = rotulo_perfil
-    templates.env.globals["usuario_eh_admin_da_ferramenta"] = usuario_eh_admin_da_ferramenta
     templates.env.globals["usuario_tem_acesso_manual"] = usuario_tem_acesso_manual
     templates.env.globals["usuario_tem_acesso_a_alguma_fila_robo"] = usuario_tem_acesso_a_alguma_fila_robo
     templates.env.globals["cor_ferramenta_atual"] = cor_ferramenta_atual

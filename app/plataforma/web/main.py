@@ -19,16 +19,14 @@ from app.plataforma.db.seed import garantir_ferramentas_padrao
 from app.plataforma.db.session import obter_sessao
 from app.plataforma.db.usuarios import registrar_acesso_ferramenta
 from app.plataforma.web.auth import NaoAutenticado
-from app.plataforma.web.routes import admin, auth, home, notificacoes, perfil
+from app.plataforma.web.routes import admin, admin_custos, admin_ferramentas, auth, home, notificacoes, perfil
 from app.plataforma.web.templates_util import criar_templates
 from app.ferramentas.extratus.core.checagem_watcher import loop_checagem
 from app.ferramentas.extratus.core.robo_watcher import loop_robo
-from app.ferramentas.extratus.web.routes import configuracoes_robo, custos, fila, gerar_relatorio, relatorios_manuais, relatorios_robo
+from app.ferramentas.extratus.web.routes import fila, gerar_relatorio, relatorios_manuais, relatorios_robo
 from app.ferramentas.extratus_aburesi.core.checagem_watcher import loop_checagem as loop_checagem_aburesi
 from app.ferramentas.extratus_aburesi.core.robo_watcher import loop_robo as loop_robo_aburesi
 from app.ferramentas.extratus_aburesi.web.routes import (
-    configuracoes_robo as configuracoes_robo_aburesi,
-    custos as custos_aburesi,
     fila as fila_aburesi,
     gerar_relatorio as gerar_relatorio_aburesi,
     relatorios_manuais as relatorios_manuais_aburesi,
@@ -168,18 +166,16 @@ app.mount(
 app.include_router(auth.router)
 app.include_router(home.router)
 app.include_router(admin.router)
+app.include_router(admin_custos.router)
+app.include_router(admin_ferramentas.router)
 app.include_router(perfil.router)
 app.include_router(notificacoes.router)
 app.include_router(gerar_relatorio.router, prefix="/extratus")
 app.include_router(relatorios_manuais.router, prefix="/extratus")
-app.include_router(custos.router, prefix="/extratus")
-app.include_router(configuracoes_robo.router, prefix="/extratus")
 app.include_router(fila.router, prefix="/extratus")
 app.include_router(relatorios_robo.router, prefix="/extratus")
 app.include_router(gerar_relatorio_aburesi.router, prefix="/extratus-aburesi")
 app.include_router(relatorios_manuais_aburesi.router, prefix="/extratus-aburesi")
-app.include_router(custos_aburesi.router, prefix="/extratus-aburesi")
-app.include_router(configuracoes_robo_aburesi.router, prefix="/extratus-aburesi")
 app.include_router(fila_aburesi.router, prefix="/extratus-aburesi")
 app.include_router(relatorios_robo_aburesi.router, prefix="/extratus-aburesi")
 app.include_router(leitor_publicacoes_home.router, prefix="/leitor-publicacoes")

@@ -63,7 +63,6 @@ COLUNAS_PENDENTES = {
     },
     "usuarioferramenta": {
         # Mesma retroatividade do usuario.tema/cor_perfil acima.
-        "admin_ferramenta": "BOOLEAN DEFAULT 0",
         "fila_robo": "BOOLEAN DEFAULT 0",
         # Henrique, diretoria, 2026-08-19: controla o fluxo Manual/URGENTE
         # (fila_robo acima não é mais lido — Robô virou padrão, ver
@@ -88,7 +87,10 @@ COLUNAS_PENDENTES = {
 # (usuarioferramenta já existia) — promover alguém a coordenador falhava
 # com 500 ao inserir UsuarioFerramenta sem 'fila_motor'.
 COLUNAS_OBSOLETAS = {
-    "usuarioferramenta": ["fila_motor"],
+    # admin_ferramenta: Henrique, diretoria, 2026-08-24 — permissão
+    # "admin só desta ferramenta" removida por completo, ver docstring de
+    # UsuarioFerramenta em db/models.py.
+    "usuarioferramenta": ["fila_motor", "admin_ferramenta"],
 }
 
 

@@ -1,9 +1,6 @@
 (function () {
     "use strict";
 
-    // Interruptor liga/desliga o robô — visível pra coordenador também
-    // (não só admin), por isso fica fora da guarda abaixo (que só cobre
-    // o navegador de pastas, admin-only).
     var interruptorRobo = document.getElementById("interruptor-robo");
 
     if (interruptorRobo) {
@@ -20,14 +17,13 @@
         return;
     }
 
-    // Deriva a URL base do módulo (Relatórios usa /extratus/...,
-    // Aburesi usa /extratus-aburesi/...) do action do form do
-    // interruptor, mesmo truque já usado em fila.js/gerar_relatorio.js —
-    // achado ao renomear esse arquivo (Rodada 13, nomenclatura): a
-    // cópia aburesi tinha essa URL fixa em "/extratus/..." (bug real,
-    // buscava as pastas do módulo ERRADO), agora corrigido na raiz.
+    // Deriva a URL base da ferramenta (/admin/ferramentas/extratus-relatorios,
+    // /admin/ferramentas/extratus-aburesi, ...) do action do form do
+    // interruptor — mesmo truque já usado em fila.js/gerar_relatorio.js,
+    // reaproveitado aqui quando essa tela saiu de dentro de cada
+    // ferramenta e virou parte do admin (2026-08-24).
     var formInterruptor = document.getElementById("form-interruptor-robo");
-    var baseUrl = formInterruptor ? formInterruptor.action.replace(/\/alternar$/, "") : "/extratus/configuracoes-robo";
+    var baseUrl = formInterruptor ? formInterruptor.action.replace(/\/alternar$/, "") : "/admin/ferramentas";
 
     var elementoAtual = document.getElementById("navegador-pastas-atual");
     var elementoLista = document.getElementById("navegador-pastas-lista");
