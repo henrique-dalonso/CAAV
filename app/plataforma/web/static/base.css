@@ -1262,15 +1262,61 @@ html[data-theme="escuro"] .selo-roxo {
        em tela que se vê 1x por sessão (login), senão vira demora chata. */
 }
 
+.barra-superior-esquerda {
+    display: flex;
+    align-items: center;
+    gap: 1.1rem;
+    min-width: 0;
+}
+
 .marca-sistema {
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    flex-shrink: 0;
 }
 
 .marca-sistema-logo {
     width: 72px;
     height: 38px;
+}
+
+/* Botão "Voltar pra X" (2026-08-25, Henrique: site inteiro, dinâmico,
+   com o nome da última tela) — nome vem de nomes_paginas.py; sem nome
+   cadastrado mostra só "Voltar" (ver pagina_voltar, templates_util.py).
+   max-width com ellipsis pra não estourar o cabeçalho com um nome de
+   ferramenta comprido ("Fila do Robô — Extratus - Relatórios"). */
+.botao-voltar-topo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.85rem;
+    max-width: 240px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--cor-texto-suave);
+    background: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+    border-radius: 999px;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.botao-voltar-topo:hover {
+    color: var(--cor-acento);
+    border-color: var(--cor-acento);
+    background: var(--cor-acento-fraco);
+}
+
+.botao-voltar-topo svg {
+    flex-shrink: 0;
+}
+
+.botao-voltar-topo span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .marca-sistema strong {

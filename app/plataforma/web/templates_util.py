@@ -11,6 +11,25 @@ from app.plataforma.db.usuarios import (
 from app.plataforma.web.rotulos import emblema_ferramenta, rotulo_perfil
 
 
+# Páginas onde o botão "Voltar pra X" nunca aparece (Henrique,
+# 2026-08-25: "nunca no Login/Home") — Início é a raiz (nada "antes"
+# dela faz sentido mostrar) e Login é pré-autenticação.
+_PAGINAS_SEM_BOTAO_VOLTAR = {"/", "/login"}
+
+
+def pagina_voltar(request):
+    """Última página (GET, autenticada) visitada nesta sessão ANTES da
+    atual — {"url", "nome"} ou None. Gravada pelo middleware em main.py
+    (middleware_rastrear_pagina_anterior), sempre a mais recente mesmo
+    quando a página não tem nome cadastrado em nomes_paginas.py (nesse
+    caso "nome" vem None e o botão mostra só "Voltar", genérico, mas
+    ainda vai pro lugar certo)."""
+    if request.url.path in _PAGINAS_SEM_BOTAO_VOLTAR:
+        return None
+
+    return request.session.get("ultima_pagina")
+
+
 # Carimbo fixado uma vez quando o processo do servidor sobe (não muda
 # durante a execução) — usado como "?v=..." em CSS/JS pra forçar o
 # navegador a buscar a versão nova depois de um reinício do servidor, em
@@ -46,6 +65,7 @@ def criar_templates(directory):
     templates.env.globals["usuario_tem_acesso_manual"] = usuario_tem_acesso_manual
     templates.env.globals["usuario_tem_acesso_a_alguma_fila_robo"] = usuario_tem_acesso_a_alguma_fila_robo
     templates.env.globals["cor_ferramenta_atual"] = cor_ferramenta_atual
+    templates.env.globals["pagina_voltar"] = pagina_voltar
     templates.env.filters["emblema_ferramenta"] = emblema_ferramenta
     templates.env.globals["v"] = VERSAO_ESTATICOS
 

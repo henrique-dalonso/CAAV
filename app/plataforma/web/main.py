@@ -18,6 +18,7 @@ from app.plataforma.db.models import Ferramenta
 from app.plataforma.db.seed import garantir_ferramentas_padrao
 from app.plataforma.db.session import obter_sessao
 from app.plataforma.db.usuarios import registrar_acesso_ferramenta
+from app.plataforma.nomes_paginas import nome_pagina
 from app.plataforma.web.auth import NaoAutenticado
 from app.plataforma.web.routes import admin, admin_custos, admin_ferramentas, auth, home, notificacoes, perfil
 from app.plataforma.web.templates_util import criar_templates
@@ -96,8 +97,6 @@ app = FastAPI(
 # das 36h, então loga normalmente de novo na segunda, como pedido.
 SESSAO_MAX_IDADE_SEGUNDOS = 36 * 60 * 60
 
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, max_age=SESSAO_MAX_IDADE_SEGUNDOS)
-
 
 @app.middleware("http")
 async def middleware_registrar_acesso_ferramenta(request: Request, call_next):
@@ -130,6 +129,51 @@ async def middleware_registrar_acesso_ferramenta(request: Request, call_next):
             registrar_acesso_ferramenta(usuario_id, ferramenta.id)
 
     return resposta
+
+
+@app.middleware("http")
+async def middleware_rastrear_pagina_anterior(request: Request, call_next):
+    """Guarda em sessão a última página (GET, autenticada) visitada,
+    ANTES de processar a atual — alimenta o botão "Voltar pra X" no
+    cabeçalho (base.html, templates_util.pagina_voltar). A ordem
+    importa: `call_next` (que renderiza o template, chamando
+    pagina_voltar) roda ANTES da linha que atualiza `ultima_pagina`
+    aqui embaixo — então o template sempre lê o valor da visita
+    ANTERIOR, nunca o da atual.
+
+    Só GET conta como "página visitada" (POST de formulário — Salvar
+    configurações, etc. — não deveria virar destino de "Voltar"); só
+    pra usuário logado; nunca pra /login (nem como destino faz sentido,
+    ver _PAGINAS_SEM_BOTAO_VOLTAR em templates_util.py)."""
+    if "/static/" in request.url.path:
+        return await call_next(request)
+
+    resposta = await call_next(request)
+
+    if (
+        request.method == "GET"
+        and request.session.get("usuario_id")
+        and request.url.path != "/login"
+    ):
+        request.session["ultima_pagina"] = {
+            "url": request.url.path,
+            "nome": nome_pagina(request.url.path),
+        }
+
+    return resposta
+
+
+# SessionMiddleware precisa ser registrada DEPOIS dos dois middlewares
+# acima (não antes, como já foi por um tempo) — achado real, 2026-08-25:
+# middleware registrada por último vira a mais EXTERNA da pilha (roda
+# primeiro na ida, por último na volta). Com SessionMiddleware registrada
+# antes, ela ficava mais INTERNA — sua escrita do cookie (na volta)
+# acontecia ANTES de middleware_rastrear_pagina_anterior mexer em
+# request.session["ultima_pagina"], então essa mudança nunca chegava a
+# ir pro cookie de verdade (sumia silenciosamente, sem erro nenhum).
+# Registrando aqui embaixo, SessionMiddleware fica por fora dos dois
+# outros e escreve o cookie por último, já vendo a sessão atualizada.
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, max_age=SESSAO_MAX_IDADE_SEGUNDOS)
 
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
