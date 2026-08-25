@@ -89,10 +89,17 @@
     min-width: 0;
 }
 
+/* Henrique, 2026-08-25: essa regra tinha margin-bottom 0 — sobrava de um
+   uso antigo de admin.html que não existe mais. Toda vez que
+   .aviso-discreto é usado hoje (Custos, Ferramentas, e dentro das telas
+   de detalhe) tem algo logo abaixo (grade de cartões, campo de busca,
+   tabela) que precisa de respiro — sem isso, o texto ficava colado no
+   próximo elemento, fazendo o friso colorido do cartão (ver
+   .cartao-custos/.cartao-config) parecer "atravessar" o parágrafo. */
 .aviso-discreto {
     font-size: 0.82rem;
     color: var(--cor-texto-suave);
-    margin: 1rem 0 0;
+    margin: 1rem 0 1.25rem;
 }
 
 /* Visão geral — grade de números grandes. */
