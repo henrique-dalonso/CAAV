@@ -23,17 +23,18 @@
     <ul class="lista-custos">
         <li>
             <span>Colaboradores</span>
-            <strong>US$ {{ "%.4f"|format(custo_colaboradores) }}</strong>
+            <span class="valor-reais"><strong>R$ {{ "%.4f"|format(custo_colaboradores * cotacao) }}</strong> <span class="motivo">US$ {{ "%.4f"|format(custo_colaboradores) }}</span></span>
         </li>
         <li>
             <span>Robô automático</span>
-            <strong>US$ {{ "%.4f"|format(custo_robo) }}</strong>
+            <span class="valor-reais"><strong>R$ {{ "%.4f"|format(custo_robo * cotacao) }}</strong> <span class="motivo">US$ {{ "%.4f"|format(custo_robo) }}</span></span>
         </li>
         <li class="lista-custos-total">
             <span>Total do sistema</span>
-            <strong>US$ {{ "%.4f"|format(custo_total) }}</strong>
+            <span class="valor-reais"><strong>R$ {{ "%.4f"|format(custo_total * cotacao) }}</strong> <span class="motivo">US$ {{ "%.4f"|format(custo_total) }}</span></span>
         </li>
     </ul>
+    <p class="aviso-discreto cambio-nota">Câmbio USD→BRL: R$ {{ "%.4f"|format(cotacao) }} — atualizado a cada hora.</p>
 </section>
 
 {% if colaboradores %}
@@ -50,7 +51,7 @@
                 <span class="colaborador-nome">{{ pessoa.nome }}</span>
                 <span class="colaborador-login">{{ pessoa.login }}</span>
             </label>
-            <strong>US$ {{ "%.4f"|format(pessoa.custo) }}</strong>
+            <span class="valor-reais"><strong>R$ {{ "%.4f"|format(pessoa.custo * cotacao) }}</strong> <span class="motivo">US$ {{ "%.4f"|format(pessoa.custo) }}</span></span>
         </li>
         {% endfor %}
     </ul>
@@ -92,8 +93,8 @@
                 <td><span class="status status-{{ job.status }}">{{ rotulo_status(job.status) }}</span></td>
                 <td>
                     {% if job.custo_estimado_usd %}
-                    US$ {{ "%.4f"|format(job.custo_estimado_usd) }}
-                    <span class="motivo">{{ job.modelo_ia }}</span>
+                    R$ {{ "%.4f"|format(job.custo_estimado_usd * cotacao) }}
+                    <span class="motivo">US$ {{ "%.4f"|format(job.custo_estimado_usd) }} · {{ job.modelo_ia }}</span>
                     {% else %}
                     <span class="motivo">sem custo (erro)</span>
                     {% endif %}

@@ -1055,3 +1055,36 @@ html[data-theme="escuro"] .cartao-config:hover {
 .robo-status .interruptor {
     --cor-interruptor-ligado: var(--cor-robo);
 }
+
+/* .motivo (texto pequeno e discreto embaixo de um valor — login abaixo
+   do nome, modelo de IA abaixo do custo) é definida em extratus.css,
+   não em admin.css — mas a tela de Custos (admin_custos_detalhe.html,
+   2026-08-24) reaproveita o MESMO padrão visual (login, modelo, e agora
+   o US$ embaixo do R$, ver .valor-reais) sem carregar extratus.css.
+   Cópia deliberada, mesmo espírito de .aviso-discreto acima — pequena
+   demais pra valer a pena centralizar num arquivo à parte só por isso. */
+.motivo {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    color: var(--cor-texto-suave);
+    font-size: 0.78rem;
+    margin-top: 0.2rem;
+}
+
+/* R$ em reais (2026-08-25, cotação ao vivo — ver app/plataforma/cambio.py)
+   é o valor principal agora; US$ (a moeda real da fatura da Anthropic)
+   fica como .motivo discreto embaixo, nunca escondido — decisão de
+   Henrique de manter os dois, não substituir um pelo outro. */
+.valor-reais {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    text-align: right;
+}
+
+.cambio-nota {
+    margin-top: 0.5rem;
+    margin-bottom: 0;
+}

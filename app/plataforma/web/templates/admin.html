@@ -80,7 +80,7 @@
         {% if aba_ativa == "custos" %}
         <section class="cartao-secao">
             <h2>Custos <span class="contagem">{{ custos_por_chave|length }}</span></h2>
-            <p class="aviso-discreto">Gasto de IA por ferramenta — clique pra ver o detalhe completo, por colaborador e por processamento. Total do sistema: <strong>US$ {{ "%.2f"|format(custo_total_geral) }}</strong>.</p>
+            <p class="aviso-discreto">Gasto de IA por ferramenta — clique pra ver o detalhe completo, por colaborador e por processamento. Total do sistema: <strong>R$ {{ "%.2f"|format(custo_total_geral * cotacao) }}</strong> (US$ {{ "%.2f"|format(custo_total_geral) }}).</p>
             <div class="grade-ferramentas">
                 {% for ferramenta in ferramentas %}
                 {% set chave = chave_por_slug.get(ferramenta.slug) %}
@@ -91,8 +91,8 @@
                         <strong>{{ ferramenta.nome }}</strong>
                     </div>
                     <div class="cartao-custos-valor">
-                        <strong>US$ {{ "%.2f"|format(custo_total_por_chave[chave]) }}</strong>
-                        <span class="cartao-custos-rotulo">gasto total de IA</span>
+                        <strong>R$ {{ "%.2f"|format(custo_total_por_chave[chave] * cotacao) }}</strong>
+                        <span class="cartao-custos-rotulo">gasto total de IA (US$ {{ "%.2f"|format(custo_total_por_chave[chave]) }})</span>
                     </div>
                     <span class="seta">&rarr;</span>
                 </a>

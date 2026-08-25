@@ -18,6 +18,7 @@ from app.ferramentas.extratus_aburesi.web.rotulos import (
     rotulo_erro as _rotulo_erro_aburesi,
     rotulo_status as _rotulo_status_aburesi,
 )
+from app.plataforma.cambio import obter_cotacao_usd_brl
 from app.plataforma.db.models import Usuario
 from app.plataforma.db.usuarios import listar_todas_ferramentas, listar_todos_usuarios
 from app.plataforma.web.auth import exigir_admin
@@ -92,6 +93,7 @@ def pagina_custos_grade(request: Request, usuario: Usuario = Depends(exigir_admi
             "custos_por_chave": CUSTOS_POR_CHAVE,
             "custo_total_por_chave": custo_total_por_chave,
             "custo_total_geral": sum(custo_total_por_chave.values()),
+            "cotacao": obter_cotacao_usd_brl(),
         },
     )
 
@@ -147,5 +149,6 @@ def pagina_custos_detalhe(chave: str, request: Request, usuario: Usuario = Depen
             # um módulo com uma requisição concorrente renderizando o outro.
             "rotulo_status": entrada["rotulo_status"],
             "rotulo_erro": entrada["rotulo_erro"],
+            "cotacao": obter_cotacao_usd_brl(),
         },
     )
