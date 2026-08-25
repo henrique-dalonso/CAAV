@@ -274,6 +274,28 @@ def excluir_job(job_id):
         return True
 
 
+def contar_relatorios_robo_concluidos():
+    """Quantos relatórios do Robô (usuario_id None) já foram gerados de
+    verdade — "sucesso" ou "revisão" contam (as duas formas de "saiu um
+    documento", só muda o nível de confiança); "erro" não conta (não
+    produziu nada). Usado como estatística na tela de Configurações
+    (admin) — Henrique, 2026-08-25: "preciso saber quantos relatórios
+    foram concluídos no total, não só lotes" (lote é o conceito do Batch
+    API, pode ter vários PDFs — isso aqui é contagem de documento real)."""
+    with obter_sessao() as sessao:
+        consulta = (
+            select(Job.status, func.count())
+            .where(
+                Job.usuario_id.is_(None),
+                Job.status.in_(["sucesso", "revisao"]),
+            )
+            .group_by(Job.status)
+        )
+        contagem = dict(sessao.exec(consulta).all())
+
+    return contagem.get("sucesso", 0) + contagem.get("revisao", 0)
+
+
 def contar_por_status():
     contagem = {"sucesso": 0, "revisao": 0, "erro": 0}
 

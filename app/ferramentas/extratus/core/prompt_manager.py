@@ -1,5 +1,6 @@
 import shutil
 from datetime import datetime
+from pathlib import Path
 
 from app.plataforma.paths import PROJECT_ROOT
 
@@ -52,6 +53,57 @@ def obter_metadados_prompt():
         "atualizado_em": atualizado_em,
         "total_versoes_anteriores": total_versoes_anteriores,
     }
+
+
+# Quantas versões anteriores mostrar na tela de Configurações — a pasta
+# de histórico não tem limpeza automática (cresce 1 arquivo por
+# substituição, pra sempre), então a lista mostrada é só as mais
+# recentes; os arquivos mais antigos continuam no disco, só não
+# aparecem na tela.
+LIMITE_VERSOES_EXIBIDAS = 10
+
+
+def listar_versoes_prompt():
+    """Versões anteriores do prompt guardadas em HISTORICO_PROMPTS_DIR,
+    mais recente primeiro — cada uma com o nome de arquivo (usado só
+    internamente, pra ativar_versao_prompt saber qual reativar) e quando
+    foi salva. A versão ATIVA (PROMPT_PATH) não entra nessa lista — ver
+    obter_metadados_prompt pra saber quando ela foi salva."""
+    if not HISTORICO_PROMPTS_DIR.exists():
+        return []
+
+    arquivos = sorted(
+        HISTORICO_PROMPTS_DIR.glob(f"{PROMPT_PATH.stem}_*{PROMPT_PATH.suffix}"),
+        key=lambda caminho: caminho.stat().st_mtime,
+        reverse=True,
+    )
+
+    return [
+        {
+            "nome_arquivo": arquivo.name,
+            "salvo_em": datetime.fromtimestamp(arquivo.stat().st_mtime),
+        }
+        for arquivo in arquivos[:LIMITE_VERSOES_EXIBIDAS]
+    ]
+
+
+def ativar_versao_prompt(nome_arquivo):
+    """Torna uma versão antiga (guardada em HISTORICO_PROMPTS_DIR) a
+    versão ATIVA — reaproveita substituir_instrucoes_relatorio, então a
+    versão que estava ativa até agora vira uma versão guardada no lugar
+    dela, nunca se perde nada (dá pra "ir e voltar" à vontade).
+
+    `Path(nome_arquivo).name` descarta qualquer parte de caminho (/, ..)
+    que venha no valor — só o nome puro é usado pra montar o caminho
+    real, então não dá pra escapar de HISTORICO_PROMPTS_DIR passando
+    algo tipo "../../config.json" nesse campo."""
+    candidato = HISTORICO_PROMPTS_DIR / Path(nome_arquivo).name
+
+    if not candidato.is_file():
+        raise ValueError("Essa versão do prompt não existe mais.")
+
+    conteudo = candidato.read_text(encoding="utf-8")
+    substituir_instrucoes_relatorio(conteudo.encode("utf-8"))
 
 
 def substituir_instrucoes_relatorio(conteudo: bytes):

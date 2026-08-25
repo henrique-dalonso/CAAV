@@ -244,6 +244,23 @@ def excluir_job(job_id):
         return True
 
 
+def contar_relatorios_robo_concluidos():
+    """Ver docstring equivalente em app/ferramentas/extratus/db/jobs.py
+    (Extratus - Relatórios) — mesma lógica."""
+    with obter_sessao() as sessao:
+        consulta = (
+            select(Job.status, func.count())
+            .where(
+                Job.usuario_id.is_(None),
+                Job.status.in_(["sucesso", "revisao"]),
+            )
+            .group_by(Job.status)
+        )
+        contagem = dict(sessao.exec(consulta).all())
+
+    return contagem.get("sucesso", 0) + contagem.get("revisao", 0)
+
+
 def contar_por_status():
     contagem = {"sucesso": 0, "revisao": 0, "erro": 0}
 

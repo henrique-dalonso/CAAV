@@ -1,5 +1,6 @@
 import shutil
 from datetime import datetime
+from pathlib import Path
 
 from app.plataforma.paths import PROJECT_ROOT
 
@@ -49,6 +50,42 @@ def obter_metadados_prompt():
         "atualizado_em": atualizado_em,
         "total_versoes_anteriores": total_versoes_anteriores,
     }
+
+
+LIMITE_VERSOES_EXIBIDAS = 10
+
+
+def listar_versoes_prompt():
+    """Ver docstring equivalente em app/ferramentas/extratus/core/
+    prompt_manager.py (Extratus - Relatórios) — mesma lógica."""
+    if not HISTORICO_PROMPTS_DIR.exists():
+        return []
+
+    arquivos = sorted(
+        HISTORICO_PROMPTS_DIR.glob(f"{PROMPT_PATH.stem}_*{PROMPT_PATH.suffix}"),
+        key=lambda caminho: caminho.stat().st_mtime,
+        reverse=True,
+    )
+
+    return [
+        {
+            "nome_arquivo": arquivo.name,
+            "salvo_em": datetime.fromtimestamp(arquivo.stat().st_mtime),
+        }
+        for arquivo in arquivos[:LIMITE_VERSOES_EXIBIDAS]
+    ]
+
+
+def ativar_versao_prompt(nome_arquivo):
+    """Ver docstring equivalente em app/ferramentas/extratus/core/
+    prompt_manager.py (Extratus - Relatórios) — mesma lógica."""
+    candidato = HISTORICO_PROMPTS_DIR / Path(nome_arquivo).name
+
+    if not candidato.is_file():
+        raise ValueError("Essa versão do prompt não existe mais.")
+
+    conteudo = candidato.read_text(encoding="utf-8")
+    substituir_instrucoes_relatorio(conteudo.encode("utf-8"))
 
 
 def substituir_instrucoes_relatorio(conteudo: bytes):

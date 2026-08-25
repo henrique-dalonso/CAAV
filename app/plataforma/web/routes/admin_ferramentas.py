@@ -6,6 +6,9 @@ from fastapi.responses import RedirectResponse
 
 from app.ferramentas.extratus.core import config_manager as _config_extratus
 from app.ferramentas.extratus.core import prompt_manager as _prompt_extratus
+from app.ferramentas.extratus.db.jobs import (
+    contar_relatorios_robo_concluidos as _contar_relatorios_robo_concluidos_extratus,
+)
 from app.ferramentas.extratus.db.lotes import (
     listar_itens_do_lote as _listar_itens_do_lote_extratus,
     listar_lotes_em_andamento as _listar_lotes_em_andamento_extratus,
@@ -13,6 +16,9 @@ from app.ferramentas.extratus.db.lotes import (
 )
 from app.ferramentas.extratus_aburesi.core import config_manager as _config_aburesi
 from app.ferramentas.extratus_aburesi.core import prompt_manager as _prompt_aburesi
+from app.ferramentas.extratus_aburesi.db.jobs import (
+    contar_relatorios_robo_concluidos as _contar_relatorios_robo_concluidos_aburesi,
+)
 from app.ferramentas.extratus_aburesi.db.lotes import (
     listar_itens_do_lote as _listar_itens_do_lote_aburesi,
     listar_lotes_em_andamento as _listar_lotes_em_andamento_aburesi,
@@ -41,6 +47,7 @@ CONFIGURACOES_POR_CHAVE = {
         "listar_lotes_em_andamento": _listar_lotes_em_andamento_extratus,
         "listar_itens_do_lote": _listar_itens_do_lote_extratus,
         "obter_estatisticas_lotes": _obter_estatisticas_lotes_extratus,
+        "contar_relatorios_robo_concluidos": _contar_relatorios_robo_concluidos_extratus,
     },
     "extratus-aburesi": {
         "nome": "Extratus - Aburesi",
@@ -49,6 +56,7 @@ CONFIGURACOES_POR_CHAVE = {
         "listar_lotes_em_andamento": _listar_lotes_em_andamento_aburesi,
         "listar_itens_do_lote": _listar_itens_do_lote_aburesi,
         "obter_estatisticas_lotes": _obter_estatisticas_lotes_aburesi,
+        "contar_relatorios_robo_concluidos": _contar_relatorios_robo_concluidos_aburesi,
     },
 }
 
@@ -105,7 +113,10 @@ def pagina_ferramenta_detalhe(chave: str, request: Request, usuario: Usuario = D
     config_form = entrada["config_manager"].carregar_config_bruto()
 
     lotes_em_andamento = [
-        {"lote": lote, "total_itens": len(entrada["listar_itens_do_lote"](lote.id))}
+        {
+            "lote": lote,
+            "itens": entrada["listar_itens_do_lote"](lote.id),
+        }
         for lote in entrada["listar_lotes_em_andamento"]()
     ]
 
@@ -121,8 +132,10 @@ def pagina_ferramenta_detalhe(chave: str, request: Request, usuario: Usuario = D
             "provedores_ia": entrada["config_manager"].PROVEDORES_IA_VALIDOS,
             "lotes_em_andamento": lotes_em_andamento,
             "estatisticas_lotes": entrada["obter_estatisticas_lotes"](),
+            "relatorios_robo_concluidos": entrada["contar_relatorios_robo_concluidos"](),
             "extensao_prompt": entrada["prompt_manager"].extensao_esperada_prompt(),
             "metadados_prompt": entrada["prompt_manager"].obter_metadados_prompt(),
+            "versoes_prompt": entrada["prompt_manager"].listar_versoes_prompt(),
             "sucesso": sucesso,
             "erro": erro,
         },
@@ -212,5 +225,22 @@ async def atualizar_prompt_robo_route(chave: str, arquivo: UploadFile = File(...
 
     return RedirectResponse(
         url=f"/admin/ferramentas/{chave}?sucesso=" + quote("Prompt de instruções atualizado."),
+        status_code=303,
+    )
+
+
+@router.post("/admin/ferramentas/{chave}/prompt/ativar")
+def ativar_versao_prompt_route(chave: str, arquivo: str = Form(...)):
+    entrada = _entrada_ou_404(chave)
+
+    try:
+        entrada["prompt_manager"].ativar_versao_prompt(arquivo)
+    except ValueError as erro:
+        return RedirectResponse(
+            url=f"/admin/ferramentas/{chave}?erro={quote(str(erro))}", status_code=303
+        )
+
+    return RedirectResponse(
+        url=f"/admin/ferramentas/{chave}?sucesso=" + quote("Versão anterior do prompt reativada."),
         status_code=303,
     )

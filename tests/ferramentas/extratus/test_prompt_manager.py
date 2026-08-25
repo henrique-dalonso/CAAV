@@ -58,3 +58,54 @@ def test_metadados_prompt_conta_versoes_apos_substituicoes(prompt_de_teste):
     metadados = prompt_manager.obter_metadados_prompt()
 
     assert metadados["total_versoes_anteriores"] == 2
+
+
+def test_listar_versoes_prompt_vazio_sem_historico(prompt_de_teste):
+    assert prompt_manager.listar_versoes_prompt() == []
+
+
+def test_listar_versoes_prompt_mais_recente_primeiro(prompt_de_teste):
+    prompt_manager.substituir_instrucoes_relatorio("versao 2".encode("utf-8"))
+    prompt_manager.substituir_instrucoes_relatorio("versao 3".encode("utf-8"))
+
+    versoes = prompt_manager.listar_versoes_prompt()
+
+    assert len(versoes) == 2
+    conteudos = [
+        (prompt_manager.HISTORICO_PROMPTS_DIR / v["nome_arquivo"]).read_text(encoding="utf-8")
+        for v in versoes
+    ]
+    # "versao 2" foi guardada por último (é o backup feito ao subir
+    # "versao 3"), então deve vir primeiro na lista.
+    assert conteudos == ["versao 2", "instrucoes originais"]
+
+
+def test_ativar_versao_prompt_troca_a_ativa_e_guarda_a_atual(prompt_de_teste):
+    prompt_manager.substituir_instrucoes_relatorio("versao 2".encode("utf-8"))
+    versao_original = prompt_manager.listar_versoes_prompt()[0]
+
+    prompt_manager.ativar_versao_prompt(versao_original["nome_arquivo"])
+
+    assert prompt_manager.carregar_instrucoes_relatorio() == "instrucoes originais"
+    # "versao 2" (que estava ativa) agora tem que estar guardada no lugar.
+    versoes_depois = prompt_manager.listar_versoes_prompt()
+    conteudos = [
+        (prompt_manager.HISTORICO_PROMPTS_DIR / v["nome_arquivo"]).read_text(encoding="utf-8")
+        for v in versoes_depois
+    ]
+    assert "versao 2" in conteudos
+
+
+def test_ativar_versao_prompt_inexistente_leva_erro_claro(prompt_de_teste):
+    with pytest.raises(ValueError):
+        prompt_manager.ativar_versao_prompt("nao_existe.txt")
+
+
+def test_ativar_versao_prompt_ignora_tentativa_de_escapar_da_pasta(prompt_de_teste):
+    # nome_arquivo malicioso ("../instrucoes_relatorio.txt" tentando
+    # apontar pro próprio PROMPT_PATH fora de HISTORICO_PROMPTS_DIR) —
+    # Path(...).name descarta a parte de caminho, sobra só o nome, que
+    # não existe dentro do histórico (vazio no teste) — devolve erro,
+    # não segue o caminho de fora.
+    with pytest.raises(ValueError):
+        prompt_manager.ativar_versao_prompt("../instrucoes_relatorio.txt")

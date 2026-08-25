@@ -22,6 +22,13 @@
     max-width: 1200px;
 }
 
+/* Telas de detalhe (Custos e Configurações de uma ferramenta) também
+   saem do 880px padrão — Henrique, 2026-08-25: "aproveite mais a
+   largura da tela, o grid central está muito estreito". */
+.pagina:has(.robo-hero) {
+    max-width: 1200px;
+}
+
 .admin-layout {
     display: flex;
     gap: 2rem;
@@ -152,7 +159,8 @@
     margin-bottom: 0.4rem;
 }
 
-.campo input {
+.campo input,
+.campo select {
     width: 100%;
     padding: 0.65rem 0.85rem;
     font-size: 0.92rem;
@@ -162,10 +170,31 @@
     border: 1.5px solid var(--cor-borda);
     border-radius: var(--raio-pequeno);
     outline: none;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 
-.campo input:focus {
+/* select nu do navegador não tinha estilo NENHUM aqui (só .campo input
+   existia) — achado real, Henrique 2026-08-25: "modo de ia tá horrível,
+   um menu dropdown feio sem textura". appearance:none tira o chrome
+   nativo (que varia muito entre navegador/SO) e desenha uma seta
+   própria, consistente com o resto do site. */
+.campo select {
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+    padding-right: 2.5rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.85rem center;
+    background-size: 16px;
+}
+
+.campo select:hover {
+    border-color: color-mix(in srgb, var(--cor-acento) 45%, var(--cor-borda));
+}
+
+.campo input:focus,
+.campo select:focus {
     border-color: var(--cor-acento);
     box-shadow: 0 0 0 4px color-mix(in srgb, var(--cor-acento) 18%, transparent);
 }
@@ -1121,11 +1150,25 @@ html[data-theme="escuro"] .cartao-config:hover {
     align-self: center;
 }
 
-/* Interruptor maior — o padrão (usado em Preferências, etc.) fica
-   pequeno demais como peça central de destaque de uma tela inteira. */
+/* Interruptor "gamificado" (2026-08-25, pedido de Henrique: "um botão
+   com mais vida") — maior que o padrão (usado em Preferências etc,
+   pequeno demais como peça central de destaque de uma tela inteira),
+   com esticada em curva de mola (overshoot) em vez de linear, halo
+   pulsante quando ligado (mesma cor do emblema do Robô), e a bolinha
+   "aperta" (fica oval) ao clicar — feedback tátil de botão de verdade,
+   não só uma barra que desliza. */
 .interruptor-grande .interruptor-trilha {
-    width: 58px;
+    width: 60px;
     height: 32px;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.18);
+    transition: background 0.25s ease, box-shadow 0.25s ease;
+}
+
+.interruptor-grande input:checked ~ .interruptor-trilha {
+    box-shadow:
+        inset 0 1px 3px rgba(0, 0, 0, 0.18),
+        0 0 0 5px color-mix(in srgb, var(--cor-interruptor-ligado, var(--cor-acento)) 22%, transparent);
+    animation: interruptor-halo-anim 2.2s ease-in-out infinite;
 }
 
 .interruptor-grande .interruptor-trilha::before {
@@ -1133,10 +1176,32 @@ html[data-theme="escuro"] .cartao-config:hover {
     left: 4px;
     width: 24px;
     height: 24px;
+    transition: translate 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.15s ease;
 }
 
 .interruptor-grande input:checked ~ .interruptor-trilha::before {
-    translate: 26px 0;
+    translate: 28px 0;
+}
+
+.interruptor-grande:active .interruptor-trilha::before {
+    width: 29px;
+}
+
+.interruptor-grande:active input:checked ~ .interruptor-trilha::before {
+    translate: 23px 0;
+}
+
+@keyframes interruptor-halo-anim {
+    0%, 100% {
+        box-shadow:
+            inset 0 1px 3px rgba(0, 0, 0, 0.18),
+            0 0 0 5px color-mix(in srgb, var(--cor-interruptor-ligado, var(--cor-acento)) 22%, transparent);
+    }
+    50% {
+        box-shadow:
+            inset 0 1px 3px rgba(0, 0, 0, 0.18),
+            0 0 0 8px color-mix(in srgb, var(--cor-interruptor-ligado, var(--cor-acento)) 8%, transparent);
+    }
 }
 
 /* Cor laranja do Robô (mesma de .aba-robo/emblema) no interruptor. */
@@ -1182,18 +1247,58 @@ html[data-theme="escuro"] .cartao-config:hover {
     gap: 0.4rem;
 }
 
+/* Cada lote é um <details> — clique pra expandir e ver os arquivos de
+   verdade dentro dele (Henrique, 2026-08-25: "precisam mostrar... quais
+   arquivos estavam presentes"). summary sem marcador nativo (list-style
+   custom via ::-webkit-details-marker/list-style:none), seta própria
+   que gira 90° quando aberto. */
 .robo-lote-item {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    padding: 0.6rem 0.85rem;
     background: color-mix(in srgb, var(--cor-robo) 8%, var(--cor-fundo));
     border-radius: var(--raio-pequeno);
     font-size: 0.87rem;
 }
 
-.robo-lote-item strong {
+.robo-lote-item summary {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 0.85rem;
+    cursor: pointer;
+    list-style: none;
+}
+
+.robo-lote-item summary::-webkit-details-marker {
+    display: none;
+}
+
+.robo-lote-item summary::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-right: 2px solid var(--cor-texto-suave);
+    border-bottom: 2px solid var(--cor-texto-suave);
+    transform: rotate(-45deg);
+    transition: transform 0.15s ease;
+    flex-shrink: 0;
+}
+
+.robo-lote-item[open] summary::before {
+    transform: rotate(45deg);
+}
+
+.robo-lote-item summary strong {
     margin-left: auto;
+}
+
+.robo-lote-arquivos {
+    list-style: none;
+    margin: 0;
+    padding: 0 0.85rem 0.75rem 2.15rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.8rem;
+    color: var(--cor-texto-suave);
 }
 
 .robo-lote-pulso {
@@ -1277,27 +1382,51 @@ html[data-theme="escuro"] .cartao-config:hover {
     align-self: flex-start;
 }
 
-.prompt-meta {
+/* Lista de versões do prompt (2026-08-25, Henrique: "mostrar qual
+   prompt está ativo... todos os anexados disponíveis pra alternar
+   rapidamente"). A ativa fica marcada com o selo verde já usado em
+   Usuários/Custos; as demais têm um botão "Ativar" que troca na hora
+   (ver prompt_manager.ativar_versao_prompt). */
+.prompt-versoes {
+    list-style: none;
+    margin: 0 0 1.25rem;
+    padding: 0;
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.6rem;
-    margin-bottom: 1.25rem;
+    flex-direction: column;
+    gap: 0.4rem;
+    max-height: 230px;
+    overflow-y: auto;
 }
 
-.prompt-meta-item {
-    display: inline-flex;
+.prompt-versao {
+    display: flex;
     align-items: center;
-    gap: 0.4rem;
-    padding: 0.35rem 0.7rem;
+    gap: 0.6rem;
+    padding: 0.55rem 0.75rem;
     background: var(--cor-fundo);
-    border-radius: 999px;
-    font-size: 0.78rem;
+    border-radius: var(--raio-pequeno);
+    font-size: 0.85rem;
+}
+
+.prompt-versao-ativa {
+    background: color-mix(in srgb, #9333ea 8%, var(--cor-fundo));
+}
+
+.prompt-versao-icone {
+    flex-shrink: 0;
     color: var(--cor-texto-suave);
 }
 
-.prompt-meta-item svg {
+.prompt-versao-nome {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.prompt-versao form,
+.prompt-versao .selo {
+    margin-left: auto;
     flex-shrink: 0;
-    opacity: 0.7;
 }
 
 /* .zona-soltar (arrastar-e-soltar arquivo) é definida em extratus.css,

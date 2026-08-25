@@ -7,7 +7,7 @@
 <div class="cabecalho-ferramenta">
     <div>
         <h1>Configurações — {{ nome_ferramenta }}</h1>
-        <p>Controle do processamento automático do Robô — liga/desliga e configurações. Só admin da plataforma.</p>
+        <p>Liga/desliga o Robô e ajusta pasta, IA e prompt.</p>
     </div>
     <a href="/admin/ferramentas" class="botao-secundario">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -42,10 +42,9 @@
             <h2 class="robo-hero-titulo">{{ "Ligado" if robo_ativo else "Desligado" }}</h2>
             <p class="robo-hero-descricao">
                 {% if robo_ativo %}
-                A cada poucos minutos, ele confere a pasta "Fila do Robô" sozinho e manda os PDFs novos em
-                lote pra IA (mais barato, mas pode levar de minutos até 24h pra voltar).
+                Confere a Fila do Robô a cada poucos minutos e processa em lote (mais barato, até 24h).
                 {% else %}
-                Não olha a pasta nem processa nada enquanto estiver assim.
+                Não processa nada enquanto estiver desligado.
                 {% endif %}
             </p>
         </div>
@@ -59,26 +58,39 @@
 
     <div class="robo-stats">
         <div class="robo-stat">
+            <span class="robo-stat-valor">{{ relatorios_robo_concluidos }}</span>
+            <span class="robo-stat-rotulo">relatório(s) concluído(s)</span>
+        </div>
+        <div class="robo-stat">
             <span class="robo-stat-valor">{{ lotes_em_andamento|length }}</span>
             <span class="robo-stat-rotulo">lote(s) em processamento</span>
         </div>
         <div class="robo-stat">
             <span class="robo-stat-valor">{{ estatisticas_lotes.total_concluidos }}</span>
-            <span class="robo-stat-rotulo">lote(s) concluído(s) no total</span>
+            <span class="robo-stat-rotulo">lote(s) concluído(s)</span>
         </div>
         <div class="robo-stat">
             <span class="robo-stat-valor robo-stat-valor-pequeno">{{ estatisticas_lotes.ultimo_concluido_em.strftime("%d/%m/%Y %H:%M") if estatisticas_lotes.ultimo_concluido_em else "Nunca" }}</span>
-            <span class="robo-stat-rotulo">último lote concluído</span>
+            <span class="robo-stat-rotulo">último lote</span>
         </div>
     </div>
 
     {% if lotes_em_andamento %}
     <ul class="robo-lotes-lista">
         {% for entrada in lotes_em_andamento %}
-        <li class="robo-lote-item">
-            <span class="robo-lote-pulso" aria-hidden="true"></span>
-            <span>Lote enviado em {{ entrada.lote.criado_em.strftime("%d/%m/%Y %H:%M") }}</span>
-            <strong>{{ entrada.total_itens }} arquivo(s)</strong>
+        <li>
+            <details class="robo-lote-item">
+                <summary>
+                    <span class="robo-lote-pulso" aria-hidden="true"></span>
+                    <span>Enviado em {{ entrada.lote.criado_em.strftime("%d/%m/%Y %H:%M") }}</span>
+                    <strong>{{ entrada.itens|length }} arquivo(s)</strong>
+                </summary>
+                <ul class="robo-lote-arquivos">
+                    {% for item in entrada.itens %}
+                    <li class="truncavel" data-dica="{{ item.arquivo_pdf }}">{{ item.arquivo_pdf }}</li>
+                    {% endfor %}
+                </ul>
+            </details>
         </li>
         {% endfor %}
     </ul>
@@ -95,7 +107,7 @@
             </span>
             <div>
                 <h3>Pasta e modo de IA</h3>
-                <p>Pasta que a "Fila do Robô" usa pra depositar PDFs. Processamento é sempre em lote (mais barato, até 24h), nunca se mistura com a fila manual em tempo real.</p>
+                <p>Onde a Fila do Robô deposita PDFs. Processamento sempre em lote, nunca em tempo real.</p>
             </div>
         </div>
         <form action="/admin/ferramentas/{{ chave }}/config" method="post" class="config-form">
@@ -138,24 +150,39 @@
             </span>
             <div>
                 <h3>Prompt de instruções</h3>
-                <p>Texto que a IA usa pra montar o relatório. Precisa ser {{ extensao_prompt }}.</p>
+                <p>Texto que a IA usa pra montar o relatório ({{ extensao_prompt }}).</p>
             </div>
         </div>
 
-        <div class="prompt-meta">
-            <span class="prompt-meta-item">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 16 14"></polyline></svg>
-                {% if metadados_prompt.atualizado_em %}
-                Atualizado em {{ metadados_prompt.atualizado_em.strftime("%d/%m/%Y %H:%M") }}
-                {% else %}
-                Nunca atualizado
-                {% endif %}
-            </span>
-            <span class="prompt-meta-item" data-dica="Cada envio guarda uma cópia da versão anterior, caso precise voltar atrás">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"></path><polyline points="3 4 3 9 8 9"></polyline></svg>
-                {{ metadados_prompt.total_versoes_anteriores }} versão(ões) anterior(es) guardada(s)
-            </span>
-        </div>
+        <ul class="prompt-versoes">
+            <li class="prompt-versao prompt-versao-ativa">
+                <svg class="prompt-versao-icone" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <path d="M14 2v6h6"></path>
+                </svg>
+                <span class="prompt-versao-nome">
+                    {% if metadados_prompt.atualizado_em %}
+                    Versão de {{ metadados_prompt.atualizado_em.strftime("%d/%m/%Y %H:%M") }}
+                    {% else %}
+                    Versão atual
+                    {% endif %}
+                </span>
+                <span class="selo selo-positivo">Ativo</span>
+            </li>
+            {% for versao in versoes_prompt %}
+            <li class="prompt-versao">
+                <svg class="prompt-versao-icone" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <path d="M14 2v6h6"></path>
+                </svg>
+                <span class="prompt-versao-nome">Versão de {{ versao.salvo_em.strftime("%d/%m/%Y %H:%M") }}</span>
+                <form action="/admin/ferramentas/{{ chave }}/prompt/ativar" method="post" data-confirm="Ativar esta versão do prompt? A versão atual fica guardada no lugar dela.">
+                    <input type="hidden" name="arquivo" value="{{ versao.nome_arquivo }}">
+                    <button type="submit" class="botao-minimal">Ativar</button>
+                </form>
+            </li>
+            {% endfor %}
+        </ul>
 
         <form action="/admin/ferramentas/{{ chave }}/prompt" method="post" enctype="multipart/form-data" class="config-form">
             <label class="zona-soltar" for="arquivo-prompt" id="zona-soltar-prompt">
@@ -165,8 +192,8 @@
                     <polyline points="17 8 12 3 7 8"></polyline>
                     <line x1="12" y1="3" x2="12" y2="15"></line>
                 </svg>
-                <p class="zona-soltar-titulo" id="zona-soltar-prompt-texto">Arraste o arquivo {{ extensao_prompt }} aqui, ou clique pra selecionar</p>
-                <p class="zona-soltar-legenda">Substitui o prompt atual — a versão anterior fica guardada</p>
+                <p class="zona-soltar-titulo" id="zona-soltar-prompt-texto">Arraste o arquivo aqui, ou clique pra selecionar</p>
+                <p class="zona-soltar-legenda">Vira a versão ativa — a atual vai pra lista acima</p>
             </label>
             <button type="submit" class="botao">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

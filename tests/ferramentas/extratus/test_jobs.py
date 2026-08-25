@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 from app.ferramentas.extratus.db.jobs import (
     contar_jobs_manuais_do_usuario,
+    contar_relatorios_robo_concluidos,
     contar_relatorios_robo_novos,
     contar_relatorios_novos_do_usuario,
     excluir_job,
@@ -309,6 +310,52 @@ def test_contar_relatorios_robo_novos_conta_so_usuario_id_none(limpar_jobs_criad
 
     assert depois["sucesso"] == antes["sucesso"] + 1
     assert depois["revisao"] == antes["revisao"] + 1
+
+
+def test_contar_relatorios_robo_concluidos_soma_sucesso_e_revisao_ignora_erro_e_manual(
+    limpar_jobs_criados,
+):
+    antes = contar_relatorios_robo_concluidos()
+
+    job_robo_sucesso = registrar_processado(
+        arquivo_pdf="teste_concluidos_robo_sucesso.pdf",
+        processo="0000000-00.2026.8.00.0040",
+        relatorio_path=None,
+        destino_pdf=None,
+        confianca="alta",
+        usuario_id=None,
+    )
+    job_robo_revisao = registrar_processado(
+        arquivo_pdf="teste_concluidos_robo_revisao.pdf",
+        processo="0000000-00.2026.8.00.0041",
+        relatorio_path=None,
+        destino_pdf=None,
+        confianca="revisao",
+        usuario_id=None,
+    )
+    job_robo_erro = registrar_erro(
+        arquivo_pdf="teste_concluidos_robo_erro.pdf",
+        processo=None,
+        tipo_erro="teste",
+        erro_mensagem="teste",
+        usuario_id=None,
+    )
+    job_manual_sucesso = registrar_processado(
+        arquivo_pdf="teste_concluidos_manual_nao_conta.pdf",
+        processo="0000000-00.2026.8.00.0042",
+        relatorio_path=None,
+        destino_pdf=None,
+        confianca="alta",
+        usuario_id=USUARIO_TESTE_A,
+    )
+    limpar_jobs_criados.extend([
+        job_robo_sucesso.id,
+        job_robo_revisao.id,
+        job_robo_erro.id,
+        job_manual_sucesso.id,
+    ])
+
+    assert contar_relatorios_robo_concluidos() == antes + 2
 
 
 def test_listar_relatorios_manuais_nao_notificados_do_usuario_traz_sucesso_e_revisao(limpar_jobs_criados):
