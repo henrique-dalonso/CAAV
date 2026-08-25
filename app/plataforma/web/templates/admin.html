@@ -9,11 +9,19 @@
 
 {% block titulo %}{{ titulos_admin.get(aba_ativa, "Administração") }} — Administração — CAAV{% endblock %}
 {% block css_pagina %}
-<link rel="stylesheet" href="/static/admin.css?v={{ v }}">
 <!-- .grade-ferramentas/.cartao-ferramenta (grade de ícones da aba Ferramentas,
      2026-08-11) são definidas em home.css — reaproveitadas aqui em vez de
-     duplicadas, mesmo visual do menu inicial. -->
+     duplicadas, mesmo visual do menu inicial. home.css TEM que carregar
+     ANTES de admin.css: .cartao-custos/.cartao-config (admin.css,
+     2026-08-24) sobrescrevem padding/gap/borda do .cartao-ferramenta
+     genérico com a MESMA especificidade CSS (0,0,1,0) — empate que só é
+     resolvido pela ordem de carregamento, quem vem depois vence. Com
+     admin.css antes (ordem original), home.css vencia o empate e
+     apagava silenciosamente o padding/gap customizados (achado real,
+     Henrique, 2026-08-24: "cropagem" nos cartões + friso voltando pra
+     cor padrão no hover). -->
 <link rel="stylesheet" href="/static/home.css?v={{ v }}">
+<link rel="stylesheet" href="/static/admin.css?v={{ v }}">
 {% endblock %}
 
 {% block conteudo %}

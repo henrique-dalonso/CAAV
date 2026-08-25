@@ -714,21 +714,33 @@
     border-top-width: 3px;
 }
 
-.cartao-custos {
+.cartao-custos,
+.cartao-custos:hover {
     border-top-color: var(--cor-custos);
 }
 
-.cartao-config {
+.cartao-config,
+.cartao-config:hover {
     border-top-color: var(--acento-cartao, var(--cor-acento));
 }
 
+/* :hover explícito acima é necessário, não decorativo: .cartao-ferramenta:hover
+   (home.css) troca TODOS os lados da borda pra --cor-acento (a cor azul
+   padrão) — mesma especificidade CSS (2 seletores) que .cartao-custos:hover/
+   .cartao-config:hover, então sem essas regras aqui o friso colorido
+   (verde ou da ferramenta) sumia e voltava pro azul genérico bem na hora
+   de passar o mouse — achado real, Henrique, 2026-08-24: "piorando no
+   hover do mouse". */
+
 @media (prefers-color-scheme: dark) {
-    html:not([data-theme="claro"]) .cartao-config {
+    html:not([data-theme="claro"]) .cartao-config,
+    html:not([data-theme="claro"]) .cartao-config:hover {
         border-top-color: var(--acento-cartao-escuro, var(--cor-acento));
     }
 }
 
-html[data-theme="escuro"] .cartao-config {
+html[data-theme="escuro"] .cartao-config,
+html[data-theme="escuro"] .cartao-config:hover {
     border-top-color: var(--acento-cartao-escuro, var(--cor-acento));
 }
 
