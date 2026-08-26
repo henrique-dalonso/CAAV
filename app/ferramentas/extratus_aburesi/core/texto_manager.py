@@ -30,6 +30,26 @@ def _texto_real_da_pagina(texto_bruto):
     return PADRAO_CARIMBO_PAGINA_EPROC.sub("", texto_bruto).strip()
 
 
+# Ver docstring equivalente em app/ferramentas/extratus/core/
+# texto_manager.py (Extratus - Relatórios) — mesma lógica, mesmo limite
+# calibrado com o mesmo processo real.
+LETRAS_PORTUGUES = set("abcdefghijklmnopqrstuvwxyzáàâãéèêíìîóòôõúùûüçñ")
+
+LIMITE_PROPORCAO_LETRAS_ESTRANHAS = 0.05
+
+
+def _parece_texto_embaralhado(texto_real):
+    """Ver docstring equivalente em app/ferramentas/extratus/core/
+    texto_manager.py (Extratus - Relatórios) — mesma lógica."""
+    letras = [c for c in texto_real.lower() if c.isalpha()]
+
+    if len(letras) < MINIMO_CARACTERES_PAGINA_COM_TEXTO:
+        return False
+
+    estranhas = sum(1 for c in letras if c not in LETRAS_PORTUGUES)
+    return (estranhas / len(letras)) > LIMITE_PROPORCAO_LETRAS_ESTRANHAS
+
+
 def extrair_paginas_pdf(caminho_pdf):
     """Extrai o texto de cada página do PDF separadamente (sem juntar tudo
     numa string só) — usado tanto pelo diagnóstico normal quanto pela
@@ -60,19 +80,31 @@ def extrair_texto_pdf_com_diagnostico(caminho_pdf):
     diagnóstico: quantas páginas vieram sem texto real. Uma proporção alta
     de páginas vazias é o sinal de que o PDF é digitalizado (escaneado,
     sem camada de texto) — precisa ser tratado diferente do PDF nativo.
+
+    "Sem texto real" conta 2 situações — ver docstring equivalente em
+    app/ferramentas/extratus/core/texto_manager.py (Extratus -
+    Relatórios) — mesma lógica.
     """
     paginas, total_paginas = extrair_paginas_pdf(caminho_pdf)
 
-    paginas_sem_texto = sum(
-        1 for pagina in paginas
-        if len(_texto_real_da_pagina(pagina["texto_bruto"])) < MINIMO_CARACTERES_PAGINA_COM_TEXTO
-    )
+    paginas_vazias = 0
+    paginas_embaralhadas = 0
+
+    for pagina in paginas:
+        texto_real = _texto_real_da_pagina(pagina["texto_bruto"])
+
+        if len(texto_real) < MINIMO_CARACTERES_PAGINA_COM_TEXTO:
+            paginas_vazias += 1
+        elif _parece_texto_embaralhado(texto_real):
+            paginas_embaralhadas += 1
+
     texto_completo = "\n\n".join(pagina["texto_marcado"] for pagina in paginas)
 
     return {
         "texto": texto_completo,
         "total_paginas": total_paginas,
-        "paginas_sem_texto": paginas_sem_texto,
+        "paginas_sem_texto": paginas_vazias + paginas_embaralhadas,
+        "paginas_embaralhadas": paginas_embaralhadas,
         "caracteres": len(texto_completo),
     }
 

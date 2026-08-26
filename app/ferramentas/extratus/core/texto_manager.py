@@ -30,6 +30,43 @@ def _texto_real_da_pagina(texto_bruto):
     return PADRAO_CARIMBO_PAGINA_EPROC.sub("", texto_bruto).strip()
 
 
+# Letras esperadas num documento em português — usada só pra detectar
+# texto EMBARALHADO por fonte com mapeamento de caractere quebrado
+# (achado real, Henrique, 2026-08-26, processo verdadeiro de 321
+# páginas): algumas fontes embutidas no PDF (comuns em petição gerada
+# por certos editores/templates de escritório) têm o ToUnicode CMap
+# trocado — o PDF renderiza certinho na tela, mas o texto por trás sai
+# tipo "coı pedido liıiĲaŘ" em vez de "com pedido liminar". Confirmado
+# com pypdf E PyMuPDF (as duas bibliotecas devolvem o mesmo texto
+# embaralhado) — não é bug de biblioteca, é a fonte do PDF mesmo.
+LETRAS_PORTUGUES = set("abcdefghijklmnopqrstuvwxyzáàâãéèêíìîóòôõúùûüçñ")
+
+# Calibrado com dado real do processo que motivou esse achado, não
+# chute: nas páginas comprovadamente LIMPAS, a taxa nunca passou de 2%;
+# nas comprovadamente EMBARALHADAS, nunca ficou abaixo de 9,7%. 5% fica
+# no meio do vão, com folga de mais de 2x dos dois lados — pensado pra
+# não arriscar marcar página boa como embaralhada (Henrique: "cuidado
+# pra não... quebrar a qualidade atual").
+LIMITE_PROPORCAO_LETRAS_ESTRANHAS = 0.05
+
+
+def _parece_texto_embaralhado(texto_real):
+    """True quando a página tem texto suficiente pra passar no teste de
+    MINIMO_CARACTERES_PAGINA_COM_TEXTO, mas boa parte das letras não são
+    do alfabeto português — sinal de fonte com mapeamento quebrado, não
+    de PDF de verdade sem texto nenhum. Sem essa checagem, essas páginas
+    contavam como "tem texto de verdade" e o conteúdo ilegível ia direto
+    pra IA sem nenhum aviso — muito mais perigoso que o PDF realmente
+    escaneado (que pelo menos já tinha tratamento)."""
+    letras = [c for c in texto_real.lower() if c.isalpha()]
+
+    if len(letras) < MINIMO_CARACTERES_PAGINA_COM_TEXTO:
+        return False  # já cai na régua de "sem texto" de qualquer jeito
+
+    estranhas = sum(1 for c in letras if c not in LETRAS_PORTUGUES)
+    return (estranhas / len(letras)) > LIMITE_PROPORCAO_LETRAS_ESTRANHAS
+
+
 def extrair_paginas_pdf(caminho_pdf):
     """Extrai o texto de cada página do PDF separadamente (sem juntar tudo
     numa string só) — usado tanto pelo diagnóstico normal quanto pela
@@ -60,19 +97,35 @@ def extrair_texto_pdf_com_diagnostico(caminho_pdf):
     diagnóstico: quantas páginas vieram sem texto real. Uma proporção alta
     de páginas vazias é o sinal de que o PDF é digitalizado (escaneado,
     sem camada de texto) — precisa ser tratado diferente do PDF nativo.
+
+    "Sem texto real" conta 2 situações — a página literalmente vazia
+    (menos de MINIMO_CARACTERES_PAGINA_COM_TEXTO) E a página com texto
+    embaralhado por fonte quebrada (ver _parece_texto_embaralhado) —
+    juntas em paginas_sem_texto de propósito, pra parece_digitalizado
+    tratar as duas como o mesmo sinal de "não dá pra confiar nesse
+    texto" sem precisar de um caminho de código novo. paginas_embaralhadas
+    fica separado só pra mensagem de erro poder ser mais específica.
     """
     paginas, total_paginas = extrair_paginas_pdf(caminho_pdf)
 
-    paginas_sem_texto = sum(
-        1 for pagina in paginas
-        if len(_texto_real_da_pagina(pagina["texto_bruto"])) < MINIMO_CARACTERES_PAGINA_COM_TEXTO
-    )
+    paginas_vazias = 0
+    paginas_embaralhadas = 0
+
+    for pagina in paginas:
+        texto_real = _texto_real_da_pagina(pagina["texto_bruto"])
+
+        if len(texto_real) < MINIMO_CARACTERES_PAGINA_COM_TEXTO:
+            paginas_vazias += 1
+        elif _parece_texto_embaralhado(texto_real):
+            paginas_embaralhadas += 1
+
     texto_completo = "\n\n".join(pagina["texto_marcado"] for pagina in paginas)
 
     return {
         "texto": texto_completo,
         "total_paginas": total_paginas,
-        "paginas_sem_texto": paginas_sem_texto,
+        "paginas_sem_texto": paginas_vazias + paginas_embaralhadas,
+        "paginas_embaralhadas": paginas_embaralhadas,
         "caracteres": len(texto_completo),
     }
 

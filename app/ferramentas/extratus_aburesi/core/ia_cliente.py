@@ -673,11 +673,19 @@ def montar_parametros_mensagem(caminho_pdf, processo_detectado, instrucoes, diag
     if parece_digitalizado(diagnostico["total_paginas"], diagnostico["paginas_sem_texto"]):
         if not cabe_no_limite_pdf_nativo(caminho_pdf):
             tamanho_mb = caminho_pdf.stat().st_size / 1_000_000
+            paginas_embaralhadas = diagnostico.get("paginas_embaralhadas", 0)
+            # Ver comentário equivalente em app/ferramentas/extratus/core/
+            # ia_cliente.py (Extratus - Relatórios) — mesma lógica.
+            detalhe_motivo = f"{diagnostico['paginas_sem_texto']} de {diagnostico['total_paginas']} páginas sem texto"
+            if paginas_embaralhadas:
+                detalhe_motivo += (
+                    f", sendo {paginas_embaralhadas} com texto embaralhado "
+                    "(fonte do PDF com mapeamento de caractere quebrado, não digitalização)"
+                )
             raise RuntimeError(
-                f"'{caminho_pdf.name}' parece ser um PDF digitalizado (sem "
-                f"camada de texto legível — {diagnostico['paginas_sem_texto']} de "
-                f"{diagnostico['total_paginas']} páginas sem texto) e também é "
-                f"grande demais ({tamanho_mb:.1f}MB) para ser enviado à IA como "
+                f"'{caminho_pdf.name}' parece ser um PDF digitalizado ou com texto "
+                f"corrompido (sem camada de texto legível — {detalhe_motivo}) e também "
+                f"é grande demais ({tamanho_mb:.1f}MB) para ser enviado à IA como "
                 "imagem (limite da Anthropic é 32MB). Precisa de revisão manual."
             )
 
