@@ -1263,7 +1263,6 @@ html[data-theme="escuro"] .selo-roxo {
 }
 
 .marca-sistema {
-    position: relative;
     display: flex;
     align-items: center;
     gap: 0.75rem;
@@ -1278,21 +1277,23 @@ html[data-theme="escuro"] .selo-roxo {
 /* Botão "Voltar pra X" (2026-08-25, Henrique: site inteiro, dinâmico,
    com o nome da última tela) — nome vem de nomes_paginas.py; sem nome
    cadastrado mostra só "Voltar" (ver pagina_voltar, templates_util.py).
-   max-width com ellipsis pra não estourar o cabeçalho com um nome de
-   ferramenta comprido ("Fila do Robô — Extratus - Relatórios").
+   max-width com ellipsis pra não estourar com um nome de ferramenta
+   comprido ("Fila do Robô — Extratus - Relatórios").
 
-   position:absolute de propósito (Henrique, 2026-08-25: "não é pra
-   empurrar a logo pro lado... coloca esse elemento fora da div
-   principal") — fica ancorado em .marca-sistema (position:relative,
-   acima), mas FORA do fluxo flex normal, então nunca muda a largura
-   calculada de .marca-sistema nem empurra a logo/o texto CAAV pro
-   lado, apareça o botão ou não. */
+   Henrique, 2026-08-26 (2ª rodada): nem .marca-sistema pode "saber"
+   que o botão existe — position:fixed tira o elemento de QUALQUER
+   fluxo/contêiner da página (não é filho de .pagina no HTML, é
+   irmão dela, direto em <body>) e ancora direto na viewport. Mesmos
+   valores de top/left do padding de .pagina (2.5rem/1.5rem, base.css)
+   — em qualquer janela mais larga que o max-width do conteúdo (o caso
+   normal, .pagina fica centralizada), sobra espaço vazio à ESQUERDA da
+   logo, e é exatamente aí que o botão cai — nunca empurra nem se
+   sobrepõe a nada da logo/cabeçalho, os dois nem sabem um do outro. */
 .botao-voltar-topo {
-    position: absolute;
-    left: 100%;
-    top: 50%;
-    transform: translateY(-50%);
-    margin-left: 1rem;
+    position: fixed;
+    top: 2.5rem;
+    left: 1.5rem;
+    z-index: 5;
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;

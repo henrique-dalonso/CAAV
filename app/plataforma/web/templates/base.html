@@ -13,6 +13,16 @@
     {% block css_pagina %}{% endblock %}
 </head>
 <body class="{% block corpo_classe %}fundo-degrade{% endblock %}">
+    {% set _voltar = pagina_voltar(request) %}
+    {% if _voltar %}
+    <a href="{{ _voltar.url }}" class="botao-voltar-topo" {% if _voltar.nome %}data-dica="Voltar para {{ _voltar.nome }}"{% endif %}>
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+        <span>{{ "Voltar para " ~ _voltar.nome if _voltar.nome else "Voltar" }}</span>
+    </a>
+    {% endif %}
+
     <div class="pagina">
         <header class="barra-superior">
             <div class="marca-sistema">
@@ -27,16 +37,6 @@
                     <span>Alonso &amp; Verdiani</span>
                     {% endif %}
                 </div>
-
-                {% set _voltar = pagina_voltar(request) %}
-                {% if _voltar %}
-                <a href="{{ _voltar.url }}" class="botao-voltar-topo" {% if _voltar.nome %}data-dica="Voltar para {{ _voltar.nome }}"{% endif %}>
-                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <polyline points="15 18 9 12 15 6"></polyline>
-                    </svg>
-                    <span>{{ "Voltar para " ~ _voltar.nome if _voltar.nome else "Voltar" }}</span>
-                </a>
-                {% endif %}
             </div>
 
             <div class="menu-usuario">
