@@ -52,11 +52,25 @@
 
     campoBusca.addEventListener("input", aplicarFiltros);
 
+    // Henrique, 2026-08-26: o calendário de cada campo se ajusta pelo
+    // que já foi escolhido no outro — não faz sentido "Até" permitir uma
+    // data antes de "De" (nem o contrário). Quem for preenchido PRIMEIRO
+    // vira o limite do outro; limpar o campo remove o limite de novo.
     if (campoDataDe) {
-        campoDataDe.addEventListener("change", aplicarFiltros);
+        campoDataDe.addEventListener("change", function () {
+            if (campoDataAte) {
+                campoDataAte.min = campoDataDe.value || "";
+            }
+            aplicarFiltros();
+        });
     }
     if (campoDataAte) {
-        campoDataAte.addEventListener("change", aplicarFiltros);
+        campoDataAte.addEventListener("change", function () {
+            if (campoDataDe) {
+                campoDataDe.max = campoDataAte.value || "";
+            }
+            aplicarFiltros();
+        });
     }
 
     abas.forEach(function (aba) {
