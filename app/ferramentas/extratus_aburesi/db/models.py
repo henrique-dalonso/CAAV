@@ -92,6 +92,9 @@ class ItemLoteRobo(SQLModel, table=True):
 
     status: str = "pendente"  # "pendente", "sucesso" ou "erro"
 
+    # Ver docstring equivalente em app/ferramentas/extratus/db/models.py.
+    custo_transcricao_usd: float = 0.0
+
     criado_em: datetime = Field(default_factory=datetime.now)
 
 

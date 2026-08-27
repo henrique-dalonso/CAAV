@@ -43,6 +43,13 @@ def ajustar_confianca_pos_ia(confianca, uso_ia):
             f"{len(uso_ia['paginas_excluidas_triagem'])} página(s) removida(s) automaticamente da "
             "análise (anexo de listagem de terceiros e/ou falha na extração de texto de página)"
         )
+    if uso_ia.get("paginas_transcritas"):
+        # Ver docstring equivalente em app/ferramentas/extratus/core/
+        # pipeline.py.
+        motivos_revisao.append(
+            f"{len(uso_ia['paginas_transcritas'])} página(s) sem texto confiável tiveram o conteúdo "
+            "resgatado por transcrição de IA (caminho novo, ainda em validação)"
+        )
 
     if motivos_revisao:
         return {

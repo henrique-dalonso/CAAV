@@ -305,26 +305,17 @@ def test_montar_diagnostico_remove_pagina_com_extracao_quebrada():
         _pagina_fake_completa(1, "Vistos. Defiro o pedido de busca e apreensão."),
         _pagina_fake_completa(2, _texto_glifo_quebrado()),
     ]
-    diagnostico_original_fake = {
-        "texto": "\n\n".join(p["texto_marcado"] for p in paginas_fake),
-        "total_paginas": 2,
-        "paginas_sem_texto": 0,
-        "caracteres": 500,
-    }
 
-    with patch(
-        "app.ferramentas.extratus_aburesi.core.ia_cliente.extrair_texto_pdf_com_diagnostico",
-        return_value=diagnostico_original_fake,
-    ), patch(
-        "app.ferramentas.extratus_aburesi.core.ia_cliente.extrair_paginas_pdf",
-        return_value=(paginas_fake, 2),
-    ):
-        diagnostico, paginas_relevantes, paginas_excluidas = montar_diagnostico_com_triagem("qualquer.pdf")
+    diagnostico, paginas_relevantes, paginas_excluidas, paginas_transcritas, custo_transcricao = (
+        montar_diagnostico_com_triagem("qualquer.pdf", paginas=paginas_fake, total_paginas=2)
+    )
 
     assert paginas_excluidas == [2]
     assert [p["numero"] for p in paginas_relevantes] == [1]
     assert "Vistos" in diagnostico["texto"]
     assert "extração de texto malsucedida" in diagnostico["texto"]
+    assert paginas_transcritas == []
+    assert custo_transcricao == 0.0
 
 
 def test_montar_diagnostico_com_terceiros_e_extracao_quebrada_juntos():
@@ -333,21 +324,10 @@ def test_montar_diagnostico_com_terceiros_e_extracao_quebrada_juntos():
         _pagina_fake_completa(2, _texto_lista_terceiros(15)),
         _pagina_fake_completa(3, _texto_glifo_quebrado()),
     ]
-    diagnostico_original_fake = {
-        "texto": "\n\n".join(p["texto_marcado"] for p in paginas_fake),
-        "total_paginas": 3,
-        "paginas_sem_texto": 0,
-        "caracteres": 700,
-    }
 
-    with patch(
-        "app.ferramentas.extratus_aburesi.core.ia_cliente.extrair_texto_pdf_com_diagnostico",
-        return_value=diagnostico_original_fake,
-    ), patch(
-        "app.ferramentas.extratus_aburesi.core.ia_cliente.extrair_paginas_pdf",
-        return_value=(paginas_fake, 3),
-    ):
-        diagnostico, paginas_relevantes, paginas_excluidas = montar_diagnostico_com_triagem("qualquer.pdf")
+    diagnostico, paginas_relevantes, paginas_excluidas, _, _ = montar_diagnostico_com_triagem(
+        "qualquer.pdf", paginas=paginas_fake, total_paginas=3
+    )
 
     assert sorted(paginas_excluidas) == [2, 3]
     assert [p["numero"] for p in paginas_relevantes] == [1]
@@ -364,21 +344,10 @@ def test_montar_diagnostico_com_triagem_remove_paginas_suspeitas():
         _pagina_fake_completa(1, "Vistos. Defiro o pedido de busca e apreensão."),
         _pagina_fake_completa(2, _texto_lista_terceiros(15)),
     ]
-    diagnostico_original_fake = {
-        "texto": "\n\n".join(p["texto_marcado"] for p in paginas_fake),
-        "total_paginas": 2,
-        "paginas_sem_texto": 0,
-        "caracteres": 500,
-    }
 
-    with patch(
-        "app.ferramentas.extratus_aburesi.core.ia_cliente.extrair_texto_pdf_com_diagnostico",
-        return_value=diagnostico_original_fake,
-    ), patch(
-        "app.ferramentas.extratus_aburesi.core.ia_cliente.extrair_paginas_pdf",
-        return_value=(paginas_fake, 2),
-    ):
-        diagnostico, paginas_relevantes, paginas_excluidas = montar_diagnostico_com_triagem("qualquer.pdf")
+    diagnostico, paginas_relevantes, paginas_excluidas, _, _ = montar_diagnostico_com_triagem(
+        "qualquer.pdf", paginas=paginas_fake, total_paginas=2
+    )
 
     assert paginas_excluidas == [2]
     assert [p["numero"] for p in paginas_relevantes] == [1]
@@ -387,17 +356,74 @@ def test_montar_diagnostico_com_triagem_remove_paginas_suspeitas():
 
 
 def test_montar_diagnostico_documento_digitalizado_nao_aplica_triagem():
-    diagnostico_digitalizado = {"texto": "", "total_paginas": 10, "paginas_sem_texto": 9, "caracteres": 0}
+    # 9 de 10 páginas sem texto real — bem acima do limite de "parece
+    # digitalizado", a triagem de terceiros/quebrada nunca chega a rodar.
+    paginas_fake = [_pagina_fake_completa(n, "") for n in range(1, 10)] + [
+        _pagina_fake_completa(10, "Vistos. Defiro o pedido de busca e apreensão do bem indicado.")
+    ]
 
-    with patch(
-        "app.ferramentas.extratus_aburesi.core.ia_cliente.extrair_texto_pdf_com_diagnostico",
-        return_value=diagnostico_digitalizado,
-    ), patch(
-        "app.ferramentas.extratus_aburesi.core.ia_cliente.extrair_paginas_pdf",
-    ) as extrair_paginas_mock:
-        diagnostico, paginas_relevantes, paginas_excluidas = montar_diagnostico_com_triagem("qualquer.pdf")
+    diagnostico, paginas_relevantes, paginas_excluidas, paginas_transcritas, custo_transcricao = (
+        montar_diagnostico_com_triagem("qualquer.pdf", paginas=paginas_fake, total_paginas=10)
+    )
 
-    extrair_paginas_mock.assert_not_called()
-    assert diagnostico == diagnostico_digitalizado
+    assert diagnostico["paginas_sem_texto"] == 9
     assert paginas_relevantes is None
     assert paginas_excluidas == []
+    assert paginas_transcritas == []
+    assert custo_transcricao == 0.0
+
+
+def test_montar_diagnostico_extrai_paginas_quando_nao_fornecidas():
+    """Quando paginas/total_paginas não vêm preenchidos, a função extrai
+    o PDF sozinha (mesma lógica de app/ferramentas/extratus)."""
+    paginas_fake = [_pagina_fake_completa(1, "Vistos. Defiro o pedido de busca e apreensão do bem.")]
+
+    with patch(
+        "app.ferramentas.extratus_aburesi.core.ia_cliente.extrair_paginas_pdf",
+        return_value=(paginas_fake, 1),
+    ) as extrair_paginas_mock:
+        diagnostico, _, _, _, _ = montar_diagnostico_com_triagem("qualquer.pdf")
+
+    extrair_paginas_mock.assert_called_once()
+    assert diagnostico["texto"] == paginas_fake[0]["texto_marcado"]
+
+
+def test_montar_diagnostico_resgata_pagina_problematica_com_cliente(monkeypatch):
+    """Regressão do achado real (Henrique, 2026-08-26) — ver docstring
+    equivalente em tests/ferramentas/extratus/test_ia_cliente.py."""
+    paginas_fake = [
+        _pagina_fake_completa(1, "Vistos. Defiro o pedido de busca e apreensão do bem indicado nos autos."),
+        _pagina_fake_completa(2, ""),
+    ]
+
+    def _transcrever_fake(caminho_pdf, numeros_paginas, cliente_recebido):
+        assert numeros_paginas == [2]
+        uso = {"custo_estimado_usd": 0.0123, "modelo": MODELO_PEDACO, "tokens_entrada": 100, "tokens_saida": 50}
+        return {2: "Texto resgatado da página 2, agora legível."}, [uso]
+
+    monkeypatch.setattr(
+        "app.ferramentas.extratus_aburesi.core.transcricao_paginas.transcrever_paginas", _transcrever_fake
+    )
+
+    cliente_fake = MagicMock()
+    diagnostico, paginas_relevantes, paginas_excluidas, paginas_transcritas, custo_transcricao = (
+        montar_diagnostico_com_triagem("qualquer.pdf", paginas=paginas_fake, total_paginas=2, cliente=cliente_fake)
+    )
+
+    assert paginas_transcritas == [2]
+    assert custo_transcricao == 0.0123
+    assert "Texto resgatado da página 2" in diagnostico["texto"]
+    assert diagnostico["paginas_sem_texto"] == 0
+    assert paginas_relevantes is not None
+
+
+def test_montar_diagnostico_sem_cliente_nao_tenta_resgatar():
+    paginas_fake = [_pagina_fake_completa(1, "")]
+
+    diagnostico, paginas_relevantes, paginas_excluidas, paginas_transcritas, custo_transcricao = (
+        montar_diagnostico_com_triagem("qualquer.pdf", paginas=paginas_fake, total_paginas=1)
+    )
+
+    assert paginas_transcritas == []
+    assert custo_transcricao == 0.0
+    assert diagnostico["paginas_sem_texto"] == 1

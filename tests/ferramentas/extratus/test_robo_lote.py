@@ -102,10 +102,12 @@ def test_coletar_lotes_pendentes_finaliza_sucesso_e_erro_sem_derrubar_o_outro():
     item_sucesso = SimpleNamespace(
         id=10, custom_id="ok", arquivo_pdf="ok.pdf",
         processo_detectado="123", confianca_nivel="alta", confianca_motivo="teste",
+        custo_transcricao_usd=0.0,
     )
     item_erro = SimpleNamespace(
         id=11, custom_id="falhou", arquivo_pdf="falhou.pdf",
         processo_detectado="456", confianca_nivel="alta", confianca_motivo="teste",
+        custo_transcricao_usd=0.0,
     )
 
     cliente_fake = MagicMock()
@@ -117,7 +119,7 @@ def test_coletar_lotes_pendentes_finaliza_sucesso_e_erro_sem_derrubar_o_outro():
 
     with patch.object(robo_lote, "listar_lotes_em_andamento", return_value=[lote_fake]), \
          patch.object(robo_lote, "listar_itens_do_lote", return_value=[item_sucesso, item_erro]), \
-         patch.object(robo_lote, "extrair_dados_e_uso", return_value=({"campo": "valor"}, {})) as extrair_mock, \
+         patch.object(robo_lote, "extrair_dados_e_uso", return_value=({"campo": "valor"}, {"custo_estimado_usd": 0.5})) as extrair_mock, \
          patch.object(robo_lote, "finalizar_processamento") as finalizar_mock, \
          patch.object(robo_lote, "tratar_erro") as tratar_erro_mock, \
          patch.object(robo_lote, "marcar_item_concluido") as marcar_item_mock, \
@@ -133,6 +135,40 @@ def test_coletar_lotes_pendentes_finaliza_sucesso_e_erro_sem_derrubar_o_outro():
     marcar_item_mock.assert_any_call(10, "sucesso")
     marcar_item_mock.assert_any_call(11, "erro")
     marcar_lote_mock.assert_called_once_with(1)
+
+
+def test_coletar_lotes_pendentes_soma_custo_de_transcricao_ao_custo_final():
+    """Regressão do resgate de página problemática (Henrique, 2026-08-26):
+    o custo da transcrição foi pago ANTES do lote ser submetido (ver
+    _preparar_novo_lote) e fica guardado em ItemLoteRobo.custo_transcricao_usd
+    até o resultado do lote voltar — precisa ser somado aqui, senão o gasto
+    real fica invisível no Histórico/Custos."""
+    lote_fake = SimpleNamespace(id=1, batch_id="msgbatch_teste")
+    item_transcrito = SimpleNamespace(
+        id=20, custom_id="ok", arquivo_pdf="ok.pdf",
+        processo_detectado="123", confianca_nivel="revisao", confianca_motivo="teste",
+        custo_transcricao_usd=0.0123,
+    )
+
+    cliente_fake = MagicMock()
+    cliente_fake.messages.batches.retrieve.return_value = SimpleNamespace(processing_status="ended")
+    cliente_fake.messages.batches.results.return_value = [_resultado_sucesso("ok")]
+
+    uso_capturado = {}
+
+    def _finalizar_fake(*args, **kwargs):
+        uso_capturado.update(args[4])
+
+    with patch.object(robo_lote, "listar_lotes_em_andamento", return_value=[lote_fake]), \
+         patch.object(robo_lote, "listar_itens_do_lote", return_value=[item_transcrito]), \
+         patch.object(robo_lote, "extrair_dados_e_uso", return_value=({"campo": "valor"}, {"custo_estimado_usd": 0.5})), \
+         patch.object(robo_lote, "finalizar_processamento", side_effect=_finalizar_fake), \
+         patch.object(robo_lote, "marcar_item_concluido"), \
+         patch.object(robo_lote, "marcar_lote_concluido"):
+        robo_lote._coletar_lotes_pendentes(cliente_fake, CONFIG_EXEMPLO)
+
+    assert uso_capturado["custo_estimado_usd"] == 0.5123
+    assert uso_capturado["custo_transcricao_usd"] == 0.0123
 
 
 def test_coletar_lotes_pendentes_nao_mexe_em_lote_ainda_em_progresso():
@@ -164,11 +200,11 @@ def test_preparar_novo_lote_ignora_arquivo_ja_reivindicado():
          patch.object(robo_lote, "listar_arquivos_ja_reivindicados", return_value={"ja_reivindicado.pdf"}), \
          patch.object(robo_lote, "listar_aprovados_por_nome", return_value={}), \
          patch.object(robo_lote, "carregar_instrucoes_relatorio", return_value="instrucoes"), \
-         patch.object(robo_lote, "montar_diagnostico_isolado") as diagnostico_mock:
-        itens = robo_lote._preparar_novo_lote(CONFIG_EXEMPLO)
+         patch.object(robo_lote, "extrair_paginas_isolado") as extrair_mock:
+        itens = robo_lote._preparar_novo_lote(CONFIG_EXEMPLO, MagicMock())
 
     assert itens == []
-    diagnostico_mock.assert_not_called()
+    extrair_mock.assert_not_called()
 
 
 def test_preparar_novo_lote_ignora_arquivo_ainda_nao_aprovado_na_checagem():
@@ -182,11 +218,11 @@ def test_preparar_novo_lote_ignora_arquivo_ainda_nao_aprovado_na_checagem():
          patch.object(robo_lote, "listar_arquivos_ja_reivindicados", return_value=set()), \
          patch.object(robo_lote, "listar_aprovados_por_nome", return_value={}), \
          patch.object(robo_lote, "carregar_instrucoes_relatorio", return_value="instrucoes"), \
-         patch.object(robo_lote, "montar_diagnostico_isolado") as diagnostico_mock:
-        itens = robo_lote._preparar_novo_lote(CONFIG_EXEMPLO)
+         patch.object(robo_lote, "extrair_paginas_isolado") as extrair_mock:
+        itens = robo_lote._preparar_novo_lote(CONFIG_EXEMPLO, MagicMock())
 
     assert itens == []
-    diagnostico_mock.assert_not_called()
+    extrair_mock.assert_not_called()
 
 
 def test_preparar_novo_lote_trata_erro_de_montagem_sem_incluir_no_lote():
@@ -196,10 +232,11 @@ def test_preparar_novo_lote_trata_erro_de_montagem_sem_incluir_no_lote():
          patch.object(robo_lote, "listar_arquivos_ja_reivindicados", return_value=set()), \
          patch.object(robo_lote, "listar_aprovados_por_nome", return_value={"grande.pdf": _checagem_aprovada()}), \
          patch.object(robo_lote, "carregar_instrucoes_relatorio", return_value="instrucoes"), \
-         patch.object(robo_lote, "montar_diagnostico_isolado", return_value=({}, None, [])), \
+         patch.object(robo_lote, "extrair_paginas_isolado", return_value=([], 0)), \
+         patch.object(robo_lote, "montar_diagnostico_com_triagem", return_value=({}, None, [], [], 0.0)), \
          patch.object(robo_lote, "montar_parametros_mensagem", side_effect=RuntimeError("grande demais")), \
          patch.object(robo_lote, "tratar_erro") as tratar_erro_mock:
-        itens = robo_lote._preparar_novo_lote(CONFIG_EXEMPLO)
+        itens = robo_lote._preparar_novo_lote(CONFIG_EXEMPLO, MagicMock())
 
     assert itens == []
     tratar_erro_mock.assert_called_once()
@@ -209,21 +246,27 @@ def test_preparar_novo_lote_trata_erro_de_montagem_sem_incluir_no_lote():
 def test_preparar_novo_lote_inclui_arquivo_elegivel():
     pdf_ok = Path("/pasta/robô/ok.pdf")
     parametros_fake = {"model": "x"}
+    cliente_fake = MagicMock()
 
     with patch.object(robo_lote, "listar_pdfs", return_value=[pdf_ok]), \
          patch.object(robo_lote, "listar_arquivos_ja_reivindicados", return_value=set()), \
          patch.object(robo_lote, "listar_aprovados_por_nome", return_value={"ok.pdf": _checagem_aprovada()}), \
          patch.object(robo_lote, "carregar_instrucoes_relatorio", return_value="instrucoes"), \
-         patch.object(robo_lote, "montar_diagnostico_isolado", return_value=({}, None, [])), \
+         patch.object(robo_lote, "extrair_paginas_isolado", return_value=([], 0)), \
+         patch.object(robo_lote, "montar_diagnostico_com_triagem", return_value=({}, None, [], [], 0.0)) as diagnostico_mock, \
          patch.object(robo_lote, "montar_parametros_mensagem", return_value=parametros_fake):
-        itens = robo_lote._preparar_novo_lote(CONFIG_EXEMPLO)
+        itens = robo_lote._preparar_novo_lote(CONFIG_EXEMPLO, cliente_fake)
 
     assert len(itens) == 1
     assert itens[0]["arquivo_pdf"] == "ok.pdf"
     assert itens[0]["processo_detectado"] == "123"
     assert itens[0]["params"] == parametros_fake
     assert itens[0]["confianca_nivel"] == "alta"
+    assert itens[0]["custo_transcricao_usd"] == 0.0
     assert isinstance(itens[0]["custom_id"], str) and len(itens[0]["custom_id"]) > 0
+    # o cliente real (não isolado em subprocesso) precisa chegar até a
+    # triagem/resgate — ver docstring de extrair_paginas_isolado.
+    assert diagnostico_mock.call_args.kwargs.get("cliente") is cliente_fake
 
 
 def test_preparar_novo_lote_forca_revisao_quando_triagem_excluiu_paginas():
@@ -234,10 +277,34 @@ def test_preparar_novo_lote_forca_revisao_quando_triagem_excluiu_paginas():
          patch.object(robo_lote, "listar_arquivos_ja_reivindicados", return_value=set()), \
          patch.object(robo_lote, "listar_aprovados_por_nome", return_value={"tem_anexo.pdf": _checagem_aprovada(motivo="regex bateu")}), \
          patch.object(robo_lote, "carregar_instrucoes_relatorio", return_value="instrucoes"), \
-         patch.object(robo_lote, "montar_diagnostico_isolado", return_value=({}, None, [33, 34, 35])), \
+         patch.object(robo_lote, "extrair_paginas_isolado", return_value=([], 0)), \
+         patch.object(robo_lote, "montar_diagnostico_com_triagem", return_value=({}, None, [33, 34, 35], [], 0.0)), \
          patch.object(robo_lote, "montar_parametros_mensagem", return_value=parametros_fake):
-        itens = robo_lote._preparar_novo_lote(CONFIG_EXEMPLO)
+        itens = robo_lote._preparar_novo_lote(CONFIG_EXEMPLO, MagicMock())
 
     assert len(itens) == 1
     assert itens[0]["confianca_nivel"] == "revisao"
     assert "3 página" in itens[0]["confianca_motivo"]
+
+
+def test_preparar_novo_lote_forca_revisao_e_guarda_custo_quando_pagina_e_transcrita():
+    """Regressão do achado real (Henrique, 2026-08-26): página resgatada
+    por transcrição também força revisão manual (caminho novo, ainda em
+    validação) e o custo da transcrição precisa sobreviver até o lote
+    resultado voltar (ver ItemLoteRobo.custo_transcricao_usd)."""
+    pdf_com_pagina_ruim = Path("/pasta/robô/pagina_ruim.pdf")
+    parametros_fake = {"model": "x"}
+
+    with patch.object(robo_lote, "listar_pdfs", return_value=[pdf_com_pagina_ruim]), \
+         patch.object(robo_lote, "listar_arquivos_ja_reivindicados", return_value=set()), \
+         patch.object(robo_lote, "listar_aprovados_por_nome", return_value={"pagina_ruim.pdf": _checagem_aprovada()}), \
+         patch.object(robo_lote, "carregar_instrucoes_relatorio", return_value="instrucoes"), \
+         patch.object(robo_lote, "extrair_paginas_isolado", return_value=([], 0)), \
+         patch.object(robo_lote, "montar_diagnostico_com_triagem", return_value=({}, None, [], [7], 0.0123)), \
+         patch.object(robo_lote, "montar_parametros_mensagem", return_value=parametros_fake):
+        itens = robo_lote._preparar_novo_lote(CONFIG_EXEMPLO, MagicMock())
+
+    assert len(itens) == 1
+    assert itens[0]["confianca_nivel"] == "revisao"
+    assert "1 página" in itens[0]["confianca_motivo"]
+    assert itens[0]["custo_transcricao_usd"] == 0.0123

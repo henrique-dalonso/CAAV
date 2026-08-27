@@ -18,6 +18,7 @@ from app.ferramentas.extratus.core.pipeline import (
     tratar_erro,
 )
 from app.ferramentas.extratus.core.prompt_manager import carregar_instrucoes_relatorio
+from app.ferramentas.extratus.core.texto_manager import extrair_paginas_pdf
 from app.ferramentas.extratus.db.checagem_fila import listar_aprovados_por_nome
 from app.ferramentas.extratus.db.lotes import (
     criar_lote,
@@ -29,19 +30,26 @@ from app.ferramentas.extratus.db.lotes import (
 )
 
 
-def montar_diagnostico_isolado(pdf):
-    """Roda `montar_diagnostico_com_triagem` num processo separado — mesmo
-    bug real do GIL já corrigido antes na checagem (ver
-    checagem_lote.analisar_pdf_isolado, e o motivo completo em
-    pdf_isolado.executar_isolado). Reaparecida aqui em 2026-08-11: essa
-    leitura de PDF (montar_diagnostico_com_triagem) roda dentro do loop
-    do Robô (asyncio.to_thread, ver robo_watcher.py), sem isolamento —
-    lia PDF grande e travava o site inteiro pelo tempo da leitura, não só
-    o Robô. Função isolada (em vez de chamar `montar_diagnostico_com_
-    triagem` direto em `_preparar_novo_lote`) só pra manter o dispatch
-    mockável nos testes, sem precisar de um processo de verdade rodando
-    durante a suíte."""
-    return executar_isolado(montar_diagnostico_com_triagem, pdf)
+def extrair_paginas_isolado(pdf):
+    """Roda `extrair_paginas_pdf` (leitura bruta do PDF, `pypdf`) num
+    processo separado — mesmo bug real do GIL já corrigido antes na
+    checagem (ver checagem_lote.analisar_pdf_isolado, e o motivo completo
+    em pdf_isolado.executar_isolado). Reaparecida aqui em 2026-08-11: essa
+    leitura de PDF rodava dentro do loop do Robô (asyncio.to_thread, ver
+    robo_watcher.py), sem isolamento — lia PDF grande e travava o site
+    inteiro pelo tempo da leitura, não só o Robô.
+
+    Henrique, diretoria, 2026-08-26: ANTES, esta função isolava
+    `montar_diagnostico_com_triagem` inteira — mas essa função passou a
+    também poder fazer uma chamada de REDE (resgate de página problemática
+    por transcrição, quando `cliente` é passado). Chamada de rede não
+    trava o GIL (motivo original do isolamento) e um cliente `anthropic`
+    não é serializável entre processos — por isso agora só a extração
+    bruta (de fato CPU-bound) é isolada; a triagem/resgate roda direto em
+    `_preparar_novo_lote`, na mesma thread de fundo do ciclo do Robô
+    (`asyncio.to_thread(rodar_ciclo_robo)`, já fora do processo principal
+    do site)."""
+    return executar_isolado(extrair_paginas_pdf, pdf)
 
 
 def _obter_cliente():
@@ -94,6 +102,16 @@ def _coletar_lotes_pendentes(cliente, config):
             if resultado.result.type == "succeeded":
                 try:
                     dados_relatorio, uso_ia = extrair_dados_e_uso(resultado.result.message, via_batch=True)
+
+                    if item.custo_transcricao_usd:
+                        # Custo do resgate por transcrição foi pago ANTES do
+                        # lote ser submetido (ver _preparar_novo_lote) — soma
+                        # aqui pra não ficar invisível no Histórico/Custos.
+                        uso_ia["custo_estimado_usd"] = round(
+                            uso_ia["custo_estimado_usd"] + item.custo_transcricao_usd, 4
+                        )
+                        uso_ia["custo_transcricao_usd"] = item.custo_transcricao_usd
+
                     finalizar_processamento(
                         caminho_pdf,
                         item.processo_detectado,
@@ -125,7 +143,7 @@ def _coletar_lotes_pendentes(cliente, config):
     return algum_ainda_em_andamento
 
 
-def _preparar_novo_lote(config):
+def _preparar_novo_lote(config, cliente):
     """Olha os PDFs em robo_pasta_entrada ainda não reivindicados por
     nenhum lote (passado ou presente) e monta os itens elegíveis pra um
     lote novo. Arquivos que já estourarem os limites de segurança
@@ -137,7 +155,12 @@ def _preparar_novo_lote(config):
     duplicado, processo já processado noutro lugar, ou processo não
     encontrado ficam de fora até o painel de Conferências resolver.
     Reaproveita o processo/confiança já detectados na checagem em vez
-    de detectar tudo de novo aqui."""
+    de detectar tudo de novo aqui.
+
+    `cliente` é usado aqui (não só depois, na submissão do lote) porque
+    `montar_diagnostico_com_triagem` pode precisar dele pra resgatar
+    páginas problemáticas por transcrição ANTES do PDF entrar no lote —
+    ver docstring de `extrair_paginas_isolado`."""
     pasta_robo = config.get("robo_pasta_entrada")
     pasta_erros = config.get("pasta_erros")
 
@@ -171,20 +194,38 @@ def _preparar_novo_lote(config):
             # página foi removida, a confiança cai pra "revisão" na hora
             # (mesmo princípio do fluxo manual em pipeline.py) — nunca
             # cai em "alta confiança" sozinho depois de uma triagem.
-            diagnostico, _, paginas_excluidas_triagem = montar_diagnostico_isolado(pdf)
+            #
+            # `cliente` passado aqui também tenta RESGATAR página sem
+            # texto confiável por transcrição antes de decidir se o
+            # documento "parece digitalizado" — ver docstring de
+            # montar_diagnostico_com_triagem. Extração bruta isolada em
+            # processo separado (CPU-bound); a triagem/resgate em si (que
+            # pode fazer uma chamada de rede) roda aqui mesmo, na thread
+            # de fundo do ciclo do Robô.
+            paginas, total_paginas = extrair_paginas_isolado(pdf)
+            diagnostico, _, paginas_excluidas_triagem, paginas_transcritas, custo_transcricao_usd = (
+                montar_diagnostico_com_triagem(
+                    pdf, paginas=paginas, total_paginas=total_paginas, cliente=cliente
+                )
+            )
             parametros = montar_parametros_mensagem(pdf, processo, instrucoes, diagnostico=diagnostico)
         except Exception as erro:
             tratar_erro(pdf, processo, "erro_ia", erro, pasta_erros)
             continue
 
-        if paginas_excluidas_triagem:
-            confianca = {
-                "nivel": "revisao",
-                "motivo": (
-                    f"{len(paginas_excluidas_triagem)} página(s) removida(s) automaticamente da "
-                    "análise (anexo de listagem de terceiros e/ou falha na extração de texto de página)."
-                ),
-            }
+        if paginas_excluidas_triagem or paginas_transcritas:
+            motivos = []
+            if paginas_excluidas_triagem:
+                motivos.append(
+                    f"{len(paginas_excluidas_triagem)} página(s) removida(s) automaticamente da análise "
+                    "(anexo de listagem de terceiros e/ou falha na extração de texto de página)"
+                )
+            if paginas_transcritas:
+                motivos.append(
+                    f"{len(paginas_transcritas)} página(s) sem texto confiável tiveram o conteúdo "
+                    "resgatado por transcrição de IA (caminho novo, ainda em validação)"
+                )
+            confianca = {"nivel": "revisao", "motivo": "; ".join(motivos) + "."}
 
         itens_para_lote.append({
             "custom_id": uuid.uuid4().hex,
@@ -193,6 +234,7 @@ def _preparar_novo_lote(config):
             "confianca_nivel": confianca.get("nivel"),
             "confianca_motivo": confianca.get("motivo"),
             "params": parametros,
+            "custo_transcricao_usd": custo_transcricao_usd,
         })
 
     return itens_para_lote
@@ -238,8 +280,8 @@ def rodar_ciclo_robo():
     if algum_lote_em_andamento:
         return  # só um lote em voo por vez
 
-    itens = _preparar_novo_lote(config)
+    cliente = _obter_cliente()
+    itens = _preparar_novo_lote(config, cliente)
 
     if itens:
-        cliente = _obter_cliente()
         _submeter_lote(cliente, itens)

@@ -1,4 +1,5 @@
 pypdf
+pymupdf
 python-docx
 fastapi
 uvicorn

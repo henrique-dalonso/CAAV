@@ -69,6 +69,15 @@ COLUNAS_PENDENTES = {
         # docstring de UsuarioFerramenta em db/models.py).
         "acesso_manual": "BOOLEAN DEFAULT 0",
     },
+    "itemloterobo": {
+        # Henrique, diretoria, 2026-08-26 — custo do resgate de páginas
+        # problemáticas por transcrição, ver docstring de ItemLoteRobo em
+        # db/models.py.
+        "custo_transcricao_usd": "REAL DEFAULT 0",
+    },
+    "itemloterobo_aburesi": {
+        "custo_transcricao_usd": "REAL DEFAULT 0",
+    },
 }
 
 

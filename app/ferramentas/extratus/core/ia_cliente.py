@@ -5,8 +5,10 @@ from pathlib import Path
 
 from app.ferramentas.extratus.core.prompt_manager import carregar_instrucoes_relatorio
 from app.ferramentas.extratus.core.texto_manager import (
+    diagnostico_a_partir_das_paginas,
     extrair_paginas_pdf,
     extrair_texto_pdf_com_diagnostico,
+    identificar_paginas_problematicas,
     parece_digitalizado,
 )
 
@@ -177,7 +179,35 @@ def filtrar_paginas_extracao_quebrada(paginas):
     return relevantes, excluidas
 
 
-def montar_diagnostico_com_triagem(caminho_pdf):
+def _aplicar_textos_resgatados(paginas, texto_por_pagina):
+    """Devolve uma NOVA lista de páginas com o texto de cada uma
+    presente em `texto_por_pagina` substituído pela transcrição
+    resgatada (ver transcricao_paginas.py) — nunca modifica a lista
+    original in-place. Página não resgatada (não tinha problema, ou o
+    resgate não devolveu resultado pra ela) fica exatamente como
+    estava."""
+    if not texto_por_pagina:
+        return paginas
+
+    total_paginas = len(paginas)
+    novas_paginas = []
+
+    for pagina in paginas:
+        texto_novo = texto_por_pagina.get(pagina["numero"])
+
+        if texto_novo is None:
+            novas_paginas.append(pagina)
+        else:
+            novas_paginas.append({
+                "numero": pagina["numero"],
+                "texto_bruto": texto_novo,
+                "texto_marcado": f"--- Página {pagina['numero']} de {total_paginas} ---\n{texto_novo}",
+            })
+
+    return novas_paginas
+
+
+def montar_diagnostico_com_triagem(caminho_pdf, paginas=None, total_paginas=None, cliente=None):
     """Extrai o diagnóstico do PDF e, se não for um PDF digitalizado,
     aplica 2 filtros antes de decidir o que fazer com o processo: anexos
     de listagem de terceiros e páginas com extração de texto quebrada
@@ -186,23 +216,56 @@ def montar_diagnostico_com_triagem(caminho_pdf):
     filtro) — filtrar primeiro poderia distorcer essa proporção à toa,
     já que a triagem só faz sentido pro caminho de texto extraído.
 
-    Devolve (diagnostico, paginas_relevantes_ou_None, paginas_excluidas).
-    `paginas_relevantes` só vem preenchido quando os filtros rodaram (não
-    é PDF digitalizado) — evita quem chamar precisar reextrair/refiltrar
-    de novo se for pro caminho de divisão em pedaços."""
+    `paginas`/`total_paginas`, se vierem preenchidos, evitam reextrair o
+    PDF — usado pelo Robô, que já extrai isso num processo isolado (ver
+    robo_lote.py) antes de chamar esta função.
+
+    Henrique, diretoria, 2026-08-26: quando existem páginas sem texto
+    confiável (vazias/escaneadas OU com texto embaralhado — ver
+    texto_manager.py) e `cliente` foi passado, tenta RESGATAR essas
+    páginas primeiro — transcrição via IA barata, em lotes pequenos (ver
+    transcricao_paginas.py), nunca o PDF inteiro de uma vez. Se o
+    resgate for suficiente, o processo sai do caminho de "parece
+    digitalizado" (que exige mandar o PDF inteiro como imagem, caro e
+    limitado a ~24MB) e segue pelo caminho de texto normal, incluindo a
+    divisão em pedaços já existente pra processo grande. `cliente=None`
+    (uso direto/teste) pula o resgate e mantém o comportamento antigo.
+
+    Devolve (diagnostico, paginas_relevantes_ou_None, paginas_excluidas,
+    paginas_transcritas, custo_transcricao_usd). `paginas_relevantes` só
+    vem preenchido quando os filtros rodaram (não é PDF digitalizado) —
+    evita quem chamar precisar reextrair/refiltrar de novo se for pro
+    caminho de divisão em pedaços."""
     caminho_pdf = Path(caminho_pdf)
-    diagnostico_original = extrair_texto_pdf_com_diagnostico(caminho_pdf)
+
+    if paginas is None or total_paginas is None:
+        paginas, total_paginas = extrair_paginas_pdf(caminho_pdf)
+
+    problematicas = identificar_paginas_problematicas(paginas)
+    diagnostico_original = diagnostico_a_partir_das_paginas(paginas, total_paginas, problematicas=problematicas)
+    paginas_transcritas = []
+    custo_transcricao_usd = 0.0
+
+    if problematicas and cliente is not None:
+        from app.ferramentas.extratus.core.transcricao_paginas import transcrever_paginas
+
+        texto_resgatado, usos_transcricao = transcrever_paginas(caminho_pdf, problematicas, cliente)
+
+        if texto_resgatado:
+            paginas = _aplicar_textos_resgatados(paginas, texto_resgatado)
+            diagnostico_original = diagnostico_a_partir_das_paginas(paginas, total_paginas)
+            paginas_transcritas = sorted(texto_resgatado.keys())
+            custo_transcricao_usd = round(sum(u["custo_estimado_usd"] for u in usos_transcricao), 4)
 
     if parece_digitalizado(diagnostico_original["total_paginas"], diagnostico_original["paginas_sem_texto"]):
-        return diagnostico_original, None, []
+        return diagnostico_original, None, [], paginas_transcritas, custo_transcricao_usd
 
-    paginas, _ = extrair_paginas_pdf(caminho_pdf)
     paginas_relevantes, excluidas_terceiros = filtrar_paginas_lista_de_terceiros(paginas)
     paginas_relevantes, excluidas_quebradas = filtrar_paginas_extracao_quebrada(paginas_relevantes)
     paginas_excluidas = excluidas_terceiros + excluidas_quebradas
 
     if not paginas_excluidas:
-        return diagnostico_original, paginas, []
+        return diagnostico_original, paginas, [], paginas_transcritas, custo_transcricao_usd
 
     texto_filtrado = "\n\n".join(p["texto_marcado"] for p in paginas_relevantes)
     avisos = []
@@ -232,7 +295,7 @@ def montar_diagnostico_com_triagem(caminho_pdf):
         "caracteres": len(texto_filtrado),
     }
 
-    return diagnostico_filtrado, paginas_relevantes, paginas_excluidas
+    return diagnostico_filtrado, paginas_relevantes, paginas_excluidas, paginas_transcritas, custo_transcricao_usd
 
 
 FERRAMENTA_RELATORIO = {
@@ -774,7 +837,9 @@ def gerar_relatorio_claude(caminho_pdf, processo_detectado):
     cliente = anthropic.Anthropic(api_key=api_key)
 
     caminho_pdf = Path(caminho_pdf)
-    diagnostico, paginas_relevantes, paginas_excluidas_triagem = montar_diagnostico_com_triagem(caminho_pdf)
+    diagnostico, paginas_relevantes, paginas_excluidas_triagem, paginas_transcritas, custo_transcricao_usd = (
+        montar_diagnostico_com_triagem(caminho_pdf, cliente=cliente)
+    )
 
     precisa_dividir = (
         not parece_digitalizado(diagnostico["total_paginas"], diagnostico["paginas_sem_texto"])
@@ -792,6 +857,15 @@ def gerar_relatorio_claude(caminho_pdf, processo_detectado):
 
     if paginas_excluidas_triagem:
         uso["paginas_excluidas_triagem"] = paginas_excluidas_triagem
+
+    if paginas_transcritas:
+        # Henrique, 2026-08-26: custo da transcrição de páginas
+        # problemáticas (ver montar_diagnostico_com_triagem) somado ao
+        # custo da chamada principal — sem isso, o gasto real da
+        # transcrição ficava invisível no Histórico/Custos.
+        uso["custo_estimado_usd"] = round(uso["custo_estimado_usd"] + custo_transcricao_usd, 4)
+        uso["paginas_transcritas"] = paginas_transcritas
+        uso["custo_transcricao_usd"] = custo_transcricao_usd
 
     return dados, uso
 

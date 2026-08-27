@@ -1,6 +1,6 @@
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from app.ferramentas.extratus_aburesi.core import robo_lote
 
@@ -30,13 +30,35 @@ def test_preparar_novo_lote_forca_revisao_quando_triagem_excluiu_paginas():
          patch.object(robo_lote, "listar_arquivos_ja_reivindicados", return_value=set()), \
          patch.object(robo_lote, "listar_aprovados_por_nome", return_value={"tem_anexo.pdf": _checagem_aprovada(motivo="regex bateu")}), \
          patch.object(robo_lote, "carregar_instrucoes_relatorio", return_value="instrucoes"), \
-         patch.object(robo_lote, "montar_diagnostico_isolado", return_value=({}, None, [33, 34, 35])), \
+         patch.object(robo_lote, "extrair_paginas_isolado", return_value=([], 0)), \
+         patch.object(robo_lote, "montar_diagnostico_com_triagem", return_value=({}, None, [33, 34, 35], [], 0.0)), \
          patch.object(robo_lote, "montar_parametros_mensagem", return_value=parametros_fake):
-        itens = robo_lote._preparar_novo_lote(CONFIG_EXEMPLO)
+        itens = robo_lote._preparar_novo_lote(CONFIG_EXEMPLO, MagicMock())
 
     assert len(itens) == 1
     assert itens[0]["confianca_nivel"] == "revisao"
     assert "3 página" in itens[0]["confianca_motivo"]
+
+
+def test_preparar_novo_lote_forca_revisao_e_guarda_custo_quando_pagina_e_transcrita():
+    """Ver docstring equivalente em tests/ferramentas/extratus/
+    test_robo_lote.py."""
+    pdf_com_pagina_ruim = Path("/pasta/robô/pagina_ruim.pdf")
+    parametros_fake = {"model": "x"}
+
+    with patch.object(robo_lote, "listar_pdfs", return_value=[pdf_com_pagina_ruim]), \
+         patch.object(robo_lote, "listar_arquivos_ja_reivindicados", return_value=set()), \
+         patch.object(robo_lote, "listar_aprovados_por_nome", return_value={"pagina_ruim.pdf": _checagem_aprovada()}), \
+         patch.object(robo_lote, "carregar_instrucoes_relatorio", return_value="instrucoes"), \
+         patch.object(robo_lote, "extrair_paginas_isolado", return_value=([], 0)), \
+         patch.object(robo_lote, "montar_diagnostico_com_triagem", return_value=({}, None, [], [7], 0.0123)), \
+         patch.object(robo_lote, "montar_parametros_mensagem", return_value=parametros_fake):
+        itens = robo_lote._preparar_novo_lote(CONFIG_EXEMPLO, MagicMock())
+
+    assert len(itens) == 1
+    assert itens[0]["confianca_nivel"] == "revisao"
+    assert "1 página" in itens[0]["confianca_motivo"]
+    assert itens[0]["custo_transcricao_usd"] == 0.0123
 
 
 def test_preparar_novo_lote_sem_triagem_mantem_confianca_original():
@@ -47,12 +69,14 @@ def test_preparar_novo_lote_sem_triagem_mantem_confianca_original():
          patch.object(robo_lote, "listar_arquivos_ja_reivindicados", return_value=set()), \
          patch.object(robo_lote, "listar_aprovados_por_nome", return_value={"normal.pdf": _checagem_aprovada(motivo="regex bateu")}), \
          patch.object(robo_lote, "carregar_instrucoes_relatorio", return_value="instrucoes"), \
-         patch.object(robo_lote, "montar_diagnostico_isolado", return_value=({}, None, [])), \
+         patch.object(robo_lote, "extrair_paginas_isolado", return_value=([], 0)), \
+         patch.object(robo_lote, "montar_diagnostico_com_triagem", return_value=({}, None, [], [], 0.0)), \
          patch.object(robo_lote, "montar_parametros_mensagem", return_value=parametros_fake):
-        itens = robo_lote._preparar_novo_lote(CONFIG_EXEMPLO)
+        itens = robo_lote._preparar_novo_lote(CONFIG_EXEMPLO, MagicMock())
 
     assert len(itens) == 1
     assert itens[0]["confianca_nivel"] == "alta"
+    assert itens[0]["custo_transcricao_usd"] == 0.0
 
 
 def test_preparar_novo_lote_ignora_arquivo_ainda_nao_aprovado_na_checagem():
@@ -65,8 +89,8 @@ def test_preparar_novo_lote_ignora_arquivo_ainda_nao_aprovado_na_checagem():
          patch.object(robo_lote, "listar_arquivos_ja_reivindicados", return_value=set()), \
          patch.object(robo_lote, "listar_aprovados_por_nome", return_value={}), \
          patch.object(robo_lote, "carregar_instrucoes_relatorio", return_value="instrucoes"), \
-         patch.object(robo_lote, "montar_diagnostico_isolado") as diagnostico_mock:
-        itens = robo_lote._preparar_novo_lote(CONFIG_EXEMPLO)
+         patch.object(robo_lote, "extrair_paginas_isolado") as extrair_mock:
+        itens = robo_lote._preparar_novo_lote(CONFIG_EXEMPLO, MagicMock())
 
     assert itens == []
-    diagnostico_mock.assert_not_called()
+    extrair_mock.assert_not_called()

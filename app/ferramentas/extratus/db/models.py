@@ -77,6 +77,15 @@ class ItemLoteRobo(SQLModel, table=True):
 
     status: str = "pendente"  # "pendente", "sucesso" ou "erro"
 
+    # Custo (USD) do resgate de páginas problemáticas por transcrição (ver
+    # ia_cliente.montar_diagnostico_com_triagem / transcricao_paginas.py),
+    # já pago ANTES do lote ser submetido ao Batch API — precisa ficar
+    # guardado aqui pra não se perder até o resultado do lote voltar
+    # (minutos ou até 24h depois), quando o custo final é somado ao da
+    # chamada principal (ver robo_lote._coletar_lotes_pendentes). Henrique,
+    # diretoria, 2026-08-26.
+    custo_transcricao_usd: float = 0.0
+
     criado_em: datetime = Field(default_factory=datetime.now)
 
 

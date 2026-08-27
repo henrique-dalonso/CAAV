@@ -48,6 +48,16 @@ def ajustar_confianca_pos_ia(confianca, uso_ia):
             f"{len(uso_ia['paginas_excluidas_triagem'])} página(s) removida(s) automaticamente da "
             "análise (anexo de listagem de terceiros e/ou falha na extração de texto de página)"
         )
+    if uso_ia.get("paginas_transcritas"):
+        # Henrique, diretoria, 2026-08-26: resgate de página sem texto
+        # confiável por transcrição de IA (ver
+        # ia_cliente.montar_diagnostico_com_triagem / transcricao_paginas.py)
+        # — caminho novo, ainda em validação, nunca cai em "alta confiança"
+        # automática sozinho.
+        motivos_revisao.append(
+            f"{len(uso_ia['paginas_transcritas'])} página(s) sem texto confiável tiveram o conteúdo "
+            "resgatado por transcrição de IA (caminho novo, ainda em validação)"
+        )
 
     if motivos_revisao:
         return {

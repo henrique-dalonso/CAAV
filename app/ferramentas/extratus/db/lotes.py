@@ -9,7 +9,8 @@ from app.plataforma.db.session import obter_sessao
 def criar_lote(batch_id, itens):
     """Registra um novo lote enviado ao Batch API, com um `ItemLoteRobo`
     por PDF incluído nele. `itens` é uma lista de dicts com custom_id,
-    arquivo_pdf, processo_detectado, confianca_nivel, confianca_motivo.
+    arquivo_pdf, processo_detectado, confianca_nivel, confianca_motivo,
+    custo_transcricao_usd (opcional, ver ItemLoteRobo em db/models.py).
     """
     with obter_sessao() as sessao:
         lote = LoteRobo(batch_id=batch_id, status="enviado")
@@ -26,6 +27,7 @@ def criar_lote(batch_id, itens):
                     processo_detectado=item.get("processo_detectado"),
                     confianca_nivel=item.get("confianca_nivel"),
                     confianca_motivo=item.get("confianca_motivo"),
+                    custo_transcricao_usd=item.get("custo_transcricao_usd") or 0.0,
                 )
             )
 

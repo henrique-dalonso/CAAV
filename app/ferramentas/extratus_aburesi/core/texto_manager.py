@@ -74,39 +74,53 @@ def extrair_paginas_pdf(caminho_pdf):
     return paginas, total_paginas
 
 
-def extrair_texto_pdf_com_diagnostico(caminho_pdf):
-    """Extrai o texto de cada página do PDF (com marcador de página, pra IA
-    poder referenciar de onde tirou cada informação) e devolve também um
-    diagnóstico: quantas páginas vieram sem texto real. Uma proporção alta
-    de páginas vazias é o sinal de que o PDF é digitalizado (escaneado,
-    sem camada de texto) — precisa ser tratado diferente do PDF nativo.
-
-    "Sem texto real" conta 2 situações — ver docstring equivalente em
-    app/ferramentas/extratus/core/texto_manager.py (Extratus -
-    Relatórios) — mesma lógica.
-    """
-    paginas, total_paginas = extrair_paginas_pdf(caminho_pdf)
-
-    paginas_vazias = 0
-    paginas_embaralhadas = 0
+def identificar_paginas_problematicas(paginas):
+    """Ver docstring equivalente em app/ferramentas/extratus/core/
+    texto_manager.py (Extratus - Relatórios) — mesma lógica."""
+    problematicas = []
 
     for pagina in paginas:
         texto_real = _texto_real_da_pagina(pagina["texto_bruto"])
+        if len(texto_real) < MINIMO_CARACTERES_PAGINA_COM_TEXTO or _parece_texto_embaralhado(texto_real):
+            problematicas.append(pagina["numero"])
 
-        if len(texto_real) < MINIMO_CARACTERES_PAGINA_COM_TEXTO:
-            paginas_vazias += 1
-        elif _parece_texto_embaralhado(texto_real):
-            paginas_embaralhadas += 1
+    return problematicas
+
+
+def diagnostico_a_partir_das_paginas(paginas, total_paginas, problematicas=None):
+    """Ver docstring equivalente em app/ferramentas/extratus/core/
+    texto_manager.py (Extratus - Relatórios) — mesma lógica."""
+    if problematicas is None:
+        problematicas = set(identificar_paginas_problematicas(paginas))
+    else:
+        problematicas = set(problematicas)
+
+    paginas_embaralhadas = sum(
+        1 for pagina in paginas
+        if pagina["numero"] in problematicas
+        and len(_texto_real_da_pagina(pagina["texto_bruto"])) >= MINIMO_CARACTERES_PAGINA_COM_TEXTO
+    )
 
     texto_completo = "\n\n".join(pagina["texto_marcado"] for pagina in paginas)
 
     return {
         "texto": texto_completo,
         "total_paginas": total_paginas,
-        "paginas_sem_texto": paginas_vazias + paginas_embaralhadas,
+        "paginas_sem_texto": len(problematicas),
         "paginas_embaralhadas": paginas_embaralhadas,
         "caracteres": len(texto_completo),
     }
+
+
+def extrair_texto_pdf_com_diagnostico(caminho_pdf):
+    """Extrai o texto de cada página do PDF (com marcador de página, pra IA
+    poder referenciar de onde tirou cada informação) e devolve também um
+    diagnóstico: quantas páginas vieram sem texto real. Uma proporção alta
+    de páginas vazias é o sinal de que o PDF é digitalizado (escaneado,
+    sem camada de texto) — precisa ser tratado diferente do PDF nativo.
+    """
+    paginas, total_paginas = extrair_paginas_pdf(caminho_pdf)
+    return diagnostico_a_partir_das_paginas(paginas, total_paginas)
 
 
 # Mesmo limite usado em 2 lugares (Henrique, 2026-08-13): decide se o PDF
