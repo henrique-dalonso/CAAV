@@ -22,11 +22,26 @@
     max-width: 1200px;
 }
 
-/* Telas de detalhe (Custos e Configurações de uma ferramenta) também
-   saem do 880px padrão — Henrique, 2026-08-25: "aproveite mais a
-   largura da tela, o grid central está muito estreito". */
+/* Tela de Configurações de uma ferramenta também sai do 880px padrão —
+   Henrique, 2026-08-25: "aproveite mais a largura da tela, o grid
+   central está muito estreito". */
 .pagina:has(.robo-hero) {
     max-width: 1200px;
+}
+
+/* Tela de Custos de uma ferramenta — largura própria, bem maior que as
+   outras duas acima. Achado real (2026-08-27): o comentário aqui
+   ANTES dizia que essa tela já saía do padrão junto com Configurações
+   (via .robo-hero), mas isso nunca foi verdade — .robo-hero só existe
+   em Configurações, Custos sempre ficou presa nos 880px, e é
+   exatamente por isso que a tabela "Todos os processamentos" (a mais
+   larga do site, 8 colunas) vinha cortada. Henrique, 2026-08-27:
+   "tirar a restrição de grid, pra aproveitarmos toda a extensão da
+   tela com dados" — mais generosa que as outras 1200px de propósito,
+   já que essa é a única tela do site com tabela de verdade competindo
+   por espaço com cartões de métrica. */
+.pagina:has(.cabecalho-custos) {
+    max-width: 1600px;
 }
 
 .admin-layout {
