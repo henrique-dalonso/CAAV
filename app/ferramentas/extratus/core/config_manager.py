@@ -29,6 +29,18 @@ CONFIG_PADRAO = {
     # manual/individual). Universal: todo mundo com acesso à aba Fila
     # do robô manda PDF pra cá, sem filtro por quem enviou.
     "robo_pasta_entrada": "app/ferramentas/extratus/dados/robo_entrada_pdfs",
+
+    # Premissa de "economia estimada" na tela de Custos (admin) — não é
+    # medido, é uma estimativa configurável de quanto tempo/dinheiro um
+    # caso levaria pra ser feito manualmente, pra comparar com o custo
+    # real de IA. Henrique, diretoria, 2026-08-26: valores de partida
+    # sugeridos por mim, editáveis a qualquer momento na própria tela —
+    # nunca apresentados como fato, só como premissa configurável. Fica
+    # por ferramenta de propósito (Relatórios e Aburesi são produtos
+    # diferentes, ver [[extratus-duas-frentes]] — um relatório completo
+    # e um resumo rápido não deveriam levar o mesmo tempo na mão).
+    "horas_estimadas_por_caso": 3.0,
+    "valor_hora_profissional": 200.0,
 }
 
 PASTAS_CONFIGURAVEIS = [
@@ -233,6 +245,28 @@ def atualizar_config_robo(pasta_entrada=None, ia_provider=None):
 
     if ia_provider is not None:
         config["ia_provider"] = ia_provider
+
+    salvar_config(config)
+
+    return config
+
+
+def atualizar_parametros_economia(horas_estimadas_por_caso, valor_hora_profissional):
+    """Edita a premissa de "economia estimada" da tela de Custos (admin) —
+    mesmo padrão de leitura/gravação em bruto das funções acima. Os dois
+    valores precisam ser positivos (uma premissa zero/negativa não faz
+    sentido pra estimar economia nenhuma)."""
+    if horas_estimadas_por_caso <= 0:
+        raise ValueError("Horas estimadas por caso precisa ser maior que zero.")
+
+    if valor_hora_profissional <= 0:
+        raise ValueError("Valor da hora do profissional precisa ser maior que zero.")
+
+    config = CONFIG_PADRAO.copy()
+    config.update(_carregar_config_bruta())
+
+    config["horas_estimadas_por_caso"] = float(horas_estimadas_por_caso)
+    config["valor_hora_profissional"] = float(valor_hora_profissional)
 
     salvar_config(config)
 

@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from sqlmodel import func, select
@@ -379,3 +380,164 @@ def somar_custo_por_usuario():
         ).all()
 
     return {usuario_id: total for usuario_id, total in linhas}
+
+
+def _mes_menos(ano, mes, quantidade):
+    """Aritmética de mês sem depender de datetime.replace (que quebra ao
+    cruzar janeiro) — devolve (ano, mês) de `quantidade` meses ANTES de
+    ano/mês dados."""
+    indice = (ano * 12 + (mes - 1)) - quantidade
+    return indice // 12, indice % 12 + 1
+
+
+def resumo_mes_atual():
+    """Custo, quantidade de casos e custo médio por caso do mês CORRENTE
+    (reinicia sozinho todo dia 1º) + o mesmo do mês anterior, pra dar
+    noção de subida/queda — dashboard de Custos (admin), Henrique,
+    diretoria, 2026-08-26. Só conta Job com custo > 0, mesmo critério de
+    `somar_custo_por_usuario` (um erro, que nunca tem custo real
+    registrado, não deveria inflar nem diluir a média)."""
+    agora = datetime.now()
+    inicio_mes_atual = agora.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    ano_anterior, mes_anterior = _mes_menos(inicio_mes_atual.year, inicio_mes_atual.month, 1)
+    inicio_mes_anterior = inicio_mes_atual.replace(year=ano_anterior, month=mes_anterior)
+
+    with obter_sessao() as sessao:
+        quantidade_atual, custo_atual = sessao.exec(
+            select(func.count(), func.sum(Job.custo_estimado_usd))
+            .where(Job.custo_estimado_usd > 0, Job.criado_em >= inicio_mes_atual)
+        ).first()
+
+        quantidade_anterior, custo_anterior = sessao.exec(
+            select(func.count(), func.sum(Job.custo_estimado_usd))
+            .where(
+                Job.custo_estimado_usd > 0,
+                Job.criado_em >= inicio_mes_anterior,
+                Job.criado_em < inicio_mes_atual,
+            )
+        ).first()
+
+    quantidade_atual = quantidade_atual or 0
+    quantidade_anterior = quantidade_anterior or 0
+    custo_atual = custo_atual or 0.0
+    custo_anterior = custo_anterior or 0.0
+
+    return {
+        "custo_mes": custo_atual,
+        "quantidade_mes": quantidade_atual,
+        "custo_medio_mes": (custo_atual / quantidade_atual) if quantidade_atual else 0.0,
+        "custo_mes_anterior": custo_anterior,
+        "quantidade_mes_anterior": quantidade_anterior,
+        "custo_medio_mes_anterior": (custo_anterior / quantidade_anterior) if quantidade_anterior else 0.0,
+    }
+
+
+# Períodos aceitos por `serie_temporal_custo` — dias de janela, exceto
+# "1a" que usa granularidade de MÊS (365 pontos diários seria ilegível
+# num gráfico pequeno).
+PERIODOS_SERIE_TEMPORAL = {"7d": 7, "15d": 15, "30d": 30, "1a": 365}
+
+
+def serie_temporal_custo(periodo):
+    """Gasto agregado por dia (períodos "7d"/"15d"/"30d") ou por mês
+    ("1a", últimos 12 meses) — alimenta o gráfico da tela de Custos.
+    Sempre devolve um ponto por dia/mês do intervalo inteiro, mesmo sem
+    nenhum custo naquele dia/mês (fica em 0) — um gráfico com buracos
+    pulando datas seria enganoso."""
+    if periodo not in PERIODOS_SERIE_TEMPORAL:
+        raise ValueError(f"Período inválido: {periodo!r}")
+
+    agora = datetime.now()
+    granularidade_mensal = periodo == "1a"
+
+    if granularidade_mensal:
+        inicio_mes_atual = agora.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        ano_corte, mes_corte = _mes_menos(inicio_mes_atual.year, inicio_mes_atual.month, 11)
+        corte = inicio_mes_atual.replace(year=ano_corte, month=mes_corte)
+    else:
+        dias = PERIODOS_SERIE_TEMPORAL[periodo]
+        corte = (agora - timedelta(days=dias - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
+
+    with obter_sessao() as sessao:
+        linhas = sessao.exec(
+            select(Job.criado_em, Job.custo_estimado_usd)
+            .where(Job.custo_estimado_usd > 0, Job.criado_em >= corte)
+        ).all()
+
+    agregados = {}
+    for criado_em, custo in linhas:
+        chave = criado_em.strftime("%Y-%m") if granularidade_mensal else criado_em.strftime("%Y-%m-%d")
+        agregados[chave] = agregados.get(chave, 0.0) + custo
+
+    pontos = []
+    if granularidade_mensal:
+        for i in range(11, -1, -1):
+            ano, mes = _mes_menos(agora.year, agora.month, i)
+            chave = f"{ano:04d}-{mes:02d}"
+            pontos.append({"rotulo": f"{mes:02d}/{ano}", "custo": round(agregados.get(chave, 0.0), 4)})
+    else:
+        for i in range(PERIODOS_SERIE_TEMPORAL[periodo] - 1, -1, -1):
+            dia = agora - timedelta(days=i)
+            chave = dia.strftime("%Y-%m-%d")
+            pontos.append({"rotulo": dia.strftime("%d/%m"), "custo": round(agregados.get(chave, 0.0), 4)})
+
+    return pontos
+
+
+def detalhar_custo_e_quantidade_por_usuario():
+    """Igual `somar_custo_por_usuario`, mas também traz a QUANTIDADE de
+    relatórios solicitados e o custo médio por relatório de cada
+    usuário — Henrique, diretoria, 2026-08-26: "custo por usuário
+    detalhado (com quantidade de relatórios solicitados, intensidade de
+    uso)"."""
+    with obter_sessao() as sessao:
+        linhas = sessao.exec(
+            select(Job.usuario_id, func.count(), func.sum(Job.custo_estimado_usd))
+            .where(Job.custo_estimado_usd > 0)
+            .group_by(Job.usuario_id)
+        ).all()
+
+    return {
+        usuario_id: {
+            "quantidade": quantidade,
+            "custo": custo,
+            "custo_medio": (custo / quantidade) if quantidade else 0.0,
+        }
+        for usuario_id, quantidade, custo in linhas
+    }
+
+
+def resumo_por_status_com_custo():
+    """Quantidade E custo agregados por status (sucesso/revisão/erro) —
+    "erro" quase sempre fica com custo 0 (a chamada que teria custo real
+    não chegou a terminar com sucesso), mas a quantidade ainda importa
+    pra ver proporção de falha."""
+    resultado = {status: {"quantidade": 0, "custo": 0.0} for status in ("sucesso", "revisao", "erro")}
+
+    with obter_sessao() as sessao:
+        linhas = sessao.exec(
+            select(Job.status, func.count(), func.sum(Job.custo_estimado_usd)).group_by(Job.status)
+        ).all()
+
+    for status, quantidade, custo in linhas:
+        if status in resultado:
+            resultado[status] = {"quantidade": quantidade, "custo": custo or 0.0}
+
+    return resultado
+
+
+def resumo_por_modelo():
+    """Quantidade e custo agregados por modelo de IA que respondeu de
+    verdade (Sonnet padrão vs Haiku, ver MODELO_PEDACO em ia_cliente.py)
+    — só conta Job com custo > 0."""
+    with obter_sessao() as sessao:
+        linhas = sessao.exec(
+            select(Job.modelo_ia, func.count(), func.sum(Job.custo_estimado_usd))
+            .where(Job.custo_estimado_usd > 0)
+            .group_by(Job.modelo_ia)
+        ).all()
+
+    return [
+        {"modelo": modelo or "Desconhecido", "quantidade": quantidade, "custo": custo}
+        for modelo, quantidade, custo in linhas
+    ]

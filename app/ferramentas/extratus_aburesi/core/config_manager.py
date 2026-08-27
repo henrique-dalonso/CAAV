@@ -29,6 +29,12 @@ CONFIG_PADRAO = {
     # manual/individual). Universal: todo mundo com acesso à aba Fila
     # do robô manda PDF pra cá, sem filtro por quem enviou.
     "robo_pasta_entrada": "app/ferramentas/extratus_aburesi/dados/robo_entrada_pdfs",
+
+    # Ver docstring equivalente em app/ferramentas/extratus/core/
+    # config_manager.py — premissa de "economia estimada", editável,
+    # separada por ferramenta de propósito.
+    "horas_estimadas_por_caso": 3.0,
+    "valor_hora_profissional": 200.0,
 }
 
 PASTAS_CONFIGURAVEIS = [
@@ -222,6 +228,26 @@ def atualizar_config_robo(pasta_entrada=None, ia_provider=None):
 
     if ia_provider is not None:
         config["ia_provider"] = ia_provider
+
+    salvar_config(config)
+
+    return config
+
+
+def atualizar_parametros_economia(horas_estimadas_por_caso, valor_hora_profissional):
+    """Ver docstring equivalente em app/ferramentas/extratus/core/
+    config_manager.py."""
+    if horas_estimadas_por_caso <= 0:
+        raise ValueError("Horas estimadas por caso precisa ser maior que zero.")
+
+    if valor_hora_profissional <= 0:
+        raise ValueError("Valor da hora do profissional precisa ser maior que zero.")
+
+    config = CONFIG_PADRAO.copy()
+    config.update(_carregar_config_bruta())
+
+    config["horas_estimadas_por_caso"] = float(horas_estimadas_por_caso)
+    config["valor_hora_profissional"] = float(valor_hora_profissional)
 
     salvar_config(config)
 
