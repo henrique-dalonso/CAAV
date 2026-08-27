@@ -1210,4 +1210,39 @@
         // se o SSE falhar silenciosamente", não a via principal.
         setInterval(consultarNotificacoes, INTERVALO_NOTIFICACOES_MS_RESERVA);
     }
+
+    // ---------------------------------------------------------------
+    // Botão "Voltar" do topo (fora de .pagina, position:fixed com left
+    // fixo) — pensado pra sempre cair no espaço vazio à esquerda da
+    // logo, nunca empurrar/sobrepor ela. Esse espaço vazio depende da
+    // largura de .pagina, que hoje varia por tela (880/1200/1600px, ver
+    // admin.css) — numa tela mais larga (ex: Custos, 1600px) o espaço
+    // pode não sobrar mais em janelas comuns, e o botão passava a ficar
+    // espremido/sobreposto contra a logo (achado real, Henrique,
+    // 2026-08-27, testando na VM). Em vez de um breakpoint fixo (frágil,
+    // quebraria nas próximas telas que ganharem largura própria), mede a
+    // distância real entre os dois toda vez e simplesmente ESCONDE o
+    // botão quando não sobra espaço suficiente.
+    var botaoVoltarTopo = document.querySelector(".botao-voltar-topo");
+    var logoSistema = document.querySelector(".marca-sistema-logo");
+
+    if (botaoVoltarTopo && logoSistema) {
+        var FOLGA_MINIMA_VOLTAR_LOGO_PX = 16;
+
+        var ajustarVisibilidadeBotaoVoltar = function () {
+            var retanguloBotao = botaoVoltarTopo.getBoundingClientRect();
+            var retanguloLogo = logoSistema.getBoundingClientRect();
+            var cabe = (retanguloBotao.right + FOLGA_MINIMA_VOLTAR_LOGO_PX) <= retanguloLogo.left;
+
+            // visibility, não display: display:none zera o próprio
+            // getBoundingClientRect() do botão, e a próxima checagem
+            // acharia que ele "cabe" (rect todo em 0) e reapareceria —
+            // um loop de pisca-pisca. visibility:hidden mantém a
+            // geometria real pra medir de novo depois.
+            botaoVoltarTopo.style.visibility = cabe ? "" : "hidden";
+        };
+
+        ajustarVisibilidadeBotaoVoltar();
+        window.addEventListener("resize", ajustarVisibilidadeBotaoVoltar);
+    }
 })();
