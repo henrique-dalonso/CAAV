@@ -50,7 +50,7 @@
     </div>
     <ul class="lista-relatorios" id="lista-relatorios-robo">
         {% for job in jobs %}
-        <li class="relatorio-item" data-status="{{ job.status }}" data-processo="{{ job.processo or '' }}" data-busca="{{ ((job.processo or '') ~ ' ' ~ job.arquivo_pdf) | lower }}" data-criado-em="{{ job.criado_em.strftime('%Y-%m-%d') }}" data-solicitante-id="{{ job.solicitante_id or '' }}">
+        <li class="relatorio-item" data-status="{{ job.status }}" data-processo="{{ job.processo or '' }}" data-busca="{{ ((job.processo or '') ~ ' ' ~ job.arquivo_pdf) | lower }}" data-criado-em="{{ job.criado_em.strftime('%Y-%m-%d') }}" data-solicitante-id="{{ solicitante_por_job_id.get(job.id) or '' }}">
             <span class="status status-{{ job.status }}">{{ job.status | rotulo_status }}</span>
             <div class="relatorio-info{% if job.relatorio_path %} relatorio-info-clicavel{% endif %}"{% if job.relatorio_path %} data-download="download/{{ job.relatorio_path.split('\\')[-1].split('/')[-1] }}"{% endif %}>
                 {% if job.processo %}
@@ -68,7 +68,7 @@
             </div>
             <div class="relatorio-solicitante">
                 <span class="divisor-vertical" aria-hidden="true"></span>
-                {% set nome_solicitante = "Solicitado por: " ~ nomes_por_id.get(job.solicitante_id, "não identificado") %}
+                {% set nome_solicitante = "Solicitado por: " ~ nomes_por_id.get(solicitante_por_job_id.get(job.id), "não identificado") %}
                 <span class="solicitante-texto truncavel" data-dica="{{ nome_solicitante }}">{{ nome_solicitante }}</span>
             </div>
             {% if job.relatorio_path %}

@@ -85,6 +85,91 @@ def registrar_pendente(nome_arquivo, solicitante_id):
         return registro
 
 
+def mapear_solicitantes_por_arquivo(itens):
+    """Achar quem enviou um arquivo por DEDUÇÃO — casa por NOME do
+    arquivo + o envio (`UploadFilaRobo`) mais recente que aconteceu ANTES
+    (ou junto) da criação do item. Nunca só pelo nome sozinho, porque um
+    nome de arquivo pode se repetir ao longo do tempo (ex: "pdf.pdf",
+    visto em uso real) e um casamento ingênuo atribuiria o pedido à
+    pessoa errada quando isso acontecer.
+
+    Henrique, diretoria, 2026-08-27: esta era a solução ORIGINAL pra
+    "quem pediu esse processo pro Robô" — substituída no mesmo dia por
+    atribuição direta (`Job.solicitante_id`, ver `registrar_pendente`
+    acima), que não precisa deduzir nada. Só que a atribuição direta é
+    preenchida a partir de agora pra frente — relatórios de ANTES da
+    migração de hoje continuam com `solicitante_id` vazio pra sempre (a
+    migração não teve como voltar no tempo). Henrique pediu de volta essa
+    função como FALLBACK pra esses relatórios antigos — ver
+    `resolver_solicitantes` abaixo, que decide quando usar cada um.
+
+    Devolve {item_id: usuario_id} — item sem nenhum envio correspondente
+    simplesmente não aparece no dict (ex: arquivo que chegou na pasta por
+    fora do upload da tela, ou de antes da UploadFilaRobo existir)."""
+    nomes = {item.arquivo_pdf for item in itens}
+    if not nomes:
+        return {}
+
+    with obter_sessao() as sessao:
+        uploads = sessao.exec(
+            select(UploadFilaRobo).where(UploadFilaRobo.nome_arquivo.in_(nomes))
+        ).all()
+
+    uploads_por_nome = {}
+    for upload in uploads:
+        uploads_por_nome.setdefault(upload.nome_arquivo, []).append(upload)
+
+    for lista in uploads_por_nome.values():
+        lista.sort(key=lambda u: u.enviado_em)
+
+    solicitantes = {}
+    for item in itens:
+        candidatos = uploads_por_nome.get(item.arquivo_pdf)
+        if not candidatos:
+            continue
+
+        melhor = None
+        for upload in candidatos:
+            if upload.enviado_em <= item.criado_em:
+                melhor = upload
+            else:
+                break
+
+        if melhor is None:
+            # Nenhum envio registrado ANTES da criação do item — não
+            # deveria acontecer no fluxo normal, mas relógio/latência
+            # podem colidir por poucos segundos. Usa o envio mais antigo
+            # como palpite honesto, melhor que não mostrar nada.
+            melhor = candidatos[0]
+
+        solicitantes[item.id] = melhor.usuario_id
+
+    return solicitantes
+
+
+def resolver_solicitantes(itens):
+    """Pra cada item (`Job`, hoje): usa o `solicitante_id` DIRETO quando
+    já vem preenchido (todo relatório novo, gerado a partir de
+    2026-08-27, tem isso confiável). Só cai pra dedução por nome+horário
+    (`mapear_solicitantes_por_arquivo`, fallback) nos itens que NÃO têm
+    — relatórios de antes dessa coluna existir. Henrique, 2026-08-27:
+    "os relatórios que já estavam prontos agora estão como não
+    identificado... manter aquela solução de antes como fallback".
+
+    Devolve {item_id: usuario_id_ou_None} pra TODO item da lista (ao
+    contrário de mapear_solicitantes_por_arquivo, que omite item sem
+    match) — item sem nenhuma fonte de solicitante aparece com valor
+    None, não fica de fora do dict."""
+    resolvidos = {item.id: item.solicitante_id for item in itens}
+
+    sem_solicitante = [item for item in itens if item.solicitante_id is None]
+    if sem_solicitante:
+        deduzidos = mapear_solicitantes_por_arquivo(sem_solicitante)
+        resolvidos.update(deduzidos)
+
+    return resolvidos
+
+
 def sincronizar_registros(nomes_no_disco):
     """Garante uma linha "pendente" pra todo nome novo em
     robo_pasta_entrada (upload pelo site OU qualquer outro jeito do

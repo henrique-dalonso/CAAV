@@ -2,8 +2,9 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import delete, select
 
+from app.ferramentas.extratus.db.checagem_fila import registrar_upload
 from app.ferramentas.extratus.db.jobs import registrar_processado
-from app.ferramentas.extratus.db.models import Job
+from app.ferramentas.extratus.db.models import Job, UploadFilaRobo
 from app.plataforma.db.models import Usuario
 from app.plataforma.db.session import obter_sessao
 from app.plataforma.db.usuarios import criar_usuario
@@ -176,6 +177,53 @@ def test_pagina_custos_detalhe_mostra_quem_solicitou_ao_robo(limpar_usuarios_tes
     finally:
         with obter_sessao() as sessao:
             sessao.exec(delete(Job).where(Job.id == job_robo.id))
+            sessao.commit()
+
+
+def test_pagina_custos_detalhe_mostra_quem_solicitou_por_fallback(limpar_usuarios_teste):
+    """Henrique, mesmo dia (2026-08-27): "os relatórios que já estavam
+    prontos agora estão como não identificado... manter aquela solução
+    de antes como fallback". Job sem solicitante_id direto (simula um
+    relatório de antes da coluna existir) ainda tem que mostrar quem
+    pediu, deduzido pelo upload registrado na Fila do Robô."""
+    criar_usuario(
+        nome="Teste Admin Custos Plataforma",
+        nome_usuario=NOME_ADMIN_PLATAFORMA,
+        email="teste_admin_custos_plataforma@example.com",
+        senha=SENHA,
+        eh_admin=True,
+    )
+
+    cliente = TestClient(app)
+    cliente.post("/login", data={"usuario_login": NOME_ADMIN_PLATAFORMA, "senha": SENHA})
+
+    with obter_sessao() as sessao:
+        usuario_id_admin = sessao.exec(
+            select(Usuario.id).where(Usuario.nome_usuario == NOME_ADMIN_PLATAFORMA)
+        ).first()
+
+    registrar_upload("teste_custos_solicitante_fallback.pdf", usuario_id_admin)
+
+    job_robo = registrar_processado(
+        arquivo_pdf="teste_custos_solicitante_fallback.pdf",
+        processo="0000000-00.2026.8.00.0951",
+        relatorio_path=None,
+        destino_pdf=None,
+        confianca="alta",
+        uso_ia={"modelo": "claude-sonnet-5", "custo_estimado_usd": 0.10},
+        usuario_id=None,
+        solicitante_id=None,
+    )
+
+    try:
+        resp = cliente.get("/admin/custos/extratus-relatorios")
+
+        assert resp.status_code == 200
+        assert "Solicitado por: Teste Admin Custos Plataforma" in resp.text
+    finally:
+        with obter_sessao() as sessao:
+            sessao.exec(delete(Job).where(Job.id == job_robo.id))
+            sessao.exec(delete(UploadFilaRobo).where(UploadFilaRobo.nome_arquivo == "teste_custos_solicitante_fallback.pdf"))
             sessao.commit()
 
 

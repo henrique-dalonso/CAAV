@@ -184,8 +184,9 @@
                     <span class="motivo">{{ info_por_id[job.usuario_id].login }}</span>
                     {% else %}
                     Robô automático
-                    {% if job.solicitante_id and info_por_id.get(job.solicitante_id) %}
-                    <span class="motivo">Solicitado por: {{ info_por_id[job.solicitante_id].nome }}</span>
+                    {% set solicitante_id = solicitante_por_job_id.get(job.id) %}
+                    {% if solicitante_id and info_por_id.get(solicitante_id) %}
+                    <span class="motivo">Solicitado por: {{ info_por_id[solicitante_id].nome }}</span>
                     {% endif %}
                     {% endif %}
                 </td>

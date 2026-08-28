@@ -2,8 +2,9 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import delete, select
 
+from app.ferramentas.extratus.db.checagem_fila import registrar_upload
 from app.ferramentas.extratus.db.jobs import registrar_processado
-from app.ferramentas.extratus.db.models import Job
+from app.ferramentas.extratus.db.models import Job, UploadFilaRobo
 from app.plataforma.db.models import Ferramenta, Usuario, UsuarioFerramenta
 from app.plataforma.db.session import obter_sessao
 from app.plataforma.db.usuarios import criar_usuario
@@ -118,6 +119,41 @@ def test_pagina_relatorios_robo_mostra_quem_solicitou(cliente_logado, limpar_job
     assert resp.status_code == 200
     assert "Solicitado por: Teste Relatórios do Robô" in resp.text
     assert f'value="{usuario_id_logado}"' in resp.text  # opção do dropdown "Solicitado por"
+
+
+def test_pagina_relatorios_robo_mostra_quem_solicitou_por_fallback(cliente_logado, limpar_jobs_criados):
+    """Henrique, mesmo dia (2026-08-27): "os relatórios que já estavam
+    prontos agora estão como não identificado... manter aquela solução
+    de antes como fallback". Job de ANTES da coluna solicitante_id
+    existir (aqui simulado com solicitante_id=None) ainda tem que
+    mostrar o nome de quem pediu, deduzido pelo upload registrado na
+    Fila do Robô."""
+    with obter_sessao() as sessao:
+        usuario_id_logado = sessao.exec(
+            select(Usuario.id).where(Usuario.nome_usuario == NOME_USUARIO_TESTE)
+        ).first()
+
+    registrar_upload("teste_relrobo_solicitante_fallback.pdf", usuario_id_logado)
+
+    job_robo = registrar_processado(
+        arquivo_pdf="teste_relrobo_solicitante_fallback.pdf",
+        processo="0000000-00.2026.8.00.0044",
+        relatorio_path=None,
+        destino_pdf=None,
+        confianca="alta",
+        usuario_id=None,
+        solicitante_id=None,
+    )
+    limpar_jobs_criados.append(job_robo.id)
+
+    resp = cliente_logado.get("/extratus/relatorios-robo")
+
+    assert resp.status_code == 200
+    assert "Solicitado por: Teste Relatórios do Robô" in resp.text
+
+    with obter_sessao() as sessao:
+        sessao.exec(delete(UploadFilaRobo).where(UploadFilaRobo.nome_arquivo == "teste_relrobo_solicitante_fallback.pdf"))
+        sessao.commit()
 
 
 def test_pagina_relatorios_robo_acessivel_sem_acesso_a_fila():

@@ -8,6 +8,9 @@ from app.ferramentas.extratus.core.config_manager import (
     atualizar_parametros_economia as _atualizar_parametros_economia_extratus,
     carregar_config as _carregar_config_extratus,
 )
+from app.ferramentas.extratus.db.checagem_fila import (
+    resolver_solicitantes as _resolver_solicitantes_extratus,
+)
 from app.ferramentas.extratus.db.jobs import (
     detalhar_custo_e_quantidade_por_usuario as _detalhar_custo_e_quantidade_por_usuario_extratus,
     listar_jobs as _listar_jobs_extratus,
@@ -24,6 +27,9 @@ from app.ferramentas.extratus.web.rotulos import (
 from app.ferramentas.extratus_aburesi.core.config_manager import (
     atualizar_parametros_economia as _atualizar_parametros_economia_aburesi,
     carregar_config as _carregar_config_aburesi,
+)
+from app.ferramentas.extratus_aburesi.db.checagem_fila import (
+    resolver_solicitantes as _resolver_solicitantes_aburesi,
 )
 from app.ferramentas.extratus_aburesi.db.jobs import (
     detalhar_custo_e_quantidade_por_usuario as _detalhar_custo_e_quantidade_por_usuario_aburesi,
@@ -75,6 +81,7 @@ CUSTOS_POR_CHAVE = {
         "resumo_por_modelo": _resumo_por_modelo_extratus,
         "carregar_config": _carregar_config_extratus,
         "atualizar_parametros_economia": _atualizar_parametros_economia_extratus,
+        "resolver_solicitantes": _resolver_solicitantes_extratus,
         "rotulo_status": _rotulo_status_extratus,
         "rotulo_erro": _rotulo_erro_extratus,
     },
@@ -91,6 +98,7 @@ CUSTOS_POR_CHAVE = {
         "resumo_por_modelo": _resumo_por_modelo_aburesi,
         "carregar_config": _carregar_config_aburesi,
         "atualizar_parametros_economia": _atualizar_parametros_economia_aburesi,
+        "resolver_solicitantes": _resolver_solicitantes_aburesi,
         "rotulo_status": _rotulo_status_aburesi,
         "rotulo_erro": _rotulo_erro_aburesi,
     },
@@ -143,9 +151,15 @@ def _contexto_custos_detalhe(chave, entrada, usuario, erro_parametros_economia=N
     jobs = entrada["listar_jobs"]()
     # Henrique, diretoria, 2026-08-27: "Robô automático" sozinho não diz
     # QUEM pediu aquele processo — `job.solicitante_id` já vem carregado
-    # desde o upload na Fila do Robô (ver ChecagemFila.solicitante_id /
-    # checagem_fila.registrar_pendente, repassado por toda a esteira).
+    # desde o upload na Fila do Robô pra relatório NOVO (ver
+    # ChecagemFila.solicitante_id / checagem_fila.registrar_pendente,
+    # repassado por toda a esteira). Relatório de ANTES dessa coluna
+    # existir não tem como ter isso preenchido — `resolver_solicitantes`
+    # cai pra dedução por nome+horário nesses casos (Henrique, mesmo dia:
+    # "os relatórios que já estavam prontos agora estão como não
+    # identificado... manter aquela solução de antes como fallback").
     info_por_id = {u.id: {"nome": u.nome, "login": u.nome_usuario} for u in listar_todos_usuarios()}
+    solicitante_por_job_id = entrada["resolver_solicitantes"](jobs)
     detalhe_por_usuario = entrada["detalhar_custo_e_quantidade_por_usuario"]()
 
     dados_robo = detalhe_por_usuario.get(None, {"quantidade": 0, "custo": 0.0})
@@ -200,6 +214,7 @@ def _contexto_custos_detalhe(chave, entrada, usuario, erro_parametros_economia=N
         "url_base": entrada["url_base"],
         "jobs": jobs,
         "info_por_id": info_por_id,
+        "solicitante_por_job_id": solicitante_por_job_id,
         "colaboradores": colaboradores,
         "custo_colaboradores": custo_colaboradores,
         "custo_robo": custo_robo,

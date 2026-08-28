@@ -4,6 +4,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, RedirectResponse
 
+from app.ferramentas.extratus_aburesi.db.checagem_fila import resolver_solicitantes
 from app.ferramentas.extratus_aburesi.db.jobs import excluir_job, listar_jobs_robo, marcar_notificacao_resolvida_robo, obter_job
 from app.ferramentas.extratus_aburesi.web.rotulos import (
     ABA_RELATORIOS_ROBO,
@@ -51,11 +52,12 @@ def pagina_relatorios_robo(
     # Ver comentário equivalente em app/ferramentas/extratus/web/routes/
     # relatorios_robo.py.
     nomes_por_id = {u.id: u.nome for u in listar_todos_usuarios()}
+    solicitante_por_job_id = resolver_solicitantes(jobs)
 
     solicitantes_disponiveis = sorted(
         (
             {"id": usuario_id, "nome": nomes_por_id.get(usuario_id, f"Usuário #{usuario_id}")}
-            for usuario_id in {job.solicitante_id for job in jobs if job.solicitante_id}
+            for usuario_id in {sid for sid in solicitante_por_job_id.values() if sid}
         ),
         key=lambda item: item["nome"].lower(),
     )
@@ -69,6 +71,7 @@ def pagina_relatorios_robo(
             "usuario": usuario,
             "jobs": jobs,
             "nomes_por_id": nomes_por_id,
+            "solicitante_por_job_id": solicitante_por_job_id,
             "solicitantes_disponiveis": solicitantes_disponiveis,
             "processo_busca": processo,
             "erro": erro,
