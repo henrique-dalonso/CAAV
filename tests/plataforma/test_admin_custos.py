@@ -1,7 +1,10 @@
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import delete
+from sqlmodel import delete, select
 
+from app.ferramentas.extratus.db.checagem_fila import registrar_upload
+from app.ferramentas.extratus.db.jobs import registrar_processado
+from app.ferramentas.extratus.db.models import Job, UploadFilaRobo
 from app.plataforma.db.models import Usuario
 from app.plataforma.db.session import obter_sessao
 from app.plataforma.db.usuarios import criar_usuario
@@ -133,6 +136,51 @@ def test_pagina_custos_detalhe_mostra_dashboard_novo(limpar_usuarios_teste):
     assert "Por status" in resp.text
     assert "Por modelo de IA" in resp.text
     assert 'id="dados-grafico-custos"' in resp.text
+
+
+def test_pagina_custos_detalhe_mostra_quem_solicitou_ao_robo(limpar_usuarios_teste):
+    """Achado real (Henrique, diretoria, 2026-08-27): a diretoria
+    perguntou quem colocou um processo no Robô e não dava pra responder
+    — "Robô automático" sozinho não diz quem pediu."""
+    criar_usuario(
+        nome="Teste Admin Custos Plataforma",
+        nome_usuario=NOME_ADMIN_PLATAFORMA,
+        email="teste_admin_custos_plataforma@example.com",
+        senha=SENHA,
+        eh_admin=True,
+    )
+
+    cliente = TestClient(app)
+    cliente.post("/login", data={"usuario_login": NOME_ADMIN_PLATAFORMA, "senha": SENHA})
+
+    nome_arquivo = "teste_custos_solicitante.pdf"
+    with obter_sessao() as sessao:
+        usuario_id_admin = sessao.exec(
+            select(Usuario.id).where(Usuario.nome_usuario == NOME_ADMIN_PLATAFORMA)
+        ).first()
+
+    registrar_upload(nome_arquivo, usuario_id_admin)
+
+    job_robo = registrar_processado(
+        arquivo_pdf=nome_arquivo,
+        processo="0000000-00.2026.8.00.0950",
+        relatorio_path=None,
+        destino_pdf=None,
+        confianca="alta",
+        uso_ia={"modelo": "claude-sonnet-5", "custo_estimado_usd": 0.10},
+        usuario_id=None,
+    )
+
+    try:
+        resp = cliente.get("/admin/custos/extratus-relatorios")
+
+        assert resp.status_code == 200
+        assert "Solicitado por: Teste Admin Custos Plataforma" in resp.text
+    finally:
+        with obter_sessao() as sessao:
+            sessao.exec(delete(Job).where(Job.id == job_robo.id))
+            sessao.exec(delete(UploadFilaRobo).where(UploadFilaRobo.nome_arquivo == nome_arquivo))
+            sessao.commit()
 
 
 def test_salvar_parametros_economia_admin_atualiza_e_reflete_na_tela(limpar_usuarios_teste):

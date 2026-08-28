@@ -8,6 +8,9 @@ from app.ferramentas.extratus.core.config_manager import (
     atualizar_parametros_economia as _atualizar_parametros_economia_extratus,
     carregar_config as _carregar_config_extratus,
 )
+from app.ferramentas.extratus.db.checagem_fila import (
+    mapear_solicitantes_por_arquivo as _mapear_solicitantes_por_arquivo_extratus,
+)
 from app.ferramentas.extratus.db.jobs import (
     detalhar_custo_e_quantidade_por_usuario as _detalhar_custo_e_quantidade_por_usuario_extratus,
     listar_jobs as _listar_jobs_extratus,
@@ -24,6 +27,9 @@ from app.ferramentas.extratus.web.rotulos import (
 from app.ferramentas.extratus_aburesi.core.config_manager import (
     atualizar_parametros_economia as _atualizar_parametros_economia_aburesi,
     carregar_config as _carregar_config_aburesi,
+)
+from app.ferramentas.extratus_aburesi.db.checagem_fila import (
+    mapear_solicitantes_por_arquivo as _mapear_solicitantes_por_arquivo_aburesi,
 )
 from app.ferramentas.extratus_aburesi.db.jobs import (
     detalhar_custo_e_quantidade_por_usuario as _detalhar_custo_e_quantidade_por_usuario_aburesi,
@@ -75,6 +81,7 @@ CUSTOS_POR_CHAVE = {
         "resumo_por_modelo": _resumo_por_modelo_extratus,
         "carregar_config": _carregar_config_extratus,
         "atualizar_parametros_economia": _atualizar_parametros_economia_extratus,
+        "mapear_solicitantes_por_arquivo": _mapear_solicitantes_por_arquivo_extratus,
         "rotulo_status": _rotulo_status_extratus,
         "rotulo_erro": _rotulo_erro_extratus,
     },
@@ -91,6 +98,7 @@ CUSTOS_POR_CHAVE = {
         "resumo_por_modelo": _resumo_por_modelo_aburesi,
         "carregar_config": _carregar_config_aburesi,
         "atualizar_parametros_economia": _atualizar_parametros_economia_aburesi,
+        "mapear_solicitantes_por_arquivo": _mapear_solicitantes_por_arquivo_aburesi,
         "rotulo_status": _rotulo_status_aburesi,
         "rotulo_erro": _rotulo_erro_aburesi,
     },
@@ -144,6 +152,16 @@ def _contexto_custos_detalhe(chave, entrada, usuario, erro_parametros_economia=N
     info_por_id = {u.id: {"nome": u.nome, "login": u.nome_usuario} for u in listar_todos_usuarios()}
     detalhe_por_usuario = entrada["detalhar_custo_e_quantidade_por_usuario"]()
 
+    # Henrique, diretoria, 2026-08-27: "Robô automático" sozinho não diz
+    # QUEM pediu aquele processo pro Robô — casa cada job com quem enviou
+    # o arquivo pela Fila do Robô (ver UploadFilaRobo/
+    # mapear_solicitantes_por_arquivo). Só jobs sem dono (usuario_id
+    # None, origem Robô) têm solicitante pra achar — os demais já têm o
+    # próprio usuario_id.
+    solicitante_por_job_id = entrada["mapear_solicitantes_por_arquivo"](
+        [job for job in jobs if job.usuario_id is None]
+    )
+
     dados_robo = detalhe_por_usuario.get(None, {"quantidade": 0, "custo": 0.0})
     custo_robo = dados_robo["custo"]
     custo_colaboradores = sum(
@@ -196,6 +214,7 @@ def _contexto_custos_detalhe(chave, entrada, usuario, erro_parametros_economia=N
         "url_base": entrada["url_base"],
         "jobs": jobs,
         "info_por_id": info_por_id,
+        "solicitante_por_job_id": solicitante_por_job_id,
         "colaboradores": colaboradores,
         "custo_colaboradores": custo_colaboradores,
         "custo_robo": custo_robo,

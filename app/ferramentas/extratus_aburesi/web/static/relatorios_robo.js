@@ -8,6 +8,7 @@
     var listaEl = document.getElementById("lista-relatorios-robo");
     var campoDataDe = document.getElementById("filtro-data-de");
     var campoDataAte = document.getElementById("filtro-data-ate");
+    var campoSolicitante = document.getElementById("filtro-solicitante");
 
     if (!campoBusca || !itens.length) {
         return;
@@ -24,6 +25,7 @@
         var termo = campoBusca.value.trim().toLowerCase();
         var dataDe = campoDataDe ? campoDataDe.value : "";
         var dataAte = campoDataAte ? campoDataAte.value : "";
+        var solicitanteId = campoSolicitante ? campoSolicitante.value : "";
         var visiveis = 0;
 
         itens.forEach(function (item) {
@@ -33,7 +35,11 @@
             // e o <input type="date"> usam o mesmo formato ISO (AAAA-MM-DD).
             var passaData = (!dataDe || item.dataset.criadoEm >= dataDe)
                 && (!dataAte || item.dataset.criadoEm <= dataAte);
-            var mostrar = passaStatus && passaBusca && passaData;
+            // Henrique, diretoria, 2026-08-27: filtro "Solicitado por" —
+            // data-solicitante-id vem vazio quando não achou quem enviou
+            // aquele arquivo (ver mapear_solicitantes_por_arquivo).
+            var passaSolicitante = !solicitanteId || item.dataset.solicitanteId === solicitanteId;
+            var mostrar = passaStatus && passaBusca && passaData && passaSolicitante;
 
             // Mesma pegadinha do [hidden] vs display de autor já
             // resolvida em relatorios_manuais.js — style.display direto
@@ -71,6 +77,10 @@
             }
             aplicarFiltros();
         });
+    }
+
+    if (campoSolicitante) {
+        campoSolicitante.addEventListener("change", aplicarFiltros);
     }
 
     abas.forEach(function (aba) {

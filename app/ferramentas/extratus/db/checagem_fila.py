@@ -40,6 +40,65 @@ def registrar_upload(nome_arquivo, usuario_id):
         sessao.commit()
 
 
+def mapear_solicitantes_por_arquivo(itens):
+    """Pra cada item (qualquer objeto com `.id`, `.arquivo_pdf` e
+    `.criado_em` — hoje só `Job`), acha quem enviou aquele arquivo pela
+    Fila do Robô (ver UploadFilaRobo/registrar_upload acima) — usado nas
+    telas de Custos e Relatórios do Robô. Henrique, diretoria, 2026-08-27:
+    a diretoria perguntou "o coordenador fulano colocou os processos que
+    pedi no robô?" e não dava pra responder — "Robô automático" sozinho
+    não diz QUEM pediu.
+
+    Casa por NOME do arquivo + o envio mais recente que aconteceu ANTES
+    (ou junto) da criação do item — nunca só pelo nome sozinho, porque um
+    nome de arquivo pode se repetir ao longo do tempo (ex: "pdf.pdf",
+    visto em uso real) e um casamento ingênuo atribuiria o pedido à
+    pessoa errada quando isso acontecer.
+
+    Devolve {item_id: usuario_id} — item sem nenhum envio correspondente
+    simplesmente não aparece no dict (ex: arquivo que chegou na pasta por
+    fora do upload da tela)."""
+    nomes = {item.arquivo_pdf for item in itens}
+    if not nomes:
+        return {}
+
+    with obter_sessao() as sessao:
+        uploads = sessao.exec(
+            select(UploadFilaRobo).where(UploadFilaRobo.nome_arquivo.in_(nomes))
+        ).all()
+
+    uploads_por_nome = {}
+    for upload in uploads:
+        uploads_por_nome.setdefault(upload.nome_arquivo, []).append(upload)
+
+    for lista in uploads_por_nome.values():
+        lista.sort(key=lambda u: u.enviado_em)
+
+    solicitantes = {}
+    for item in itens:
+        candidatos = uploads_por_nome.get(item.arquivo_pdf)
+        if not candidatos:
+            continue
+
+        melhor = None
+        for upload in candidatos:
+            if upload.enviado_em <= item.criado_em:
+                melhor = upload
+            else:
+                break
+
+        if melhor is None:
+            # Nenhum envio registrado ANTES da criação do item — não
+            # deveria acontecer no fluxo normal, mas relógio/latência
+            # podem colidir por poucos segundos. Usa o envio mais antigo
+            # como palpite honesto, melhor que não mostrar nada.
+            melhor = candidatos[0]
+
+        solicitantes[item.id] = melhor.usuario_id
+
+    return solicitantes
+
+
 def sincronizar_registros(nomes_no_disco):
     """Garante uma linha "pendente" pra todo nome novo em
     robo_pasta_entrada (upload pelo site OU qualquer outro jeito do

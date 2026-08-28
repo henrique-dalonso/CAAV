@@ -4,6 +4,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, RedirectResponse
 
+from app.ferramentas.extratus_aburesi.db.checagem_fila import mapear_solicitantes_por_arquivo
 from app.ferramentas.extratus_aburesi.db.jobs import excluir_job, listar_jobs_robo, marcar_notificacao_resolvida_robo, obter_job
 from app.ferramentas.extratus_aburesi.web.rotulos import (
     ABA_RELATORIOS_ROBO,
@@ -16,7 +17,7 @@ from app.ferramentas.extratus_aburesi.web.rotulos import (
     rotulo_status,
 )
 from app.plataforma.db.models import Usuario
-from app.plataforma.db.usuarios import marcar_aba_vista
+from app.plataforma.db.usuarios import listar_todos_usuarios, marcar_aba_vista
 from app.plataforma.web.auth import exigir_acesso_ferramenta, exigir_admin
 from app.plataforma.web.templates_util import criar_templates
 
@@ -48,6 +49,19 @@ def pagina_relatorios_robo(
 ):
     jobs = listar_jobs_robo()
 
+    # Ver comentário equivalente em app/ferramentas/extratus/web/routes/
+    # relatorios_robo.py.
+    nomes_por_id = {u.id: u.nome for u in listar_todos_usuarios()}
+    solicitante_por_job_id = mapear_solicitantes_por_arquivo(jobs)
+
+    solicitantes_disponiveis = sorted(
+        (
+            {"id": usuario_id, "nome": nomes_por_id.get(usuario_id, f"Usuário #{usuario_id}")}
+            for usuario_id in set(solicitante_por_job_id.values())
+        ),
+        key=lambda item: item["nome"].lower(),
+    )
+
     # Renderiza PRIMEIRO, marca como visto DEPOIS — ver comentário
     # equivalente em app/ferramentas/extratus/web/routes/relatorios_robo.py.
     resposta = templates.TemplateResponse(
@@ -56,6 +70,9 @@ def pagina_relatorios_robo(
         {
             "usuario": usuario,
             "jobs": jobs,
+            "nomes_por_id": nomes_por_id,
+            "solicitante_por_job_id": solicitante_por_job_id,
+            "solicitantes_disponiveis": solicitantes_disponiveis,
             "processo_busca": processo,
             "erro": erro,
             "sucesso": sucesso,

@@ -2,8 +2,9 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import delete, select
 
+from app.ferramentas.extratus.db.checagem_fila import registrar_upload
 from app.ferramentas.extratus.db.jobs import registrar_processado
-from app.ferramentas.extratus.db.models import Job
+from app.ferramentas.extratus.db.models import Job, UploadFilaRobo
 from app.plataforma.db.models import Ferramenta, Usuario, UsuarioFerramenta
 from app.plataforma.db.session import obter_sessao
 from app.plataforma.db.usuarios import criar_usuario
@@ -88,6 +89,40 @@ def test_pagina_relatorios_robo_so_lista_jobs_do_robo(cliente_logado, limpar_job
     assert resp.status_code == 200
     assert "teste_pagina_relatorios_robo.pdf" in resp.text
     assert "teste_pagina_relatorios_robo_manual.pdf" not in resp.text
+
+
+def test_pagina_relatorios_robo_mostra_quem_solicitou(cliente_logado, limpar_jobs_criados):
+    """Achado real (Henrique, diretoria, 2026-08-27): a diretoria
+    perguntou quem colocou um processo no Robô e não dava pra responder
+    — "Robô automático" sozinho não diz quem pediu."""
+    nome_arquivo = "teste_relrobo_solicitante.pdf"
+
+    with obter_sessao() as sessao:
+        usuario_id_logado = sessao.exec(
+            select(Usuario.id).where(Usuario.nome_usuario == NOME_USUARIO_TESTE)
+        ).first()
+
+    registrar_upload(nome_arquivo, usuario_id_logado)
+
+    job_robo = registrar_processado(
+        arquivo_pdf=nome_arquivo,
+        processo="0000000-00.2026.8.00.0043",
+        relatorio_path=None,
+        destino_pdf=None,
+        confianca="alta",
+        usuario_id=None,
+    )
+    limpar_jobs_criados.append(job_robo.id)
+
+    resp = cliente_logado.get("/extratus/relatorios-robo")
+
+    assert resp.status_code == 200
+    assert "Solicitado por: Teste Relatórios do Robô" in resp.text
+    assert f'value="{usuario_id_logado}"' in resp.text  # opção do dropdown "Solicitado por"
+
+    with obter_sessao() as sessao:
+        sessao.exec(delete(UploadFilaRobo).where(UploadFilaRobo.nome_arquivo == nome_arquivo))
+        sessao.commit()
 
 
 def test_pagina_relatorios_robo_acessivel_sem_acesso_a_fila():

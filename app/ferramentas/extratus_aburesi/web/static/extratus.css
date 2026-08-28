@@ -999,6 +999,33 @@ html[data-theme="escuro"] .aba .contagem-aba-revisao { background: #332b0f; colo
     white-space: nowrap;
 }
 
+/* Ver comentário equivalente em app/ferramentas/extratus/web/static/
+   extratus.css. */
+.filtro-solicitante {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--cor-texto-suave);
+    white-space: nowrap;
+}
+
+.filtro-solicitante select {
+    padding: 0.5rem 0.6rem;
+    font-size: 0.85rem;
+    font-family: inherit;
+    color: var(--cor-texto);
+    background: var(--cor-fundo);
+    border: 1.5px solid var(--cor-borda);
+    border-radius: var(--raio-pequeno);
+    outline: none;
+    max-width: 180px;
+}
+
+.filtro-solicitante select:focus {
+    border-color: var(--cor-acento);
+}
+
 .campo-data {
     padding: 0.5rem 0.6rem;
     font-size: 0.85rem;

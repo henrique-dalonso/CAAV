@@ -38,10 +38,19 @@
             <label for="filtro-data-ate">Até:</label>
             <input type="date" id="filtro-data-ate" class="campo-data">
         </div>
+        <div class="filtro-solicitante">
+            <label for="filtro-solicitante">Solicitado por:</label>
+            <select id="filtro-solicitante">
+                <option value="">Todos</option>
+                {% for pessoa in solicitantes_disponiveis %}
+                <option value="{{ pessoa.id }}">{{ pessoa.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
     </div>
     <ul class="lista-relatorios" id="lista-relatorios-robo">
         {% for job in jobs %}
-        <li class="relatorio-item" data-status="{{ job.status }}" data-processo="{{ job.processo or '' }}" data-busca="{{ ((job.processo or '') ~ ' ' ~ job.arquivo_pdf) | lower }}" data-criado-em="{{ job.criado_em.strftime('%Y-%m-%d') }}">
+        <li class="relatorio-item" data-status="{{ job.status }}" data-processo="{{ job.processo or '' }}" data-busca="{{ ((job.processo or '') ~ ' ' ~ job.arquivo_pdf) | lower }}" data-criado-em="{{ job.criado_em.strftime('%Y-%m-%d') }}" data-solicitante-id="{{ solicitante_por_job_id.get(job.id, '') }}">
             <span class="status status-{{ job.status }}">{{ job.status | rotulo_status }}</span>
             <div class="relatorio-info{% if job.relatorio_path %} relatorio-info-clicavel{% endif %}"{% if job.relatorio_path %} data-download="download/{{ job.relatorio_path.split('\\')[-1].split('/')[-1] }}"{% endif %}>
                 {% if job.processo %}
@@ -56,6 +65,11 @@
                 {% elif job.status == "erro" and job.erro_mensagem %}
                 <span class="motivo" data-dica="{{ job.erro_mensagem }}">{{ job.tipo_erro | rotulo_erro }}</span>
                 {% endif %}
+            </div>
+            <div class="relatorio-solicitante">
+                <span class="divisor-vertical" aria-hidden="true"></span>
+                {% set nome_solicitante = "Solicitado por: " ~ nomes_por_id.get(solicitante_por_job_id.get(job.id), "não identificado") %}
+                <span class="solicitante-texto truncavel" data-dica="{{ nome_solicitante }}">{{ nome_solicitante }}</span>
             </div>
             {% if job.relatorio_path %}
             <a href="download/{{ job.relatorio_path.split('\\')[-1].split('/')[-1] }}" class="botao-download" data-dica="Baixar relatório" aria-label="Baixar relatório">

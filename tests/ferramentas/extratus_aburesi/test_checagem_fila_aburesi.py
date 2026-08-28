@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 
 import pytest
 from sqlmodel import delete
@@ -17,16 +18,41 @@ from app.ferramentas.extratus_aburesi.db.checagem_fila import (
     existe_conflito_de_processo,
     listar_aprovados_por_nome,
     listar_inconsistencias,
+    mapear_solicitantes_por_arquivo,
     obter_registro,
     sincronizar_registros,
 )
 from app.ferramentas.extratus_aburesi.db.lotes import criar_lote, marcar_lote_concluido
-from app.ferramentas.extratus_aburesi.db.models import ChecagemFila, ItemLoteRobo, LoteRobo
+from app.ferramentas.extratus_aburesi.db.models import ChecagemFila, ItemLoteRobo, LoteRobo, UploadFilaRobo
 from app.plataforma.db.session import obter_sessao
 
 
 PREFIXO_TESTE = "teste_checagem_aburesi_"
 BATCH_ID_TESTE = "teste_batch_checagem_aburesi_9303"
+
+USUARIO_A_TESTE = -9103
+USUARIO_B_TESTE = -9104
+
+
+@pytest.fixture
+def limpar_uploads_teste():
+    ids_criados = []
+
+    yield ids_criados
+
+    if ids_criados:
+        with obter_sessao() as sessao:
+            sessao.exec(delete(UploadFilaRobo).where(UploadFilaRobo.id.in_(ids_criados)))
+            sessao.commit()
+
+
+def _registrar_upload_com_horario(nome_arquivo, usuario_id, enviado_em):
+    with obter_sessao() as sessao:
+        upload = UploadFilaRobo(nome_arquivo=nome_arquivo, usuario_id=usuario_id, enviado_em=enviado_em)
+        sessao.add(upload)
+        sessao.commit()
+        sessao.refresh(upload)
+        return upload
 
 
 @pytest.fixture
@@ -48,6 +74,51 @@ def _sincronizar_so_de_teste(nomes_teste):
         nome for nome in estado_por_nome() if not nome.startswith(PREFIXO_TESTE)
     }
     return sincronizar_registros(nomes_teste | nomes_reais_preservados)
+
+
+def test_mapear_solicitantes_por_arquivo_lista_vazia_devolve_dict_vazio():
+    assert mapear_solicitantes_por_arquivo([]) == {}
+
+
+def test_mapear_solicitantes_por_arquivo_casa_por_nome_e_horario(limpar_uploads_teste):
+    agora = datetime.now()
+    nome = f"{PREFIXO_TESTE}solicitante_simples.pdf"
+
+    upload = _registrar_upload_com_horario(nome, USUARIO_A_TESTE, agora - timedelta(minutes=10))
+    limpar_uploads_teste.append(upload.id)
+
+    item = SimpleNamespace(id=1, arquivo_pdf=nome, criado_em=agora)
+
+    resultado = mapear_solicitantes_por_arquivo([item])
+
+    assert resultado == {1: USUARIO_A_TESTE}
+
+
+def test_mapear_solicitantes_por_arquivo_nome_reutilizado_pega_o_envio_certo(limpar_uploads_teste):
+    """Ver docstring equivalente em test_checagem_fila.py (Extratus -
+    Relatórios)."""
+    agora = datetime.now()
+    nome = f"{PREFIXO_TESTE}pdf_reutilizado.pdf"
+
+    upload_antigo = _registrar_upload_com_horario(nome, USUARIO_A_TESTE, agora - timedelta(days=2))
+    upload_recente = _registrar_upload_com_horario(nome, USUARIO_B_TESTE, agora - timedelta(minutes=5))
+    limpar_uploads_teste.extend([upload_antigo.id, upload_recente.id])
+
+    item_antigo = SimpleNamespace(id=1, arquivo_pdf=nome, criado_em=agora - timedelta(days=2) + timedelta(minutes=10))
+    item_recente = SimpleNamespace(id=2, arquivo_pdf=nome, criado_em=agora)
+
+    resultado = mapear_solicitantes_por_arquivo([item_antigo, item_recente])
+
+    assert resultado[1] == USUARIO_A_TESTE
+    assert resultado[2] == USUARIO_B_TESTE
+
+
+def test_mapear_solicitantes_por_arquivo_sem_upload_correspondente_fica_de_fora(limpar_uploads_teste):
+    item = SimpleNamespace(id=99, arquivo_pdf=f"{PREFIXO_TESTE}nunca_foi_enviado_pela_tela.pdf", criado_em=datetime.now())
+
+    resultado = mapear_solicitantes_por_arquivo([item])
+
+    assert resultado == {}
 
 
 def test_sincronizar_registros_cria_pendente_pra_nome_novo(limpar_checagem_teste):
