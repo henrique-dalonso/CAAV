@@ -17,6 +17,7 @@ def registrar_processado(
     motivo_confianca=None,
     uso_ia=None,
     usuario_id=None,
+    solicitante_id=None,
 ):
     """Registra um PDF que gerou relatório — status "sucesso" (confiança
     alta) ou "revisao" (confiança média/baixa, precisa de olho humano).
@@ -25,6 +26,9 @@ def registrar_processado(
     custo_estimado_usd.
     `usuario_id` identifica quem disparou o processamento (upload/processar
     tudo) — fica None pra execuções via linha de comando/robô automático.
+    `solicitante_id` — ver docstring de Job.solicitante_id (db/models.py):
+    quem PEDIU, distinto de usuario_id (dono/origem), só preenchido pelo
+    Robô.
     """
     status = "sucesso" if str(confianca).strip().lower() == "alta" else "revisao"
     uso_ia = uso_ia or {}
@@ -43,6 +47,7 @@ def registrar_processado(
             tokens_saida=uso_ia.get("tokens_saida"),
             custo_estimado_usd=uso_ia.get("custo_estimado_usd"),
             usuario_id=usuario_id,
+            solicitante_id=solicitante_id,
         )
 
         sessao.add(job)
@@ -55,7 +60,7 @@ def registrar_processado(
 
 
 def registrar_erro(
-    arquivo_pdf, processo, tipo_erro, erro_mensagem, destino_pdf=None, usuario_id=None
+    arquivo_pdf, processo, tipo_erro, erro_mensagem, destino_pdf=None, usuario_id=None, solicitante_id=None
 ):
     with obter_sessao() as sessao:
         job = Job(
@@ -66,6 +71,7 @@ def registrar_erro(
             erro_mensagem=str(erro_mensagem),
             destino_pdf=str(destino_pdf) if destino_pdf else None,
             usuario_id=usuario_id,
+            solicitante_id=solicitante_id,
         )
 
         sessao.add(job)

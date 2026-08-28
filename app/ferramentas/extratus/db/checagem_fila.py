@@ -34,69 +34,55 @@ MENSAGENS_INCONSISTENCIA = {
 def registrar_upload(nome_arquivo, usuario_id):
     """Grava PRA SEMPRE quem enviou esse arquivo pela tela da Fila do
     Robô — ver docstring de UploadFilaRobo (db/models.py) pro porquê
-    de ser uma tabela própria, não um campo em ChecagemFila."""
+    de ser uma tabela própria, não um campo em ChecagemFila. Auditoria
+    PURA: cobre até arquivo que nunca vira Job (ex: descartado em
+    Conferências por duplicidade) — diferente de
+    `registrar_pendente`/`ChecagemFila.solicitante_id` abaixo, que só
+    sobrevive enquanto o arquivo estiver na fila."""
     with obter_sessao() as sessao:
         sessao.add(UploadFilaRobo(nome_arquivo=nome_arquivo, usuario_id=usuario_id))
         sessao.commit()
 
 
-def mapear_solicitantes_por_arquivo(itens):
-    """Pra cada item (qualquer objeto com `.id`, `.arquivo_pdf` e
-    `.criado_em` — hoje só `Job`), acha quem enviou aquele arquivo pela
-    Fila do Robô (ver UploadFilaRobo/registrar_upload acima) — usado nas
-    telas de Custos e Relatórios do Robô. Henrique, diretoria, 2026-08-27:
-    a diretoria perguntou "o coordenador fulano colocou os processos que
-    pedi no robô?" e não dava pra responder — "Robô automático" sozinho
-    não diz QUEM pediu.
+def registrar_pendente(nome_arquivo, solicitante_id):
+    """Cria a linha da Fila do Robô (`ChecagemFila`) pra esse arquivo JÁ
+    com quem enviou — direto na hora do upload (`web/routes/fila.py`),
+    antes até do próximo ciclo do watcher (`sincronizar_registros`)
+    precisar criar uma linha sem essa informação.
 
-    Casa por NOME do arquivo + o envio mais recente que aconteceu ANTES
-    (ou junto) da criação do item — nunca só pelo nome sozinho, porque um
-    nome de arquivo pode se repetir ao longo do tempo (ex: "pdf.pdf",
-    visto em uso real) e um casamento ingênuo atribuiria o pedido à
-    pessoa errada quando isso acontecer.
+    Henrique, diretoria, 2026-08-27: a diretoria perguntou "o coordenador
+    fulano colocou os processos que pedi no robô?" e não dava pra
+    responder. Tentativa anterior (achar isso por dedução depois, casando
+    nome de arquivo + horário) foi substituída por isto — carregar
+    `solicitante_id` desde a origem, por toda a esteira (ChecagemFila ->
+    ItemLoteRobo -> Job), sem precisar adivinhar nada depois.
 
-    Devolve {item_id: usuario_id} — item sem nenhum envio correspondente
-    simplesmente não aparece no dict (ex: arquivo que chegou na pasta por
-    fora do upload da tela)."""
-    nomes = {item.arquivo_pdf for item in itens}
-    if not nomes:
-        return {}
-
+    Se a linha já existir (raro: o watcher rodou entre o arquivo cair no
+    disco e essa chamada) só preenche `solicitante_id` se ainda estiver
+    vazio — nunca sobrescreve um valor já presente."""
     with obter_sessao() as sessao:
-        uploads = sessao.exec(
-            select(UploadFilaRobo).where(UploadFilaRobo.nome_arquivo.in_(nomes))
-        ).all()
+        existente = sessao.exec(
+            select(ChecagemFila).where(ChecagemFila.nome_arquivo == nome_arquivo)
+        ).first()
 
-    uploads_por_nome = {}
-    for upload in uploads:
-        uploads_por_nome.setdefault(upload.nome_arquivo, []).append(upload)
+        if existente:
+            if existente.solicitante_id is None:
+                existente.solicitante_id = solicitante_id
+                sessao.add(existente)
+                sessao.commit()
+                # commit() expira os atributos do objeto por padrão — sem
+                # refresh, ler qualquer atributo depois que a sessão
+                # fechar (fora deste `with`) explode com
+                # DetachedInstanceError.
+                sessao.refresh(existente)
+            return existente
 
-    for lista in uploads_por_nome.values():
-        lista.sort(key=lambda u: u.enviado_em)
+        registro = ChecagemFila(nome_arquivo=nome_arquivo, status=PENDENTE, solicitante_id=solicitante_id)
+        sessao.add(registro)
+        sessao.commit()
+        sessao.refresh(registro)
 
-    solicitantes = {}
-    for item in itens:
-        candidatos = uploads_por_nome.get(item.arquivo_pdf)
-        if not candidatos:
-            continue
-
-        melhor = None
-        for upload in candidatos:
-            if upload.enviado_em <= item.criado_em:
-                melhor = upload
-            else:
-                break
-
-        if melhor is None:
-            # Nenhum envio registrado ANTES da criação do item — não
-            # deveria acontecer no fluxo normal, mas relógio/latência
-            # podem colidir por poucos segundos. Usa o envio mais antigo
-            # como palpite honesto, melhor que não mostrar nada.
-            melhor = candidatos[0]
-
-        solicitantes[item.id] = melhor.usuario_id
-
-    return solicitantes
+        return registro
 
 
 def sincronizar_registros(nomes_no_disco):

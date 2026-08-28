@@ -107,10 +107,14 @@ def _coletar_lotes_pendentes(cliente, config):
                         pasta_revisao,
                         pasta_erros,
                         usuario_id=None,
+                        solicitante_id=item.solicitante_id,
                     )
                     marcar_item_concluido(item.id, "sucesso")
                 except Exception as erro:
-                    tratar_erro(caminho_pdf, item.processo_detectado, "erro_ia", erro, pasta_erros)
+                    tratar_erro(
+                        caminho_pdf, item.processo_detectado, "erro_ia", erro, pasta_erros,
+                        solicitante_id=item.solicitante_id,
+                    )
                     marcar_item_concluido(item.id, "erro")
             else:
                 # "errored", "expired" ou "canceled" — falha do lado da
@@ -119,7 +123,10 @@ def _coletar_lotes_pendentes(cliente, config):
                 mensagem = getattr(resultado.result, "error", None) or (
                     f"Item do lote terminou como '{resultado.result.type}'."
                 )
-                tratar_erro(caminho_pdf, item.processo_detectado, "erro_ia", mensagem, pasta_erros)
+                tratar_erro(
+                    caminho_pdf, item.processo_detectado, "erro_ia", mensagem, pasta_erros,
+                    solicitante_id=item.solicitante_id,
+                )
                 marcar_item_concluido(item.id, "erro")
 
         marcar_lote_concluido(lote.id)
@@ -179,7 +186,7 @@ def _preparar_novo_lote(config, cliente):
             )
             parametros = montar_parametros_mensagem(pdf, processo, instrucoes, diagnostico=diagnostico)
         except Exception as erro:
-            tratar_erro(pdf, processo, "erro_ia", erro, pasta_erros)
+            tratar_erro(pdf, processo, "erro_ia", erro, pasta_erros, solicitante_id=checagem.solicitante_id)
             continue
 
         if paginas_excluidas_triagem or paginas_transcritas:
@@ -204,6 +211,7 @@ def _preparar_novo_lote(config, cliente):
             "confianca_motivo": confianca.get("motivo"),
             "params": parametros,
             "custo_transcricao_usd": custo_transcricao_usd,
+            "solicitante_id": checagem.solicitante_id,
         })
 
     return itens_para_lote

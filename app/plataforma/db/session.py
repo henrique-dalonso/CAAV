@@ -51,9 +51,13 @@ COLUNAS_PENDENTES = {
     },
     "job": {
         "notificacao_resolvida": "BOOLEAN DEFAULT 0",
+        # Henrique, diretoria, 2026-08-27 — quem PEDIU esse processo, ver
+        # docstring de Job.solicitante_id em db/models.py.
+        "solicitante_id": "INTEGER",
     },
     "job_aburesi": {
         "notificacao_resolvida": "BOOLEAN DEFAULT 0",
+        "solicitante_id": "INTEGER",
     },
     "triagemmanual": {
         "origem_duplicado": "VARCHAR",
@@ -74,9 +78,19 @@ COLUNAS_PENDENTES = {
         # problemáticas por transcrição, ver docstring de ItemLoteRobo em
         # db/models.py.
         "custo_transcricao_usd": "REAL DEFAULT 0",
+        # Henrique, diretoria, 2026-08-27 — quem pediu esse processo pro
+        # Robô, ver docstring de Job.solicitante_id em db/models.py.
+        "solicitante_id": "INTEGER",
     },
     "itemloterobo_aburesi": {
         "custo_transcricao_usd": "REAL DEFAULT 0",
+        "solicitante_id": "INTEGER",
+    },
+    "checagemfila": {
+        "solicitante_id": "INTEGER",
+    },
+    "checagemfila_aburesi": {
+        "solicitante_id": "INTEGER",
     },
 }
 

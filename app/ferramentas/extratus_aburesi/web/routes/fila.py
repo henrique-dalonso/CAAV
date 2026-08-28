@@ -20,6 +20,7 @@ from app.ferramentas.extratus_aburesi.db.checagem_fila import (
     listar_inconsistencias,
     obter_registro,
     obter_registro_por_nome,
+    registrar_pendente,
     registrar_upload,
 )
 from app.ferramentas.extratus_aburesi.db.conferencias import registrar_decisao
@@ -239,6 +240,9 @@ async def enviar_pdfs(
 
         caminho_destino.write_bytes(conteudo)
         registrar_upload(nome_seguro, usuario.id)
+        # Ver comentário equivalente em app/ferramentas/extratus/web/
+        # routes/fila.py.
+        registrar_pendente(nome_seguro, usuario.id)
         enviados += 1
 
     # A Fila do robô envia um arquivo por requisição (fila.js), pra um

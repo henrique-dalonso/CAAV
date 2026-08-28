@@ -39,44 +39,28 @@ def registrar_upload(nome_arquivo, usuario_id):
         sessao.commit()
 
 
-def mapear_solicitantes_por_arquivo(itens):
+def registrar_pendente(nome_arquivo, solicitante_id):
     """Ver docstring equivalente em app/ferramentas/extratus/db/
     checagem_fila.py (Extratus - Relatórios) — mesma lógica."""
-    nomes = {item.arquivo_pdf for item in itens}
-    if not nomes:
-        return {}
-
     with obter_sessao() as sessao:
-        uploads = sessao.exec(
-            select(UploadFilaRobo).where(UploadFilaRobo.nome_arquivo.in_(nomes))
-        ).all()
+        existente = sessao.exec(
+            select(ChecagemFila).where(ChecagemFila.nome_arquivo == nome_arquivo)
+        ).first()
 
-    uploads_por_nome = {}
-    for upload in uploads:
-        uploads_por_nome.setdefault(upload.nome_arquivo, []).append(upload)
+        if existente:
+            if existente.solicitante_id is None:
+                existente.solicitante_id = solicitante_id
+                sessao.add(existente)
+                sessao.commit()
+                sessao.refresh(existente)
+            return existente
 
-    for lista in uploads_por_nome.values():
-        lista.sort(key=lambda u: u.enviado_em)
+        registro = ChecagemFila(nome_arquivo=nome_arquivo, status=PENDENTE, solicitante_id=solicitante_id)
+        sessao.add(registro)
+        sessao.commit()
+        sessao.refresh(registro)
 
-    solicitantes = {}
-    for item in itens:
-        candidatos = uploads_por_nome.get(item.arquivo_pdf)
-        if not candidatos:
-            continue
-
-        melhor = None
-        for upload in candidatos:
-            if upload.enviado_em <= item.criado_em:
-                melhor = upload
-            else:
-                break
-
-        if melhor is None:
-            melhor = candidatos[0]
-
-        solicitantes[item.id] = melhor.usuario_id
-
-    return solicitantes
+        return registro
 
 
 def sincronizar_registros(nomes_no_disco):

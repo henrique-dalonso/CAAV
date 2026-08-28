@@ -24,6 +24,7 @@ def criar_lote(batch_id, itens):
                     confianca_nivel=item.get("confianca_nivel"),
                     confianca_motivo=item.get("confianca_motivo"),
                     custo_transcricao_usd=item.get("custo_transcricao_usd") or 0.0,
+                    solicitante_id=item.get("solicitante_id"),
                 )
             )
 

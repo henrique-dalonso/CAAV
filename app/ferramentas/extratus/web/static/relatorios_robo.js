@@ -36,8 +36,10 @@
             var passaData = (!dataDe || item.dataset.criadoEm >= dataDe)
                 && (!dataAte || item.dataset.criadoEm <= dataAte);
             // Henrique, diretoria, 2026-08-27: filtro "Solicitado por" —
-            // data-solicitante-id vem vazio quando não achou quem enviou
-            // aquele arquivo (ver mapear_solicitantes_por_arquivo).
+            // data-solicitante-id vem vazio quando o arquivo apareceu na
+            // pasta por fora do upload da tela (ver job.solicitante_id,
+            // carregado desde ChecagemFila.solicitante_id/
+            // checagem_fila.registrar_pendente).
             var passaSolicitante = !solicitanteId || item.dataset.solicitanteId === solicitanteId;
             var mostrar = passaStatus && passaBusca && passaData && passaSolicitante;
 

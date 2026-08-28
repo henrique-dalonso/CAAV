@@ -60,12 +60,9 @@ def ajustar_confianca_pos_ia(confianca, uso_ia):
     return confianca
 
 
-def tratar_erro(pdf, processo, tipo_erro, erro, pasta_erros, usuario_id=None):
-    """Registra uma falha de processamento (PDF, IA, docx ou movimentação)
-    e move o PDF pra pasta de erros. Reaproveitada tanto pelo fluxo
-    síncrono (`processar_pdf`) quanto pelo Robô (itens de um lote do
-    Batch API que falharam, ou arquivos rejeitados antes mesmo de entrar
-    num lote — ver `robo_lote.py`)."""
+def tratar_erro(pdf, processo, tipo_erro, erro, pasta_erros, usuario_id=None, solicitante_id=None):
+    """Ver docstring equivalente em app/ferramentas/extratus/core/
+    pipeline.py — mesma lógica."""
     registrar_log(f"Erro ({tipo_erro}) ao processar {Path(pdf).name}: {erro}")
 
     destino_pdf = None
@@ -83,6 +80,7 @@ def tratar_erro(pdf, processo, tipo_erro, erro, pasta_erros, usuario_id=None):
         erro_mensagem=erro,
         destino_pdf=destino_pdf,
         usuario_id=usuario_id,
+        solicitante_id=solicitante_id,
     )
 
     return {
@@ -104,13 +102,10 @@ def finalizar_processamento(
     pasta_revisao,
     pasta_erros,
     usuario_id=None,
+    solicitante_id=None,
 ):
-    """Etapa final, depois que os dados do relatório já existem (vieram de
-    uma chamada em tempo real ou de um resultado de lote coletado depois):
-    gera o .docx, move o PDF conforme a confiança da detecção, e registra
-    o Job. Reaproveitada por `processar_pdf` (fluxo síncrono) e pela
-    coleta de resultados do Robô (`robo_lote.py`), pra não haver dois
-    lugares divergentes fazendo a mesma coisa."""
+    """Ver docstring equivalente em app/ferramentas/extratus/core/
+    pipeline.py — mesma lógica."""
     try:
         nome_relatorio = gerar_nome_relatorio(processo)
         caminho_saida_base = Path(pasta_saida) / nome_relatorio
@@ -118,7 +113,7 @@ def finalizar_processamento(
 
         salvar_relatorio_docx(dados_relatorio, caminho_saida)
     except Exception as erro:
-        return tratar_erro(pdf, processo, "erro_docx", erro, pasta_erros, usuario_id)
+        return tratar_erro(pdf, processo, "erro_docx", erro, pasta_erros, usuario_id, solicitante_id)
 
     try:
         destino_pdf = mover_por_confianca(
@@ -128,7 +123,7 @@ def finalizar_processamento(
             pasta_revisao
         )
     except Exception as erro:
-        return tratar_erro(pdf, processo, "erro_movimentacao", erro, pasta_erros, usuario_id)
+        return tratar_erro(pdf, processo, "erro_movimentacao", erro, pasta_erros, usuario_id, solicitante_id)
 
     registrar_log(
         f"Relatório gerado (confiança {confianca.get('nivel')}): {caminho_saida}"
@@ -144,6 +139,7 @@ def finalizar_processamento(
         motivo_confianca=confianca.get("motivo"),
         uso_ia=uso_ia,
         usuario_id=usuario_id,
+        solicitante_id=solicitante_id,
     )
 
     return {

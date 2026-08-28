@@ -22,6 +22,9 @@ class Job(SQLModel, table=True):
 
     usuario_id: Optional[int] = Field(default=None, foreign_key="usuario.id")
 
+    # Ver docstring equivalente em app/ferramentas/extratus/db/models.py.
+    solicitante_id: Optional[int] = Field(default=None, foreign_key="usuario.id")
+
     arquivo_pdf: str
     processo: Optional[str] = None
 
@@ -93,6 +96,9 @@ class ItemLoteRobo(SQLModel, table=True):
     status: str = "pendente"  # "pendente", "sucesso" ou "erro"
 
     # Ver docstring equivalente em app/ferramentas/extratus/db/models.py.
+    solicitante_id: Optional[int] = Field(default=None, foreign_key="usuario.id")
+
+    # Ver docstring equivalente em app/ferramentas/extratus/db/models.py.
     custo_transcricao_usd: float = 0.0
 
     criado_em: datetime = Field(default_factory=datetime.now)
@@ -128,6 +134,9 @@ class ChecagemFila(SQLModel, table=True):
 
     nome_arquivo: str = Field(unique=True, index=True)
     status: str = Field(default="pendente")
+
+    # Ver docstring equivalente em app/ferramentas/extratus/db/models.py.
+    solicitante_id: Optional[int] = Field(default=None, foreign_key="usuario.id")
 
     processo_detectado: Optional[str] = None
     confianca_nivel: Optional[str] = None

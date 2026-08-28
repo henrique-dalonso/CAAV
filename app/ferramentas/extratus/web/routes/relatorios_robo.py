@@ -4,7 +4,6 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, RedirectResponse
 
-from app.ferramentas.extratus.db.checagem_fila import mapear_solicitantes_por_arquivo
 from app.ferramentas.extratus.db.jobs import excluir_job, listar_jobs_robo, marcar_notificacao_resolvida_robo, obter_job
 from app.ferramentas.extratus.web.rotulos import (
     ABA_RELATORIOS_ROBO,
@@ -58,12 +57,13 @@ def pagina_relatorios_robo(
     # Henrique, diretoria, 2026-08-27: a diretoria perguntou "o
     # coordenador fulano colocou os processos que pedi no robô?" e não
     # dava pra responder — "Robô automático" sozinho não diz QUEM pediu.
-    # Casa cada job com quem enviou aquele arquivo pela Fila do Robô (ver
-    # UploadFilaRobo/mapear_solicitantes_por_arquivo). Mesmo formato
-    # `nomes_por_id` de relatorios_manuais.py, pra reaproveitar o mesmo
-    # bloco visual (.relatorio-solicitante) já existente.
+    # `job.solicitante_id` já vem carregado desde o upload (ver
+    # ChecagemFila.solicitante_id/checagem_fila.registrar_pendente,
+    # repassado por toda a esteira até o Job final) — sem precisar
+    # deduzir nada aqui. Mesmo formato `nomes_por_id` de
+    # relatorios_manuais.py, pra reaproveitar o mesmo bloco visual
+    # (.relatorio-solicitante) já existente.
     nomes_por_id = {u.id: u.nome for u in listar_todos_usuarios()}
-    solicitante_por_job_id = mapear_solicitantes_por_arquivo(jobs)
 
     # Só os solicitantes que de fato aparecem na lista atual — dropdown
     # do filtro "Solicitado por", ordenado por nome (não a base de
@@ -71,7 +71,7 @@ def pagina_relatorios_robo(
     solicitantes_disponiveis = sorted(
         (
             {"id": usuario_id, "nome": nomes_por_id.get(usuario_id, f"Usuário #{usuario_id}")}
-            for usuario_id in set(solicitante_por_job_id.values())
+            for usuario_id in {job.solicitante_id for job in jobs if job.solicitante_id}
         ),
         key=lambda item: item["nome"].lower(),
     )
@@ -85,7 +85,6 @@ def pagina_relatorios_robo(
             "usuario": usuario,
             "jobs": jobs,
             "nomes_por_id": nomes_por_id,
-            "solicitante_por_job_id": solicitante_por_job_id,
             "solicitantes_disponiveis": solicitantes_disponiveis,
             # Deep-link vindo do botão "Ir ao relatório" (Conferências
             # manuais, web/routes/gerar_relatorio.py, quando o duplicado é do

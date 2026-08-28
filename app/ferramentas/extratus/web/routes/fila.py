@@ -20,6 +20,7 @@ from app.ferramentas.extratus.db.checagem_fila import (
     listar_inconsistencias,
     obter_registro,
     obter_registro_por_nome,
+    registrar_pendente,
     registrar_upload,
 )
 from app.ferramentas.extratus.db.conferencias import registrar_decisao
@@ -239,6 +240,11 @@ async def enviar_pdfs(
 
         caminho_destino.write_bytes(conteudo)
         registrar_upload(nome_seguro, usuario.id)
+        # Henrique, diretoria, 2026-08-27: já atrela quem enviou ao caso
+        # aqui mesmo, na hora — não precisa esperar o próximo ciclo do
+        # watcher (checagem_watcher.py) criar a linha da fila sem essa
+        # informação. Ver docstring de registrar_pendente.
+        registrar_pendente(nome_seguro, usuario.id)
         enviados += 1
 
     # A Fila do robô envia um arquivo por requisição (fila.js), pra um

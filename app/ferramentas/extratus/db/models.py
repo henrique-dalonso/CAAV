@@ -15,6 +15,16 @@ class Job(SQLModel, table=True):
 
     usuario_id: Optional[int] = Field(default=None, foreign_key="usuario.id")
 
+    # Henrique, diretoria, 2026-08-27: quem PEDIU esse processo — distinto
+    # de usuario_id (que marca dono/origem manual vs. Robô, sempre None
+    # pro Robô). Preenchido desde o upload na Fila do Robô (ver
+    # ChecagemFila.solicitante_id/checagem_fila.registrar_pendente),
+    # carregado por toda a esteira (ChecagemFila -> ItemLoteRobo -> Job)
+    # até aqui. None quando o arquivo apareceu na pasta por fora do
+    # upload da tela (cópia manual) ou em Job do fluxo manual/URGENTE
+    # (ali quem pediu já É o dono, usuario_id).
+    solicitante_id: Optional[int] = Field(default=None, foreign_key="usuario.id")
+
     arquivo_pdf: str
     processo: Optional[str] = None
 
@@ -77,6 +87,11 @@ class ItemLoteRobo(SQLModel, table=True):
 
     status: str = "pendente"  # "pendente", "sucesso" ou "erro"
 
+    # Ver docstring de Job.solicitante_id — carregado aqui vindo de
+    # ChecagemFila.solicitante_id (ver robo_lote._preparar_novo_lote),
+    # repassado adiante pro Job final quando o resultado do lote voltar.
+    solicitante_id: Optional[int] = Field(default=None, foreign_key="usuario.id")
+
     # Custo (USD) do resgate de páginas problemáticas por transcrição (ver
     # ia_cliente.montar_diagnostico_com_triagem / transcricao_paginas.py),
     # já pago ANTES do lote ser submetido ao Batch API — precisa ficar
@@ -114,6 +129,12 @@ class ChecagemFila(SQLModel, table=True):
 
     nome_arquivo: str = Field(unique=True, index=True)
     status: str = Field(default="pendente")
+
+    # Ver docstring de Job.solicitante_id — preenchido direto no upload
+    # (web/routes/fila.py -> checagem_fila.registrar_pendente), ANTES
+    # até do primeiro ciclo do watcher rodar. None quando o arquivo
+    # apareceu na pasta por fora do upload da tela (cópia manual).
+    solicitante_id: Optional[int] = Field(default=None, foreign_key="usuario.id")
 
     processo_detectado: Optional[str] = None
     confianca_nivel: Optional[str] = None

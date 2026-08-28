@@ -102,12 +102,12 @@ def test_coletar_lotes_pendentes_finaliza_sucesso_e_erro_sem_derrubar_o_outro():
     item_sucesso = SimpleNamespace(
         id=10, custom_id="ok", arquivo_pdf="ok.pdf",
         processo_detectado="123", confianca_nivel="alta", confianca_motivo="teste",
-        custo_transcricao_usd=0.0,
+        custo_transcricao_usd=0.0, solicitante_id=None,
     )
     item_erro = SimpleNamespace(
         id=11, custom_id="falhou", arquivo_pdf="falhou.pdf",
         processo_detectado="456", confianca_nivel="alta", confianca_motivo="teste",
-        custo_transcricao_usd=0.0,
+        custo_transcricao_usd=0.0, solicitante_id=None,
     )
 
     cliente_fake = MagicMock()
@@ -147,7 +147,7 @@ def test_coletar_lotes_pendentes_soma_custo_de_transcricao_ao_custo_final():
     item_transcrito = SimpleNamespace(
         id=20, custom_id="ok", arquivo_pdf="ok.pdf",
         processo_detectado="123", confianca_nivel="revisao", confianca_motivo="teste",
-        custo_transcricao_usd=0.0123,
+        custo_transcricao_usd=0.0123, solicitante_id=None,
     )
 
     cliente_fake = MagicMock()
@@ -186,11 +186,14 @@ def test_coletar_lotes_pendentes_nao_mexe_em_lote_ainda_em_progresso():
     cliente_fake.messages.batches.results.assert_not_called()
 
 
-def _checagem_aprovada(processo="123", nivel="alta", motivo="x"):
+def _checagem_aprovada(processo="123", nivel="alta", motivo="x", solicitante_id=None):
     """Simula uma linha de ChecagemFila já aprovada — robo_lote.py não
     detecta processo/confiança sozinho mais, só reaproveita o que a
     checagem (checagem_lote.py, roda em segundo plano) já detectou."""
-    return SimpleNamespace(processo_detectado=processo, confianca_nivel=nivel, confianca_motivo=motivo)
+    return SimpleNamespace(
+        processo_detectado=processo, confianca_nivel=nivel, confianca_motivo=motivo,
+        solicitante_id=solicitante_id,
+    )
 
 
 def test_preparar_novo_lote_ignora_arquivo_ja_reivindicado():

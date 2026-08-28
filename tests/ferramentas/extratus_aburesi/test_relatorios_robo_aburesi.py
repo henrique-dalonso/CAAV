@@ -2,9 +2,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import delete, select
 
-from app.ferramentas.extratus_aburesi.db.checagem_fila import registrar_upload
 from app.ferramentas.extratus_aburesi.db.jobs import registrar_processado
-from app.ferramentas.extratus_aburesi.db.models import Job, UploadFilaRobo
+from app.ferramentas.extratus_aburesi.db.models import Job
 from app.plataforma.db.models import Ferramenta, Usuario, UsuarioFerramenta
 from app.plataforma.db.session import obter_sessao
 from app.plataforma.db.usuarios import criar_usuario
@@ -94,22 +93,19 @@ def test_pagina_relatorios_robo_so_lista_jobs_do_robo(cliente_logado, limpar_job
 def test_pagina_relatorios_robo_mostra_quem_solicitou(cliente_logado, limpar_jobs_criados):
     """Ver docstring equivalente em tests/ferramentas/extratus/
     test_relatorios_robo.py (Extratus - Relatórios)."""
-    nome_arquivo = "teste_relrobo_solicitante_aburesi.pdf"
-
     with obter_sessao() as sessao:
         usuario_id_logado = sessao.exec(
             select(Usuario.id).where(Usuario.nome_usuario == NOME_USUARIO_TESTE)
         ).first()
 
-    registrar_upload(nome_arquivo, usuario_id_logado)
-
     job_robo = registrar_processado(
-        arquivo_pdf=nome_arquivo,
+        arquivo_pdf="teste_relrobo_solicitante_aburesi.pdf",
         processo="0000000-00.2026.8.00.0045",
         relatorio_path=None,
         destino_pdf=None,
         confianca="alta",
         usuario_id=None,
+        solicitante_id=usuario_id_logado,
     )
     limpar_jobs_criados.append(job_robo.id)
 
@@ -118,10 +114,6 @@ def test_pagina_relatorios_robo_mostra_quem_solicitou(cliente_logado, limpar_job
     assert resp.status_code == 200
     assert "Solicitado por: Teste Relatórios do Robô Aburesi" in resp.text
     assert f'value="{usuario_id_logado}"' in resp.text
-
-    with obter_sessao() as sessao:
-        sessao.exec(delete(UploadFilaRobo).where(UploadFilaRobo.nome_arquivo == nome_arquivo))
-        sessao.commit()
 
 
 def test_pagina_relatorios_robo_acessivel_sem_acesso_a_fila():

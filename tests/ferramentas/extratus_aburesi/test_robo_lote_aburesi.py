@@ -15,11 +15,14 @@ CONFIG_EXEMPLO = {
 }
 
 
-def _checagem_aprovada(processo="123", nivel="alta", motivo="x"):
+def _checagem_aprovada(processo="123", nivel="alta", motivo="x", solicitante_id=None):
     """Simula uma linha de ChecagemFila já aprovada — robo_lote.py não
     detecta processo/confiança sozinho mais, só reaproveita o que a
     checagem (checagem_lote.py, roda em segundo plano) já detectou."""
-    return SimpleNamespace(processo_detectado=processo, confianca_nivel=nivel, confianca_motivo=motivo)
+    return SimpleNamespace(
+        processo_detectado=processo, confianca_nivel=nivel, confianca_motivo=motivo,
+        solicitante_id=solicitante_id,
+    )
 
 
 def test_preparar_novo_lote_forca_revisao_quando_triagem_excluiu_paginas():

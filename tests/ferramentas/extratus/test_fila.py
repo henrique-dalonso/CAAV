@@ -12,6 +12,7 @@ from app.ferramentas.extratus.db.checagem_fila import (
     atualizar_apos_checagem,
     descartar,
     obter_registro,
+    obter_registro_por_nome,
     sincronizar_registros,
 )
 from app.ferramentas.extratus.db.models import ChecagemFila, RegistroConferencia
@@ -107,6 +108,37 @@ def test_upload_normal_ainda_funciona(cliente_logado, tmp_path):
         assert "sucesso=" in resp.headers["location"]
 
     assert (tmp_path / "novo.pdf").read_bytes() == b"%PDF-1.4 arquivo novo"
+
+
+def test_upload_atrela_solicitante_direto_na_hora(cliente_logado, tmp_path):
+    """Henrique, diretoria, 2026-08-27: 'na hora que a pessoa anexar os
+    pdfs na fila e enviar ele já registrar, atrela àquele caso, o nome da
+    pessoa' — substitui a tentativa anterior de deduzir isso depois
+    (mapear_solicitantes_por_arquivo, removida). Testa o caminho real
+    (rota de upload de verdade), não só a função isolada."""
+    nome_arquivo = "teste_fila_upload_solicitante.pdf"
+
+    with obter_sessao() as sessao:
+        usuario_id_logado = sessao.exec(
+            select(Usuario.id).where(Usuario.nome_usuario == NOME_USUARIO_TESTE)
+        ).first()
+
+    try:
+        with patch.object(fila, "carregar_config", return_value=_config_para(tmp_path)):
+            resp = cliente_logado.post(
+                "/extratus/fila/upload",
+                files={"arquivos": (nome_arquivo, b"%PDF-1.4 conteudo", "application/pdf")},
+                follow_redirects=False,
+            )
+        assert resp.status_code == 303
+
+        registro = obter_registro_por_nome(nome_arquivo)
+        assert registro is not None
+        assert registro.solicitante_id == usuario_id_logado
+    finally:
+        with obter_sessao() as sessao:
+            sessao.exec(delete(ChecagemFila).where(ChecagemFila.nome_arquivo == nome_arquivo))
+            sessao.commit()
 
 
 def test_remover_varios_limpa_conferencia_aberta_na_hora(cliente_logado, limpar_conferencia_teste, tmp_path):
