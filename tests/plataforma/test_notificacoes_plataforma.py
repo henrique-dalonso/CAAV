@@ -54,8 +54,8 @@ def test_agrega_so_ferramentas_com_acesso_liberado():
         "pessoal": True, "descartavel": True, "resolver": "/r",
     }
     notificacoes_falsas = [
-        ("extratus", "Extratus - Relatórios", lambda: [{"mensagem": "a.", "tipo": "erro", "link": "/x"}], lambda usuario_id: [item_pessoal_extratus]),
-        ("extratus-aburesi", "Extratus - Aburesi", lambda: [{"mensagem": "b.", "tipo": "erro", "link": "/y"}], lambda usuario_id: []),
+        ("extratus", "Extratus - Relatórios", lambda usuario_id: [{"mensagem": "a.", "tipo": "erro", "link": "/x"}], lambda usuario_id: [item_pessoal_extratus]),
+        ("extratus-aburesi", "Extratus - Aburesi", lambda usuario_id: [{"mensagem": "b.", "tipo": "erro", "link": "/y"}], lambda usuario_id: []),
     ]
 
     with patch.object(

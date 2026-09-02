@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from sqlalchemy import or_
 from sqlmodel import func, select
 
 from app.ferramentas.extratus.db.models import Job
@@ -170,16 +171,37 @@ def listar_erros_nao_resolvidos_do_robo():
         return sessao.exec(consulta).all()
 
 
-def listar_jobs_robo_nao_notificados():
+def listar_jobs_robo_nao_notificados_de_outros(usuario_id):
     """Jobs do Robô (usuario_id None) de QUALQUER status (sucesso,
-    revisão, erro) ainda não notificados — alimenta a aba "Ferramentas"
-    do sininho (Henrique, diretoria, 2026-08-19: essa aba passou a
-    cobrir tudo que o Robô gera, não só conferência/erro). Diferente
-    de listar_relatorios_manuais_nao_notificados_do_usuario, não filtra
-    por usuário — é uma fila compartilhada, sem dono."""
+    revisão, erro) ainda não notificados, EXCETO os que o próprio
+    usuário pediu — alimenta a aba "Ferramentas" do sininho (Henrique,
+    diretoria, 2026-08-19: essa aba passou a cobrir tudo que o Robô
+    gera, não só conferência/erro; Henrique, 2026-09-02: quem pediu um
+    relatório passa a ver o aviso só em "Minhas" — ver
+    listar_jobs_robo_nao_notificados_do_solicitante, o par desta — pro
+    resto do escritório continua aparecendo aqui, sem saber quem pediu).
+    Fila compartilhada pra quem sobra aqui — sem dono, sem filtro de
+    acesso além do solicitante excluído."""
     with obter_sessao() as sessao:
         consulta = select(Job).where(
             Job.usuario_id.is_(None),
+            Job.notificacao_resolvida == False,  # noqa: E712
+            or_(Job.solicitante_id.is_(None), Job.solicitante_id != usuario_id),
+        )
+        return sessao.exec(consulta).all()
+
+
+def listar_jobs_robo_nao_notificados_do_solicitante(usuario_id):
+    """Jobs do Robô que o PRÓPRIO usuário pediu (Job.solicitante_id) e
+    ainda não foram notificados — alimenta a aba "Minhas" do sininho,
+    par de listar_jobs_robo_nao_notificados_de_outros (Henrique,
+    2026-09-02). Jobs do Robô sem solicitante resolvido (pré-migração,
+    ver resolver_solicitantes()) nunca caem aqui — continuam só em
+    "Ferramentas", sem dono."""
+    with obter_sessao() as sessao:
+        consulta = select(Job).where(
+            Job.usuario_id.is_(None),
+            Job.solicitante_id == usuario_id,
             Job.notificacao_resolvida == False,  # noqa: E712
         )
         return sessao.exec(consulta).all()

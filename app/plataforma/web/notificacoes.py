@@ -35,9 +35,11 @@ def notificacoes_do_usuario(usuario):
     """Notificações de todas as ferramentas do usuário, de 2 famílias
     (Henrique, 2026-08-13; ajustado 2026-08-19 quando Fila do Robô
     virou acesso padrão):
-    - Fila do Robô (abas "Sistema"/"Conferências" no sino) — pra
-      qualquer um com acesso à ferramenta, já que a Fila do Robô não
-      exige mais uma flag própria.
+    - Fila do Robô (aba "Ferramentas" no sino) — pra qualquer um com
+      acesso à ferramenta, já que a Fila do Robô não exige mais uma flag
+      própria. Henrique, 2026-09-02: quem PEDIU o relatório (Job.
+      solicitante_id) não entra mais aqui, só em "Minhas" — por isso
+      `listar` agora recebe usuario.id também.
     - Pessoais do fluxo manual (aba "Minhas") — pra qualquer um com
       acesso à ferramenta em si, sem depender de acesso_manual: "a aba
       minha é justamente pra abrigar os alertas do modo manual, que
@@ -55,7 +57,7 @@ def notificacoes_do_usuario(usuario):
         if not usuario_tem_acesso(usuario, slug):
             continue
 
-        for item in listar():
+        for item in listar(usuario.id):
             notificacoes.append({**item, "mensagem": _com_ponto_final(item["mensagem"]), "ferramenta": nome_ferramenta})
 
         for item in listar_pessoais(usuario.id):

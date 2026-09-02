@@ -5,7 +5,8 @@ from app.ferramentas.extratus.db.checagem_fila import (
     listar_inconsistencias,
 )
 from app.ferramentas.extratus.db.jobs import (
-    listar_jobs_robo_nao_notificados,
+    listar_jobs_robo_nao_notificados_de_outros,
+    listar_jobs_robo_nao_notificados_do_solicitante,
     listar_relatorios_manuais_nao_notificados_do_usuario,
 )
 from app.ferramentas.extratus.db.triagem_manual import (
@@ -15,7 +16,7 @@ from app.ferramentas.extratus.db.triagem_manual import (
 )
 
 
-def listar_notificacoes():
+def listar_notificacoes(usuario_id):
     """Pendências ativas do Robô deste módulo, pra aba "Ferramentas" do
     sininho (ver app/plataforma/web/notificacoes.py, que agrega isso com
     o do outro módulo e filtra por quem tem acesso).
@@ -27,6 +28,12 @@ def listar_notificacoes():
     tipo "comunicado" ainda, então aquela aba fica vazia até nascer, sem
     precisar de nenhum código provisório).
 
+    Henrique, 2026-09-02: quem PEDIU um relatório do Robô (Job.
+    solicitante_id) não vê mais o aviso aqui — só em "Minhas" (ver
+    listar_notificacoes_pessoais). `usuario_id` é só pra excluir esses
+    itens da consulta (listar_jobs_robo_nao_notificados_de_outros);
+    "Ferramentas" continua sem filtro de acesso além disso.
+
     4 comportamentos de propósito diferentes:
     - Inconsistências da triagem: somem sozinhas quando o arquivo é
       corrigido/removido da fila — sem ação manual nenhuma.
@@ -34,9 +41,10 @@ def listar_notificacoes():
       catalogada — não pode sumir sozinho).
     - Revisão do Robô: mesma coisa — sem ação de "marcar como revisado"
       pro Robô ainda, então também não pode sumir sozinho.
-    - Sucesso do Robô: tem X (reaproveita o mesmo estilo/classe CSS do
-      "pronto" pessoal — só muda que aqui não tem dono, qualquer um
-      dispensa pra todo mundo de uma vez).
+    - Sucesso do Robô: SEM X aqui (Henrique, 2026-09-02: "Ferramentas" é
+      dos outros — só quem pediu, em "Minhas", pode dispensar; um job
+      sem solicitante resolvido também aparece aqui, também sem X, até
+      alguém tratar pelo fluxo real).
     """
     notificacoes = []
 
@@ -49,7 +57,7 @@ def listar_notificacoes():
             "criado_em": registro.atualizado_em.isoformat(),
         })
 
-    for job in listar_jobs_robo_nao_notificados():
+    for job in listar_jobs_robo_nao_notificados_de_outros(usuario_id):
         # Achado 2026-08-13: apontava pra "/extratus/erros", uma tela
         # dedicada que nunca chegou a ser construída (404 sempre) — manda
         # pra "Relatórios do Robô" (já mostra tudo isso, com abas
@@ -74,8 +82,6 @@ def listar_notificacoes():
                 "mensagem": f'"{job.arquivo_pdf}": relatório do Robô pronto',
                 "tipo": "pronto",
                 "link": link,
-                "descartavel": True,
-                "resolver": f"/extratus/relatorios-robo/{job.id}/marcar-notificacao-resolvida",
                 "criado_em": job.criado_em.isoformat(),
             })
         else:  # "revisao"
@@ -102,12 +108,21 @@ def listar_notificacoes_pessoais(usuario_id):
       enquanto o registro existir — somem sozinhas quando resolvidas na
       própria tela (Conferências, ou o "×" de dispensar um erro). Nunca
       têm X aqui.
-    - Pronto / revisão (Job): "pronto" tem X (`descartavel`), dispensa
-      na hora. "Revisão" não tem X — só sai daqui quando a pessoa clicar
-      em "Marcar como revisado" no card do relatório
-      (relatorios_manuais.html) — uma notificação importante não pode
-      sumir sozinha, mesma exigência que já existia pro erro do Robô.
-      As duas usam o mesmo campo por baixo, `Job.notificacao_resolvida`.
+    - Pronto / revisão (Job, fluxo manual): "pronto" tem X
+      (`descartavel`), dispensa na hora. "Revisão" não tem X — só sai
+      daqui quando a pessoa clicar em "Marcar como revisado" no card do
+      relatório (relatorios_manuais.html) — uma notificação importante
+      não pode sumir sozinha, mesma exigência que já existia pro erro do
+      Robô. As duas usam o mesmo campo por baixo, `Job.
+      notificacao_resolvida`.
+
+    Henrique, 2026-09-02: 5ª fonte — Job do ROBÔ que o próprio usuário
+    pediu (Job.solicitante_id), mesma regra de "pronto tem X, resto não"
+    (ver listar_notificacoes, que exclui esses jobs de "Ferramentas" pra
+    não duplicar). O X aqui chama o MESMO resolver do Robô
+    (marcar_notificacao_resolvida_robo, flag compartilhada sem dono) —
+    Henrique pediu explicitamente que a flag continue única/simples, só
+    a aba que muda por solicitante.
     """
     notificacoes = []
 
@@ -148,6 +163,41 @@ def listar_notificacoes_pessoais(usuario_id):
                 "mensagem": f'"{job.arquivo_pdf}": relatório pronto, mas precisa de revisão',
                 "tipo": "revisao",
                 "link": "/extratus/relatorios",
+                "pessoal": True,
+                "descartavel": False,
+                "criado_em": job.criado_em.isoformat(),
+            })
+
+    for job in listar_jobs_robo_nao_notificados_do_solicitante(usuario_id):
+        link = "/extratus/relatorios-robo"
+        if job.processo:
+            link += "?processo=" + quote(job.processo)
+
+        if job.status == "erro":
+            motivo = job.erro_mensagem or job.tipo_erro or "falha desconhecida"
+            notificacoes.append({
+                "mensagem": f'"{job.arquivo_pdf}": erro ao processar ({motivo})',
+                "tipo": "erro",
+                "link": link,
+                "pessoal": True,
+                "descartavel": False,
+                "criado_em": job.criado_em.isoformat(),
+            })
+        elif job.status == "sucesso":
+            notificacoes.append({
+                "mensagem": f'"{job.arquivo_pdf}": relatório do Robô pronto',
+                "tipo": "pronto",
+                "link": link,
+                "pessoal": True,
+                "descartavel": True,
+                "resolver": f"/extratus/relatorios-robo/{job.id}/marcar-notificacao-resolvida",
+                "criado_em": job.criado_em.isoformat(),
+            })
+        else:  # "revisao"
+            notificacoes.append({
+                "mensagem": f'"{job.arquivo_pdf}": relatório do Robô pronto, mas precisa de revisão',
+                "tipo": "revisao",
+                "link": link,
                 "pessoal": True,
                 "descartavel": False,
                 "criado_em": job.criado_em.isoformat(),

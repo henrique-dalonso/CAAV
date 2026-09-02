@@ -47,7 +47,7 @@ def test_inconsistencia_de_triagem_vira_notificacao(limpar_notificacoes_teste):
     nome = f"{PREFIXO_TESTE}duplicado.pdf"
     _criar_checagem(nome, DUPLICADO_RELATORIO)
 
-    itens = listar_notificacoes()
+    itens = listar_notificacoes(USUARIO_TESTE)
     achado = next((i for i in itens if nome in i["mensagem"]), None)
 
     assert achado is not None
@@ -61,7 +61,7 @@ def test_status_aprovado_e_pendente_nao_viram_notificacao(limpar_notificacoes_te
     _criar_checagem(nome_aprovado, APROVADO)
     _criar_checagem(nome_pendente, PENDENTE)
 
-    itens = listar_notificacoes()
+    itens = listar_notificacoes(USUARIO_TESTE)
     mensagens = " ".join(i["mensagem"] for i in itens)
 
     assert nome_aprovado not in mensagens
@@ -72,7 +72,7 @@ def test_erro_do_robo_vira_notificacao(limpar_notificacoes_teste):
     nome = f"{PREFIXO_TESTE}erro_robo.pdf"
     registrar_erro(nome, None, "erro_pdf", "PDF corrompido", usuario_id=None)
 
-    itens = listar_notificacoes()
+    itens = listar_notificacoes(USUARIO_TESTE)
     achado = next((i for i in itens if nome in i["mensagem"]), None)
 
     assert achado is not None
@@ -88,7 +88,7 @@ def test_erro_do_robo_com_processo_vira_notificacao_com_deep_link(limpar_notific
     nome = f"{PREFIXO_TESTE}erro_robo_com_processo.pdf"
     registrar_erro(nome, "0000000-00.2026.8.00.9999", "erro_ia", "processo grande demais", usuario_id=None)
 
-    itens = listar_notificacoes()
+    itens = listar_notificacoes(USUARIO_TESTE)
     achado = next((i for i in itens if nome in i["mensagem"]), None)
 
     assert achado is not None
@@ -101,7 +101,7 @@ def test_notificacao_de_triagem_carrega_criado_em_valido(limpar_notificacoes_tes
     nome = f"{PREFIXO_TESTE}com_timestamp.pdf"
     _criar_checagem(nome, DUPLICADO_RELATORIO)
 
-    itens = listar_notificacoes()
+    itens = listar_notificacoes(USUARIO_TESTE)
     achado = next((i for i in itens if nome in i["mensagem"]), None)
 
     assert achado is not None
@@ -112,7 +112,7 @@ def test_notificacao_de_erro_do_robo_carrega_criado_em_valido(limpar_notificacoe
     nome = f"{PREFIXO_TESTE}erro_com_timestamp.pdf"
     registrar_erro(nome, None, "erro_pdf", "PDF corrompido", usuario_id=None)
 
-    itens = listar_notificacoes()
+    itens = listar_notificacoes(USUARIO_TESTE)
     achado = next((i for i in itens if nome in i["mensagem"]), None)
 
     assert achado is not None
@@ -125,7 +125,7 @@ def test_erro_do_fluxo_manual_nao_vira_notificacao(limpar_notificacoes_teste):
     nome = f"{PREFIXO_TESTE}erro_manual.pdf"
     registrar_erro(nome, None, "erro_pdf", "PDF corrompido", usuario_id=1)
 
-    itens = listar_notificacoes()
+    itens = listar_notificacoes(USUARIO_TESTE)
 
     assert not any(nome in i["mensagem"] for i in itens)
 
@@ -211,10 +211,10 @@ def test_relatorio_ja_notificado_nao_aparece_de_novo(limpar_notificacoes_teste):
     assert not any(job.arquivo_pdf in i["mensagem"] for i in itens)
 
 
-def test_sucesso_do_robo_vira_notificacao_descartavel(limpar_notificacoes_teste):
-    # Henrique, diretoria, 2026-08-19: "Ferramentas" (antiga "Conferências
-    # Robô") passou a cobrir sucesso/revisão do Robô também, não só
-    # triagem/erro.
+def test_sucesso_do_robo_vira_notificacao_nao_descartavel_em_ferramentas(limpar_notificacoes_teste):
+    # Henrique, 2026-09-02: "Ferramentas" (dos outros) deixou de ter X —
+    # só quem pediu, em "Minhas", pode dispensar (ver
+    # test_sucesso_do_robo_do_solicitante_vai_pra_minhas_e_e_descartavel).
     job = registrar_processado(
         arquivo_pdf=f"{PREFIXO_TESTE}sucesso_robo.pdf",
         processo="0000000-00.2026.8.00.0070",
@@ -224,13 +224,49 @@ def test_sucesso_do_robo_vira_notificacao_descartavel(limpar_notificacoes_teste)
         usuario_id=None,
     )
 
-    itens = listar_notificacoes()
+    itens = listar_notificacoes(USUARIO_TESTE)
     achado = next((i for i in itens if job.arquivo_pdf in i["mensagem"]), None)
 
     assert achado is not None
     assert achado["tipo"] == "pronto"
+    assert "descartavel" not in achado
+    assert "resolver" not in achado
+
+
+def test_sucesso_do_robo_do_solicitante_vai_pra_minhas_e_e_descartavel(limpar_notificacoes_teste):
+    # Henrique, 2026-09-02: quem pediu um relatório do Robô
+    # (Job.solicitante_id) passa a ver o aviso só em "Minhas" — some de
+    # "Ferramentas" pra essa pessoa, mas continua em "Ferramentas" (sem
+    # X) pro resto do escritório.
+    job = registrar_processado(
+        arquivo_pdf=f"{PREFIXO_TESTE}sucesso_robo_solicitado.pdf",
+        processo="0000000-00.2026.8.00.0073",
+        relatorio_path=None,
+        destino_pdf=None,
+        confianca="alta",
+        usuario_id=None,
+        solicitante_id=USUARIO_TESTE,
+    )
+
+    itens_pessoais = listar_notificacoes_pessoais(USUARIO_TESTE)
+    achado = next((i for i in itens_pessoais if job.arquivo_pdf in i["mensagem"]), None)
+
+    assert achado is not None
+    assert achado["tipo"] == "pronto"
+    assert achado["pessoal"] is True
     assert achado["descartavel"] is True
     assert achado["resolver"] == f"/extratus/relatorios-robo/{job.id}/marcar-notificacao-resolvida"
+
+    itens_ferramentas = listar_notificacoes(USUARIO_TESTE)
+    assert not any(job.arquivo_pdf in i["mensagem"] for i in itens_ferramentas)
+
+    OUTRO_USUARIO = -9005
+    itens_ferramentas_de_outro = listar_notificacoes(OUTRO_USUARIO)
+    achado_outro = next((i for i in itens_ferramentas_de_outro if job.arquivo_pdf in i["mensagem"]), None)
+    assert achado_outro is not None
+    assert "descartavel" not in achado_outro
+
+    assert not any(job.arquivo_pdf in i["mensagem"] for i in listar_notificacoes_pessoais(OUTRO_USUARIO))
 
 
 def test_revisao_do_robo_vira_notificacao_nao_descartavel(limpar_notificacoes_teste):
@@ -243,7 +279,7 @@ def test_revisao_do_robo_vira_notificacao_nao_descartavel(limpar_notificacoes_te
         usuario_id=None,
     )
 
-    itens = listar_notificacoes()
+    itens = listar_notificacoes(USUARIO_TESTE)
     achado = next((i for i in itens if job.arquivo_pdf in i["mensagem"]), None)
 
     assert achado is not None
@@ -264,7 +300,7 @@ def test_sucesso_do_robo_resolvido_nao_vira_notificacao(limpar_notificacoes_test
 
     assert marcar_notificacao_resolvida_robo(job.id) is True
 
-    itens = listar_notificacoes()
+    itens = listar_notificacoes(USUARIO_TESTE)
     assert not any(job.arquivo_pdf in i["mensagem"] for i in itens)
 
 
@@ -278,6 +314,6 @@ def test_erro_marcado_resolvido_nao_vira_notificacao(limpar_notificacoes_teste):
         sessao.add(registro)
         sessao.commit()
 
-    itens = listar_notificacoes()
+    itens = listar_notificacoes(USUARIO_TESTE)
 
     assert not any(nome in i["mensagem"] for i in itens)

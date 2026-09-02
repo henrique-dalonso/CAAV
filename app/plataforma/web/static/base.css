@@ -1834,6 +1834,35 @@ html[data-theme="escuro"] .selo-roxo {
     padding: 0.6rem;
 }
 
+.painel-notificacoes-limpar {
+    display: flex;
+    margin: 0 0 0.6rem auto;
+    padding: 0.3rem 0.7rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    font-family: inherit;
+    color: var(--cor-texto-suave);
+    background: none;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-pequeno);
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.painel-notificacoes-limpar:hover {
+    border-color: var(--cor-acento);
+    color: var(--cor-acento);
+}
+
+.painel-notificacoes-limpar:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.painel-notificacoes-limpar[hidden] {
+    display: none;
+}
+
 .lista-notificacoes {
     list-style: none;
     margin: 0;

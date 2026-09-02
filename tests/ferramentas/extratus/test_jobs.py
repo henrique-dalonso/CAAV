@@ -12,7 +12,8 @@ from app.ferramentas.extratus.db.jobs import (
     excluir_job,
     listar_jobs_manuais,
     listar_jobs_robo,
-    listar_jobs_robo_nao_notificados,
+    listar_jobs_robo_nao_notificados_de_outros,
+    listar_jobs_robo_nao_notificados_do_solicitante,
     listar_relatorios_manuais_nao_notificados_do_usuario,
     marcar_notificacao_resolvida,
     marcar_notificacao_resolvida_robo,
@@ -615,7 +616,7 @@ def test_listar_jobs_robo_nao_notificados_traz_sucesso_revisao_e_erro(limpar_job
     )
     limpar_jobs_criados.extend([job_sucesso.id, job_revisao.id, job_erro.id])
 
-    nomes = {job.arquivo_pdf for job in listar_jobs_robo_nao_notificados()}
+    nomes = {job.arquivo_pdf for job in listar_jobs_robo_nao_notificados_de_outros(USUARIO_TESTE_A)}
 
     assert "teste_ferramentas_robo_sucesso.pdf" in nomes
     assert "teste_ferramentas_robo_revisao.pdf" in nomes
@@ -643,10 +644,38 @@ def test_listar_jobs_robo_nao_notificados_ignora_ja_resolvido_e_job_com_dono(lim
 
     assert marcar_notificacao_resolvida_robo(job_robo_resolvido.id) is True
 
-    nomes = {job.arquivo_pdf for job in listar_jobs_robo_nao_notificados()}
+    nomes = {job.arquivo_pdf for job in listar_jobs_robo_nao_notificados_de_outros(USUARIO_TESTE_A)}
 
     assert "teste_ferramentas_robo_ja_resolvido.pdf" not in nomes
     assert "teste_ferramentas_robo_com_dono.pdf" not in nomes
+
+
+def test_listar_jobs_robo_nao_notificados_de_outros_exclui_o_proprio_solicitante(limpar_jobs_criados):
+    # Henrique, 2026-09-02: quem pediu (Job.solicitante_id) não vê mais
+    # o job aqui — só em listar_jobs_robo_nao_notificados_do_solicitante
+    # ("Minhas"). O resto do escritório continua vendo aqui normal.
+    job = registrar_processado(
+        arquivo_pdf="teste_ferramentas_robo_solicitado.pdf",
+        processo="0000000-00.2026.8.00.0064",
+        relatorio_path=None,
+        destino_pdf=None,
+        confianca="alta",
+        usuario_id=None,
+        solicitante_id=USUARIO_TESTE_A,
+    )
+    limpar_jobs_criados.append(job.id)
+
+    nomes_solicitante = {job.arquivo_pdf for job in listar_jobs_robo_nao_notificados_de_outros(USUARIO_TESTE_A)}
+    assert "teste_ferramentas_robo_solicitado.pdf" not in nomes_solicitante
+
+    nomes_outro = {job.arquivo_pdf for job in listar_jobs_robo_nao_notificados_de_outros(USUARIO_TESTE_B)}
+    assert "teste_ferramentas_robo_solicitado.pdf" in nomes_outro
+
+    nomes_pessoais = {job.arquivo_pdf for job in listar_jobs_robo_nao_notificados_do_solicitante(USUARIO_TESTE_A)}
+    assert "teste_ferramentas_robo_solicitado.pdf" in nomes_pessoais
+
+    nomes_pessoais_outro = {job.arquivo_pdf for job in listar_jobs_robo_nao_notificados_do_solicitante(USUARIO_TESTE_B)}
+    assert "teste_ferramentas_robo_solicitado.pdf" not in nomes_pessoais_outro
 
 
 def test_marcar_notificacao_resolvida_robo_recusa_job_com_dono(limpar_jobs_criados):

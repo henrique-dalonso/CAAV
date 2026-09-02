@@ -5,7 +5,8 @@ from app.ferramentas.extratus_aburesi.db.checagem_fila import (
     listar_inconsistencias,
 )
 from app.ferramentas.extratus_aburesi.db.jobs import (
-    listar_jobs_robo_nao_notificados,
+    listar_jobs_robo_nao_notificados_de_outros,
+    listar_jobs_robo_nao_notificados_do_solicitante,
     listar_relatorios_manuais_nao_notificados_do_usuario,
 )
 from app.ferramentas.extratus_aburesi.db.triagem_manual import (
@@ -15,7 +16,7 @@ from app.ferramentas.extratus_aburesi.db.triagem_manual import (
 )
 
 
-def listar_notificacoes():
+def listar_notificacoes(usuario_id):
     """Ver docstring equivalente em app/ferramentas/extratus/web/
     notificacoes.py (Extratus - Relatórios) — mesma lógica, tabelas
     próprias desse módulo (`_aburesi`)."""
@@ -30,7 +31,7 @@ def listar_notificacoes():
             "criado_em": registro.atualizado_em.isoformat(),
         })
 
-    for job in listar_jobs_robo_nao_notificados():
+    for job in listar_jobs_robo_nao_notificados_de_outros(usuario_id):
         # Ver comentário equivalente em app/ferramentas/extratus/web/
         # notificacoes.py (Extratus - Relatórios) — mesma lógica.
         link = "/extratus-aburesi/relatorios-robo"
@@ -50,8 +51,6 @@ def listar_notificacoes():
                 "mensagem": f'"{job.arquivo_pdf}": relatório do Robô pronto',
                 "tipo": "pronto",
                 "link": link,
-                "descartavel": True,
-                "resolver": f"/extratus-aburesi/relatorios-robo/{job.id}/marcar-notificacao-resolvida",
                 "criado_em": job.criado_em.isoformat(),
             })
         else:  # "revisao"
@@ -108,6 +107,41 @@ def listar_notificacoes_pessoais(usuario_id):
                 "mensagem": f'"{job.arquivo_pdf}": relatório pronto, mas precisa de revisão',
                 "tipo": "revisao",
                 "link": "/extratus-aburesi/relatorios",
+                "pessoal": True,
+                "descartavel": False,
+                "criado_em": job.criado_em.isoformat(),
+            })
+
+    for job in listar_jobs_robo_nao_notificados_do_solicitante(usuario_id):
+        link = "/extratus-aburesi/relatorios-robo"
+        if job.processo:
+            link += "?processo=" + quote(job.processo)
+
+        if job.status == "erro":
+            motivo = job.erro_mensagem or job.tipo_erro or "falha desconhecida"
+            notificacoes.append({
+                "mensagem": f'"{job.arquivo_pdf}": erro ao processar ({motivo})',
+                "tipo": "erro",
+                "link": link,
+                "pessoal": True,
+                "descartavel": False,
+                "criado_em": job.criado_em.isoformat(),
+            })
+        elif job.status == "sucesso":
+            notificacoes.append({
+                "mensagem": f'"{job.arquivo_pdf}": relatório do Robô pronto',
+                "tipo": "pronto",
+                "link": link,
+                "pessoal": True,
+                "descartavel": True,
+                "resolver": f"/extratus-aburesi/relatorios-robo/{job.id}/marcar-notificacao-resolvida",
+                "criado_em": job.criado_em.isoformat(),
+            })
+        else:  # "revisao"
+            notificacoes.append({
+                "mensagem": f'"{job.arquivo_pdf}": relatório do Robô pronto, mas precisa de revisão',
+                "tipo": "revisao",
+                "link": link,
                 "pessoal": True,
                 "descartavel": False,
                 "criado_em": job.criado_em.isoformat(),

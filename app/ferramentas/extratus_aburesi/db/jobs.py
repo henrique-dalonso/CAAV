@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from sqlalchemy import or_
 from sqlmodel import func, select
 
 from app.ferramentas.extratus_aburesi.db.models import Job
@@ -148,12 +149,25 @@ def listar_erros_nao_resolvidos_do_robo():
         return sessao.exec(consulta).all()
 
 
-def listar_jobs_robo_nao_notificados():
+def listar_jobs_robo_nao_notificados_de_outros(usuario_id):
     """Ver docstring equivalente em app/ferramentas/extratus/db/jobs.py
     (Extratus - Relatórios) — mesma lógica."""
     with obter_sessao() as sessao:
         consulta = select(Job).where(
             Job.usuario_id.is_(None),
+            Job.notificacao_resolvida == False,  # noqa: E712
+            or_(Job.solicitante_id.is_(None), Job.solicitante_id != usuario_id),
+        )
+        return sessao.exec(consulta).all()
+
+
+def listar_jobs_robo_nao_notificados_do_solicitante(usuario_id):
+    """Ver docstring equivalente em app/ferramentas/extratus/db/jobs.py
+    (Extratus - Relatórios) — mesma lógica."""
+    with obter_sessao() as sessao:
+        consulta = select(Job).where(
+            Job.usuario_id.is_(None),
+            Job.solicitante_id == usuario_id,
             Job.notificacao_resolvida == False,  # noqa: E712
         )
         return sessao.exec(consulta).all()

@@ -637,6 +637,11 @@
     var contagemAbaSistemaEl = document.getElementById("contagem-aba-sistema");
     var contagemAbaMinhasEl = document.getElementById("contagem-aba-minhas");
     var contagemAbaConferenciasEl = document.getElementById("contagem-aba-conferencias");
+    var limparNotificacoesMinhasEl = document.getElementById("limpar-notificacoes-minhas");
+    // Descartáveis da última renderização de "Minhas" (item.descartavel
+    // && item.resolver) — alimenta tanto a visibilidade do botão
+    // "Limpar notificações" quanto o próprio clique dele.
+    var ultimosItensMinhasDescartaveis = [];
 
     if (botaoNotificacoesEl && painelNotificacoesEl) {
         var fecharPainelNotificacoes = configurarAlternador("botao-notificacoes", "painel-notificacoes");
@@ -670,7 +675,7 @@
         // backend (ver item.pessoal em notificacoes_do_usuario).
         var ABAS_NOTIFICACOES = [
             { nome: "sistema", botao: abaSistemaEl, lista: listaNotificacoesEl, vazio: painelNotificacoesVazioEl },
-            { nome: "minhas", botao: abaMinhasEl, lista: listaNotificacoesMinhasEl, vazio: painelNotificacoesVazioMinhasEl },
+            { nome: "minhas", botao: abaMinhasEl, lista: listaNotificacoesMinhasEl, vazio: painelNotificacoesVazioMinhasEl, limpar: limparNotificacoesMinhasEl },
             { nome: "conferencias", botao: abaConferenciasEl, lista: listaNotificacoesConferenciasEl, vazio: painelNotificacoesVazioConferenciasEl },
         ];
         var abaNotificacoesAtiva = "sistema";
@@ -692,6 +697,30 @@
                 if (aba.vazio) {
                     aba.vazio.hidden = !ativa || (aba.lista ? aba.lista.children.length > 0 : false);
                 }
+                if (aba.limpar) {
+                    aba.limpar.hidden = !ativa || ultimosItensMinhasDescartaveis.length === 0;
+                }
+            });
+        }
+
+        // Henrique, 2026-09-02: "aproveita e adiciona um botão 'Limpar
+        // notificações' no topo de 'Minhas'" — dispensa de uma vez só
+        // tudo que já tem "×" hoje (mesma flag compartilhada por baixo,
+        // marcar_notificacao_resolvida/_robo); revisão/erro continuam
+        // exigindo o fluxo real.
+        if (limparNotificacoesMinhasEl) {
+            limparNotificacoesMinhasEl.addEventListener("click", function () {
+                if (ultimosItensMinhasDescartaveis.length === 0) {
+                    return;
+                }
+
+                limparNotificacoesMinhasEl.disabled = true;
+
+                Promise.all(ultimosItensMinhasDescartaveis.map(function (item) {
+                    return fetch(item.resolver, { method: "POST" });
+                }))
+                    .then(function () { consultarNotificacoes(); })
+                    .finally(function () { limparNotificacoesMinhasEl.disabled = false; });
             });
         }
 
@@ -853,11 +882,11 @@
         // Toast (reaproveita window.mostrarBanner/mostrarBannerDetalhado,
         // já usados pelos avisos de upload da Fila) — Henrique, 2026-08-07:
         // "aparecer um popup... para notificar rapido que chegou algo...
-        // sem ter que clicar". Sistema e Conferências alertam em toasts
-        // separados (mesma separação por categoria do resto do painel);
-        // singular/plural escrito por extenso em cada bloco (não dá pra
-        // só grudar um "s" em "Robô"/"Conferências" sem estragar a
-        // concordância).
+        // sem ter que clicar". Sistema e Minhas alertam em toasts
+        // separados (Henrique, 2026-09-02: "Ferramentas" deixou de gerar
+        // popup — ver comentário abaixo); singular/plural escrito por
+        // extenso em cada bloco (não dá pra só grudar um "s" em
+        // "Robô"/"comunicado" sem estragar a concordância).
         function alertarNovasNotificacoes(novas) {
             if (novas.length === 0) {
                 return;
@@ -876,15 +905,15 @@
                 atualizarTituloNotificacoes();
             }
 
-            // Henrique, diretoria, 2026-08-19: "Sistema" virou reservado
-            // pra comunicados administrativos (feature futura — nenhuma
-            // fonte emite tipo "comunicado" ainda, então fica vazio até
-            // essa tela nascer). "Ferramentas" (antiga "Conferências")
-            // passou a cobrir TUDO que não for pessoal nem comunicado —
-            // triagem, erro, sucesso e revisão do Robô juntos.
+            // Henrique, 2026-09-02: popup só pra "Minhas" e "Sistema" —
+            // "Ferramentas" é sobre o que os OUTROS pediram, não precisa
+            // interromper todo mundo a cada item da fila do Robô (a
+            // pessoa já vê a contagem/lista ao abrir o sino quando
+            // quiser). "Sistema" ficou reservado pra comunicados
+            // administrativos (feature futura — nenhuma fonte emite tipo
+            // "comunicado" ainda, então fica vazio até essa tela nascer).
             var novasMinhas = novas.filter(function (item) { return item.pessoal === true; });
             var novasSistema = novas.filter(function (item) { return !item.pessoal && item.tipo === "comunicado"; });
-            var novasFerramentas = novas.filter(function (item) { return !item.pessoal && item.tipo !== "comunicado"; });
 
             if (novasSistema.length === 1) {
                 window.mostrarBanner("Novo comunicado: " + novasSistema[0].mensagem, "erro");
@@ -894,26 +923,6 @@
                     novasSistema.map(function (item) { return { titulo: item.ferramenta, detalhe: item.mensagem }; }),
                     "erro"
                 );
-            }
-
-            // "Ferramentas" mistura sucesso do Robô (tipo "pronto") com
-            // triagem/conferência/revisão/erro — tomDoLote (acima) dá o
-            // tom certo pra cada tipo, igual à lista do sino já fazia.
-            // Bug real corrigido aqui (Henrique, 2026-08-21): antes era
-            // sempre "erro" fixo, então um sucesso do Robô saía em
-            // vermelho no popup.
-            if (novasFerramentas.length > 0) {
-                var tomFerramentas = tomDoLote(novasFerramentas);
-
-                if (novasFerramentas.length === 1) {
-                    window.mostrarBanner("Nova notificação de Ferramentas: " + novasFerramentas[0].mensagem, tomFerramentas);
-                } else {
-                    window.mostrarBannerDetalhado(
-                        novasFerramentas.length + " novas notificações de Ferramentas — clique pra ver",
-                        novasFerramentas.map(function (item) { return { titulo: item.ferramenta, detalhe: item.mensagem }; }),
-                        tomFerramentas
-                    );
-                }
             }
 
             // "Minhas" mistura boas notícias ("pronto") com pendências
@@ -963,7 +972,7 @@
             return diffDias + (diffDias === 1 ? " dia atrás" : " dias atrás");
         }
 
-        function preencherListaNotificacoes(listaEl, itens) {
+        function preencherListaNotificacoes(listaEl, itens, marcarAoAbrir) {
             // Reconstrói a lista inteira a cada atualização (mais simples
             // que diffar por item, e sem animação de entrada aqui pra
             // "piscar") — mas isso zera o scroll sozinho, então quem
@@ -991,6 +1000,19 @@
 
                 linkEl.appendChild(origemEl);
                 linkEl.appendChild(textoEl);
+
+                // Henrique, 2026-09-02: em "Minhas", abrir a notificação
+                // já dá como lida — dispensa na hora do clique, sem
+                // esperar o "×" nem travar a navegação (keepalive garante
+                // que o POST sai mesmo com a página trocando de endereço
+                // logo em seguida). Só se aplica a quem já tem "×" hoje
+                // (item.descartavel && item.resolver) — revisão/erro
+                // continuam exigindo o fluxo real de resolução.
+                if (marcarAoAbrir && item.descartavel && item.resolver) {
+                    linkEl.addEventListener("click", function () {
+                        fetch(item.resolver, { method: "POST", keepalive: true });
+                    });
+                }
 
                 if (item.criado_em) {
                     var tempoEl = document.createElement("span");
@@ -1061,11 +1083,20 @@
 
             preencherListaNotificacoes(listaNotificacoesEl, itensSistema);
             if (listaNotificacoesMinhasEl) {
-                preencherListaNotificacoes(listaNotificacoesMinhasEl, itensMinhas);
+                preencherListaNotificacoes(listaNotificacoesMinhasEl, itensMinhas, true);
             }
             if (listaNotificacoesConferenciasEl) {
                 preencherListaNotificacoes(listaNotificacoesConferenciasEl, itensConferencias);
             }
+
+            // Henrique, 2026-09-02: "Limpar notificações" no topo de
+            // "Minhas" — só considera quem já tem "×" hoje (mesma regra
+            // do clique acima); revisão/erro nunca somem por aqui. A
+            // visibilidade do botão em si (aba ativa + tem o que limpar)
+            // é decidida em mostrarAbaNotificacoes, chamada logo abaixo.
+            ultimosItensMinhasDescartaveis = itensMinhas.filter(function (item) {
+                return item.descartavel && item.resolver;
+            });
 
             // Contador ao lado do título de cada aba — mesma ideia do
             // "Gerar relatórios"/"Relatórios" de cada ferramenta, só que
