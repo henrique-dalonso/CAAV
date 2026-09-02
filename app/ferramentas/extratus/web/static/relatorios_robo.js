@@ -246,6 +246,24 @@
         form.submit();
     }
 
+    // Henrique, 2026-09-02: "confirmação antes de baixar, pra evitar
+    // download acidental de uma pasta GIGANTE" — mesmo modal já usado em
+    // "Excluir selecionados", só que sem o vermelho de perigo (baixar não
+    // é destrutivo, só pode ser sem querer/grande demais).
+    function confirmarEBaixar(form, ids) {
+        if (ids.length === 0) {
+            return;
+        }
+
+        var mensagem = ids.length === 1
+            ? "Baixar 1 relatório?"
+            : "Baixar " + ids.length + " relatórios num arquivo .zip?";
+
+        window.confirmarAcao(mensagem, function () {
+            submeterIdsEmLote(form, ids);
+        });
+    }
+
     if (botaoBaixarTodos && formBaixarLoteRobo) {
         botaoBaixarTodos.addEventListener("click", function () {
             // "Todos" aqui respeita o que a tela está mostrando NA HORA —
@@ -255,9 +273,7 @@
                 return item.style.display !== "none" && relatorioTemArquivo(item);
             }).map(function (item) { return item.dataset.jobId; });
 
-            if (ids.length > 0) {
-                submeterIdsEmLote(formBaixarLoteRobo, ids);
-            }
+            confirmarEBaixar(formBaixarLoteRobo, ids);
         });
     }
 
@@ -323,10 +339,7 @@
 
         if (botaoBaixarSelecionados && formBaixarLoteRobo) {
             botaoBaixarSelecionados.addEventListener("click", function () {
-                var ids = idsMarcados();
-                if (ids.length > 0) {
-                    submeterIdsEmLote(formBaixarLoteRobo, ids);
-                }
+                confirmarEBaixar(formBaixarLoteRobo, idsMarcados());
             });
         }
 
