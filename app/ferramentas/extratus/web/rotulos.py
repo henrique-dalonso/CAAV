@@ -94,7 +94,9 @@ def contagem_nav_relatorios(usuario):
 
 def contagem_nav_relatorios_robo(usuario):
     """Badge duplo da aba "Relatórios do Robô" — {"sucesso": N, "revisao": N}
-    de relatórios do Robô (compartilhados) que terminaram desde a última
-    visita DESSE usuário."""
+    de relatórios do Robô que o PRÓPRIO usuário pediu (Job.solicitante_id)
+    e terminaram desde a última visita (Henrique, 2026-09-02: antes
+    contava a fila inteira, compartilhada — agora só o que é seu, mesma
+    regra da aba "Minhas" do sino)."""
     desde = obter_ultimo_visto(usuario.id, FERRAMENTA_SLUG, ABA_RELATORIOS_ROBO) or _DESDE_SEMPRE
-    return contar_relatorios_robo_novos(desde)
+    return contar_relatorios_robo_novos(usuario.id, desde)

@@ -424,9 +424,13 @@ def test_contar_relatorios_novos_do_usuario_ignora_erro_e_outro_usuario(limpar_j
     assert novos == {"sucesso": 0, "revisao": 0}
 
 
-def test_contar_relatorios_robo_novos_conta_so_usuario_id_none(limpar_jobs_criados):
+def test_contar_relatorios_robo_novos_conta_so_usuario_id_none_do_proprio_solicitante(limpar_jobs_criados):
+    # Henrique, 2026-09-02: badge da aba "Relatórios do Robô" deixou de
+    # contar a fila inteira, compartilhada — só conta o que o PRÓPRIO
+    # usuário pediu (Job.solicitante_id), mesma regra da aba "Minhas" do
+    # sino.
     desde = datetime.now() - timedelta(seconds=1)
-    antes = contar_relatorios_robo_novos(desde)
+    antes = contar_relatorios_robo_novos(USUARIO_TESTE_A, desde)
 
     job_robo_sucesso = registrar_processado(
         arquivo_pdf="teste_badge_robo_sucesso.pdf",
@@ -435,6 +439,7 @@ def test_contar_relatorios_robo_novos_conta_so_usuario_id_none(limpar_jobs_criad
         destino_pdf=None,
         confianca="alta",
         usuario_id=None,
+        solicitante_id=USUARIO_TESTE_A,
     )
     job_robo_revisao = registrar_processado(
         arquivo_pdf="teste_badge_robo_revisao.pdf",
@@ -443,6 +448,16 @@ def test_contar_relatorios_robo_novos_conta_so_usuario_id_none(limpar_jobs_criad
         destino_pdf=None,
         confianca="revisao",
         usuario_id=None,
+        solicitante_id=USUARIO_TESTE_A,
+    )
+    job_robo_de_outro = registrar_processado(
+        arquivo_pdf="teste_badge_robo_nao_conta_outro_solicitante.pdf",
+        processo="0000000-00.2026.8.00.0035",
+        relatorio_path=None,
+        destino_pdf=None,
+        confianca="alta",
+        usuario_id=None,
+        solicitante_id=USUARIO_TESTE_B,
     )
     job_manual = registrar_processado(
         arquivo_pdf="teste_badge_robo_nao_conta_manual.pdf",
@@ -452,9 +467,9 @@ def test_contar_relatorios_robo_novos_conta_so_usuario_id_none(limpar_jobs_criad
         confianca="alta",
         usuario_id=USUARIO_TESTE_A,
     )
-    limpar_jobs_criados.extend([job_robo_sucesso.id, job_robo_revisao.id, job_manual.id])
+    limpar_jobs_criados.extend([job_robo_sucesso.id, job_robo_revisao.id, job_robo_de_outro.id, job_manual.id])
 
-    depois = contar_relatorios_robo_novos(desde)
+    depois = contar_relatorios_robo_novos(USUARIO_TESTE_A, desde)
 
     assert depois["sucesso"] == antes["sucesso"] + 1
     assert depois["revisao"] == antes["revisao"] + 1

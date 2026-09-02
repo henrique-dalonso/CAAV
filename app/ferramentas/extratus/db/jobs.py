@@ -374,17 +374,22 @@ def contar_relatorios_novos_do_usuario(usuario_id, desde):
     return {"sucesso": contagem.get("sucesso", 0), "revisao": contagem.get("revisao", 0)}
 
 
-def contar_relatorios_robo_novos(desde):
+def contar_relatorios_robo_novos(usuario_id, desde):
     """Mesma ideia de `contar_relatorios_novos_do_usuario`, pros
-    relatórios do Robô (usuario_id None) — alimenta o badge duplo da
-    aba "Relatórios do Robô". A fila é compartilhada (não filtra por
-    usuário), só o "desde" é pessoal — cada usuário vê como "novo" o que
-    ainda não olhou, mesmo relatório sendo visível pra todo mundo."""
+    relatórios do Robô (usuario_id None) — alimenta o badge duplo da aba
+    "Relatórios do Robô". Henrique, 2026-09-02: só conta os que o
+    PRÓPRIO usuário pediu (Job.solicitante_id) — mesma regra de
+    "Ferramentas" é dos outros, "Minhas"/pessoal é seu que já vale pro
+    sino de notificações; antes contava a fila inteira, compartilhada,
+    então um relatório pedido por um colega também "acendia" +1 pra
+    todo mundo. Job sem solicitante resolvido (pré-migração) não conta
+    pra ninguém — mesma lacuna conhecida do sino."""
     with obter_sessao() as sessao:
         consulta = (
             select(Job.status, func.count())
             .where(
                 Job.usuario_id.is_(None),
+                Job.solicitante_id == usuario_id,
                 Job.criado_em > desde,
                 Job.status.in_(["sucesso", "revisao"]),
             )

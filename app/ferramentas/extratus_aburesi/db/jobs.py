@@ -312,7 +312,7 @@ def contar_relatorios_novos_do_usuario(usuario_id, desde):
     return {"sucesso": contagem.get("sucesso", 0), "revisao": contagem.get("revisao", 0)}
 
 
-def contar_relatorios_robo_novos(desde):
+def contar_relatorios_robo_novos(usuario_id, desde):
     """Ver docstring equivalente em app/ferramentas/extratus/db/jobs.py
     (Extratus - Relatórios) — mesma lógica."""
     with obter_sessao() as sessao:
@@ -320,6 +320,7 @@ def contar_relatorios_robo_novos(desde):
             select(Job.status, func.count())
             .where(
                 Job.usuario_id.is_(None),
+                Job.solicitante_id == usuario_id,
                 Job.criado_em > desde,
                 Job.status.in_(["sucesso", "revisao"]),
             )

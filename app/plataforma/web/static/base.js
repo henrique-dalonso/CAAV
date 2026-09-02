@@ -1132,8 +1132,14 @@
             // baixo da aba ativa).
             mostrarAbaNotificacoes(abaNotificacoesAtiva);
 
-            if (itens.length > 0) {
-                badgeNotificacoesEl.textContent = itens.length > 99 ? "99+" : String(itens.length);
+            // Henrique, 2026-09-02: o badge do sininho (o número no ícone,
+            // fora do painel) deixou de somar TUDO — "Ferramentas" é sobre
+            // o que os outros pediram, não é "pendência sua" pra acender
+            // o sino. Mesmo recorte do popup (ver alertarNovasNotificacoes):
+            // só "Minhas" + "Sistema" contam aqui.
+            var totalPertinente = itensMinhas.length + itensSistema.length;
+            if (totalPertinente > 0) {
+                badgeNotificacoesEl.textContent = totalPertinente > 99 ? "99+" : String(totalPertinente);
                 badgeNotificacoesEl.hidden = false;
             } else {
                 badgeNotificacoesEl.hidden = true;

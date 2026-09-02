@@ -72,4 +72,4 @@ def contagem_nav_relatorios_robo(usuario):
     """Ver docstring equivalente em app/ferramentas/extratus/web/
     rotulos.py (Extratus - Relatórios) — mesma lógica."""
     desde = obter_ultimo_visto(usuario.id, FERRAMENTA_SLUG, ABA_RELATORIOS_ROBO) or _DESDE_SEMPRE
-    return contar_relatorios_robo_novos(desde)
+    return contar_relatorios_robo_novos(usuario.id, desde)
