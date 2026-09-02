@@ -642,6 +642,11 @@
     // && item.resolver) — alimenta tanto a visibilidade do botão
     // "Limpar notificações" quanto o próprio clique dele.
     var ultimosItensMinhasDescartaveis = [];
+    // Últimos itens renderizados de CADA aba — alimenta o badge "não
+    // visto" (ver marcarAbaVista/contarNaoVistos abaixo), recalculado a
+    // cada poll mas só "consumido" (marcado como visto) quando a pessoa
+    // de fato clica na aba ou já está com o painel aberto olhando ela.
+    var ultimosItensPorAba = { sistema: [], minhas: [], conferencias: [] };
 
     if (botaoNotificacoesEl && painelNotificacoesEl) {
         var fecharPainelNotificacoes = configurarAlternador("botao-notificacoes", "painel-notificacoes");
@@ -726,7 +731,15 @@
 
         ABAS_NOTIFICACOES.forEach(function (aba) {
             if (aba.botao) {
-                aba.botao.addEventListener("click", function () { mostrarAbaNotificacoes(aba.nome); });
+                aba.botao.addEventListener("click", function () {
+                    mostrarAbaNotificacoes(aba.nome);
+                    // Clicou pra olhar essa aba agora — o que já está
+                    // nela deixa de contar como "novo" no badge (as
+                    // funções ficam definidas mais abaixo no arquivo,
+                    // mas já existem nesse ponto por hoisting).
+                    marcarAbaVista(aba.nome, ultimosItensPorAba[aba.nome]);
+                    atualizarContagensAbas();
+                });
             }
         });
 
@@ -782,6 +795,11 @@
         botaoNotificacoesEl.addEventListener("click", function () {
             if (!painelNotificacoesEl.hidden) {
                 atualizarBotoesExpandir();
+                // Painel acabou de abrir — a aba que já está visível por
+                // padrão (abaNotificacoesAtiva) também conta como "vista"
+                // na hora, sem precisar de um segundo clique na aba.
+                marcarAbaVista(abaNotificacoesAtiva, ultimosItensPorAba[abaNotificacoesAtiva]);
+                atualizarContagensAbas();
             }
         });
 
@@ -813,6 +831,88 @@
 
             chavesNotificacoesConhecidas = new Set(chavesAtuais);
             return novas;
+        }
+
+        // Henrique, 2026-09-02: "clicou na aba que tem notificação
+        // nova, some o badge — independente se é conferência, revisão,
+        // oq for". O badge de cada aba deixa de ser "quantos itens tem
+        // aqui agora" (isso o item em si já mostra, na lista) e passa a
+        // ser "quantos eu ainda não vi" — abrir/olhar a aba marca tudo
+        // que já está nela como visto, mas o item continua na lista até
+        // ser resolvido de verdade (Conferências, "×", "Marcar como
+        // revisado" etc.). "Visto até" é guardado por aba no
+        // localStorage (por navegador, não por conta — mesma limitação
+        // já aceita nos favoritos da Fila) como o `criado_em` do item
+        // mais recente que existia na hora do clique; strings ISO como
+        // essas comparam certo com `>` sem precisar virar Date.
+        var CHAVE_NOTIF_VISTO_PREFIXO = "extratus_notif_visto_";
+
+        function obterVistoAba(nomeAba) {
+            try {
+                return localStorage.getItem(CHAVE_NOTIF_VISTO_PREFIXO + nomeAba);
+            } catch (erro) {
+                return null;
+            }
+        }
+
+        function marcarAbaVista(nomeAba, itens) {
+            var maisRecente = (itens || []).reduce(function (acc, item) {
+                return item.criado_em && (!acc || item.criado_em > acc) ? item.criado_em : acc;
+            }, null);
+
+            if (!maisRecente) {
+                return;
+            }
+
+            try {
+                localStorage.setItem(CHAVE_NOTIF_VISTO_PREFIXO + nomeAba, maisRecente);
+            } catch (erro) {
+                // localStorage indisponível (modo privado, cota estourada
+                // etc.) — sem persistir, o badge volta a contar tudo de
+                // novo; degrada pro comportamento antigo, não quebra.
+            }
+        }
+
+        function contarNaoVistos(nomeAba, itens) {
+            var visto = obterVistoAba(nomeAba);
+
+            if (!visto) {
+                return (itens || []).length;
+            }
+
+            return (itens || []).filter(function (item) {
+                return item.criado_em && item.criado_em > visto;
+            }).length;
+        }
+
+        function atualizarContagemAba(elemento, nomeAba, itens) {
+            if (!elemento) {
+                return;
+            }
+
+            var naoVistos = contarNaoVistos(nomeAba, itens);
+            elemento.textContent = naoVistos > 99 ? "99+" : String(naoVistos);
+            elemento.hidden = naoVistos === 0;
+        }
+
+        function atualizarContagensAbas() {
+            atualizarContagemAba(contagemAbaSistemaEl, "sistema", ultimosItensPorAba.sistema);
+            atualizarContagemAba(contagemAbaMinhasEl, "minhas", ultimosItensPorAba.minhas);
+            atualizarContagemAba(contagemAbaConferenciasEl, "conferencias", ultimosItensPorAba.conferencias);
+
+            // Badge do próprio ícone do sino — mesmo recorte do popup
+            // (só "Minhas" + "Sistema", ver alertarNovasNotificacoes),
+            // agora também "não visto" em vez de "quantidade total".
+            var totalNaoVisto =
+                contarNaoVistos("sistema", ultimosItensPorAba.sistema) +
+                contarNaoVistos("minhas", ultimosItensPorAba.minhas);
+
+            if (totalNaoVisto > 0) {
+                badgeNotificacoesEl.textContent = totalNaoVisto > 99 ? "99+" : String(totalNaoVisto);
+                badgeNotificacoesEl.hidden = false;
+            } else {
+                badgeNotificacoesEl.hidden = true;
+            }
         }
 
         // Beep curto sintetizado via Web Audio (sem depender de um
@@ -1098,31 +1198,19 @@
                 return item.descartavel && item.resolver;
             });
 
-            // Contador ao lado do título de cada aba — mesma ideia do
-            // "Gerar relatórios"/"Relatórios" de cada ferramenta, só que
-            // aqui atualizado ao vivo a cada poll (Henrique, 2026-08-07:
-            // "consigo saber quantas notificações são em cada aba antes
-            // de precisar entrar nela"). Some por completo em zero (não
-            // mostra "0") — Henrique pediu isso explicitamente, diferente
-            // do .contagem-aba original que sempre mostra o número.
-            if (contagemAbaSistemaEl) {
-                contagemAbaSistemaEl.textContent = itensSistema.length > 99 ? "99+" : String(itensSistema.length);
-                contagemAbaSistemaEl.hidden = itensSistema.length === 0;
-            }
-            if (contagemAbaMinhasEl) {
-                contagemAbaMinhasEl.textContent = itensMinhas.length > 99 ? "99+" : String(itensMinhas.length);
-                contagemAbaMinhasEl.hidden = itensMinhas.length === 0;
-            }
-            if (contagemAbaConferenciasEl) {
-                contagemAbaConferenciasEl.textContent = itensConferencias.length > 99 ? "99+" : String(itensConferencias.length);
-                contagemAbaConferenciasEl.hidden = itensConferencias.length === 0;
-            }
+            ultimosItensPorAba = { sistema: itensSistema, minhas: itensMinhas, conferencias: itensConferencias };
 
             // Painel já pode estar aberto quando um poll periódico
             // reconstrói a lista (não só na primeira carga) — nesse caso
             // dá pra medir certo na hora.
             if (!painelNotificacoesEl.hidden) {
                 atualizarBotoesExpandir();
+
+                // Henrique, 2026-09-02: painel já aberto olhando a aba
+                // ATUAL enquanto isso chega ao vivo — conta como visto na
+                // hora, pra não ficar um "+1" pendurado numa aba que a
+                // pessoa já está encarando.
+                marcarAbaVista(abaNotificacoesAtiva, ultimosItensPorAba[abaNotificacoesAtiva]);
             }
 
             // Reaplica a visibilidade da aba ATUAL com o conteúdo recém
@@ -1132,18 +1220,12 @@
             // baixo da aba ativa).
             mostrarAbaNotificacoes(abaNotificacoesAtiva);
 
-            // Henrique, 2026-09-02: o badge do sininho (o número no ícone,
-            // fora do painel) deixou de somar TUDO — "Ferramentas" é sobre
-            // o que os outros pediram, não é "pendência sua" pra acender
-            // o sino. Mesmo recorte do popup (ver alertarNovasNotificacoes):
-            // só "Minhas" + "Sistema" contam aqui.
-            var totalPertinente = itensMinhas.length + itensSistema.length;
-            if (totalPertinente > 0) {
-                badgeNotificacoesEl.textContent = totalPertinente > 99 ? "99+" : String(totalPertinente);
-                badgeNotificacoesEl.hidden = false;
-            } else {
-                badgeNotificacoesEl.hidden = true;
-            }
+            // Contador ao lado do título de cada aba (+ badge do sino) —
+            // "não visto", não "quantidade total" (ver
+            // marcarAbaVista/contarNaoVistos acima: clicar/olhar a aba
+            // já marca como visto, mesmo que o item em si continue na
+            // lista até ser resolvido de verdade).
+            atualizarContagensAbas();
 
             alertarNovasNotificacoes(novas);
         }
