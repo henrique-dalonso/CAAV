@@ -1303,6 +1303,20 @@ html[data-theme="escuro"] .campo-data::-webkit-calendar-picker-indicator {
     margin-left: 0;
 }
 
+/* Henrique, 2026-09-02 (4ª rodada): ver comentário equivalente em
+   app/ferramentas/extratus/web/static/extratus.css — mesma lógica. */
+.relatorios-robo-acoes-topo .botao-minimal-icone {
+    background: var(--cor-acento-fraco);
+    border-color: var(--cor-acento);
+    color: var(--cor-acento);
+}
+
+.relatorios-robo-acoes-topo .botao-minimal-icone:hover {
+    background: var(--cor-acento);
+    border-color: var(--cor-acento);
+    color: white;
+}
+
 /* Henrique, 2026-09-02 (2ª rodada): "Baixar todos" some enquanto se
    seleciona (ver relatorios_robo.js) — precisa da mesma blindagem
    [hidden] das outras classes que já definem `display` de autor (ver

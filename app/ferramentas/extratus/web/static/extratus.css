@@ -1326,6 +1326,25 @@ html[data-theme="escuro"] .campo-data::-webkit-calendar-picker-indicator {
     margin-left: 0;
 }
 
+/* Henrique, 2026-09-02 (4ª rodada): "muito pouco destacados, difícil de
+   visualizar" no modo escuro — a casca neutra padrão de .botao-minimal
+   (borda fina, sem fundo) some contra o fundo escuro da tela. Fundo
+   levemente tingido na cor de acento (mesma ideia do "vibrante ao
+   habilitar" da barra de seleção, só que mais discreto porque esses dois
+   ficam sempre habilitados) — escopado só aqui, não mexe no ícone
+   "Desfazer" da Fila do Robô, que reaproveita a mesma classe base. */
+.relatorios-robo-acoes-topo .botao-minimal-icone {
+    background: var(--cor-acento-fraco);
+    border-color: var(--cor-acento);
+    color: var(--cor-acento);
+}
+
+.relatorios-robo-acoes-topo .botao-minimal-icone:hover {
+    background: var(--cor-acento);
+    border-color: var(--cor-acento);
+    color: white;
+}
+
 /* Henrique, 2026-09-02 (2ª rodada): "Baixar todos" some enquanto se
    seleciona (ver relatorios_robo.js) — precisa da mesma blindagem
    [hidden] das outras classes que já definem `display` de autor (ver
