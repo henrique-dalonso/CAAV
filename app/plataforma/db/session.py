@@ -35,8 +35,9 @@ COLUNAS_PENDENTES = {
         # sem efeito na base atual (já existem), mas restaurar um backup
         # anterior a essa data, ou subir um ambiente novo a partir de uma
         # cópia velha, quebrava sem elas. Valores batem com
-        # TEMA_SISTEMA/COR_PERFIL_PADRAO em db/models.py.
-        "tema": "VARCHAR DEFAULT 'sistema'",
+        # TEMA_ESCURO/COR_PERFIL_PADRAO em db/models.py (Henrique,
+        # 2026-09-02: era TEMA_SISTEMA, mudou o padrão pra escuro).
+        "tema": "VARCHAR DEFAULT 'escuro'",
         "cor_perfil": "VARCHAR DEFAULT '#4f46e5'",
     },
     "ferramenta": {

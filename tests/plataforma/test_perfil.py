@@ -117,8 +117,11 @@ def test_alterar_senha_com_dados_corretos_atualiza_hash(cliente_logado):
     assert not verificar_senha(SENHA_INICIAL, usuario_atualizado.senha_hash)
 
 
-def test_novo_usuario_comeca_com_tema_sistema(cliente_logado):
-    assert buscar_usuario_por_nome_usuario(NOME_USUARIO_TESTE).tema == "sistema"
+def test_novo_usuario_comeca_com_tema_escuro(cliente_logado):
+    # Henrique, 2026-09-02: padrão passou de "sistema" (automático) pra
+    # "escuro" — o modo claro ainda não está bem feito, não é hora de
+    # ninguém cair nele sem querer só por causa do SO/navegador.
+    assert buscar_usuario_por_nome_usuario(NOME_USUARIO_TESTE).tema == "escuro"
 
 
 def test_alterar_tema_para_valor_valido_salva(cliente_logado):
@@ -140,7 +143,7 @@ def test_alterar_tema_para_valor_invalido_nao_muda_nada(cliente_logado):
     )
 
     assert resp.status_code == 303
-    assert buscar_usuario_por_nome_usuario(NOME_USUARIO_TESTE).tema == "sistema"
+    assert buscar_usuario_por_nome_usuario(NOME_USUARIO_TESTE).tema == "escuro"
 
 
 def test_pagina_perfil_aplica_data_theme_quando_usuario_escolheu_escuro(cliente_logado):
@@ -152,6 +155,11 @@ def test_pagina_perfil_aplica_data_theme_quando_usuario_escolheu_escuro(cliente_
 
 
 def test_pagina_perfil_nao_aplica_data_theme_no_automatico(cliente_logado):
+    # Henrique, 2026-09-02: novo usuário já não nasce mais em "sistema"
+    # (ver test_novo_usuario_comeca_com_tema_escuro) — escolhe automático
+    # explicitamente aqui pra continuar testando esse caso.
+    cliente_logado.post("/perfil/preferencias/tema", data={"tema": "sistema"})
+
     resp = cliente_logado.get("/perfil/preferencias")
 
     assert "data-theme=" not in resp.text

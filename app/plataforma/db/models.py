@@ -84,10 +84,14 @@ class Usuario(SQLModel, table=True):
     bloqueado: bool = Field(default=False)
     bloqueado_em: Optional[datetime] = Field(default=None)
 
-    # "sistema" segue o tema do sistema operacional (padrão); "claro"/
-    # "escuro" força a escolha independente do sistema. Por usuário, não
-    # por navegador — segue a pessoa entre computadores do escritório.
-    tema: str = Field(default=TEMA_SISTEMA)
+    # "sistema" segue o tema do sistema operacional; "claro"/"escuro"
+    # força a escolha independente do sistema. Por usuário, não por
+    # navegador — segue a pessoa entre computadores do escritório.
+    # Henrique, 2026-09-02: padrão passou de "sistema" pra "escuro" — o
+    # modo claro ainda não está bem feito, então ninguém deveria cair
+    # nele sem querer só por causa do SO/navegador da máquina; "sistema"
+    # continua disponível pra quem escolher de propósito.
+    tema: str = Field(default=TEMA_ESCURO)
 
     # Cor do avatar (bolinha com a inicial do nome) — escolha pessoal,
     # não depende mais da cor de destaque da ferramenta aberta.
