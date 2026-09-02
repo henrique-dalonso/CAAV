@@ -37,7 +37,9 @@
         if (filtroInicialForcado) {
             itens.forEach(function (item) { item.style.display = "none"; });
             if (avisoVazio) { avisoVazio.style.display = "none"; }
-            if (avisoSemSolicitacoes) { avisoSemSolicitacoes.style.display = ""; }
+            // "block", não "" — ver comentário equivalente em
+            // app/ferramentas/extratus/web/static/relatorios_robo.js.
+            if (avisoSemSolicitacoes) { avisoSemSolicitacoes.style.display = "block"; }
             return;
         }
 
@@ -77,7 +79,7 @@
         });
 
         if (avisoVazio) {
-            avisoVazio.style.display = visiveis === 0 ? "" : "none";
+            avisoVazio.style.display = visiveis === 0 ? "block" : "none";
         }
     }
 
@@ -276,6 +278,7 @@
         function entrarModoSelecaoRobo() {
             botaoSelecionarRobo.disabled = true;
             acoesSelecaoRobo.hidden = false;
+            if (botaoBaixarTodos) { botaoBaixarTodos.hidden = true; }
             listaEl.querySelectorAll(".relatorio-item-checkbox").forEach(function (c) { c.hidden = false; });
             atualizarBotoesSelecaoRobo();
         }
@@ -283,6 +286,7 @@
         function sairModoSelecaoRobo() {
             botaoSelecionarRobo.disabled = false;
             acoesSelecaoRobo.hidden = true;
+            if (botaoBaixarTodos) { botaoBaixarTodos.hidden = false; }
             listaEl.querySelectorAll(".relatorio-item-checkbox").forEach(function (c) { c.hidden = true; });
             obterChecksRobo().forEach(function (c) { c.checked = false; });
             if (checkTodosRobo) { checkTodosRobo.checked = false; }

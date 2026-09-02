@@ -37,7 +37,13 @@
         if (filtroInicialForcado) {
             itens.forEach(function (item) { item.style.display = "none"; });
             if (avisoVazio) { avisoVazio.style.display = "none"; }
-            if (avisoSemSolicitacoes) { avisoSemSolicitacoes.style.display = ""; }
+            // "block", não "" — esses <p> nascem com o atributo `hidden`
+            // (não só sem classe de display nenhuma), e limpar o inline
+            // style só devolve o controle pro `[hidden]` nativo do
+            // navegador, que continua escondendo. Precisa de um valor
+            // concreto pra vencer de vez (mesma pegadinha catalogada em
+            // base.css, ex: .bandeja-apps[hidden]).
+            if (avisoSemSolicitacoes) { avisoSemSolicitacoes.style.display = "block"; }
             return;
         }
 
@@ -77,7 +83,9 @@
         });
 
         if (avisoVazio) {
-            avisoVazio.style.display = visiveis === 0 ? "" : "none";
+            // Mesmo motivo do "block" acima — este <p> também nasce com
+            // `hidden`.
+            avisoVazio.style.display = visiveis === 0 ? "block" : "none";
         }
     }
 
@@ -276,6 +284,10 @@
         function entrarModoSelecaoRobo() {
             botaoSelecionarRobo.disabled = true;
             acoesSelecaoRobo.hidden = false;
+            // Henrique, 2026-09-02: "Baixar todos" some enquanto seleciona
+            // — dois ícones de baixar próximos um do outro (esse + "Baixar
+            // selecionados") confundia mais do que ajudava.
+            if (botaoBaixarTodos) { botaoBaixarTodos.hidden = true; }
             listaEl.querySelectorAll(".relatorio-item-checkbox").forEach(function (c) { c.hidden = false; });
             atualizarBotoesSelecaoRobo();
         }
@@ -283,6 +295,7 @@
         function sairModoSelecaoRobo() {
             botaoSelecionarRobo.disabled = false;
             acoesSelecaoRobo.hidden = true;
+            if (botaoBaixarTodos) { botaoBaixarTodos.hidden = false; }
             listaEl.querySelectorAll(".relatorio-item-checkbox").forEach(function (c) { c.hidden = true; });
             obterChecksRobo().forEach(function (c) { c.checked = false; });
             if (checkTodosRobo) { checkTodosRobo.checked = false; }

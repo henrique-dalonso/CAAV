@@ -37,7 +37,9 @@
         });
 
         if (avisoVazio) {
-            avisoVazio.style.display = visiveis === 0 ? "" : "none";
+            // Ver comentário equivalente em app/ferramentas/extratus/web/
+            // static/relatorios_manuais.js — mesma lógica.
+            avisoVazio.style.display = visiveis === 0 ? "block" : "none";
         }
     }
 

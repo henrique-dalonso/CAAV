@@ -1026,6 +1026,13 @@ html[data-theme="escuro"] .aba .contagem-aba-revisao { background: #332b0f; colo
     border-color: var(--cor-acento);
 }
 
+/* Ver comentário equivalente em app/ferramentas/extratus/web/static/
+   extratus.css — mesmo melhor-esforço nativo. */
+.filtro-solicitante select option {
+    background-color: var(--cor-fundo);
+    color: var(--cor-texto);
+}
+
 .campo-data {
     padding: 0.5rem 0.6rem;
     font-size: 0.85rem;
@@ -1278,15 +1285,16 @@ html[data-theme="escuro"] .campo-data::-webkit-calendar-picker-indicator {
     flex-shrink: 0;
 }
 
-/* Henrique, 2026-09-02: "Baixar todos" (esquerda) e "Selecionar"
-   (direita) na mesma linha, logo abaixo da barra de filtros —
-   space-between em vez do margin-left:auto que .botao-minimal já tem
-   sozinho (pensado pra quando é o único botão da barra), que aqui
-   grudaria os dois botões juntos à direita. */
+/* Henrique, 2026-09-02: "Selecionar" e "Baixar todos" juntos, os DOIS
+   colados à direita — ordem da direita pra esquerda é baixar, depois
+   selecionar (por isso "Selecionar" vem ANTES no HTML: flex-end mantém
+   a ordem do documento, só empurra o grupo inteiro pra ponta). Corrigido
+   2026-09-02 (2ª rodada): era space-between (um em cada canto) antes. */
 .relatorios-robo-acoes-topo {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
+    gap: 0.5rem;
     margin-bottom: 0.75rem;
 }
 
@@ -1294,14 +1302,27 @@ html[data-theme="escuro"] .campo-data::-webkit-calendar-picker-indicator {
     margin-left: 0;
 }
 
-/* Barra de ações do modo de seleção — mesma casca/gap de
-   .fila-acoes-selecao (Fila do Robô), sequência simples da esquerda pra
-   direita, sem empurrar nada pra ponta (por isso zera o margin-left:auto
-   de .botao-minimal aqui também). */
+/* Henrique, 2026-09-02 (2ª rodada): "Baixar todos" some enquanto se
+   seleciona (ver relatorios_robo.js) — precisa da mesma blindagem
+   [hidden] das outras classes que já definem `display` de autor (ver
+   .bandeja-apps[hidden] em base.css pra o problema original catalogado):
+   sem isso, .botao-minimal-icone (display:inline-flex) vence o `[hidden]`
+   nativo e o botão continuaria visível. */
+.botao-minimal-icone[hidden] {
+    display: none;
+}
+
+/* Barra de ações do modo de seleção — "Selecionar todos" fica sozinho à
+   esquerda (alinhado com o checkbox de cada linha, por isso o
+   padding-left igual ao de .relatorio-item), o resto dos botões forma um
+   grupo à direita, logo abaixo de onde "Selecionar" estava (Henrique,
+   2026-09-02, 2ª rodada — antes era tudo em sequência simples, grudado
+   à esquerda). */
 .relatorios-robo-acoes-selecao {
     display: flex;
     align-items: center;
-    gap: 0.9rem;
+    justify-content: space-between;
+    padding-left: 1rem;
     margin-bottom: 0.75rem;
 }
 
@@ -1309,7 +1330,13 @@ html[data-theme="escuro"] .campo-data::-webkit-calendar-picker-indicator {
     display: none;
 }
 
-.relatorios-robo-acoes-selecao .botao-minimal {
+.relatorios-robo-acoes-botoes {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.relatorios-robo-acoes-botoes .botao-minimal {
     margin-left: 0;
 }
 
@@ -1335,6 +1362,45 @@ html[data-theme="escuro"] .campo-data::-webkit-calendar-picker-indicator {
     background: var(--cor-erro-fundo);
     border-color: var(--cor-erro-borda);
     color: var(--cor-erro-texto);
+}
+
+/* Variante "perigo" do botão de TEXTO (não ícone) — só o "Cancelar" da
+   barra de seleção, de propósito (Henrique, 2026-09-02, 2ª rodada:
+   "contorno vermelho"). */
+.botao-minimal-perigo {
+    border-color: var(--cor-erro-borda);
+}
+
+.botao-minimal-perigo:hover {
+    border-color: var(--cor-erro-borda);
+    color: var(--cor-erro-texto);
+    background: var(--cor-erro-fundo);
+}
+
+/* Henrique, 2026-09-02 (2ª rodada): botões da barra de seleção ganham
+   preenchimento sólido ao habilitar (pelo menos 1 marcado) — mesma ideia
+   do .botao-download/.botao-excluir das linhas, cada um na sua cor. Só
+   dentro dessa barra — "Baixar todos"/"Selecionar" no topo ficam sempre
+   habilitados, não fazem sentido "vibrar". */
+.relatorios-robo-acoes-botoes .botao-minimal-icone:not(:disabled):not(.botao-minimal-icone-perigo) {
+    background: var(--cor-acento);
+    border-color: var(--cor-acento);
+    color: white;
+}
+
+.relatorios-robo-acoes-botoes .botao-minimal-icone:not(:disabled):not(.botao-minimal-icone-perigo):hover {
+    background: var(--cor-acento-hover);
+    border-color: var(--cor-acento-hover);
+}
+
+.relatorios-robo-acoes-botoes .botao-minimal-icone-perigo:not(:disabled) {
+    background: var(--cor-erro-texto);
+    border-color: var(--cor-erro-texto);
+    color: white;
+}
+
+.relatorios-robo-acoes-botoes .botao-minimal-icone-perigo:not(:disabled):hover {
+    opacity: 0.85;
 }
 
 .relatorio-item-checkbox {

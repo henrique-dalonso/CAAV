@@ -37,7 +37,12 @@
         });
 
         if (avisoVazio) {
-            avisoVazio.style.display = visiveis === 0 ? "" : "none";
+            // Henrique, 2026-09-02: "" não bastava — esse <p> nasce com o
+            // atributo `hidden` (ver template), e limpar o inline style só
+            // devolve o controle pro `[hidden]` nativo do navegador, que
+            // continua escondendo (achado real na tela de Relatórios do
+            // Robô, mesmo bug aqui). "block" vence de vez.
+            avisoVazio.style.display = visiveis === 0 ? "block" : "none";
         }
     }
 

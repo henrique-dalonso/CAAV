@@ -49,17 +49,17 @@
         </div>
     </div>
     <div class="relatorios-robo-acoes-topo">
+        <button type="button" class="botao-minimal botao-minimal-icone" id="botao-selecionar-robo" data-dica="Selecionar relatórios" aria-label="Selecionar relatórios">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+        </button>
         <button type="button" class="botao-minimal botao-minimal-icone" id="botao-baixar-todos-robo" data-dica="Baixar todos" aria-label="Baixar todos os relatórios filtrados">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                 <polyline points="7 10 12 15 17 10"></polyline>
                 <line x1="12" y1="15" x2="12" y2="3"></line>
                 <line x1="4" y1="21" x2="20" y2="21"></line>
-            </svg>
-        </button>
-        <button type="button" class="botao-minimal botao-minimal-icone" id="botao-selecionar-robo" data-dica="Selecionar relatórios" aria-label="Selecionar relatórios">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <polyline points="20 6 9 17 4 12"></polyline>
             </svg>
         </button>
     </div>
@@ -69,23 +69,25 @@
             <span class="check-caixa check-caixa-pequena"></span>
             Selecionar todos
         </label>
-        <button type="button" class="botao-minimal botao-minimal-icone" id="botao-baixar-selecionados-robo" data-dica="Baixar selecionados" aria-label="Baixar selecionados" disabled>
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-                <line x1="4" y1="21" x2="20" y2="21"></line>
-            </svg>
-        </button>
-        {% if usuario.eh_admin %}
-        <button type="button" class="botao-minimal botao-minimal-icone botao-minimal-icone-perigo" id="botao-excluir-selecionados-robo" data-dica="Excluir selecionados" aria-label="Excluir selecionados" disabled>
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-            </svg>
-        </button>
-        {% endif %}
-        <button type="button" class="botao-minimal" id="botao-cancelar-selecao-robo">Cancelar</button>
+        <div class="relatorios-robo-acoes-botoes">
+            <button type="button" class="botao-minimal botao-minimal-icone" id="botao-baixar-selecionados-robo" data-dica="Baixar selecionados" aria-label="Baixar selecionados" disabled>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                    <line x1="4" y1="21" x2="20" y2="21"></line>
+                </svg>
+            </button>
+            {% if usuario.eh_admin %}
+            <button type="button" class="botao-minimal botao-minimal-icone botao-minimal-icone-perigo" id="botao-excluir-selecionados-robo" data-dica="Excluir selecionados" aria-label="Excluir selecionados" disabled>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+            </button>
+            {% endif %}
+            <button type="button" class="botao-minimal botao-minimal-perigo" id="botao-cancelar-selecao-robo">Cancelar</button>
+        </div>
     </div>
     <form method="post" action="/extratus-aburesi/relatorios-robo/baixar-lote" id="form-baixar-lote-robo" hidden></form>
     {% if usuario.eh_admin %}
