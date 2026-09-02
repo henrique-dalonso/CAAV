@@ -37,7 +37,7 @@ templates.env.globals["contagem_nav_relatorios"] = contagem_nav_relatorios
 templates.env.globals["contagem_nav_relatorios_robo"] = contagem_nav_relatorios_robo
 
 
-@router.get("/relatorios")
+@router.get("/relatorios-urgentes")
 def pagina_relatorios_manuais(
     request: Request,
     usuario: Usuario = Depends(exigir_acesso_manual("extratus-aburesi")),
@@ -67,7 +67,7 @@ def pagina_relatorios_manuais(
     return resposta
 
 
-@router.get("/relatorios/{job_id}/pdf")
+@router.get("/relatorios-urgentes/{job_id}/pdf")
 def ver_pdf_relatorio_route(job_id: int):
     """Ver docstring equivalente em app/ferramentas/extratus/web/routes/
     relatorios_manuais.py (Extratus - Relatórios) — mesma lógica."""
@@ -95,10 +95,10 @@ def _redirecionar(erro=None, sucesso=None):
 
     query = f"?{'&'.join(partes)}" if partes else ""
 
-    return RedirectResponse(url=f"/extratus-aburesi/relatorios{query}", status_code=303)
+    return RedirectResponse(url=f"/extratus-aburesi/relatorios-urgentes{query}", status_code=303)
 
 
-@router.post("/relatorios/{job_id}/excluir")
+@router.post("/relatorios-urgentes/{job_id}/excluir")
 def excluir_relatorio_route(job_id: int, usuario: Usuario = Depends(exigir_admin)):
     """Ver docstring equivalente em app/ferramentas/extratus/web/routes/
     relatorios_manuais.py (Extratus - Relatórios) — mesma lógica."""
@@ -108,7 +108,7 @@ def excluir_relatorio_route(job_id: int, usuario: Usuario = Depends(exigir_admin
     return _redirecionar(sucesso="Relatório excluído permanentemente.")
 
 
-@router.post("/relatorios/{job_id}/marcar-notificacao-resolvida")
+@router.post("/relatorios-urgentes/{job_id}/marcar-notificacao-resolvida")
 def marcar_notificacao_resolvida_route(
     job_id: int,
     usuario: Usuario = Depends(exigir_acesso_manual("extratus-aburesi")),

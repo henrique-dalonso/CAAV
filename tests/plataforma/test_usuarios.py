@@ -530,21 +530,22 @@ def test_marcar_aba_vista_nao_afeta_outra_aba(limpar_usuarios_teste):
 
 # --- ferramenta_pela_url — cor/marca de identidade em qualquer sub-página
 # do módulo (Henrique, 2026-09-02: achado real, "marca-sistema-ferramenta"
-# só aparecia em /extratus/fila, voltava pra "Alonso & Verdiani" nas
-# outras abas do MESMO módulo — comparava contra Ferramenta.url, que
-# virou o link do ÍCONE (/extratus/fila), não mais o prefixo do módulo). ---
+# só aparecia em /extratus/fila (nome antigo da tela, hoje /fila-robo),
+# voltava pra "Alonso & Verdiani" nas outras abas do MESMO módulo —
+# comparava contra Ferramenta.url, que virou o link do ÍCONE, não mais o
+# prefixo do módulo). ---
 
 def test_ferramenta_pela_url_reconhece_qualquer_subpagina_do_modulo():
-    assert ferramenta_pela_url("/extratus/fila").slug == "extratus"
+    assert ferramenta_pela_url("/extratus/fila-robo").slug == "extratus"
     assert ferramenta_pela_url("/extratus/relatorios-robo").slug == "extratus"
-    assert ferramenta_pela_url("/extratus/relatorios").slug == "extratus"
+    assert ferramenta_pela_url("/extratus/relatorios-urgentes").slug == "extratus"
     assert ferramenta_pela_url("/extratus/").slug == "extratus"
 
 
 def test_ferramenta_pela_url_nao_confunde_extratus_com_aburesi():
     # "/extratus-aburesi/..." também começa com a string "extratus" —
     # sem a barra de fronteira, um startswith ingênuo confundiria os dois.
-    assert ferramenta_pela_url("/extratus-aburesi/fila").slug == "extratus-aburesi"
+    assert ferramenta_pela_url("/extratus-aburesi/fila-robo").slug == "extratus-aburesi"
     assert ferramenta_pela_url("/extratus-aburesi/relatorios-robo").slug == "extratus-aburesi"
 
 

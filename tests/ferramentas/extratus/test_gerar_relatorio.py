@@ -74,7 +74,7 @@ def _criar_registro(nome, usuario_id, status="processo_nao_encontrado"):
 def test_pagina_inicial_exige_login():
     cliente = TestClient(app)
 
-    resp = cliente.get("/extratus/", follow_redirects=False)
+    resp = cliente.get("/extratus/fila-urgentes", follow_redirects=False)
 
     assert resp.status_code == 303
     assert resp.headers["location"] == "/login"
@@ -83,7 +83,7 @@ def test_pagina_inicial_exige_login():
 def test_estado_exige_login():
     cliente = TestClient(app)
 
-    resp = cliente.get("/extratus/estado", follow_redirects=False)
+    resp = cliente.get("/extratus/fila-urgentes/estado", follow_redirects=False)
 
     assert resp.status_code == 303
 
@@ -96,7 +96,7 @@ def test_upload_recusa_mais_de_5_arquivos(clientes_logados, tmp_path, limpar_tri
             ("arquivos", (f"{PREFIXO_TESTE}demais_{i}.pdf", CONTEUDO_PDF_FALSO, "application/pdf"))
             for i in range(6)
         ]
-        resp = cliente_a.post("/extratus/upload", files=arquivos)
+        resp = cliente_a.post("/extratus/fila-urgentes/upload", files=arquivos)
 
     assert resp.status_code == 400
 
@@ -111,7 +111,7 @@ def test_upload_cria_registros_e_agenda_processamento(clientes_logados, tmp_path
             ("arquivos", (f"{PREFIXO_TESTE}um.pdf", CONTEUDO_PDF_FALSO, "application/pdf")),
             ("arquivos", (f"{PREFIXO_TESTE}dois.pdf", CONTEUDO_PDF_FALSO, "application/pdf")),
         ]
-        resp = cliente_a.post("/extratus/upload", files=arquivos, follow_redirects=False)
+        resp = cliente_a.post("/extratus/fila-urgentes/upload", files=arquivos, follow_redirects=False)
 
     assert resp.status_code == 303
     assert "sucesso=" in resp.headers["location"]
@@ -134,7 +134,7 @@ def test_upload_recusa_arquivo_nao_pdf(clientes_logados, tmp_path, limpar_triage
         gerar_relatorio, "carregar_config", return_value={"pasta_entrada": str(tmp_path)},
     ), patch.object(gerar_relatorio, "processar_upload_manual"):
         arquivos = [("arquivos", (f"{PREFIXO_TESTE}naopdf.txt", b"nao e pdf", "text/plain"))]
-        resp = cliente_a.post("/extratus/upload", files=arquivos, follow_redirects=False)
+        resp = cliente_a.post("/extratus/fila-urgentes/upload", files=arquivos, follow_redirects=False)
 
     assert resp.status_code == 303
     assert "erro=" in resp.headers["location"]
@@ -149,7 +149,7 @@ def test_estado_so_mostra_registros_do_proprio_usuario(clientes_logados, limpar_
     registro_a = _criar_registro(f"{PREFIXO_TESTE}pendente_a.pdf", usuario_a_id, status="pendente")
     registro_b = _criar_registro(f"{PREFIXO_TESTE}pendente_b.pdf", usuario_b_id, status="pendente")
 
-    resp = cliente_a.get("/extratus/estado")
+    resp = cliente_a.get("/extratus/fila-urgentes/estado")
 
     assert resp.status_code == 200
     nomes = {item["nome"] for item in resp.json()["pendentes"]}
@@ -166,7 +166,7 @@ def test_estado_mantem_inconsistencia_em_pendentes_com_aguardando_conferencia(cl
 
     registro = _criar_registro(f"{PREFIXO_TESTE}inconsistencia_pendente.pdf", usuario_a_id, status="falha_leitura")
 
-    resp = cliente_a.get("/extratus/estado")
+    resp = cliente_a.get("/extratus/fila-urgentes/estado")
 
     assert resp.status_code == 200
     corpo = resp.json()
@@ -185,7 +185,7 @@ def test_conferencia_aprovar_dispara_geracao_em_segundo_plano(clientes_logados, 
 
     with patch.object(gerar_relatorio, "retomar_apos_conferencia") as retomar_mock:
         resp = cliente_a.post(
-            f"/extratus/conferencia/{registro.id}/aprovar", follow_redirects=False,
+            f"/extratus/fila-urgentes/conferencia/{registro.id}/aprovar", follow_redirects=False,
         )
 
     assert resp.status_code == 303
@@ -199,7 +199,7 @@ def test_conferencia_aprovar_sem_processo_quando_nao_encontrado_falha(clientes_l
 
     registro = _criar_registro(f"{PREFIXO_TESTE}sem_processo.pdf", usuario_a_id, status="processo_nao_encontrado")
 
-    resp = cliente_a.post(f"/extratus/conferencia/{registro.id}/aprovar", follow_redirects=False)
+    resp = cliente_a.post(f"/extratus/fila-urgentes/conferencia/{registro.id}/aprovar", follow_redirects=False)
 
     assert resp.status_code == 303
     assert "erro=" in resp.headers["location"]
@@ -221,7 +221,7 @@ def test_conferencia_descartar_apaga_registro(clientes_logados, tmp_path, limpar
         sessao.commit()
         sessao.refresh(registro)
 
-    resp = cliente_a.post(f"/extratus/conferencia/{registro.id}/descartar", follow_redirects=False)
+    resp = cliente_a.post(f"/extratus/fila-urgentes/conferencia/{registro.id}/descartar", follow_redirects=False)
 
     assert resp.status_code == 303
     assert "sucesso=" in resp.headers["location"]
@@ -235,7 +235,7 @@ def test_usuario_nao_ve_conferencia_de_outro(clientes_logados, limpar_triagem_te
 
     registro_b = _criar_registro(f"{PREFIXO_TESTE}conferencia_de_outro.pdf", usuario_b_id, status="processo_nao_encontrado")
 
-    resp = cliente_a.post(f"/extratus/conferencia/{registro_b.id}/descartar", follow_redirects=False)
+    resp = cliente_a.post(f"/extratus/fila-urgentes/conferencia/{registro_b.id}/descartar", follow_redirects=False)
 
     assert resp.status_code == 303
     assert "erro=" in resp.headers["location"]
@@ -263,17 +263,17 @@ def test_pagina_inicial_mostra_badge_ambar_ate_resolver(clientes_logados, limpar
     # se houver algum revisão real pendente lá também).
     badge_gerar_relatorio = 'Gerar Relatório URGENTE <span class="contagem-aba contagem-aba-revisao">+1</span>'
 
-    primeira_visita = cliente_a.get("/extratus/")
+    primeira_visita = cliente_a.get("/extratus/fila-urgentes")
     assert primeira_visita.status_code == 200
     assert badge_gerar_relatorio in primeira_visita.text
 
-    segunda_visita = cliente_a.get("/extratus/")
+    segunda_visita = cliente_a.get("/extratus/fila-urgentes")
     assert segunda_visita.status_code == 200
     assert badge_gerar_relatorio in segunda_visita.text
 
     db_triagem.descartar(registro.id)
 
-    depois_de_resolver = cliente_a.get("/extratus/")
+    depois_de_resolver = cliente_a.get("/extratus/fila-urgentes")
     assert depois_de_resolver.status_code == 200
     assert badge_gerar_relatorio not in depois_de_resolver.text
 
@@ -355,15 +355,15 @@ def test_colaborador_sem_acesso_manual_e_redirecionado_pra_fila(cliente_colabora
     # um colaborador sem acesso_manual não pode tomar um 403 seco só por
     # ter clicado no ícone da ferramenta, tem que cair num lugar que ele
     # realmente pode usar (Fila do Robô, o padrão de todo mundo).
-    resposta = cliente_colaborador_sem_acesso_manual.get("/extratus/", follow_redirects=False)
+    resposta = cliente_colaborador_sem_acesso_manual.get("/extratus/fila-urgentes", follow_redirects=False)
     assert resposta.status_code == 303
-    assert resposta.headers["location"] == "/extratus/fila"
+    assert resposta.headers["location"] == "/extratus/fila-robo"
 
-    resposta_seguida = cliente_colaborador_sem_acesso_manual.get("/extratus/")
+    resposta_seguida = cliente_colaborador_sem_acesso_manual.get("/extratus/fila-urgentes")
     assert resposta_seguida.status_code == 200
     assert "Fila do Robô" in resposta_seguida.text
 
 
 def test_colaborador_com_acesso_manual_acessa_gerar_relatorio(cliente_colaborador_com_acesso_manual):
-    resposta = cliente_colaborador_com_acesso_manual.get("/extratus/")
+    resposta = cliente_colaborador_com_acesso_manual.get("/extratus/fila-urgentes")
     assert resposta.status_code == 200

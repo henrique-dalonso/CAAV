@@ -85,7 +85,7 @@
             evento.stopPropagation();
             var jobId = botao.dataset.jobId;
             botao.disabled = true;
-            fetch("relatorios/" + jobId + "/marcar-notificacao-resolvida", { method: "POST" })
+            fetch("relatorios-urgentes/" + jobId + "/marcar-notificacao-resolvida", { method: "POST" })
                 .then(function (resp) {
                     if (!resp.ok) { throw new Error("falhou"); }
                     botao.remove();

@@ -78,13 +78,13 @@ def _redirecionar(erro=None, sucesso=None):
 
     query = f"?{'&'.join(partes)}" if partes else ""
 
-    return RedirectResponse(url=f"/extratus/fila{query}", status_code=303)
+    return RedirectResponse(url=f"/extratus/fila-robo{query}", status_code=303)
 
 
 def _estado_atual_fila():
     """Quem está pendente vs. já reivindicado pelo robô agora mesmo —
     usado tanto pra renderizar a página quanto pelo endpoint de polling
-    (/fila/estado), sempre a mesma fonte de verdade.
+    (/fila-robo/estado), sempre a mesma fonte de verdade.
 
     Pendentes vem como [{"nome": ..., "status": ..., "aguardando_conferencia": ...}],
     não só o nome — status é o da checagem (checagem_lote.py): "pendente"
@@ -154,7 +154,7 @@ def _conferencias_pendentes():
     ]
 
 
-@router.get("/fila")
+@router.get("/fila-robo")
 def pagina_fila(
     request: Request,
     usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
@@ -184,7 +184,7 @@ def pagina_fila(
     return resposta
 
 
-@router.get("/fila/estado")
+@router.get("/fila-robo/estado")
 def estado_fila():
     """Endpoint enxuto pro polling (fila.js) — só os nomes, sem
     renderizar HTML nenhum. Chamado a cada poucos segundos pela tela da
@@ -199,7 +199,7 @@ def estado_fila():
     }
 
 
-@router.post("/fila/upload")
+@router.post("/fila-robo/upload")
 async def enviar_pdfs(
     request: Request,
     arquivos: list[UploadFile] = File(...),
@@ -265,7 +265,7 @@ async def enviar_pdfs(
     return _redirecionar(sucesso=f"{enviados} PDF(s) enviado(s) pra fila do Robô.")
 
 
-@router.post("/fila/remover-varios")
+@router.post("/fila-robo/remover-varios")
 def remover_varios_da_fila(
     nomes: list[str] = Form(...),
     usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
@@ -316,7 +316,7 @@ def remover_varios_da_fila(
     return _redirecionar(sucesso=mensagem)
 
 
-@router.post("/fila/conferencia/{registro_id}/aprovar")
+@router.post("/fila-robo/conferencia/{registro_id}/aprovar")
 def aprovar_conferencia(
     registro_id: int,
     usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
@@ -351,13 +351,13 @@ def aprovar_conferencia(
     return _redirecionar(sucesso=f'"{nome_arquivo}" liberado pra fila do Robô.')
 
 
-@router.post("/fila/conferencia/{registro_id}/descartar")
+@router.post("/fila-robo/conferencia/{registro_id}/descartar")
 def descartar_conferencia(
     registro_id: int,
     usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
 ):
     """"Descartar" do painel de Conferências — remove o PDF de vez da
-    fila (mesmo mecanismo de /fila/remover-varios) e registra quem
+    fila (mesmo mecanismo de /fila-robo/remover-varios) e registra quem
     decidiu."""
     registro = obter_registro(registro_id)
 
@@ -379,7 +379,7 @@ def descartar_conferencia(
     return _redirecionar(sucesso=f'"{nome_arquivo}" descartado da fila.')
 
 
-@router.post("/fila/conferencia/descartar-todas")
+@router.post("/fila-robo/conferencia/descartar-todas")
 def descartar_todas_conferencias(
     usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
 ):
@@ -412,7 +412,7 @@ def descartar_todas_conferencias(
     return _redirecionar(sucesso=f"{descartados} arquivo(s) descartado(s) da fila.")
 
 
-@router.get("/fila/conferencia/{registro_id}/ver")
+@router.get("/fila-robo/conferencia/{registro_id}/ver")
 def ver_pdf_conferencia(
     registro_id: int,
     usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),

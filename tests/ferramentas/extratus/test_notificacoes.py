@@ -52,7 +52,7 @@ def test_inconsistencia_de_triagem_vira_notificacao(limpar_notificacoes_teste):
 
     assert achado is not None
     assert achado["tipo"] == "triagem"
-    assert achado["link"] == "/extratus/fila"
+    assert achado["link"] == "/extratus/fila-robo"
 
 
 def test_status_aprovado_e_pendente_nao_viram_notificacao(limpar_notificacoes_teste):
@@ -173,7 +173,7 @@ def test_relatorio_pronto_do_usuario_vira_notificacao_descartavel(limpar_notific
     assert achado is not None
     assert achado["tipo"] == "pronto"
     assert achado["descartavel"] is True
-    assert achado["resolver"] == f"/extratus/relatorios/{job.id}/marcar-notificacao-resolvida"
+    assert achado["resolver"] == f"/extratus/relatorios-urgentes/{job.id}/marcar-notificacao-resolvida"
 
 
 def test_relatorio_em_revisao_do_usuario_vira_notificacao_nao_descartavel(limpar_notificacoes_teste):

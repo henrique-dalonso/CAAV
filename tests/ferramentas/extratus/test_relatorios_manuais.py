@@ -100,14 +100,14 @@ def job_manual_de_teste():
 
 
 def test_pagina_sem_processo_na_query_nao_preenche_busca(cliente_logado, job_manual_de_teste):
-    resp = cliente_logado.get("/extratus/relatorios")
+    resp = cliente_logado.get("/extratus/relatorios-urgentes")
 
     assert resp.status_code == 200
     assert 'data-processo-inicial=""' in resp.text
 
 
 def test_pagina_com_processo_na_query_preenche_busca_inicial(cliente_logado, job_manual_de_teste):
-    resp = cliente_logado.get("/extratus/relatorios?processo=0000000-00.2026.8.00.0900")
+    resp = cliente_logado.get("/extratus/relatorios-urgentes?processo=0000000-00.2026.8.00.0900")
 
     assert resp.status_code == 200
     assert 'data-processo-inicial="0000000-00.2026.8.00.0900"' in resp.text
@@ -129,7 +129,7 @@ def test_botao_marcar_revisado_aparece_so_pro_dono_em_revisao(cliente_logado):
         usuario_id=USUARIO_TESTE,
     )
 
-    resp = cliente_logado.get("/extratus/relatorios")
+    resp = cliente_logado.get("/extratus/relatorios-urgentes")
 
     assert resp.status_code == 200
     assert f'data-job-id="{job_proprio_revisao.id}"' in resp.text
@@ -148,7 +148,7 @@ def test_excluir_relatorio_admin_apaga_de_verdade(cliente_logado):
         usuario_id=USUARIO_TESTE,
     )
 
-    resp = cliente_logado.post(f"/extratus/relatorios/{job.id}/excluir", follow_redirects=False)
+    resp = cliente_logado.post(f"/extratus/relatorios-urgentes/{job.id}/excluir", follow_redirects=False)
 
     assert resp.status_code == 303
     assert "sucesso=" in resp.headers["location"]
@@ -158,7 +158,7 @@ def test_excluir_relatorio_admin_apaga_de_verdade(cliente_logado):
 
 
 def test_excluir_relatorio_inexistente_redireciona_com_erro(cliente_logado):
-    resp = cliente_logado.post("/extratus/relatorios/999999999/excluir", follow_redirects=False)
+    resp = cliente_logado.post("/extratus/relatorios-urgentes/999999999/excluir", follow_redirects=False)
 
     assert resp.status_code == 303
     assert "erro=" in resp.headers["location"]
@@ -172,7 +172,7 @@ def test_excluir_relatorio_recusa_nao_admin(cliente_colaborador_nao_admin):
         usuario_id=USUARIO_TESTE,
     )
 
-    resp = cliente_colaborador_nao_admin.post(f"/extratus/relatorios/{job.id}/excluir")
+    resp = cliente_colaborador_nao_admin.post(f"/extratus/relatorios-urgentes/{job.id}/excluir")
 
     assert resp.status_code == 403
 
@@ -183,7 +183,7 @@ def test_excluir_relatorio_recusa_nao_admin(cliente_colaborador_nao_admin):
 
 
 def test_botao_excluir_so_aparece_pro_admin(cliente_colaborador_nao_admin, job_manual_de_teste):
-    resp = cliente_colaborador_nao_admin.get("/extratus/relatorios")
+    resp = cliente_colaborador_nao_admin.get("/extratus/relatorios-urgentes")
 
     assert resp.status_code == 200
     assert "botao-excluir" not in resp.text
@@ -198,7 +198,7 @@ def test_marcar_notificacao_resolvida_route_funciona_pro_dono(cliente_logado):
         usuario_id=usuario.id,
     )
 
-    resp = cliente_logado.post(f"/extratus/relatorios/{job.id}/marcar-notificacao-resolvida")
+    resp = cliente_logado.post(f"/extratus/relatorios-urgentes/{job.id}/marcar-notificacao-resolvida")
 
     assert resp.status_code == 200
     assert resp.json() == {"ok": True}
@@ -218,7 +218,7 @@ def test_marcar_notificacao_resolvida_route_404_pra_job_de_outro_usuario(cliente
         usuario_id=USUARIO_TESTE,
     )
 
-    resp = cliente_logado.post(f"/extratus/relatorios/{job.id}/marcar-notificacao-resolvida")
+    resp = cliente_logado.post(f"/extratus/relatorios-urgentes/{job.id}/marcar-notificacao-resolvida")
 
     assert resp.status_code == 404
 
@@ -238,7 +238,7 @@ def test_ver_pdf_relatorio_abre_o_arquivo_de_origem(cliente_logado, tmp_path):
         usuario_id=USUARIO_TESTE,
     )
 
-    resp = cliente_logado.get(f"/extratus/relatorios/{job.id}/pdf")
+    resp = cliente_logado.get(f"/extratus/relatorios-urgentes/{job.id}/pdf")
 
     assert resp.status_code == 200
     assert resp.headers["content-type"] == "application/pdf"
@@ -257,7 +257,7 @@ def test_ver_pdf_relatorio_sem_destino_pdf_da_404(cliente_logado):
         usuario_id=USUARIO_TESTE,
     )
 
-    resp = cliente_logado.get(f"/extratus/relatorios/{job.id}/pdf")
+    resp = cliente_logado.get(f"/extratus/relatorios-urgentes/{job.id}/pdf")
 
     assert resp.status_code == 404
 
@@ -274,7 +274,7 @@ def test_ver_pdf_relatorio_com_arquivo_removido_do_disco_da_404(cliente_logado, 
         usuario_id=USUARIO_TESTE,
     )
 
-    resp = cliente_logado.get(f"/extratus/relatorios/{job.id}/pdf")
+    resp = cliente_logado.get(f"/extratus/relatorios-urgentes/{job.id}/pdf")
 
     assert resp.status_code == 404
 
@@ -284,7 +284,7 @@ def test_ver_pdf_relatorio_com_arquivo_removido_do_disco_da_404(cliente_logado, 
 
 
 def test_ver_pdf_relatorio_job_inexistente_da_404(cliente_logado):
-    resp = cliente_logado.get("/extratus/relatorios/999999999/pdf")
+    resp = cliente_logado.get("/extratus/relatorios-urgentes/999999999/pdf")
 
     assert resp.status_code == 404
 
@@ -304,11 +304,11 @@ def test_pagina_relatorios_mostra_link_pdf_so_quando_ha_destino_pdf(cliente_loga
         usuario_id=USUARIO_TESTE,
     )
 
-    resp = cliente_logado.get("/extratus/relatorios")
+    resp = cliente_logado.get("/extratus/relatorios-urgentes")
 
     assert resp.status_code == 200
-    assert f'/extratus/relatorios/{job_com_pdf.id}/pdf' in resp.text
-    assert f'/extratus/relatorios/{job_sem_pdf.id}/pdf' not in resp.text
+    assert f'/extratus/relatorios-urgentes/{job_com_pdf.id}/pdf' in resp.text
+    assert f'/extratus/relatorios-urgentes/{job_sem_pdf.id}/pdf' not in resp.text
 
     with obter_sessao() as sessao:
         sessao.exec(delete(Job).where(Job.id.in_([job_com_pdf.id, job_sem_pdf.id])))

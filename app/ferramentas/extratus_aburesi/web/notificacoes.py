@@ -27,7 +27,7 @@ def listar_notificacoes(usuario_id):
         notificacoes.append({
             "mensagem": f'"{registro.nome_arquivo}": {motivo}',
             "tipo": "triagem",
-            "link": "/extratus-aburesi/fila",
+            "link": "/extratus-aburesi/fila-robo",
             "criado_em": registro.atualizado_em.isoformat(),
         })
 
@@ -75,7 +75,7 @@ def listar_notificacoes_pessoais(usuario_id):
         notificacoes.append({
             "mensagem": f'"{registro.nome_arquivo}": {motivo}',
             "tipo": "conferencia_manual",
-            "link": "/extratus-aburesi/",
+            "link": "/extratus-aburesi/fila-urgentes",
             "pessoal": True,
             "descartavel": False,
             "criado_em": registro.atualizado_em.isoformat(),
@@ -85,7 +85,7 @@ def listar_notificacoes_pessoais(usuario_id):
         notificacoes.append({
             "mensagem": f'"{registro.nome_arquivo}": falha ao gerar o relatório',
             "tipo": "erro_manual",
-            "link": "/extratus-aburesi/",
+            "link": "/extratus-aburesi/fila-urgentes",
             "pessoal": True,
             "descartavel": False,
             "criado_em": registro.atualizado_em.isoformat(),
@@ -96,17 +96,17 @@ def listar_notificacoes_pessoais(usuario_id):
             notificacoes.append({
                 "mensagem": f'"{job.arquivo_pdf}": relatório pronto',
                 "tipo": "pronto",
-                "link": "/extratus-aburesi/relatorios",
+                "link": "/extratus-aburesi/relatorios-urgentes",
                 "pessoal": True,
                 "descartavel": True,
-                "resolver": f"/extratus-aburesi/relatorios/{job.id}/marcar-notificacao-resolvida",
+                "resolver": f"/extratus-aburesi/relatorios-urgentes/{job.id}/marcar-notificacao-resolvida",
                 "criado_em": job.criado_em.isoformat(),
             })
         else:
             notificacoes.append({
                 "mensagem": f'"{job.arquivo_pdf}": relatório pronto, mas precisa de revisão',
                 "tipo": "revisao",
-                "link": "/extratus-aburesi/relatorios",
+                "link": "/extratus-aburesi/relatorios-urgentes",
                 "pessoal": True,
                 "descartavel": False,
                 "criado_em": job.criado_em.isoformat(),

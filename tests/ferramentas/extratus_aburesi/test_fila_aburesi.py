@@ -75,7 +75,7 @@ def _criar_checagem(nome, status, processo=None):
 def test_upload_com_nome_repetido_nao_sobrescreve(cliente_logado, tmp_path):
     with patch.object(fila, "carregar_config", return_value=_config_para(tmp_path)):
         resp1 = cliente_logado.post(
-            "/extratus-aburesi/fila/upload",
+            "/extratus-aburesi/fila-robo/upload",
             files={"arquivos": ("processo.pdf", b"%PDF-1.4 conteudo original", "application/pdf")},
             follow_redirects=False,
         )
@@ -83,7 +83,7 @@ def test_upload_com_nome_repetido_nao_sobrescreve(cliente_logado, tmp_path):
         assert "sucesso=" in resp1.headers["location"]
 
         resp2 = cliente_logado.post(
-            "/extratus-aburesi/fila/upload",
+            "/extratus-aburesi/fila-robo/upload",
             files={"arquivos": ("processo.pdf", b"%PDF-1.4 conteudo NOVO, nao deveria entrar", "application/pdf")},
             follow_redirects=False,
         )
@@ -98,7 +98,7 @@ def test_upload_com_nome_repetido_nao_sobrescreve(cliente_logado, tmp_path):
 def test_upload_normal_ainda_funciona(cliente_logado, tmp_path):
     with patch.object(fila, "carregar_config", return_value=_config_para(tmp_path)):
         resp = cliente_logado.post(
-            "/extratus-aburesi/fila/upload",
+            "/extratus-aburesi/fila-robo/upload",
             files={"arquivos": ("novo.pdf", b"%PDF-1.4 arquivo novo", "application/pdf")},
             follow_redirects=False,
         )
@@ -121,7 +121,7 @@ def test_upload_atrela_solicitante_direto_na_hora(cliente_logado, tmp_path):
     try:
         with patch.object(fila, "carregar_config", return_value=_config_para(tmp_path)):
             resp = cliente_logado.post(
-                "/extratus-aburesi/fila/upload",
+                "/extratus-aburesi/fila-robo/upload",
                 files={"arquivos": (nome_arquivo, b"%PDF-1.4 conteudo", "application/pdf")},
                 follow_redirects=False,
             )
@@ -143,7 +143,7 @@ def test_remover_varios_limpa_conferencia_aberta_na_hora(cliente_logado, limpar_
 
     with patch.object(fila, "carregar_config", return_value=_config_para(tmp_path)):
         resp = cliente_logado.post(
-            "/extratus-aburesi/fila/remover-varios",
+            "/extratus-aburesi/fila-robo/remover-varios",
             data={"nomes": [nome]},
             follow_redirects=False,
         )
@@ -168,7 +168,7 @@ def test_remover_varios_sem_conferencia_nao_cria_registro(cliente_logado, limpar
 
     with patch.object(fila, "carregar_config", return_value=_config_para(tmp_path)):
         resp = cliente_logado.post(
-            "/extratus-aburesi/fila/remover-varios",
+            "/extratus-aburesi/fila-robo/remover-varios",
             data={"nomes": [nome]},
             follow_redirects=False,
         )
@@ -187,7 +187,7 @@ def test_remover_varios_sem_conferencia_nao_cria_registro(cliente_logado, limpar
 def test_aprovar_conferencia_duplicado_libera_direto(cliente_logado, limpar_conferencia_teste):
     registro = _criar_checagem(f"{PREFIXO_TESTE}duplicado.pdf", DUPLICADO_RELATORIO, processo="123")
 
-    resp = cliente_logado.post(f"/extratus-aburesi/fila/conferencia/{registro.id}/aprovar", follow_redirects=False)
+    resp = cliente_logado.post(f"/extratus-aburesi/fila-robo/conferencia/{registro.id}/aprovar", follow_redirects=False)
 
     assert resp.status_code == 303
     assert "sucesso=" in resp.headers["location"]
@@ -208,7 +208,7 @@ def test_aprovar_conferencia_duplicado_libera_direto(cliente_logado, limpar_conf
 def test_aprovar_conferencia_sem_processo_quando_nao_encontrado_falha(cliente_logado, limpar_conferencia_teste):
     registro = _criar_checagem(f"{PREFIXO_TESTE}sem_processo.pdf", NAO_ENCONTRADO)
 
-    resp = cliente_logado.post(f"/extratus-aburesi/fila/conferencia/{registro.id}/aprovar", follow_redirects=False)
+    resp = cliente_logado.post(f"/extratus-aburesi/fila-robo/conferencia/{registro.id}/aprovar", follow_redirects=False)
 
     assert "erro=" in resp.headers["location"]
     assert obter_registro(registro.id).status == NAO_ENCONTRADO
@@ -218,7 +218,7 @@ def test_aprovar_conferencia_com_processo_invalido_falha(cliente_logado, limpar_
     registro = _criar_checagem(f"{PREFIXO_TESTE}processo_invalido.pdf", NAO_ENCONTRADO)
 
     resp = cliente_logado.post(
-        f"/extratus-aburesi/fila/conferencia/{registro.id}/aprovar",
+        f"/extratus-aburesi/fila-robo/conferencia/{registro.id}/aprovar",
         data={"processo": "numero-qualquer"},
         follow_redirects=False,
     )
@@ -231,7 +231,7 @@ def test_aprovar_conferencia_com_processo_valido_libera(cliente_logado, limpar_c
     registro = _criar_checagem(f"{PREFIXO_TESTE}com_processo.pdf", NAO_ENCONTRADO)
 
     resp = cliente_logado.post(
-        f"/extratus-aburesi/fila/conferencia/{registro.id}/aprovar",
+        f"/extratus-aburesi/fila-robo/conferencia/{registro.id}/aprovar",
         data={"processo": "1234567-11.2026.8.00.1234"},
         follow_redirects=False,
     )
@@ -248,7 +248,7 @@ def test_descartar_conferencia_apaga_arquivo_e_registra(cliente_logado, limpar_c
     registro = _criar_checagem(nome, DUPLICADO_RELATORIO, processo="999")
 
     with patch.object(fila, "carregar_config", return_value=_config_para(tmp_path)):
-        resp = cliente_logado.post(f"/extratus-aburesi/fila/conferencia/{registro.id}/descartar", follow_redirects=False)
+        resp = cliente_logado.post(f"/extratus-aburesi/fila-robo/conferencia/{registro.id}/descartar", follow_redirects=False)
 
     assert "sucesso=" in resp.headers["location"]
     assert not (tmp_path / nome).exists()
@@ -276,7 +276,7 @@ def test_descartar_todas_conferencias_remove_tudo(cliente_logado, limpar_confere
 
     with patch.object(fila, "carregar_config", return_value=_config_para(tmp_path)), \
             patch.object(fila, "listar_inconsistencias", return_value=[registro1, registro2]):
-        resp = cliente_logado.post("/extratus-aburesi/fila/conferencia/descartar-todas", follow_redirects=False)
+        resp = cliente_logado.post("/extratus-aburesi/fila-robo/conferencia/descartar-todas", follow_redirects=False)
 
     assert "sucesso=" in resp.headers["location"]
     assert not (tmp_path / nome1).exists()
@@ -294,7 +294,7 @@ def test_descartar_todas_conferencias_remove_tudo(cliente_logado, limpar_confere
 
 def test_descartar_todas_conferencias_sem_nada_da_aviso(cliente_logado):
     with patch.object(fila, "listar_inconsistencias", return_value=[]):
-        resp = cliente_logado.post("/extratus-aburesi/fila/conferencia/descartar-todas", follow_redirects=False)
+        resp = cliente_logado.post("/extratus-aburesi/fila-robo/conferencia/descartar-todas", follow_redirects=False)
 
     assert "erro=" in resp.headers["location"]
 
@@ -314,7 +314,7 @@ def test_estado_fila_ordena_pendentes_vermelho_laranja_amarelo(cliente_logado, l
 
     with patch.object(fila, "carregar_config", return_value=_config_para(tmp_path)), \
             patch.object(fila, "listar_arquivos_ja_reivindicados", return_value=set()):
-        resp = cliente_logado.get("/extratus-aburesi/fila/estado")
+        resp = cliente_logado.get("/extratus-aburesi/fila-robo/estado")
 
     assert resp.status_code == 200
     nomes_na_ordem = [item["nome"] for item in resp.json()["pendentes"]]
@@ -323,12 +323,12 @@ def test_estado_fila_ordena_pendentes_vermelho_laranja_amarelo(cliente_logado, l
 
 
 def test_aprovar_conferencia_registro_inexistente_da_erro(cliente_logado):
-    resp = cliente_logado.post("/extratus-aburesi/fila/conferencia/999999999/aprovar", follow_redirects=False)
+    resp = cliente_logado.post("/extratus-aburesi/fila-robo/conferencia/999999999/aprovar", follow_redirects=False)
     assert "erro=" in resp.headers["location"]
 
 
 def test_descartar_conferencia_registro_inexistente_da_erro(cliente_logado):
-    resp = cliente_logado.post("/extratus-aburesi/fila/conferencia/999999999/descartar", follow_redirects=False)
+    resp = cliente_logado.post("/extratus-aburesi/fila-robo/conferencia/999999999/descartar", follow_redirects=False)
     assert "erro=" in resp.headers["location"]
 
 
@@ -341,17 +341,17 @@ def test_pagina_fila_mostra_badge_ambar_ate_resolver(cliente_logado, limpar_conf
     # ver comentário equivalente em tests/ferramentas/extratus/test_fila.py).
     badge_fila_robo = 'Fila do Robô <span class="contagem-aba contagem-aba-revisao">+1</span>'
 
-    primeira_visita = cliente_logado.get("/extratus-aburesi/fila")
+    primeira_visita = cliente_logado.get("/extratus-aburesi/fila-robo")
     assert primeira_visita.status_code == 200
     assert badge_fila_robo in primeira_visita.text
 
-    segunda_visita = cliente_logado.get("/extratus-aburesi/fila")
+    segunda_visita = cliente_logado.get("/extratus-aburesi/fila-robo")
     assert segunda_visita.status_code == 200
     assert badge_fila_robo in segunda_visita.text
 
     descartar(registro.id)
 
-    depois_de_resolver = cliente_logado.get("/extratus-aburesi/fila")
+    depois_de_resolver = cliente_logado.get("/extratus-aburesi/fila-robo")
     assert depois_de_resolver.status_code == 200
     assert badge_fila_robo not in depois_de_resolver.text
 
@@ -403,7 +403,7 @@ def cliente_colaborador_padrao():
 
 
 def test_colaborador_sem_flag_nenhuma_acessa_fila_do_robo(cliente_colaborador_padrao):
-    resposta = cliente_colaborador_padrao.get("/extratus-aburesi/fila")
+    resposta = cliente_colaborador_padrao.get("/extratus-aburesi/fila-robo")
     assert resposta.status_code == 200
 
 
@@ -415,7 +415,7 @@ def test_pagina_fila_mostra_bolinha_azul_pulsando_pra_quem_esta_processando(clie
 
     with patch.object(fila, "carregar_config", return_value=_config_para(tmp_path)), \
             patch.object(fila, "listar_arquivos_ja_reivindicados", return_value={nome_pdf}):
-        resp = cliente_logado.get("/extratus-aburesi/fila")
+        resp = cliente_logado.get("/extratus-aburesi/fila-robo")
 
     assert resp.status_code == 200
     assert "bolinha-azul" in resp.text

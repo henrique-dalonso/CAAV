@@ -15,11 +15,16 @@ não precisam de entrada própria."""
 
 def _rotulos_modulo(prefixo, nome_ferramenta):
     # Mesmos nomes das abas de navegação (_macros_extratus.html) —
-    # "URGENTE" é o fluxo manual, "Robô" é o padrão automático.
+    # "URGENTE" é o fluxo manual, "Robô" é o padrão automático. Henrique,
+    # 2026-09-02: URLs sanitizadas — "Gerar Relatório URGENTE" saiu da
+    # raiz do módulo (não existe mais rota nenhuma nela) pra
+    # "/fila-urgentes", e "Fila do Robô" ganhou o sufixo "-robo" — sem
+    # entrada de fallback pra raiz aqui de propósito, já que nenhuma tela
+    # mora mais lá.
     return {
-        prefixo: f"Gerar Relatório URGENTE — {nome_ferramenta}",
-        f"{prefixo}/relatorios": f"Relatórios URGENTES — {nome_ferramenta}",
-        f"{prefixo}/fila": f"Fila do Robô — {nome_ferramenta}",
+        f"{prefixo}/fila-urgentes": f"Gerar Relatório URGENTE — {nome_ferramenta}",
+        f"{prefixo}/relatorios-urgentes": f"Relatórios URGENTES — {nome_ferramenta}",
+        f"{prefixo}/fila-robo": f"Fila do Robô — {nome_ferramenta}",
         f"{prefixo}/relatorios-robo": f"Relatórios do Robô — {nome_ferramenta}",
     }
 

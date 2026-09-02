@@ -57,12 +57,11 @@ LIMITE_ARQUIVOS_POR_JANELA = MAXIMO_ARQUIVOS_POR_ENVIO * 8
 
 # Henrique, diretoria, 2026-08-19: o gate do router é só acesso BÁSICO —
 # cada rota individual continua com seu próprio Depends(exigir_acesso_manual)
-# pra exigir a permissão de verdade, EXCETO a raiz ("/"), que precisa ficar
-# alcançável por qualquer um com acesso à ferramenta pra poder redirecionar
+# pra exigir a permissão de verdade, EXCETO "/fila-urgentes" (a página em
+# si, renomeada de raiz "/" em 2026-09-02), que precisa ficar alcançável
+# por qualquer um com acesso à ferramenta pra poder redirecionar
 # graciosamente quem não tem acesso_manual pra Fila do Robô, em vez de dar
-# 403 puro (achado do Henrique testando: a Home/bandeja de apps sempre
-# aponta pra essa URL raiz, então um colaborador comum caía direto num
-# beco sem saída).
+# 403 puro.
 router = APIRouter(dependencies=[Depends(exigir_acesso_ferramenta("extratus"))])
 
 TAMANHO_MAXIMO_UPLOAD = 100 * 1024 * 1024  # 100 MB
@@ -120,7 +119,7 @@ def _redirecionar(erro=None, sucesso=None):
 
     query = f"?{'&'.join(partes)}" if partes else ""
 
-    return RedirectResponse(url=f"/extratus/{query}", status_code=303)
+    return RedirectResponse(url=f"/extratus/fila-urgentes{query}", status_code=303)
 
 
 def _link_relatorio_existente(registro):
@@ -131,7 +130,7 @@ def _link_relatorio_existente(registro):
     pipeline_manual.py), a partir de `Job.usuario_id`."""
     if registro.origem_duplicado == "robô":
         return "/extratus/relatorios-robo"
-    return "/extratus/relatorios"
+    return "/extratus/relatorios-urgentes"
 
 
 def _conferencias_pendentes(usuario_id):
@@ -148,22 +147,22 @@ def _conferencias_pendentes(usuario_id):
     ]
 
 
-@router.get("/")
+@router.get("/fila-urgentes")
 def pagina_inicial(
     request: Request,
     usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus")),
     erro: str | None = None,
     sucesso: str | None = None,
 ):
-    # Raiz da ferramenta — é pra onde a Home/bandeja de apps sempre manda
-    # (Ferramenta.url no banco continua "/extratus/", usado também pra
-    # detectar a cor de identidade em toda sub-página — não dá pra trocar
-    # sem quebrar isso). Quem não tem acesso_manual não pode ficar aqui,
-    # mas também não pode tomar um 403 seco só por ter clicado no ícone
-    # da ferramenta — manda pra Fila do Robô, que é o padrão de todo
-    # mundo com acesso básico.
+    # Henrique, 2026-09-02: renomeada de raiz ("/") pra "/fila-urgentes" —
+    # o ícone da Home/bandeja de apps NÃO aponta mais pra cá desde
+    # 2026-08-21 (aponta pra Fila do Robô, ver seed.py), então essa tela
+    # não precisa mais ser alcançável "sem saber o nome" — só quem tem
+    # acesso_manual chega aqui de verdade, mas quem não tem ainda pode
+    # cair nessa URL por engano (link antigo, aba salva) — manda pra Fila
+    # do Robô em vez de um 403 seco, mesmo comportamento de sempre.
     if not usuario_tem_acesso_manual(usuario, "extratus"):
-        return RedirectResponse("/extratus/fila", status_code=303)
+        return RedirectResponse("/extratus/fila-robo", status_code=303)
 
     pendentes, processando = _estado_atual(usuario.id)
 
@@ -192,10 +191,10 @@ def pagina_inicial(
     return resposta
 
 
-@router.get("/estado")
+@router.get("/fila-urgentes/estado")
 def estado_processamento(usuario: Usuario = Depends(exigir_acesso_manual("extratus"))):
     """Endpoint enxuto pro polling (gerar_relatorio.js) — mesmo formato que
-    /fila/estado usa, escopado ao próprio usuário (Conferências e
+    /fila-robo/estado usa, escopado ao próprio usuário (Conferências e
     processamento manual são pessoais, diferente da Fila do Robô)."""
     pendentes, processando = _estado_atual(usuario.id)
 
@@ -206,7 +205,7 @@ def estado_processamento(usuario: Usuario = Depends(exigir_acesso_manual("extrat
     }
 
 
-@router.post("/upload")
+@router.post("/fila-urgentes/upload")
 async def enviar_pdfs(
     background_tasks: BackgroundTasks,
     arquivos: list[UploadFile] = File(...),
@@ -271,7 +270,7 @@ async def enviar_pdfs(
     return _redirecionar(sucesso=f"{len(enviados)} PDF(s) enviado(s) — a triagem já começou.")
 
 
-@router.post("/conferencia/{registro_id}/aprovar")
+@router.post("/fila-urgentes/conferencia/{registro_id}/aprovar")
 async def aprovar_conferencia(
     registro_id: int,
     background_tasks: BackgroundTasks,
@@ -299,7 +298,7 @@ async def aprovar_conferencia(
     return _redirecionar(sucesso=f'"{nome_arquivo}" liberado — gerando o relatório agora.')
 
 
-@router.post("/conferencia/{registro_id}/descartar")
+@router.post("/fila-urgentes/conferencia/{registro_id}/descartar")
 def descartar_conferencia(
     registro_id: int,
     usuario: Usuario = Depends(exigir_acesso_manual("extratus")),
@@ -322,7 +321,7 @@ def descartar_conferencia(
     return _redirecionar(sucesso=f'"{nome_arquivo}" descartado.')
 
 
-@router.get("/conferencia/{registro_id}/ver")
+@router.get("/fila-urgentes/conferencia/{registro_id}/ver")
 def ver_pdf_conferencia(
     registro_id: int,
     usuario: Usuario = Depends(exigir_acesso_manual("extratus")),
@@ -340,7 +339,7 @@ def ver_pdf_conferencia(
     return FileResponse(caminho, media_type="application/pdf")
 
 
-@router.post("/processamento/{registro_id}/descartar")
+@router.post("/fila-urgentes/processamento/{registro_id}/descartar")
 def dispensar_processamento_finalizado(
     registro_id: int,
     usuario: Usuario = Depends(exigir_acesso_manual("extratus")),

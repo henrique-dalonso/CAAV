@@ -200,9 +200,9 @@ def ferramenta_pela_url(caminho):
     """Qual ferramenta "dona" desse caminho de URL, se alguma — usado pra
     saber de qual ferramenta puxar a cor de identidade (ver
     cor_ferramenta_atual, templates_util.py) em qualquer sub-página dela
-    (não só a raiz, também funciona pra /extratus/fila, /extratus/relatorios
-    etc.), já que o middleware de "Mais utilizadas" só faz esse match
-    exato pra raiz, não serve pra isso.
+    (não só a raiz, também funciona pra /extratus/fila-robo,
+    /extratus/relatorios-urgentes etc.), já que o middleware de "Mais
+    utilizadas" só faz esse match exato pra raiz, não serve pra isso.
 
     Henrique, 2026-09-02: achado real — comparava contra `Ferramenta.url`,
     mas esse campo virou o link de destino do ÍCONE (seed.py, deploy

@@ -228,7 +228,7 @@ def test_pagina_relatorios_manual_nao_lista_jobs_do_robo(cliente_logado, limpar_
     )
     limpar_jobs_criados.append(job_robo.id)
 
-    resp = cliente_logado.get("/extratus-aburesi/relatorios")
+    resp = cliente_logado.get("/extratus-aburesi/relatorios-urgentes")
 
     assert resp.status_code == 200
     assert "teste_pagina_relatorios_manual_robo_aburesi.pdf" not in resp.text

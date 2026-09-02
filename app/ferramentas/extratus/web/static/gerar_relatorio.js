@@ -24,7 +24,7 @@
     // upload, mesmo truque já usado em fila.js — assim esse arquivo
     // continua byte-idêntico nos dois módulos, sem precisar saber o
     // prefixo na mão em cada fetch/link/action montado abaixo.
-    var baseUrl = form ? form.action.replace(/\/upload$/, "") : "/extratus";
+    var baseUrl = form ? form.action.replace(/\/upload$/, "") : "/extratus/fila-urgentes";
 
     var zona = document.getElementById("zona-soltar-manual");
     var campoUpload = document.getElementById("campo-pdfs-manual");

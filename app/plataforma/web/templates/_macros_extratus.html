@@ -26,11 +26,11 @@
    aba_ativa: "gerar" | "relatorios" | "relatorios-robo" | "fila" #}
 {% macro nav_abas_extratus(usuario, ferramenta_slug, url_base, aba_ativa) %}
 <nav class="abas-extratus">
-    <a href="{{ url_base }}/fila" class="aba aba-robo{% if aba_ativa == "fila" %} aba-ativa{% endif %}">Fila do Robô{% set conf_fila = contagem_nav_conferencias_fila(usuario) %}{% if conf_fila %} <span class="contagem-aba contagem-aba-revisao">+{{ conf_fila }}</span>{% endif %}</a>
+    <a href="{{ url_base }}/fila-robo" class="aba aba-robo{% if aba_ativa == "fila" %} aba-ativa{% endif %}">Fila do Robô{% set conf_fila = contagem_nav_conferencias_fila(usuario) %}{% if conf_fila %} <span class="contagem-aba contagem-aba-revisao">+{{ conf_fila }}</span>{% endif %}</a>
     <a href="{{ url_base }}/relatorios-robo" class="aba aba-robo{% if aba_ativa == "relatorios-robo" %} aba-ativa{% endif %}">Relatórios do Robô{% set novos_robo = contagem_nav_relatorios_robo(usuario) %}{% if novos_robo.sucesso %} <span class="contagem-aba">+{{ novos_robo.sucesso }}</span>{% endif %}{% if novos_robo.revisao %} <span class="contagem-aba contagem-aba-revisao">+{{ novos_robo.revisao }}</span>{% endif %}</a>
     {% if usuario_tem_acesso_manual(usuario, ferramenta_slug) %}
-    <a href="{{ url_base }}/" class="aba aba-urgente{% if aba_ativa == "gerar" %} aba-ativa{% endif %}">Gerar Relatório URGENTE{% set conf_manual = contagem_nav_conferencias_manual(usuario) %}{% if conf_manual %} <span class="contagem-aba contagem-aba-revisao">+{{ conf_manual }}</span>{% endif %}</a>
-    <a href="{{ url_base }}/relatorios" class="aba aba-urgente{% if aba_ativa == "relatorios" %} aba-ativa{% endif %}">Relatórios URGENTES{% set novos_relatorios = contagem_nav_relatorios(usuario) %}{% if novos_relatorios.sucesso %} <span class="contagem-aba">+{{ novos_relatorios.sucesso }}</span>{% endif %}{% if novos_relatorios.revisao %} <span class="contagem-aba contagem-aba-revisao">+{{ novos_relatorios.revisao }}</span>{% endif %}</a>
+    <a href="{{ url_base }}/fila-urgentes" class="aba aba-urgente{% if aba_ativa == "gerar" %} aba-ativa{% endif %}">Gerar Relatório URGENTE{% set conf_manual = contagem_nav_conferencias_manual(usuario) %}{% if conf_manual %} <span class="contagem-aba contagem-aba-revisao">+{{ conf_manual }}</span>{% endif %}</a>
+    <a href="{{ url_base }}/relatorios-urgentes" class="aba aba-urgente{% if aba_ativa == "relatorios" %} aba-ativa{% endif %}">Relatórios URGENTES{% set novos_relatorios = contagem_nav_relatorios(usuario) %}{% if novos_relatorios.sucesso %} <span class="contagem-aba">+{{ novos_relatorios.sucesso }}</span>{% endif %}{% if novos_relatorios.revisao %} <span class="contagem-aba contagem-aba-revisao">+{{ novos_relatorios.revisao }}</span>{% endif %}</a>
     {% endif %}
 </nav>
 {% endmacro %}

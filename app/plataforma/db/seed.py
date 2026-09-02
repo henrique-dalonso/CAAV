@@ -28,8 +28,9 @@ FERRAMENTAS_PADRAO = [
         # Henrique, 2026-08-20: clicar no ícone deve levar direto pra
         # primeira aba na ordem de navegação (Fila do Robô — ver
         # nav_abas_extratus em _macros_extratus.html), não pra "Gerar
-        # Relatório URGENTE" que hoje mora na raiz "/extratus/".
-        "url": "/extratus/fila",
+        # Relatório URGENTE" (2026-09-02: renomeada de raiz "/extratus/"
+        # pra "/extratus/fila-urgentes" na sanitização de URLs).
+        "url": "/extratus/fila-robo",
         "suporta_fila_robo": True,
         **_SEM_COR_PROPRIA,
     },
@@ -37,7 +38,7 @@ FERRAMENTAS_PADRAO = [
         "nome": "Extratus - Aburesi",
         "slug": "extratus-aburesi",
         "descricao": "Resumo rápido de processo judicial para uso interno no atendimento do cliente Aburesi.",
-        "url": "/extratus-aburesi/fila",
+        "url": "/extratus-aburesi/fila-robo",
         "suporta_fila_robo": True,
         # Copiado 1:1 do :root que existia em
         # extratus_aburesi/web/static/extratus.css antes de virar campo

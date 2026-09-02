@@ -25,7 +25,7 @@
 <section class="cartao-secao secao-conferencias" id="secao-conferencias" {% if not conferencias %}hidden{% endif %}>
     <h2>
         <span>Conferências <span class="contagem" id="contagem-conferencias">{{ conferencias|length }}</span></span>
-        <form action="/extratus-aburesi/fila/conferencia/descartar-todas" method="post" class="form-conferencia" data-confirm="Descartar TODOS os arquivos aguardando conferência? Essa ação não pode ser desfeita." data-perigo="true">
+        <form action="/extratus-aburesi/fila-robo/conferencia/descartar-todas" method="post" class="form-conferencia" data-confirm="Descartar TODOS os arquivos aguardando conferência? Essa ação não pode ser desfeita." data-perigo="true">
             <button type="submit" class="botao-minimal" data-dica="Remove da fila, de uma vez, todo arquivo que está aguardando uma decisão aqui">Descartar todas</button>
         </form>
     </h2>
@@ -39,7 +39,7 @@
             </div>
             <div class="conferencia-item-acoes">
                 {% if item.tipo == "processo_nao_encontrado" %}
-                <form action="/extratus-aburesi/fila/conferencia/{{ item.id }}/aprovar" method="post" class="form-conferencia form-conferencia-manual">
+                <form action="/extratus-aburesi/fila-robo/conferencia/{{ item.id }}/aprovar" method="post" class="form-conferencia form-conferencia-manual">
                     {# Ver comentário equivalente em app/ferramentas/extratus/web/templates/fila.html
                        (Extratus - Relatórios) — "required" ligado via JS na hora que o campo aparece,
                        não na marcação inicial (senão a validação nativa bloqueia o clique em silêncio). #}
@@ -49,11 +49,11 @@
                     <button type="submit" class="botao botao-pequeno botao-conferencia-aprovar" data-dica="Libera esse arquivo pra fila do Robô, com o número de processo informado">Aprovar</button>
                 </form>
                 {% else %}
-                <form action="/extratus-aburesi/fila/conferencia/{{ item.id }}/aprovar" method="post" class="form-conferencia" data-confirm="Confirma que quer liberar {{ item.nome }} pra fila mesmo assim?">
+                <form action="/extratus-aburesi/fila-robo/conferencia/{{ item.id }}/aprovar" method="post" class="form-conferencia" data-confirm="Confirma que quer liberar {{ item.nome }} pra fila mesmo assim?">
                     <button type="submit" class="botao botao-pequeno botao-conferencia-aprovar" data-dica="Libera esse arquivo pra fila do Robô, mesmo com a inconsistência encontrada">Aprovar</button>
                 </form>
                 {% endif %}
-                <form action="/extratus-aburesi/fila/conferencia/{{ item.id }}/descartar" method="post" class="form-conferencia" data-confirm="Descartar {{ item.nome }} da fila? Essa ação não pode ser desfeita." data-perigo="true">
+                <form action="/extratus-aburesi/fila-robo/conferencia/{{ item.id }}/descartar" method="post" class="form-conferencia" data-confirm="Descartar {{ item.nome }} da fila? Essa ação não pode ser desfeita." data-perigo="true">
                     <button type="submit" class="botao-remover-fila botao-conferencia-descartar" data-dica="Remove esse arquivo da fila pra sempre — não pode ser desfeito">Descartar</button>
                 </form>
             </div>
@@ -65,7 +65,7 @@
 <section class="cartao-secao">
     <h2>Enviar PDFs</h2>
     <p class="aviso-discreto">Anexe aqui os PDFs a serem processados pelo robô.</p>
-    <form action="/extratus-aburesi/fila/upload" method="post" enctype="multipart/form-data" id="form-upload-fila">
+    <form action="/extratus-aburesi/fila-robo/upload" method="post" enctype="multipart/form-data" id="form-upload-fila">
         <label class="zona-soltar" for="campo-pdfs-fila" id="zona-soltar-fila">
             <input type="file" name="arquivos" accept=".pdf" id="campo-pdfs-fila" multiple hidden>
             <svg class="zona-soltar-icone" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -138,7 +138,7 @@
                 <button type="button" class="botao-remover-fila" id="botao-cancelar-selecao-fila">Cancelar</button>
             </div>
         </div>
-        <form action="/extratus-aburesi/fila/remover-varios" method="post" id="form-remover-varios">
+        <form action="/extratus-aburesi/fila-robo/remover-varios" method="post" id="form-remover-varios">
             <ul class="lista-arquivos lista-fila fila-coluna-lista" id="lista-pendentes">
                 {% for item in apenas_pendentes %}
                 <li data-nome="{{ item.nome }}"{% if item.aguardando_conferencia %} class="fila-item-clicavel" data-dica="Clique para ver em 'Conferências'"{% endif %}>

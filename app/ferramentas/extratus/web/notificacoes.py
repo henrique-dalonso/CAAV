@@ -53,7 +53,7 @@ def listar_notificacoes(usuario_id):
         notificacoes.append({
             "mensagem": f'"{registro.nome_arquivo}": {motivo}',
             "tipo": "triagem",
-            "link": "/extratus/fila",
+            "link": "/extratus/fila-robo",
             "criado_em": registro.atualizado_em.isoformat(),
         })
 
@@ -131,7 +131,7 @@ def listar_notificacoes_pessoais(usuario_id):
         notificacoes.append({
             "mensagem": f'"{registro.nome_arquivo}": {motivo}',
             "tipo": "conferencia_manual",
-            "link": "/extratus/",
+            "link": "/extratus/fila-urgentes",
             "pessoal": True,
             "descartavel": False,
             "criado_em": registro.atualizado_em.isoformat(),
@@ -141,7 +141,7 @@ def listar_notificacoes_pessoais(usuario_id):
         notificacoes.append({
             "mensagem": f'"{registro.nome_arquivo}": falha ao gerar o relatório',
             "tipo": "erro_manual",
-            "link": "/extratus/",
+            "link": "/extratus/fila-urgentes",
             "pessoal": True,
             "descartavel": False,
             "criado_em": registro.atualizado_em.isoformat(),
@@ -152,17 +152,17 @@ def listar_notificacoes_pessoais(usuario_id):
             notificacoes.append({
                 "mensagem": f'"{job.arquivo_pdf}": relatório pronto',
                 "tipo": "pronto",
-                "link": "/extratus/relatorios",
+                "link": "/extratus/relatorios-urgentes",
                 "pessoal": True,
                 "descartavel": True,
-                "resolver": f"/extratus/relatorios/{job.id}/marcar-notificacao-resolvida",
+                "resolver": f"/extratus/relatorios-urgentes/{job.id}/marcar-notificacao-resolvida",
                 "criado_em": job.criado_em.isoformat(),
             })
         else:
             notificacoes.append({
                 "mensagem": f'"{job.arquivo_pdf}": relatório pronto, mas precisa de revisão',
                 "tipo": "revisao",
-                "link": "/extratus/relatorios",
+                "link": "/extratus/relatorios-urgentes",
                 "pessoal": True,
                 "descartavel": False,
                 "criado_em": job.criado_em.isoformat(),

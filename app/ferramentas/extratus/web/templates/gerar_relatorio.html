@@ -37,18 +37,18 @@
                 <a href="{{ item.link_relatorio }}?processo={{ item.processo_detectado|urlencode }}" class="botao-minimal" data-dica="Abre o relatório já existente pra esse processo">Ir ao relatório</a>
                 {% endif %}
                 {% if item.tipo == "processo_nao_encontrado" or item.tipo == "falha_leitura" %}
-                <form action="/extratus/conferencia/{{ item.id }}/aprovar" method="post" class="form-conferencia form-conferencia-manual">
+                <form action="/extratus/fila-urgentes/conferencia/{{ item.id }}/aprovar" method="post" class="form-conferencia form-conferencia-manual">
                     <div class="conferencia-campo-processo" hidden>
                         <input type="text" name="processo" placeholder="0000000-00.0000.0.00.0000" pattern="\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}" inputmode="numeric" autocomplete="off">
                     </div>
                     <button type="submit" class="botao botao-pequeno botao-conferencia-aprovar" data-dica="Libera esse arquivo pra gerar o relatório, com o número de processo informado">Aprovar</button>
                 </form>
                 {% else %}
-                <form action="/extratus/conferencia/{{ item.id }}/aprovar" method="post" class="form-conferencia" data-confirm="Confirma que quer gerar o relatório de {{ item.nome }} mesmo assim?">
+                <form action="/extratus/fila-urgentes/conferencia/{{ item.id }}/aprovar" method="post" class="form-conferencia" data-confirm="Confirma que quer gerar o relatório de {{ item.nome }} mesmo assim?">
                     <button type="submit" class="botao botao-pequeno botao-conferencia-aprovar" data-dica="Libera esse arquivo pra gerar o relatório, mesmo com a inconsistência encontrada">Aprovar</button>
                 </form>
                 {% endif %}
-                <form action="/extratus/conferencia/{{ item.id }}/descartar" method="post" class="form-conferencia" data-confirm="Descartar {{ item.nome }}? Essa ação não pode ser desfeita." data-perigo="true">
+                <form action="/extratus/fila-urgentes/conferencia/{{ item.id }}/descartar" method="post" class="form-conferencia" data-confirm="Descartar {{ item.nome }}? Essa ação não pode ser desfeita." data-perigo="true">
                     <button type="submit" class="botao-remover-fila botao-conferencia-descartar" data-dica="Descarta esse arquivo pra sempre — não pode ser desfeito">Descartar</button>
                 </form>
             </div>
@@ -60,7 +60,7 @@
 <section class="cartao-secao">
     <h2>Enviar PDF do processo</h2>
     <p class="aviso-discreto">Máximo de {{ maximo_arquivos }} PDFs por vez. Assim que confirmado o envio, a triagem começa sozinha, não será possível reverter a ação.</p>
-    <form action="/extratus/upload" method="post" enctype="multipart/form-data" id="form-upload-manual" data-confirm="" data-perigo="true">
+    <form action="/extratus/fila-urgentes/upload" method="post" enctype="multipart/form-data" id="form-upload-manual" data-confirm="" data-perigo="true">
         <label class="zona-soltar" for="campo-pdfs-manual" id="zona-soltar-manual">
             <input type="file" name="arquivos" accept=".pdf" id="campo-pdfs-manual" multiple hidden>
             <svg class="zona-soltar-icone" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -125,7 +125,7 @@
                 {% if item.status == "concluido" %}
                 <span class="bolinha-status bolinha-verde" data-dica="Concluído" aria-label="Concluído"></span>
                 <span class="fila-item-nome" data-dica="{{ item.nome }}">{{ item.nome }}</span>
-                <a href="/extratus/relatorios?processo={{ item.processo_detectado|urlencode }}" class="botao-minimal">Ver relatório</a>
+                <a href="/extratus/relatorios-urgentes?processo={{ item.processo_detectado|urlencode }}" class="botao-minimal">Ver relatório</a>
                 <button type="button" class="botao-remover-fila botao-dispensar-processamento" data-id="{{ item.id }}" data-dica="Tirar da lista">×</button>
                 {% elif item.status == "erro" %}
                 <span class="bolinha-status bolinha-vermelha" data-dica="{{ item.erro_mensagem or 'Falha no processamento' }}" aria-label="Erro"></span>

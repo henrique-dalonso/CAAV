@@ -68,13 +68,13 @@ perfil prontos — não precisa recriar nada disso numa ferramenta nova.
 | `/login`, `/logout` | Autenticação |
 | `/perfil/dados`, `/perfil/senha`, `/perfil/preferencias` | Perfil do usuário logado (trocar a própria senha, etc.) |
 | `/admin` | Administração — usuários, permissões, visão geral, custo de IA (só admin) |
-| `/extratus/` | Extratus - Relatórios — enviar PDF e processar (fila manual) |
-| `/extratus/relatorios` | Extratus - Relatórios — relatórios já gerados (todo mundo com acesso vê) |
-| `/extratus/fila` | Extratus - Relatórios — fila do Robô (upload em lote) |
-| `/extratus/configuracoes-robo` | Extratus - Relatórios — liga/desliga o Robô, configurações, prompt |
+| `/extratus/fila-robo` | Extratus - Relatórios — fila do Robô (upload em lote) |
 | `/extratus/relatorios-robo` | Extratus - Relatórios — relatórios do Robô (Sucesso/Revisão/Erro) |
-| `/extratus/custos` | Extratus - Relatórios — histórico técnico com custo de IA por usuário (só admin) |
+| `/extratus/fila-urgentes` | Extratus - Relatórios — enviar PDF e processar (fila manual/URGENTE) |
+| `/extratus/relatorios-urgentes` | Extratus - Relatórios — relatórios URGENTES já gerados (todo mundo com acesso vê) |
 | `/extratus-aburesi/...` | Extratus - Aburesi — mesmas rotas acima, módulo separado |
+| `/admin/ferramentas` | Configurações do Robô por ferramenta, liga/desliga, prompt (só admin) |
+| `/admin/custos` | Histórico técnico com custo de IA por usuário/ferramenta (só admin) |
 | `/leitor-publicacoes/` | Leitor de Publicações — em construção |
 
 ## Como rodar (modo desenvolvimento, no seu próprio computador)

@@ -47,9 +47,9 @@
             <div class="relatorio-info{% if job.relatorio_path %} relatorio-info-clicavel{% endif %}"{% if job.relatorio_path %} data-download="download/{{ job.relatorio_path.split('\\')[-1].split('/')[-1] }}"{% endif %}>
                 {% if job.processo %}
                 <strong class="truncavel" data-dica="{{ job.processo }}">{{ job.processo }}</strong>
-                <span class="relatorio-meta truncavel" data-dica="{{ job.arquivo_pdf }} · {{ job.criado_em.strftime('%d/%m/%Y %H:%M') }}">{% if job.destino_pdf %}<a href="/extratus-aburesi/relatorios/{{ job.id }}/pdf" target="_blank" rel="noopener" class="link-pdf-original">{{ job.arquivo_pdf }}</a>{% else %}{{ job.arquivo_pdf }}{% endif %} · {{ job.criado_em.strftime("%d/%m/%Y %H:%M") }}</span>
+                <span class="relatorio-meta truncavel" data-dica="{{ job.arquivo_pdf }} · {{ job.criado_em.strftime('%d/%m/%Y %H:%M') }}">{% if job.destino_pdf %}<a href="/extratus-aburesi/relatorios-urgentes/{{ job.id }}/pdf" target="_blank" rel="noopener" class="link-pdf-original">{{ job.arquivo_pdf }}</a>{% else %}{{ job.arquivo_pdf }}{% endif %} · {{ job.criado_em.strftime("%d/%m/%Y %H:%M") }}</span>
                 {% else %}
-                <strong class="truncavel" data-dica="{{ job.arquivo_pdf }}">{% if job.destino_pdf %}<a href="/extratus-aburesi/relatorios/{{ job.id }}/pdf" target="_blank" rel="noopener" class="link-pdf-original">{{ job.arquivo_pdf }}</a>{% else %}{{ job.arquivo_pdf }}{% endif %}</strong>
+                <strong class="truncavel" data-dica="{{ job.arquivo_pdf }}">{% if job.destino_pdf %}<a href="/extratus-aburesi/relatorios-urgentes/{{ job.id }}/pdf" target="_blank" rel="noopener" class="link-pdf-original">{{ job.arquivo_pdf }}</a>{% else %}{{ job.arquivo_pdf }}{% endif %}</strong>
                 <span class="relatorio-meta truncavel" data-dica="{{ job.criado_em.strftime('%d/%m/%Y %H:%M') }}">{{ job.criado_em.strftime("%d/%m/%Y %H:%M") }}</span>
                 {% endif %}
                 {% if job.status == "revisao" and job.motivo_confianca %}
@@ -78,7 +78,7 @@
             <span class="botao-download botao-fantasma" aria-hidden="true"></span>
             {% endif %}
             {% if usuario.eh_admin %}
-            <form action="/extratus-aburesi/relatorios/{{ job.id }}/excluir" method="post" data-perigo="true"
+            <form action="/extratus-aburesi/relatorios-urgentes/{{ job.id }}/excluir" method="post" data-perigo="true"
                 data-confirm="Excluir este relatório permanentemente? O arquivo e o PDF de origem serão apagados. Essa ação não pode ser desfeita.">
                 <button type="submit" class="botao-excluir" data-dica="Excluir relatório" aria-label="Excluir relatório">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
