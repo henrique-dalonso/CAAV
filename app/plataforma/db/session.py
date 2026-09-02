@@ -155,7 +155,7 @@ def _garantir_colunas(engine):
 # TABLE como COLUNAS_PENDENTES, mas CREATE INDEX já aceita IF NOT EXISTS
 # nativamente, então não precisa do controle manual de PRAGMA table_info.
 # Henrique, 2026-08-13: trava real de banco contra 2 arquivos do fluxo
-# manual (Gerar seu Relatório) virando "processando" (prestes a chamar a
+# manual (Gerar Relatório URGENTE) virando "processando" (prestes a chamar a
 # IA) pro MESMO número de processo ao mesmo tempo — duas pessoas (ou o
 # mesmo PDF 2x) enviando quase junto. Índice PARCIAL (só olha linhas
 # "processando") pra não impedir reenvio depois que a primeira já

@@ -73,7 +73,7 @@ def atualizar_apos_triagem(registro_id, status, processo_detectado, confianca_ni
     `origem_duplicado` ("robô" ou "manual") só é usado quando
     status=DUPLICADO_RELATORIO — diz pro botão "Ir ao relatório" (web/
     routes/gerar_relatorio.py) se o duplicado mora em "Relatórios do Robô" ou
-    "Seus Relatórios".
+    "Relatórios URGENTES".
 
     Henrique, 2026-08-13: quando `status` é PROCESSANDO, essa gravação
     esbarra no índice único parcial (db/session.py) que garante que só
@@ -265,7 +265,7 @@ def listar_erros_do_usuario(usuario_id):
     """Registros de erro do PRÓPRIO usuário no fluxo manual — alimenta a
     aba "Minhas" do sininho (Henrique, 2026-08-13). Fica visível enquanto
     o registro existir — some sozinho quando a pessoa dispensa com o "×"
-    já existente na tela de Gerar seu Relatório (descartar), nunca por
+    já existente na tela de Gerar Relatório URGENTE (descartar), nunca por
     uma notificação "lida"."""
     with obter_sessao() as sessao:
         consulta = select(TriagemManual).where(
@@ -290,7 +290,7 @@ def contar_registros_recentes_do_usuario(usuario_id, desde):
 
 def contar_inconsistencias_ativas_do_usuario(usuario_id):
     """Quantas Conferências do PRÓPRIO usuário estão pendentes AGORA, sem
-    filtro de tempo — alimenta o badge "+N" da aba "Gerar seu Relatório".
+    filtro de tempo — alimenta o badge "+N" da aba "Gerar Relatório URGENTE".
     Henrique, 2026-08-13: "não pode sumir só de entrar [na aba],
     permanece até alguém aprovar ou negar" — diferente de
     contar_inconsistencias_novas_do_usuario (abaixo), que zera ao visitar
@@ -307,7 +307,7 @@ def contar_inconsistencias_ativas_do_usuario(usuario_id):
 
 def contar_inconsistencias_novas_do_usuario(usuario_id, desde):
     """Quantas Conferências do PRÓPRIO usuário (inconsistência esperando
-    decisão em "Gerar seu Relatório") surgiram desde `desde` — alimenta o
+    decisão em "Gerar Relatório URGENTE") surgiram desde `desde` — alimenta o
     badge "+N" (cor de revisão, único número dessa aba) em rotulos.py.
     `atualizado_em`, não `criado_em`: é o instante em que o registro virou
     uma inconsistência de verdade (a triagem já rodou), não quando o

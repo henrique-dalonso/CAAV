@@ -195,7 +195,7 @@ class UploadFilaRobo(SQLModel, table=True):
 
 class TriagemManual(SQLModel, table=True):
     """Checagem de duplicidade + acompanhamento de geração de cada PDF
-    enviado pelo fluxo manual ("Gerar seu Relatório", 2026-08-11) — o
+    enviado pelo fluxo manual ("Gerar Relatório URGENTE", 2026-08-11) — o
     equivalente pessoal/por-usuário de `ChecagemFila`, com um passo a
     mais: aqui não existe Robô/Batch API pegando os aprovados depois,
     então esta mesma linha também acompanha a geração do relatório em si

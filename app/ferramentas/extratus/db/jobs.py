@@ -134,8 +134,9 @@ def obter_relatorio_existente_para_processo(processo):
     recente pra esse número de processo, ou None. Usado pela checagem
     manual (core/pipeline_manual.py) pra saber ONDE o duplicado mora —
     `usuario_id` None = Robô ("Relatórios do Robô"), preenchido =
-    manual ("Seus Relatórios") — Henrique, 2026-08-12: o botão "Ir ao
-    relatório" estava sempre mandando pra "Seus Relatórios" mesmo quando
+    manual ("Relatórios URGENTES") — Henrique, 2026-08-12: o botão "Ir ao
+    relatório" estava sempre mandando pra "Seus Relatórios" (nome da tela
+    na época) mesmo quando
     o duplicado era do Robô, e lá ele nunca existe. Um Job com status
     "erro" NÃO conta (a tentativa falhou, não gerou nada)."""
     with obter_sessao() as sessao:
@@ -341,7 +342,7 @@ def contar_por_status():
 
 def contar_jobs_manuais_do_usuario(usuario_id):
     """Quantos relatórios manuais o PRÓPRIO usuário logado solicitou —
-    alimenta a contagem da aba "Seus Relatórios" na navegação
+    alimenta a contagem da aba "Relatórios URGENTES" na navegação
     (rotulos.py). Henrique, 2026-08-12: "o número flutuante... exibe a
     quantidade total, deve exibir somente a quantidade de relatórios
     realizados pelo usuário" — antes contava TODO mundo (contar_jobs_manuais,
@@ -356,7 +357,7 @@ def contar_jobs_manuais_do_usuario(usuario_id):
 def contar_relatorios_novos_do_usuario(usuario_id, desde):
     """Quantos relatórios manuais do PRÓPRIO usuário terminaram (sucesso
     ou revisão), cada categoria separada, desde `desde` — alimenta o
-    badge duplo "+N" da aba "Seus Relatórios" (rotulos.py): um número na
+    badge duplo "+N" da aba "Relatórios URGENTES" (rotulos.py): um número na
     cor padrão (sucesso) e outro na cor de revisão, os dois podendo
     aparecer juntos (Henrique, 2026-08-13)."""
     with obter_sessao() as sessao:

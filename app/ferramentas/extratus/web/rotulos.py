@@ -11,12 +11,13 @@ quando a aba não é a atual.
 Henrique, 2026-08-13: o número deixou de ser uma contagem total (que só
 cresce) e virou um indicador de "algo novo desde a última vez que você
 abriu essa aba" — cada função aqui compara contra
-`usuarios.obter_ultimo_visto` (por usuário + aba). "Gerar seu Relatório"
-e "Fila do Robô" (as 2 "filas" do módulo — uma manual, outra do Robô)
-só mostram o número na cor de revisão, e só quando surge uma Conferência
-nova: tudo que aparece nelas foi o próprio usuário quem adicionou, não é
-"novidade" precisar contar os pendentes. "Seus Relatórios"/"Relatórios
-do Robô" mostram os dois números (sucesso e revisão) lado a lado.
+`usuarios.obter_ultimo_visto` (por usuário + aba). "Gerar Relatório
+URGENTE" e "Fila do Robô" (as 2 "filas" do módulo — uma manual, outra do
+Robô) só mostram o número na cor de revisão, e só quando surge uma
+Conferência nova: tudo que aparece nelas foi o próprio usuário quem
+adicionou, não é "novidade" precisar contar os pendentes. "Relatórios
+URGENTES"/"Relatórios do Robô" mostram os dois números (sucesso e
+revisão) lado a lado.
 """
 
 from datetime import datetime
@@ -70,7 +71,7 @@ def rotulo_erro(tipo_erro):
 
 
 def contagem_nav_conferencias_manual(usuario):
-    """Badge (só cor de revisão) da aba "Gerar seu Relatório" — quantas
+    """Badge (só cor de revisão) da aba "Gerar Relatório URGENTE" — quantas
     Conferências do próprio usuário estão pendentes AGORA (duplicidade,
     processo não encontrado etc.). Fica ligado até alguém aprovar ou
     descartar — só visitar a aba não zera (Henrique, 2026-08-13)."""
@@ -85,7 +86,7 @@ def contagem_nav_conferencias_fila(usuario):
 
 
 def contagem_nav_relatorios(usuario):
-    """Badge duplo da aba "Seus Relatórios" — {"sucesso": N, "revisao": N}
+    """Badge duplo da aba "Relatórios URGENTES" — {"sucesso": N, "revisao": N}
     de relatórios MANUAIS do próprio usuário que terminaram desde a
     última visita."""
     desde = obter_ultimo_visto(usuario.id, FERRAMENTA_SLUG, ABA_RELATORIOS) or _DESDE_SEMPRE
