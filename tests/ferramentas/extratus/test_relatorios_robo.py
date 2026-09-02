@@ -1,9 +1,12 @@
+import io
+import zipfile
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import delete, select
 
 from app.ferramentas.extratus.db.checagem_fila import registrar_upload
-from app.ferramentas.extratus.db.jobs import registrar_processado
+from app.ferramentas.extratus.db.jobs import registrar_erro, registrar_processado
 from app.ferramentas.extratus.db.models import Job, UploadFilaRobo
 from app.plataforma.db.models import Ferramenta, Usuario, UsuarioFerramenta
 from app.plataforma.db.session import obter_sessao
@@ -41,6 +44,38 @@ def cliente_logado():
 
     with obter_sessao() as sessao:
         sessao.exec(delete(Usuario).where(Usuario.nome_usuario == NOME_USUARIO_TESTE))
+        sessao.commit()
+
+
+@pytest.fixture
+def cliente_nao_admin_logado():
+    """Não-admin com acesso normal à ferramenta — usado pelos testes de
+    `solicitante_padrao`/`sem_solicitacoes_proprias` (Henrique, 2026-09-02),
+    que só fazem sentido pra quem NÃO é admin (admin sempre vê "Todos")."""
+    nome_usuario = "teste_relrobo_nao_admin_padrao"
+
+    with obter_sessao() as sessao:
+        usuario_antigo = sessao.exec(select(Usuario.id).where(Usuario.nome_usuario == nome_usuario)).first()
+        if usuario_antigo:
+            sessao.exec(delete(UsuarioFerramenta).where(UsuarioFerramenta.usuario_id == usuario_antigo))
+        sessao.exec(delete(Usuario).where(Usuario.nome_usuario == nome_usuario))
+        sessao.commit()
+        extratus_id = sessao.exec(select(Ferramenta.id).where(Ferramenta.slug == "extratus")).first()
+
+    usuario = criar_usuario(
+        nome="Teste RelRobo Não-Admin Padrão", nome_usuario=nome_usuario,
+        email="teste_relrobo_nao_admin_padrao@example.com", senha=SENHA, eh_admin=False,
+        ferramenta_ids=[extratus_id],
+    )
+
+    cliente = TestClient(app)
+    cliente.post("/login", data={"usuario_login": nome_usuario, "senha": SENHA})
+
+    yield cliente, usuario.id
+
+    with obter_sessao() as sessao:
+        sessao.exec(delete(UsuarioFerramenta).where(UsuarioFerramenta.usuario_id == usuario.id))
+        sessao.exec(delete(Usuario).where(Usuario.nome_usuario == nome_usuario))
         sessao.commit()
 
 
@@ -351,3 +386,163 @@ def test_ver_pdf_relatorio_robo_job_inexistente_da_404(cliente_logado):
     resp = cliente_logado.get("/extratus/relatorios-robo/999999999/pdf")
 
     assert resp.status_code == 404
+
+
+# --- Filtro padrão "Solicitado por" + aviso de "sem solicitações"
+# (Henrique, 2026-09-02) ---
+
+def test_nao_admin_com_solicitacao_ve_filtro_padrao_preenchido(cliente_nao_admin_logado, limpar_jobs_criados):
+    cliente, usuario_id = cliente_nao_admin_logado
+
+    job = registrar_processado(
+        arquivo_pdf="teste_relrobo_padrao_preenchido.pdf",
+        processo="0000000-00.2026.8.00.0951",
+        relatorio_path=None, destino_pdf=None, confianca="alta",
+        usuario_id=None, solicitante_id=usuario_id,
+    )
+    limpar_jobs_criados.append(job.id)
+
+    resp = cliente.get("/extratus/relatorios-robo")
+
+    assert resp.status_code == 200
+    assert f'data-padrao="{usuario_id}"' in resp.text
+    assert 'id="aviso-sem-solicitacoes-robo" data-ativo="false"' in resp.text
+
+
+def test_nao_admin_sem_nenhuma_solicitacao_ve_aviso_dedicado(cliente_nao_admin_logado, limpar_jobs_criados):
+    cliente, usuario_id = cliente_nao_admin_logado
+
+    # Existe job no sistema (de OUTRA pessoa) — prova que o aviso é sobre
+    # a falta de solicitação DESSE usuário específico, não da tela vazia
+    # em geral (esse caso já é coberto por "Nenhum processamento do Robô
+    # registrado ainda.").
+    job_de_outro = registrar_processado(
+        arquivo_pdf="teste_relrobo_padrao_de_outro.pdf",
+        processo="0000000-00.2026.8.00.0952",
+        relatorio_path=None, destino_pdf=None, confianca="alta",
+        usuario_id=None, solicitante_id=USUARIO_TESTE,
+    )
+    limpar_jobs_criados.append(job_de_outro.id)
+
+    resp = cliente.get("/extratus/relatorios-robo")
+
+    assert resp.status_code == 200
+    assert 'data-padrao=""' in resp.text
+    assert 'id="aviso-sem-solicitacoes-robo" data-ativo="true"' in resp.text
+    assert "Você ainda não solicitou nenhum relatório ao Robô" in resp.text
+    # A pessoa dela mesma não vira opção "fantasma" no dropdown, mesmo
+    # forçando o filtro — só quem de fato aparece na fila entra ali.
+    assert f'value="{usuario_id}"' not in resp.text
+
+
+def test_admin_nunca_recebe_filtro_padrao(cliente_logado, limpar_jobs_criados):
+    """Admin sempre parte de "Todos" — mesmo tendo zero solicitações
+    próprias, `sem_solicitacoes_proprias` só existe pra não-admin."""
+    job_de_outro = registrar_processado(
+        arquivo_pdf="teste_relrobo_admin_sem_padrao.pdf",
+        processo="0000000-00.2026.8.00.0953",
+        relatorio_path=None, destino_pdf=None, confianca="alta",
+        usuario_id=None, solicitante_id=USUARIO_TESTE,
+    )
+    limpar_jobs_criados.append(job_de_outro.id)
+
+    resp = cliente_logado.get("/extratus/relatorios-robo")
+
+    assert resp.status_code == 200
+    assert 'data-padrao=""' in resp.text
+    assert 'id="aviso-sem-solicitacoes-robo" data-ativo="false"' in resp.text
+
+
+# --- Baixar em lote (.zip) e excluir em lote (Henrique, 2026-09-02) ---
+
+def test_baixar_lote_inclui_sucesso_e_revisao_exclui_erro(cliente_logado, limpar_jobs_criados, tmp_path):
+    caminho_sucesso = tmp_path / "teste_lote_sucesso.docx"
+    caminho_sucesso.write_text("conteudo sucesso")
+    caminho_revisao = tmp_path / "teste_lote_revisao.docx"
+    caminho_revisao.write_text("conteudo revisao")
+
+    job_sucesso = registrar_processado(
+        arquivo_pdf="teste_lote_sucesso.pdf", processo="0000000-00.2026.8.00.0960",
+        relatorio_path=str(caminho_sucesso), destino_pdf=None, confianca="alta", usuario_id=None,
+    )
+    job_revisao = registrar_processado(
+        arquivo_pdf="teste_lote_revisao.pdf", processo="0000000-00.2026.8.00.0961",
+        relatorio_path=str(caminho_revisao), destino_pdf=None, confianca="media", usuario_id=None,
+    )
+    job_erro = registrar_erro(
+        arquivo_pdf="teste_lote_erro.pdf", processo=None, tipo_erro="erro_ia",
+        erro_mensagem="falha simulada", usuario_id=None,
+    )
+    limpar_jobs_criados.extend([job_sucesso.id, job_revisao.id, job_erro.id])
+
+    resp = cliente_logado.post(
+        "/extratus/relatorios-robo/baixar-lote",
+        data={"ids": [job_sucesso.id, job_revisao.id, job_erro.id]},
+    )
+
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "application/zip"
+
+    with zipfile.ZipFile(io.BytesIO(resp.content)) as zip_arquivo:
+        nomes = zip_arquivo.namelist()
+        assert "teste_lote_sucesso.docx" in nomes
+        assert "teste_lote_revisao.docx" in nomes
+        assert len(nomes) == 2
+
+
+def test_baixar_lote_sem_nenhum_arquivo_redireciona_com_erro(cliente_logado, limpar_jobs_criados):
+    job_erro = registrar_erro(
+        arquivo_pdf="teste_lote_so_erro.pdf", processo=None, tipo_erro="erro_ia",
+        erro_mensagem="falha simulada", usuario_id=None,
+    )
+    limpar_jobs_criados.append(job_erro.id)
+
+    resp = cliente_logado.post(
+        "/extratus/relatorios-robo/baixar-lote",
+        data={"ids": [job_erro.id]},
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 303
+    assert "erro=" in resp.headers["location"]
+
+
+def test_excluir_lote_admin_apaga_varios_de_uma_vez(cliente_logado):
+    job1 = registrar_processado(
+        arquivo_pdf="teste_lote_excluir_1.pdf", processo="0000000-00.2026.8.00.0970",
+        relatorio_path=None, destino_pdf=None, confianca="alta", usuario_id=None,
+    )
+    job2 = registrar_processado(
+        arquivo_pdf="teste_lote_excluir_2.pdf", processo="0000000-00.2026.8.00.0971",
+        relatorio_path=None, destino_pdf=None, confianca="alta", usuario_id=None,
+    )
+
+    resp = cliente_logado.post(
+        "/extratus/relatorios-robo/excluir-lote",
+        data={"ids": [job1.id, job2.id]},
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 303
+    assert "sucesso=" in resp.headers["location"]
+
+    with obter_sessao() as sessao:
+        assert sessao.get(Job, job1.id) is None
+        assert sessao.get(Job, job2.id) is None
+
+
+def test_excluir_lote_recusa_nao_admin(cliente_nao_admin_logado, limpar_jobs_criados):
+    cliente, _usuario_id = cliente_nao_admin_logado
+
+    job = registrar_processado(
+        arquivo_pdf="teste_lote_excluir_nao_admin.pdf", processo="0000000-00.2026.8.00.0972",
+        relatorio_path=None, destino_pdf=None, confianca="alta", usuario_id=None,
+    )
+    limpar_jobs_criados.append(job.id)
+
+    resp = cliente.post("/extratus/relatorios-robo/excluir-lote", data={"ids": [job.id]})
+
+    assert resp.status_code == 403
+
+    with obter_sessao() as sessao:
+        assert sessao.get(Job, job.id) is not None

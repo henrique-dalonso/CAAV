@@ -1,8 +1,11 @@
+import zipfile
+from datetime import datetime
+from io import BytesIO
 from pathlib import Path
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi.responses import FileResponse, RedirectResponse, Response
 
 from app.ferramentas.extratus.db.checagem_fila import resolver_solicitantes
 from app.ferramentas.extratus.db.jobs import excluir_job, listar_jobs_robo, marcar_notificacao_resolvida_robo, obter_job
@@ -23,9 +26,10 @@ from app.plataforma.web.templates_util import criar_templates
 
 
 # "Relatórios do Robô" — repositório universal do que o ROBÔ já
-# processou (pronto, em revisão ou com erro), separado da tela "Seus
-# Relatórios" (só manuais) desde 2026-08-08. Henrique, 2026-08-11: acesso
-# de VER esse acervo é do mesmo nível que "Seus Relatórios" (qualquer um
+# processou (pronto, em revisão ou com erro), separado da tela
+# "Relatórios URGENTES" (só manuais) desde 2026-08-08. Henrique,
+# 2026-08-11: acesso de VER esse acervo é do mesmo nível que "Relatórios
+# URGENTES" (qualquer um
 # com a ferramenta liberada, é acervo do escritório) — não precisa mais
 # de acesso à Fila do Robô pra isso; Fila do Robô continua restrita,
 # essa é só a permissão de alimentar/operar o Robô, não de ver o que
@@ -70,17 +74,38 @@ def pagina_relatorios_robo(
     # existente.
     nomes_por_id = {u.id: u.nome for u in listar_todos_usuarios()}
     solicitante_por_job_id = resolver_solicitantes(jobs)
+    ids_solicitantes_reais = {sid for sid in solicitante_por_job_id.values() if sid}
 
     # Só os solicitantes que de fato aparecem na lista atual — dropdown
     # do filtro "Solicitado por", ordenado por nome (não a base de
-    # usuários inteira, a maioria nunca mandou nada pro Robô).
+    # usuários inteira, a maioria nunca mandou nada pro Robô). Henrique,
+    # 2026-09-02: o PRÓPRIO usuário NÃO entra aqui à força só pra ter uma
+    # opção — se ele nunca pediu nada, não faz sentido oferecer "ver só
+    # os meus" como opção selecionável (ficaria sempre vazio); ver
+    # `sem_solicitacoes_proprias` abaixo, que cobre esse caso à parte.
     solicitantes_disponiveis = sorted(
         (
             {"id": usuario_id, "nome": nomes_por_id.get(usuario_id, f"Usuário #{usuario_id}")}
-            for usuario_id in {sid for sid in solicitante_por_job_id.values() if sid}
+            for usuario_id in ids_solicitantes_reais
         ),
         key=lambda item: item["nome"].lower(),
     )
+
+    # Henrique, 2026-09-02: não-admin já abre a tela filtrado em "só os
+    # meus" (ver filtro-solicitante no template + relatorios_robo.js) —
+    # `solicitante_padrao` é só o valor inicial, a pessoa pode trocar
+    # livremente pra "Todos" depois. Quando ela NUNCA pediu nada ainda,
+    # não tem um valor real pra usar como padrão (ela nem aparece em
+    # `solicitantes_disponiveis`) — nesse caso a tela mostra uma mensagem
+    # dedicada no lugar da lista (ver template) em vez de aplicar um
+    # filtro que corresponderia a uma opção inexistente no dropdown.
+    solicitante_padrao = None
+    sem_solicitacoes_proprias = False
+    if not usuario.eh_admin:
+        if usuario.id in ids_solicitantes_reais:
+            solicitante_padrao = usuario.id
+        else:
+            sem_solicitacoes_proprias = True
 
     # Renderiza PRIMEIRO, marca como visto DEPOIS — mesmo motivo de
     # gerar_relatorio.py (senão o badge dessa própria visita nunca apareceria).
@@ -93,6 +118,8 @@ def pagina_relatorios_robo(
             "nomes_por_id": nomes_por_id,
             "solicitante_por_job_id": solicitante_por_job_id,
             "solicitantes_disponiveis": solicitantes_disponiveis,
+            "solicitante_padrao": solicitante_padrao,
+            "sem_solicitacoes_proprias": sem_solicitacoes_proprias,
             # Deep-link vindo do botão "Ir ao relatório" (Conferências
             # manuais, web/routes/gerar_relatorio.py, quando o duplicado é do
             # Robô) — pré-preenche a busca, troca pra aba certa
@@ -146,6 +173,73 @@ def excluir_relatorio_robo_route(job_id: int, usuario: Usuario = Depends(exigir_
         return _redirecionar(erro="Esse relatório não existe mais.")
 
     return _redirecionar(sucesso="Relatório excluído permanentemente.")
+
+
+@router.post("/relatorios-robo/baixar-lote")
+def baixar_lote_relatorios_robo(ids: list[int] = Form(...)):
+    """Baixa vários relatórios do Robô de uma vez, num .zip só — Henrique,
+    2026-09-02: "Baixar todos" (respeitando os filtros já aplicados na
+    tela) e "Baixar selecionados" (modo de seleção) caem os dois aqui,
+    mesmo endpoint — só muda quais ids o JS manda (ver relatorios_robo.js).
+    Job "erro" nunca tem `relatorio_path` (nunca gerou arquivo de
+    verdade) — pulado tanto por essa checagem quanto pelo status em si,
+    de propósito redundante: Henrique pediu explicitamente "revisão sim,
+    erro não", então o status vira uma segunda trava explícita, não só
+    uma consequência indireta de "sem arquivo"."""
+    buffer = BytesIO()
+    nomes_usados = set()
+
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zip_arquivo:
+        for job_id in ids:
+            job = obter_job(job_id)
+
+            if not job or job.status == "erro" or not job.relatorio_path:
+                continue
+
+            caminho = Path(job.relatorio_path)
+
+            if not caminho.exists():
+                continue
+
+            nome_no_zip = caminho.name
+            if nome_no_zip in nomes_usados:
+                nome_no_zip = f"{caminho.stem}_{job.id}{caminho.suffix}"
+            nomes_usados.add(nome_no_zip)
+
+            zip_arquivo.write(caminho, arcname=nome_no_zip)
+
+    if not nomes_usados:
+        return _redirecionar(erro="Nenhum dos relatórios selecionados tem arquivo pra baixar.")
+
+    nome_zip = f"relatorios_robo_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{nome_zip}"'},
+    )
+
+
+@router.post("/relatorios-robo/excluir-lote")
+def excluir_lote_relatorios_robo(ids: list[int] = Form(...), usuario: Usuario = Depends(exigir_admin)):
+    """Exclui vários relatórios do Robô de uma vez — mesma regra do
+    excluir individual (só admin da plataforma), reaproveitando
+    excluir_job por trás, um a um."""
+    excluidos = 0
+
+    for job_id in ids:
+        if excluir_job(job_id):
+            excluidos += 1
+
+    if excluidos == 0:
+        return _redirecionar(erro="Nenhum dos relatórios selecionados existe mais.")
+
+    mensagem = (
+        "1 relatório excluído permanentemente."
+        if excluidos == 1
+        else f"{excluidos} relatórios excluídos permanentemente."
+    )
+    return _redirecionar(sucesso=mensagem)
 
 
 @router.post("/relatorios-robo/{job_id}/marcar-notificacao-resolvida")

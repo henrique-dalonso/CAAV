@@ -40,7 +40,7 @@
         </div>
         <div class="filtro-solicitante">
             <label for="filtro-solicitante">Solicitado por:</label>
-            <select id="filtro-solicitante">
+            <select id="filtro-solicitante" data-padrao="{{ solicitante_padrao or '' }}">
                 <option value="">Todos</option>
                 {% for pessoa in solicitantes_disponiveis %}
                 <option value="{{ pessoa.id }}">{{ pessoa.nome }}</option>
@@ -48,9 +48,56 @@
             </select>
         </div>
     </div>
+    <div class="relatorios-robo-acoes-topo">
+        <button type="button" class="botao-minimal botao-minimal-icone" id="botao-baixar-todos-robo" data-dica="Baixar todos" aria-label="Baixar todos os relatórios filtrados">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+                <line x1="4" y1="21" x2="20" y2="21"></line>
+            </svg>
+        </button>
+        <button type="button" class="botao-minimal botao-minimal-icone" id="botao-selecionar-robo" data-dica="Selecionar relatórios" aria-label="Selecionar relatórios">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+        </button>
+    </div>
+    <div class="relatorios-robo-acoes-selecao" id="relatorios-robo-acoes-selecao" hidden>
+        <label class="relatorios-robo-selecionar-todos">
+            <input type="checkbox" id="check-selecionar-todos-robo" class="check-input">
+            <span class="check-caixa check-caixa-pequena"></span>
+            Selecionar todos
+        </label>
+        <button type="button" class="botao-minimal botao-minimal-icone" id="botao-baixar-selecionados-robo" data-dica="Baixar selecionados" aria-label="Baixar selecionados" disabled>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+                <line x1="4" y1="21" x2="20" y2="21"></line>
+            </svg>
+        </button>
+        {% if usuario.eh_admin %}
+        <button type="button" class="botao-minimal botao-minimal-icone botao-minimal-icone-perigo" id="botao-excluir-selecionados-robo" data-dica="Excluir selecionados" aria-label="Excluir selecionados" disabled>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+        </button>
+        {% endif %}
+        <button type="button" class="botao-minimal" id="botao-cancelar-selecao-robo">Cancelar</button>
+    </div>
+    <form method="post" action="/extratus-aburesi/relatorios-robo/baixar-lote" id="form-baixar-lote-robo" hidden></form>
+    {% if usuario.eh_admin %}
+    <form method="post" action="/extratus-aburesi/relatorios-robo/excluir-lote" id="form-excluir-lote-robo" hidden></form>
+    {% endif %}
     <ul class="lista-relatorios" id="lista-relatorios-robo">
         {% for job in jobs %}
-        <li class="relatorio-item" data-status="{{ job.status }}" data-processo="{{ job.processo or '' }}" data-busca="{{ ((job.processo or '') ~ ' ' ~ job.arquivo_pdf) | lower }}" data-criado-em="{{ job.criado_em.strftime('%Y-%m-%d') }}" data-solicitante-id="{{ solicitante_por_job_id.get(job.id) or '' }}">
+        <li class="relatorio-item" data-job-id="{{ job.id }}" data-status="{{ job.status }}" data-processo="{{ job.processo or '' }}" data-busca="{{ ((job.processo or '') ~ ' ' ~ job.arquivo_pdf) | lower }}" data-criado-em="{{ job.criado_em.strftime('%Y-%m-%d') }}" data-solicitante-id="{{ solicitante_por_job_id.get(job.id) or '' }}">
+            <label class="relatorio-item-checkbox" hidden>
+                <input type="checkbox" class="check-input relatorio-item-check" data-job-id="{{ job.id }}">
+                <span class="check-caixa check-caixa-pequena"></span>
+            </label>
             <span class="status status-{{ job.status }}">{{ job.status | rotulo_status }}</span>
             <div class="relatorio-info{% if job.relatorio_path %} relatorio-info-clicavel{% endif %}"{% if job.relatorio_path %} data-download="download/{{ job.relatorio_path.split('\\')[-1].split('/')[-1] }}"{% endif %}>
                 {% if job.processo %}
@@ -97,6 +144,7 @@
         {% endfor %}
     </ul>
     <p class="vazio filtro-vazio" hidden>Nenhum relatório encontrado com esse filtro.</p>
+    <p class="vazio filtro-vazio-sem-solicitacoes" id="aviso-sem-solicitacoes-robo" data-ativo="{{ 'true' if sem_solicitacoes_proprias else 'false' }}" hidden>Você ainda não solicitou nenhum relatório ao Robô — assim que enviar um PDF pela Fila, o resultado aparece aqui. Os filtros acima continuam disponíveis pra consultar o que o resto do escritório já processou.</p>
     {% else %}
     <p class="vazio">Nenhum processamento do Robô registrado ainda.</p>
     {% endif %}
