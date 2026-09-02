@@ -282,18 +282,19 @@
         }
 
         function entrarModoSelecaoRobo() {
-            botaoSelecionarRobo.disabled = true;
+            // Henrique, 2026-09-02 (3ª rodada): "Selecionar" some de vez
+            // (não só esmaece) — igual "Baixar todos" — pra dar lugar aos
+            // botões novos da barra de seleção, sem ficar um botão
+            // desabilitado sobrando em cima.
+            botaoSelecionarRobo.hidden = true;
             acoesSelecaoRobo.hidden = false;
-            // Henrique, 2026-09-02: "Baixar todos" some enquanto seleciona
-            // — dois ícones de baixar próximos um do outro (esse + "Baixar
-            // selecionados") confundia mais do que ajudava.
             if (botaoBaixarTodos) { botaoBaixarTodos.hidden = true; }
             listaEl.querySelectorAll(".relatorio-item-checkbox").forEach(function (c) { c.hidden = false; });
             atualizarBotoesSelecaoRobo();
         }
 
         function sairModoSelecaoRobo() {
-            botaoSelecionarRobo.disabled = false;
+            botaoSelecionarRobo.hidden = false;
             acoesSelecaoRobo.hidden = true;
             if (botaoBaixarTodos) { botaoBaixarTodos.hidden = false; }
             listaEl.querySelectorAll(".relatorio-item-checkbox").forEach(function (c) { c.hidden = true; });

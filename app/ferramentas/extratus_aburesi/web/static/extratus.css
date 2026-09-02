@@ -1285,17 +1285,18 @@ html[data-theme="escuro"] .campo-data::-webkit-calendar-picker-indicator {
     flex-shrink: 0;
 }
 
-/* Henrique, 2026-09-02: "Selecionar" e "Baixar todos" juntos, os DOIS
-   colados à direita — ordem da direita pra esquerda é baixar, depois
-   selecionar (por isso "Selecionar" vem ANTES no HTML: flex-end mantém
-   a ordem do documento, só empurra o grupo inteiro pra ponta). Corrigido
-   2026-09-02 (2ª rodada): era space-between (um em cada canto) antes. */
+/* Henrique, 2026-09-02 (3ª rodada): não é mais uma linha própria — vive
+   DENTRO de .barra-filtros agora, como último item, pra compartilhar a
+   linha com "Solicitado por" em vez de sobrar um espaço vazio embaixo
+   (2 divs empilhadas viravam 2 linhas). .barra-filtros já cuida do
+   espaçamento entre os itens da mesma linha (gap) e de empurrar esse
+   grupo pra ponta direita (justify-content: space-between); aqui só
+   precisa dos dois botões lado a lado. Ordem no HTML é [Baixar todos,
+   Selecionar] — literal, "[DOWNLOAD TODOS] <-> [SELECIONAR]". */
 .relatorios-robo-acoes-topo {
     display: flex;
-    justify-content: flex-end;
     align-items: center;
     gap: 0.5rem;
-    margin-bottom: 0.75rem;
 }
 
 .relatorios-robo-acoes-topo .botao-minimal {

@@ -276,7 +276,7 @@
         }
 
         function entrarModoSelecaoRobo() {
-            botaoSelecionarRobo.disabled = true;
+            botaoSelecionarRobo.hidden = true;
             acoesSelecaoRobo.hidden = false;
             if (botaoBaixarTodos) { botaoBaixarTodos.hidden = true; }
             listaEl.querySelectorAll(".relatorio-item-checkbox").forEach(function (c) { c.hidden = false; });
@@ -284,7 +284,7 @@
         }
 
         function sairModoSelecaoRobo() {
-            botaoSelecionarRobo.disabled = false;
+            botaoSelecionarRobo.hidden = false;
             acoesSelecaoRobo.hidden = true;
             if (botaoBaixarTodos) { botaoBaixarTodos.hidden = false; }
             listaEl.querySelectorAll(".relatorio-item-checkbox").forEach(function (c) { c.hidden = true; });
