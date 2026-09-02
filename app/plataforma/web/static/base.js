@@ -331,6 +331,12 @@
         var botaoCancelarConfirmacao = document.getElementById("modal-confirmacao-cancelar");
         var botaoConfirmarConfirmacao = document.getElementById("modal-confirmacao-confirmar");
         var formPendente = null;
+        // Ação pendente pra confirmação que NÃO vem de um form[data-confirm]
+        // — Henrique, 2026-09-02: "Limpar notificações" do sino é um botão
+        // solto com fetch() em JS, não um form submetendo de verdade, mas
+        // merece o MESMO modal (consistência visual) em vez de reinventar
+        // um confirm específico. Ver confirmarAcao mais abaixo.
+        var callbackPendente = null;
         // Guarda quem tinha o foco antes de abrir (o botão que disparou o
         // submit) — devolvido ao fechar, pra quem navega por teclado não
         // "perder o lugar" na página (Rodada 12, achado de acessibilidade).
@@ -339,6 +345,7 @@
         function fecharModalConfirmacao() {
             modalConfirmacao.hidden = true;
             formPendente = null;
+            callbackPendente = null;
 
             if (elementoAnteriorFoco && typeof elementoAnteriorFoco.focus === "function") {
                 elementoAnteriorFoco.focus();
@@ -380,12 +387,33 @@
 
         botaoConfirmarConfirmacao.addEventListener("click", function () {
             var form = formPendente;
+            var callback = callbackPendente;
             fecharModalConfirmacao();
 
             if (form) {
                 form.submit();
+            } else if (callback) {
+                callback();
             }
         });
+
+        // Versão "programática" do form[data-confirm] acima — mesmo modal,
+        // mesmo foco preso/Escape/devolução de foco, mas pra qualquer ação
+        // em JS que não seja um submit de form (ex: "Limpar notificações"
+        // do sino, que dispara vários fetch() de uma vez). `var` de
+        // propósito (não function declaration): em strict mode, uma
+        // function declarada dentro de `if (modalConfirmacao) {...}` fica
+        // presa a esse bloco — só um `var` escapa pra IIFE inteira, onde o
+        // sino (bem mais abaixo no arquivo) precisa chamar isso.
+        var confirmarAcao = function (mensagem, aoConfirmar, perigo) {
+            formPendente = null;
+            callbackPendente = aoConfirmar;
+            elementoAnteriorFoco = document.activeElement;
+            mensagemConfirmacao.textContent = mensagem;
+            botaoConfirmarConfirmacao.classList.toggle("modal-confirmacao-confirmar-perigo", perigo === true);
+            modalConfirmacao.hidden = false;
+            botaoCancelarConfirmacao.focus();
+        };
 
         modalConfirmacao.addEventListener("click", function (evento) {
             if (evento.target === modalConfirmacao) {
@@ -712,20 +740,37 @@
         // notificações' no topo de 'Minhas'" — dispensa de uma vez só
         // tudo que já tem "×" hoje (mesma flag compartilhada por baixo,
         // marcar_notificacao_resolvida/_robo); revisão/erro continuam
-        // exigindo o fluxo real.
+        // exigindo o fluxo real. Henrique, 2026-09-02 (mais tarde): pede
+        // confirmação antes — mesmo modal já usado em "Excluir relatório"/
+        // "Descartar todas" (ver confirmarAcao, definida lá em cima junto
+        // do modal-confirmacao), não um alert() nu nem algo novo.
+        function executarLimpezaNotificacoesMinhas() {
+            if (ultimosItensMinhasDescartaveis.length === 0) {
+                return;
+            }
+
+            limparNotificacoesMinhasEl.disabled = true;
+
+            Promise.all(ultimosItensMinhasDescartaveis.map(function (item) {
+                return fetch(item.resolver, { method: "POST" });
+            }))
+                .then(function () { consultarNotificacoes(); })
+                .finally(function () { limparNotificacoesMinhasEl.disabled = false; });
+        }
+
         if (limparNotificacoesMinhasEl) {
             limparNotificacoesMinhasEl.addEventListener("click", function () {
-                if (ultimosItensMinhasDescartaveis.length === 0) {
+                var quantidade = ultimosItensMinhasDescartaveis.length;
+
+                if (quantidade === 0) {
                     return;
                 }
 
-                limparNotificacoesMinhasEl.disabled = true;
+                var mensagem = quantidade === 1
+                    ? "Marcar a 1 notificação de \"Minhas\" como lida?"
+                    : "Marcar as " + quantidade + " notificações de \"Minhas\" como lidas?";
 
-                Promise.all(ultimosItensMinhasDescartaveis.map(function (item) {
-                    return fetch(item.resolver, { method: "POST" });
-                }))
-                    .then(function () { consultarNotificacoes(); })
-                    .finally(function () { limparNotificacoesMinhasEl.disabled = false; });
+                confirmarAcao(mensagem, executarLimpezaNotificacoesMinhas, true);
             });
         }
 
