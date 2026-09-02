@@ -18,6 +18,7 @@ from app.plataforma.db.usuarios import (
     definir_cargo,
     definir_ferramentas,
     excluir_usuario,
+    ferramenta_pela_url,
     listar_ferramentas_manual_ids,
     listar_ferramentas_liberadas_ids,
     listar_ferramentas_mais_usadas,
@@ -525,3 +526,29 @@ def test_marcar_aba_vista_nao_afeta_outra_aba(limpar_usuarios_teste):
     marcar_aba_vista(usuario.id, "extratus", "relatorios")
 
     assert obter_ultimo_visto(usuario.id, "extratus", "relatorios-robo") is None
+
+
+# --- ferramenta_pela_url — cor/marca de identidade em qualquer sub-página
+# do módulo (Henrique, 2026-09-02: achado real, "marca-sistema-ferramenta"
+# só aparecia em /extratus/fila, voltava pra "Alonso & Verdiani" nas
+# outras abas do MESMO módulo — comparava contra Ferramenta.url, que
+# virou o link do ÍCONE (/extratus/fila), não mais o prefixo do módulo). ---
+
+def test_ferramenta_pela_url_reconhece_qualquer_subpagina_do_modulo():
+    assert ferramenta_pela_url("/extratus/fila").slug == "extratus"
+    assert ferramenta_pela_url("/extratus/relatorios-robo").slug == "extratus"
+    assert ferramenta_pela_url("/extratus/relatorios").slug == "extratus"
+    assert ferramenta_pela_url("/extratus/").slug == "extratus"
+
+
+def test_ferramenta_pela_url_nao_confunde_extratus_com_aburesi():
+    # "/extratus-aburesi/..." também começa com a string "extratus" —
+    # sem a barra de fronteira, um startswith ingênuo confundiria os dois.
+    assert ferramenta_pela_url("/extratus-aburesi/fila").slug == "extratus-aburesi"
+    assert ferramenta_pela_url("/extratus-aburesi/relatorios-robo").slug == "extratus-aburesi"
+
+
+def test_ferramenta_pela_url_fora_de_qualquer_modulo_devolve_none():
+    assert ferramenta_pela_url("/admin") is None
+    assert ferramenta_pela_url("/") is None
+    assert ferramenta_pela_url("/login") is None

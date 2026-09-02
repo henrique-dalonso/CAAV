@@ -202,19 +202,32 @@ def ferramenta_pela_url(caminho):
     cor_ferramenta_atual, templates_util.py) em qualquer sub-página dela
     (não só a raiz, também funciona pra /extratus/fila, /extratus/relatorios
     etc.), já que o middleware de "Mais utilizadas" só faz esse match
-    exato pra raiz, não serve pra isso."""
+    exato pra raiz, não serve pra isso.
+
+    Henrique, 2026-09-02: achado real — comparava contra `Ferramenta.url`,
+    mas esse campo virou o link de destino do ÍCONE (seed.py, deploy
+    2026-08-21: "/extratus/fila", não mais a raiz "/extratus/"). Isso
+    fazia o nome da ferramenta (marca-sistema-ferramenta) só aparecer
+    dentro de /extratus/fila mesmo, voltando pra "Alonso & Verdiani" em
+    qualquer outra aba do mesmo módulo. Usa `slug` (sempre o prefixo real
+    de TODAS as rotas do módulo, ex: "extratus"/"extratus-aburesi") em
+    vez de `url` — com barra de fronteira explícita pra "extratus" não
+    casar com "/extratus-aburesi/...", que também começa com "extratus"."""
     with obter_sessao() as sessao:
         ferramentas = sessao.exec(select(Ferramenta)).all()
 
-    candidatas = [f for f in ferramentas if caminho.startswith(f.url)]
+    candidatas = [
+        f for f in ferramentas
+        if caminho == f"/{f.slug}" or caminho.startswith(f"/{f.slug}/")
+    ]
 
     if not candidatas:
         return None
 
-    # Prefixo mais específico (url mais longa) vence, se mais de um
+    # Prefixo mais específico (slug mais longo) vence, se mais de um
     # bater — não acontece com as URLs de hoje, mas evita ambiguidade
     # silenciosa se um dia existir.
-    return max(candidatas, key=lambda f: len(f.url))
+    return max(candidatas, key=lambda f: len(f.slug))
 
 
 def registrar_acesso_ferramenta(usuario_id, ferramenta_id):
