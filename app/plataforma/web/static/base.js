@@ -400,12 +400,14 @@
         // Versão "programática" do form[data-confirm] acima — mesmo modal,
         // mesmo foco preso/Escape/devolução de foco, mas pra qualquer ação
         // em JS que não seja um submit de form (ex: "Limpar notificações"
-        // do sino, que dispara vários fetch() de uma vez). `var` de
-        // propósito (não function declaration): em strict mode, uma
-        // function declarada dentro de `if (modalConfirmacao) {...}` fica
-        // presa a esse bloco — só um `var` escapa pra IIFE inteira, onde o
-        // sino (bem mais abaixo no arquivo) precisa chamar isso.
-        var confirmarAcao = function (mensagem, aoConfirmar, perigo) {
+        // do sino, ou "Excluir selecionados" em Relatórios do Robô — ambos
+        // disparam fetch()/form dinâmico, não um <form> de verdade nascendo
+        // já na página). Pendurado em `window` de propósito — script de
+        // OUTRA página (relatorios_robo.js) roda na sua própria IIFE, sem
+        // acesso às variáveis daqui; `window.confirmarAcao` é o mesmo
+        // padrão já usado por `window.mostrarBanner`/`mostrarBannerDetalhado`
+        // (mais acima neste arquivo) pra cruzar esse limite.
+        window.confirmarAcao = function (mensagem, aoConfirmar, perigo) {
             formPendente = null;
             callbackPendente = aoConfirmar;
             elementoAnteriorFoco = document.activeElement;
@@ -1037,9 +1039,6 @@
                 return;
             }
 
-            tocarSomNotificacao();
-            chacoalharSino();
-
             // Aba em segundo plano — soma no título pra chamar atenção
             // mesmo sem a pessoa estar olhando (Henrique, 2026-08-08:
             // "atrai a pessoa a olhar oq deu"). Com foco: (dispensável)
@@ -1073,8 +1072,14 @@
             // "Minhas" mistura boas notícias ("pronto") com pendências
             // (erro/revisão/conferência) — tomDoLote dá o tom certo pra
             // cada tipo; só sai verde quando TODAS as novidades da vez
-            // forem "pronto".
+            // forem "pronto". Henrique, 2026-09-02: som + sino chacoalhando
+            // só disparam aqui dentro — achado ao vivo que tocavam pra
+            // QUALQUER novidade, inclusive "Ferramentas" (fila do Robô de
+            // outra pessoa), incomodando todo mundo sem ser pertinente.
             if (novasMinhas.length > 0) {
+                tocarSomNotificacao();
+                chacoalharSino();
+
                 var tomMinhas = tomDoLote(novasMinhas);
 
                 if (novasMinhas.length === 1) {
