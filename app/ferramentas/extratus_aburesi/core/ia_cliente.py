@@ -816,7 +816,7 @@ def gerar_relatorio_claude(caminho_pdf, processo_detectado):
     if not api_key:
         raise RuntimeError(
             "ANTHROPIC_API_KEY não configurada no .env. Configure a chave "
-            "antes de usar ia_provider = \"claude\"."
+            "antes de gerar relatórios."
         )
 
     cliente = anthropic.Anthropic(api_key=api_key)
@@ -849,13 +849,3 @@ def gerar_relatorio_claude(caminho_pdf, processo_detectado):
         uso["custo_transcricao_usd"] = custo_transcricao_usd
 
     return dados, uso
-
-
-def gerar_relatorio(caminho_pdf, processo_detectado, ia_provider):
-    """Ver docstring equivalente em app/ferramentas/extratus/core/
-    ia_cliente.py (Extratus - Relatórios) — mesma lógica, "modo
-    simulado" removido junto (Henrique, 2026-08-11)."""
-    if str(ia_provider).strip().lower() == "claude":
-        return gerar_relatorio_claude(caminho_pdf, processo_detectado)
-
-    raise ValueError(f"Provedor de IA não suportado: {ia_provider!r}")

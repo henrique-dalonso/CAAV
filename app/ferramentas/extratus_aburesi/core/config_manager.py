@@ -18,8 +18,6 @@ CONFIG_PADRAO = {
 
     "limite_padrao": 0,
 
-    "ia_provider": "claude",
-
     # Robô automático — essa bandeira liga/desliga o vigiar-pasta-sozinho
     # de verdade (robo_watcher.py, rodando em segundo plano desde o
     # startup do app) na tela de Configurações do Robô.
@@ -46,10 +44,6 @@ PASTAS_CONFIGURAVEIS = [
     "robo_pasta_entrada",
 ]
 
-
-# Ver comentário equivalente em app/ferramentas/extratus/core/
-# config_manager.py (Extratus - Relatórios) — mesma lógica.
-PROVEDORES_IA_VALIDOS = ("claude",)
 
 # Ver comentário equivalente em app/ferramentas/extratus/core/
 # config_manager.py (Extratus - Relatórios) — mesma lógica. NÃO renomear
@@ -207,14 +201,9 @@ def carregar_config_bruto():
     return config
 
 
-def atualizar_config_robo(pasta_entrada=None, ia_provider=None):
-    """Edita as configurações do robô (pasta própria + provedor de IA) —
-    mesmo padrão de leitura/gravação em bruto do definir_robo_ativo, pra
-    não sobrescrever o config.json com caminhos já resolvidos em absoluto.
-    """
-    if ia_provider is not None and ia_provider not in PROVEDORES_IA_VALIDOS:
-        raise ValueError(f"Provedor de IA inválido: {ia_provider!r}")
-
+def atualizar_config_robo(pasta_entrada=None):
+    """Ver docstring equivalente em app/ferramentas/extratus/core/
+    config_manager.py (Extratus - Relatórios) — mesma lógica."""
     config = CONFIG_PADRAO.copy()
     config.update(_carregar_config_bruta())
 
@@ -225,9 +214,6 @@ def atualizar_config_robo(pasta_entrada=None, ia_provider=None):
             raise ValueError("Pasta de entrada do Robô não pode ficar vazia.")
 
         config["robo_pasta_entrada"] = pasta_entrada
-
-    if ia_provider is not None:
-        config["ia_provider"] = ia_provider
 
     salvar_config(config)
 

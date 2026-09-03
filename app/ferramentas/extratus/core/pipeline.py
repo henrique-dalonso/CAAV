@@ -2,7 +2,7 @@ from pathlib import Path
 
 from app.ferramentas.extratus.core.app_logger import registrar_log
 from app.ferramentas.extratus.core.processo_detector import analisar_pdf
-from app.ferramentas.extratus.core.ia_cliente import gerar_relatorio
+from app.ferramentas.extratus.core.ia_cliente import gerar_relatorio_claude
 from app.ferramentas.extratus.core.relatorio_manager import salvar_relatorio_docx
 from app.ferramentas.extratus.core.output_manager import (
     gerar_caminho_unico,
@@ -180,7 +180,6 @@ def processar_pdf(
     pasta_processados,
     pasta_erros,
     pasta_revisao,
-    ia_provider="claude",
     usuario_id=None,
 ):
     """Processa um único PDF: detecta o processo, gera o relatório, move o
@@ -202,7 +201,7 @@ def processar_pdf(
         return tratar_erro(pdf, None, "erro_pdf", erro, pasta_erros, usuario_id)
 
     try:
-        dados_relatorio, uso_ia = gerar_relatorio(pdf, processo, ia_provider)
+        dados_relatorio, uso_ia = gerar_relatorio_claude(pdf, processo)
     except Exception as erro:
         return tratar_erro(pdf, processo, "erro_ia", erro, pasta_erros, usuario_id)
 

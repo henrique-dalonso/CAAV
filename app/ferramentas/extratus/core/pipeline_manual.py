@@ -8,7 +8,7 @@ from app.ferramentas.extratus.core.pipeline import (
     tratar_erro,
 )
 from app.ferramentas.extratus.core.app_logger import registrar_log
-from app.ferramentas.extratus.core.ia_cliente import gerar_relatorio
+from app.ferramentas.extratus.core.ia_cliente import gerar_relatorio_claude
 from app.ferramentas.extratus.db import triagem_manual as db_triagem
 from app.ferramentas.extratus.db.checagem_fila import existe_conflito_de_processo
 from app.ferramentas.extratus.db.jobs import obter_relatorio_existente_para_processo
@@ -115,10 +115,9 @@ def _gerar_e_finalizar(registro, confianca, config):
     pasta_processados = config.get("pasta_processados", "processados")
     pasta_erros = config.get("pasta_erros", "erros")
     pasta_revisao = config.get("pasta_revisao", "revisao")
-    ia_provider = config.get("ia_provider", "claude")
 
     try:
-        dados_relatorio, uso_ia = gerar_relatorio(registro.caminho_pdf, registro.processo_detectado, ia_provider)
+        dados_relatorio, uso_ia = gerar_relatorio_claude(registro.caminho_pdf, registro.processo_detectado)
     except Exception as erro:
         tratar_erro(
             registro.caminho_pdf, registro.processo_detectado, "erro_ia", erro,

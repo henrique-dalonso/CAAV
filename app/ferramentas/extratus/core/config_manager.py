@@ -18,8 +18,6 @@ CONFIG_PADRAO = {
 
     "limite_padrao": 0,
 
-    "ia_provider": "claude",
-
     # Robô automático — essa bandeira liga/desliga o vigiar-pasta-sozinho
     # de verdade (robo_watcher.py, rodando em segundo plano desde o
     # startup do app) na tela de Configurações do Robô.
@@ -62,13 +60,6 @@ _CHAVES_CONFIG_ANTIGAS = {
     "motor_ativo": "robo_ativo",
     "motor_pasta_entrada": "robo_pasta_entrada",
 }
-
-
-# Henrique, 2026-08-11: "modo simulado" foi removido — só existe o
-# provedor real "claude" hoje. Continua sendo uma tupla (em vez de uma
-# constante única) porque um segundo provedor de IA REAL pode entrar
-# aqui no futuro, "se for preciso".
-PROVEDORES_IA_VALIDOS = ("claude",)
 
 
 def _migrar_chaves_config_antigas(config_bruto):
@@ -224,14 +215,16 @@ def carregar_config_bruto():
     return config
 
 
-def atualizar_config_robo(pasta_entrada=None, ia_provider=None):
-    """Edita as configurações do robô (pasta própria + provedor de IA) —
-    mesmo padrão de leitura/gravação em bruto do definir_robo_ativo, pra
-    não sobrescrever o config.json com caminhos já resolvidos em absoluto.
-    """
-    if ia_provider is not None and ia_provider not in PROVEDORES_IA_VALIDOS:
-        raise ValueError(f"Provedor de IA inválido: {ia_provider!r}")
+def atualizar_config_robo(pasta_entrada=None):
+    """Edita as configurações do robô (pasta própria) — mesmo padrão de
+    leitura/gravação em bruto do definir_robo_ativo, pra não sobrescrever
+    o config.json com caminhos já resolvidos em absoluto.
 
+    Henrique, 2026-09-02: só existia um segundo parâmetro aqui,
+    `ia_provider` ("Modo de IA" na tela) — removido de vez, o modelo de
+    IA usado nunca vai ser configurável pelo site, só por
+    desenvolvimento (ver MODELO_PADRAO/MODELO_PEDACO em ia_cliente.py).
+    """
     config = CONFIG_PADRAO.copy()
     config.update(_carregar_config_bruta())
 
@@ -242,9 +235,6 @@ def atualizar_config_robo(pasta_entrada=None, ia_provider=None):
             raise ValueError("Pasta de entrada do Robô não pode ficar vazia.")
 
         config["robo_pasta_entrada"] = pasta_entrada
-
-    if ia_provider is not None:
-        config["ia_provider"] = ia_provider
 
     salvar_config(config)
 

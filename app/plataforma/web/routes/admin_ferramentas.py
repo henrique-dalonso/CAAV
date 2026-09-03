@@ -129,7 +129,6 @@ def pagina_ferramenta_detalhe(chave: str, request: Request, usuario: Usuario = D
             "nome_ferramenta": entrada["nome"],
             "robo_ativo": config.get("robo_ativo", False),
             "config": config_form,
-            "provedores_ia": entrada["config_manager"].PROVEDORES_IA_VALIDOS,
             "lotes_em_andamento": lotes_em_andamento,
             "estatisticas_lotes": entrada["obter_estatisticas_lotes"](),
             "relatorios_robo_concluidos": entrada["contar_relatorios_robo_concluidos"](),
@@ -181,12 +180,11 @@ def listar_pastas_route(chave: str, caminho: str | None = None):
 def atualizar_config_robo_route(
     chave: str,
     pasta_entrada: str = Form(...),
-    ia_provider: str = Form(...),
 ):
     entrada = _entrada_ou_404(chave)
 
     try:
-        entrada["config_manager"].atualizar_config_robo(pasta_entrada=pasta_entrada, ia_provider=ia_provider)
+        entrada["config_manager"].atualizar_config_robo(pasta_entrada=pasta_entrada)
     except ValueError as erro:
         return RedirectResponse(
             url=f"/admin/ferramentas/{chave}?erro={quote(str(erro))}", status_code=303

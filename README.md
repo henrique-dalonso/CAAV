@@ -12,17 +12,17 @@ ferramenta. Hoje tem três ferramentas:
   ligada — mas ainda usando o prompt de instruções provisório (cópia do
   Relatórios); o prompt definitivo (Max) ainda não foi enviado. Pode ser
   trocado a qualquer momento pela tela do Robô, sem precisar de deploy.
-- **Leitor de Publicações** — pré-análise de publicações do NPJUR. Ainda
-  em construção, só a casca existe (aparece no site marcado como "Em
-  construção").
+- **Crivus** — pré-análise de publicações do NPJUR. Ainda em construção,
+  só a casca existe (aparece no site marcado como "Em construção").
 
 > Cada Extratus tem dois jeitos de processar: a fila manual (tempo real,
 > sempre síncrona) e o Robô (automático, via Batch API da Anthropic —
 > mais barato, mas assíncrono; só liga quando alguém ativa o interruptor
-> na aba Configurações do Robô). Os dois usam IA real sempre
-> (`ia_provider: "claude"` em cada `config.json`) — o "modo simulado" que
-> existia pra testar sem gastar crédito da API foi removido em 2026-08-11,
-> hoje todo processamento dispara uma chamada real e cobrada.
+> na aba Configurações do Robô). Os dois usam IA real sempre (o modelo é
+> fixo no código, em `ia_cliente.py` — nunca configurável pelo site) — o
+> "modo simulado" que existia pra testar sem gastar crédito da API foi
+> removido em 2026-08-11, hoje todo processamento dispara uma chamada
+> real e cobrada.
 
 ## Estrutura do projeto
 
@@ -47,7 +47,7 @@ app/
     ├── extratus_aburesi/        ← "Extratus - Aburesi" — cópia independente do
     │   │                            Extratus acima (pastas/banco/Robô 100% separados),
     │   │                            mesmo padrão interno, prompt de IA diferente
-    └── leitor_publicacoes/      ← 3ª ferramenta, ainda em construção
+    └── crivus/                  ← 3ª ferramenta, ainda em construção
 
 banco/plataforma.db        ← banco único, compartilhado entre sistema e ferramentas
 scripts/criar_usuario.py   ← script de sistema (bootstrap do primeiro admin)
@@ -75,7 +75,7 @@ perfil prontos — não precisa recriar nada disso numa ferramenta nova.
 | `/extratus-aburesi/...` | Extratus - Aburesi — mesmas rotas acima, módulo separado |
 | `/admin/ferramentas` | Configurações do Robô por ferramenta, liga/desliga, prompt (só admin) |
 | `/admin/custos` | Histórico técnico com custo de IA por usuário/ferramenta (só admin) |
-| `/leitor-publicacoes/` | Leitor de Publicações — em construção |
+| `/crivus/` | Crivus — em construção |
 
 ## Como rodar (modo desenvolvimento, no seu próprio computador)
 

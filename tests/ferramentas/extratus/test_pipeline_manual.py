@@ -35,7 +35,7 @@ def test_triar_e_processar_aprovado_dispara_geracao_sem_estado_intermediario():
     ), patch.object(
         pipeline_manual, "existe_conflito_de_processo", return_value=False,
     ), patch.object(
-        pipeline_manual, "gerar_relatorio",
+        pipeline_manual, "gerar_relatorio_claude",
         return_value=({"parecer": "..."}, {"custo_estimado_usd": 0.10}),
     ), patch.object(
         pipeline_manual, "finalizar_processamento",
@@ -58,7 +58,7 @@ def test_triar_e_processar_processo_nao_encontrado_nao_chama_ia():
     with patch.object(
         pipeline_manual, "analisar_pdf_isolado",
         return_value={"dominante": None, "confianca": {"nivel": "revisao", "motivo": "nada encontrado"}},
-    ), patch.object(pipeline_manual, "gerar_relatorio") as gerar_mock:
+    ), patch.object(pipeline_manual, "gerar_relatorio_claude") as gerar_mock:
         pipeline_manual._triar_e_processar(registro.id)
 
     assert not gerar_mock.called
@@ -78,7 +78,7 @@ def test_triar_e_processar_falha_ao_ler_pdf_vira_inconsistencia_nao_erro_definit
 
     with patch.object(
         pipeline_manual, "analisar_pdf_isolado", side_effect=RuntimeError("pdf corrompido"),
-    ), patch.object(pipeline_manual, "gerar_relatorio") as gerar_mock, patch.object(
+    ), patch.object(pipeline_manual, "gerar_relatorio_claude") as gerar_mock, patch.object(
         pipeline_manual, "tratar_erro",
     ) as tratar_erro_mock:
         pipeline_manual._triar_e_processar(registro.id)
@@ -106,7 +106,7 @@ def test_triar_e_processar_duplicado_relatorio_do_robo_marca_origem_robo():
         return_value={"dominante": {"processo": "0000000-00.2026.8.00.0200"}, "confianca": {"nivel": "alta", "motivo": "ok"}},
     ), patch.object(
         pipeline_manual, "obter_relatorio_existente_para_processo", return_value=_job_falso(usuario_id=None),
-    ), patch.object(pipeline_manual, "gerar_relatorio") as gerar_mock:
+    ), patch.object(pipeline_manual, "gerar_relatorio_claude") as gerar_mock:
         pipeline_manual._triar_e_processar(registro.id)
 
     assert not gerar_mock.called
@@ -126,7 +126,7 @@ def test_triar_e_processar_duplicado_relatorio_manual_marca_origem_manual():
         return_value={"dominante": {"processo": "0000000-00.2026.8.00.0210"}, "confianca": {"nivel": "alta", "motivo": "ok"}},
     ), patch.object(
         pipeline_manual, "obter_relatorio_existente_para_processo", return_value=_job_falso(usuario_id=-1234),
-    ), patch.object(pipeline_manual, "gerar_relatorio") as gerar_mock:
+    ), patch.object(pipeline_manual, "gerar_relatorio_claude") as gerar_mock:
         pipeline_manual._triar_e_processar(registro.id)
 
     assert not gerar_mock.called
@@ -148,7 +148,7 @@ def test_triar_e_processar_duplicado_em_andamento_nao_chama_ia():
         pipeline_manual, "obter_relatorio_existente_para_processo", return_value=None,
     ), patch.object(
         pipeline_manual, "existe_conflito_de_processo", return_value=True,
-    ), patch.object(pipeline_manual, "gerar_relatorio") as gerar_mock:
+    ), patch.object(pipeline_manual, "gerar_relatorio_claude") as gerar_mock:
         pipeline_manual._triar_e_processar(registro.id)
 
     assert not gerar_mock.called
@@ -170,7 +170,7 @@ def test_triar_e_processar_falha_na_ia_marca_erro():
     ), patch.object(
         pipeline_manual, "existe_conflito_de_processo", return_value=False,
     ), patch.object(
-        pipeline_manual, "gerar_relatorio", side_effect=RuntimeError("falha simulada"),
+        pipeline_manual, "gerar_relatorio_claude", side_effect=RuntimeError("falha simulada"),
     ), patch.object(pipeline_manual, "tratar_erro", return_value={"sucesso": False}):
         pipeline_manual._triar_e_processar(registro.id)
 
@@ -185,7 +185,7 @@ def test_retomar_apos_conferencia_aprova_e_gera_direto():
     db_triagem.atualizar_apos_triagem(registro.id, db_triagem.NAO_ENCONTRADO, None, "revisao", "não achou nada")
 
     with patch.object(
-        pipeline_manual, "gerar_relatorio",
+        pipeline_manual, "gerar_relatorio_claude",
         return_value=({"parecer": "..."}, {"custo_estimado_usd": 0.05}),
     ), patch.object(
         pipeline_manual, "finalizar_processamento",
@@ -211,7 +211,7 @@ def test_retomar_apos_conferencia_a_partir_de_falha_leitura_com_processo_manual(
     db_triagem.atualizar_apos_triagem(registro.id, db_triagem.FALHA_LEITURA, None, None, "Falha ao ler o PDF: erro simulado")
 
     with patch.object(
-        pipeline_manual, "gerar_relatorio",
+        pipeline_manual, "gerar_relatorio_claude",
         return_value=({"parecer": "..."}, {"custo_estimado_usd": 0.05}),
     ), patch.object(
         pipeline_manual, "finalizar_processamento",

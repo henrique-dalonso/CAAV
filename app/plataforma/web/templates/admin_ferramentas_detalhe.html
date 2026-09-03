@@ -106,7 +106,7 @@
                 </svg>
             </span>
             <div>
-                <h3>Pasta e modo de IA</h3>
+                <h3>Pasta do Robô</h3>
                 <p>Onde a Fila do Robô deposita PDFs. Processamento sempre em lote, nunca em tempo real.</p>
             </div>
         </div>
@@ -121,14 +121,6 @@
                         </svg>
                     </button>
                 </div>
-            </div>
-            <div class="campo">
-                <label for="ia_provider">Modo de IA</label>
-                <select id="ia_provider" name="ia_provider">
-                    {% for provedor in provedores_ia %}
-                    <option value="{{ provedor }}"{{ ' selected' if config.ia_provider == provedor }}>{{ provedor }}</option>
-                    {% endfor %}
-                </select>
             </div>
             <button type="submit" class="botao">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
