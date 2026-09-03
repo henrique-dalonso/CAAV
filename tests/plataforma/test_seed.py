@@ -46,7 +46,7 @@ def test_garantir_ferramentas_padrao_renomeou_extratus_relatorios():
     assert ferramenta.suporta_fila_robo is True
 
 
-def test_leitor_publicacoes_nao_suporta_fila_robo():
+def test_crivus_nao_suporta_fila_robo():
     seed.garantir_ferramentas_padrao()
 
     ferramenta = _buscar("leitor-publicacoes")

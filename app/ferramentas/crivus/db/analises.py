@@ -1,0 +1,199 @@
+from datetime import date, datetime, timedelta
+
+from sqlmodel import select
+
+from app.ferramentas.crivus.db.models import (
+    AnalisePublicacao,
+    AnexoAnalise,
+    ItemAcompanhamento,
+    ItemAgendamento,
+)
+from app.plataforma.db.session import obter_sessao
+
+
+def criar_analise_a_partir_da_ia(usuario_id, teor_publicacao, dados_ia, uso_ia, origem="individual"):
+    """Persiste o resultado de `ia_cliente.analisar_publicacao` — cria a
+    AnalisePublicacao e os itens de Acompanhamento/Agendamento, todos com
+    `tipo_sugerido` == `tipo` (ainda não revisados, status "sugerido")."""
+    with obter_sessao() as sessao:
+        analise = AnalisePublicacao(
+            usuario_id=usuario_id,
+            origem=origem,
+            teor_publicacao=teor_publicacao,
+            processo=dados_ia.get("processo") or None,
+            carteira=dados_ia.get("carteira"),
+            resumo_ia=dados_ia.get("leitura_publicacao"),
+            nivel_confianca=dados_ia.get("nivel_confianca"),
+            tem_alerta_critico=bool(dados_ia.get("tem_alerta_critico")),
+            texto_alerta_critico=dados_ia.get("texto_alerta_critico"),
+            status="aguardando_revisao",
+            modelo_ia=uso_ia.get("modelo"),
+            tokens_entrada=uso_ia.get("tokens_entrada"),
+            tokens_saida=uso_ia.get("tokens_saida"),
+            custo_estimado_usd=uso_ia.get("custo_estimado_usd"),
+        )
+        sessao.add(analise)
+        sessao.commit()
+        sessao.refresh(analise)
+
+        for item in dados_ia.get("acompanhamentos", []):
+            sessao.add(ItemAcompanhamento(
+                analise_id=analise.id,
+                tipo_sugerido=item["tipo"],
+                tipo=item["tipo"],
+            ))
+
+        hoje = date.today()
+        for item in dados_ia.get("agendamentos", []):
+            data_inicio = hoje + timedelta(days=item.get("dias_inicio", 0))
+            data_fim = hoje + timedelta(days=item.get("dias_fim", 0))
+            sessao.add(ItemAgendamento(
+                analise_id=analise.id,
+                tipo_sugerido=item["tipo"],
+                tipo=item["tipo"],
+                data_inicio_sugerida=data_inicio,
+                data_fim_sugerida=data_fim,
+                data_inicio=data_inicio,
+                data_fim=data_fim,
+            ))
+
+        sessao.commit()
+        sessao.refresh(analise)
+
+        return analise
+
+
+def obter_analise(analise_id):
+    with obter_sessao() as sessao:
+        return sessao.get(AnalisePublicacao, analise_id)
+
+
+def listar_itens(analise_id):
+    with obter_sessao() as sessao:
+        acompanhamentos = sessao.exec(
+            select(ItemAcompanhamento).where(ItemAcompanhamento.analise_id == analise_id)
+        ).all()
+        agendamentos = sessao.exec(
+            select(ItemAgendamento).where(ItemAgendamento.analise_id == analise_id)
+        ).all()
+        return acompanhamentos, agendamentos
+
+
+def _todos_prontos(analise_id, sessao):
+    pendentes = sessao.exec(
+        select(ItemAcompanhamento).where(
+            ItemAcompanhamento.analise_id == analise_id,
+            ItemAcompanhamento.status == "sugerido",
+        )
+    ).first()
+    if pendentes:
+        return False
+
+    pendentes = sessao.exec(
+        select(ItemAgendamento).where(
+            ItemAgendamento.analise_id == analise_id,
+            ItemAgendamento.status == "sugerido",
+        )
+    ).first()
+    return pendentes is None
+
+
+def marcar_item_pronto(analise_id, tipo_item, item_id, novo_tipo=None, nova_data_inicio=None, nova_data_fim=None):
+    """`tipo_item` é "acompanhamento" ou "agendamento". Aplica a correção
+    (se houver) e marca o item como "pronto" — nunca mexe em
+    `tipo_sugerido`/`data_*_sugerida`, que preservam o que a IA disse
+    originalmente pro double-check."""
+    modelo = ItemAcompanhamento if tipo_item == "acompanhamento" else ItemAgendamento
+
+    with obter_sessao() as sessao:
+        analise = sessao.get(AnalisePublicacao, analise_id)
+        if analise and analise.status == "concluido":
+            raise ValueError("Caso já concluído — não é mais possível corrigir itens.")
+
+        item = sessao.get(modelo, item_id)
+        if not item or item.analise_id != analise_id:
+            raise ValueError("Item não encontrado nesta análise.")
+
+        if novo_tipo:
+            item.tipo = novo_tipo
+        if tipo_item == "agendamento":
+            if nova_data_inicio:
+                item.data_inicio = nova_data_inicio
+            if nova_data_fim:
+                item.data_fim = nova_data_fim
+
+        item.status = "pronto"
+        sessao.add(item)
+        sessao.commit()
+        sessao.refresh(item)
+
+        return item
+
+
+def marcar_item_desnecessario(analise_id, tipo_item, item_id, desnecessario=True):
+    modelo = ItemAcompanhamento if tipo_item == "acompanhamento" else ItemAgendamento
+
+    with obter_sessao() as sessao:
+        analise = sessao.get(AnalisePublicacao, analise_id)
+        if analise and analise.status == "concluido":
+            raise ValueError("Caso já concluído — não é mais possível corrigir itens.")
+
+        item = sessao.get(modelo, item_id)
+        if not item or item.analise_id != analise_id:
+            raise ValueError("Item não encontrado nesta análise.")
+
+        item.status = "desnecessario" if desnecessario else "sugerido"
+        sessao.add(item)
+        sessao.commit()
+        sessao.refresh(item)
+
+        return item
+
+
+def marcar_ciente_alerta_critico(analise_id):
+    with obter_sessao() as sessao:
+        analise = sessao.get(AnalisePublicacao, analise_id)
+        analise.ciente_alerta_critico = True
+        sessao.add(analise)
+        sessao.commit()
+        sessao.refresh(analise)
+        return analise
+
+
+def concluir_analise(analise_id):
+    """Só conclui se: todos os itens estiverem "pronto" (ou
+    "desnecessario", que também conta como revisado) e, havendo alerta
+    crítico, a ciência já tiver sido marcada — Henrique, 2026-09-03:
+    trava obrigatória, sem exceção."""
+    with obter_sessao() as sessao:
+        analise = sessao.get(AnalisePublicacao, analise_id)
+
+        if analise.tem_alerta_critico and not analise.ciente_alerta_critico:
+            raise ValueError("Confirme a ciência do alerta crítico antes de concluir o caso.")
+
+        if not _todos_prontos(analise_id, sessao):
+            raise ValueError("Ainda há itens de acompanhamento/agendamento não revisados.")
+
+        analise.status = "concluido"
+        analise.concluido_em = datetime.now()
+        sessao.add(analise)
+        sessao.commit()
+        sessao.refresh(analise)
+
+        return analise
+
+
+def adicionar_anexo(analise_id, usuario_id, nome_arquivo, caminho, tipo_mime, tamanho_bytes):
+    with obter_sessao() as sessao:
+        anexo = AnexoAnalise(
+            analise_id=analise_id,
+            usuario_id=usuario_id,
+            nome_arquivo=nome_arquivo,
+            caminho=str(caminho),
+            tipo_mime=tipo_mime,
+            tamanho_bytes=tamanho_bytes,
+        )
+        sessao.add(anexo)
+        sessao.commit()
+        sessao.refresh(anexo)
+        return anexo

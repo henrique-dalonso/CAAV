@@ -1,0 +1,164 @@
+from datetime import date, timedelta
+
+import pytest
+from sqlmodel import delete, select
+
+from app.ferramentas.crivus.db.analises import (
+    concluir_analise,
+    criar_analise_a_partir_da_ia,
+    listar_itens,
+    marcar_ciente_alerta_critico,
+    marcar_item_desnecessario,
+    marcar_item_pronto,
+    obter_analise,
+)
+from app.ferramentas.crivus.db.models import AnalisePublicacao, AnexoAnalise, ItemAcompanhamento, ItemAgendamento
+from app.plataforma.db.models import CARGO_COLABORADOR
+from app.plataforma.db.session import obter_sessao
+from app.plataforma.db.usuarios import criar_usuario, excluir_usuario
+
+NOME_USUARIO_TESTE = "teste_crivus_analises"
+
+
+def _dados_ia_simples(tipo_acomp="AGUARDANDO AUDIÊNCIA DE CONCILIAÇÃO", tipo_agend="AUDIÊNCIA DE CONCILIAÇÃO",
+                       tem_alerta_critico=False, agendamentos=None):
+    return {
+        "processo": "0000000-00.0000.0.00.0000",
+        "carteira": "OUTRA",
+        "leitura_publicacao": "leitura de teste",
+        "conclusao_operacional": "conclusão de teste",
+        "nivel_confianca": "ALTO",
+        "tem_alerta_critico": tem_alerta_critico,
+        "texto_alerta_critico": "providência urgente de teste" if tem_alerta_critico else None,
+        "acompanhamentos": [{"tipo": tipo_acomp}],
+        "agendamentos": agendamentos if agendamentos is not None else [{"tipo": tipo_agend, "dias_inicio": 5, "dias_fim": 5}],
+    }
+
+
+def _uso_fake():
+    return {"modelo": "claude-sonnet-5", "tokens_entrada": 1000, "tokens_saida": 200, "custo_estimado_usd": 0.05}
+
+
+@pytest.fixture
+def usuario_teste():
+    usuario = criar_usuario(
+        nome="Teste Crivus Analises",
+        nome_usuario=NOME_USUARIO_TESTE,
+        email="teste_crivus_analises@example.com",
+        senha="senhaTeste123",
+        eh_admin=False,
+        cargo=CARGO_COLABORADOR,
+    )
+    yield usuario
+
+    with obter_sessao() as sessao:
+        analises = sessao.exec(select(AnalisePublicacao).where(AnalisePublicacao.usuario_id == usuario.id)).all()
+        for analise in analises:
+            sessao.exec(delete(ItemAcompanhamento).where(ItemAcompanhamento.analise_id == analise.id))
+            sessao.exec(delete(ItemAgendamento).where(ItemAgendamento.analise_id == analise.id))
+            sessao.exec(delete(AnexoAnalise).where(AnexoAnalise.analise_id == analise.id))
+        sessao.exec(delete(AnalisePublicacao).where(AnalisePublicacao.usuario_id == usuario.id))
+        sessao.commit()
+
+    excluir_usuario(usuario.id)
+
+
+def test_criar_analise_calcula_datas_a_partir_de_dias(usuario_teste):
+    dados = _dados_ia_simples()
+    analise = criar_analise_a_partir_da_ia(usuario_teste.id, "teor colado", dados, _uso_fake())
+
+    assert analise.status == "aguardando_revisao"
+    assert analise.processo == "0000000-00.0000.0.00.0000"
+    assert analise.nivel_confianca == "ALTO"
+
+    acompanhamentos, agendamentos = listar_itens(analise.id)
+    assert len(acompanhamentos) == 1
+    assert acompanhamentos[0].tipo == acompanhamentos[0].tipo_sugerido == "AGUARDANDO AUDIÊNCIA DE CONCILIAÇÃO"
+    assert acompanhamentos[0].status == "sugerido"
+
+    assert len(agendamentos) == 1
+    esperado = date.today() + timedelta(days=5)
+    assert agendamentos[0].data_inicio == agendamentos[0].data_fim == esperado
+    assert agendamentos[0].data_inicio_sugerida == esperado
+
+
+def test_agendamentos_pode_ser_vazio_quando_nao_ha_providencia(usuario_teste):
+    dados = _dados_ia_simples(tipo_acomp="LIMINAR DEFERIDA", agendamentos=[])
+    analise = criar_analise_a_partir_da_ia(usuario_teste.id, "teor colado", dados, _uso_fake())
+
+    _, agendamentos = listar_itens(analise.id)
+    assert agendamentos == []
+
+
+def test_marcar_item_pronto_preserva_sugestao_original(usuario_teste):
+    analise = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
+    acompanhamentos, _ = listar_itens(analise.id)
+    item = acompanhamentos[0]
+
+    atualizado = marcar_item_pronto(analise.id, "acompanhamento", item.id, novo_tipo="NÃO IDENTIFICADO — validar nomenclatura no NPJUR")
+
+    assert atualizado.status == "pronto"
+    assert atualizado.tipo == "NÃO IDENTIFICADO — validar nomenclatura no NPJUR"
+    assert atualizado.tipo_sugerido == "AGUARDANDO AUDIÊNCIA DE CONCILIAÇÃO"
+
+
+def test_marcar_desnecessario_e_reverter(usuario_teste):
+    analise = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
+    _, agendamentos = listar_itens(analise.id)
+    item = agendamentos[0]
+
+    marcar_item_desnecessario(analise.id, "agendamento", item.id, desnecessario=True)
+    acompanhamentos, agendamentos = listar_itens(analise.id)
+    assert agendamentos[0].status == "desnecessario"
+
+    marcar_item_desnecessario(analise.id, "agendamento", item.id, desnecessario=False)
+    _, agendamentos = listar_itens(analise.id)
+    assert agendamentos[0].status == "sugerido"
+
+
+def test_concluir_falha_com_item_pendente(usuario_teste):
+    analise = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
+
+    with pytest.raises(ValueError):
+        concluir_analise(analise.id)
+
+
+def test_concluir_funciona_quando_todos_revisados(usuario_teste):
+    analise = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
+    acompanhamentos, agendamentos = listar_itens(analise.id)
+
+    marcar_item_pronto(analise.id, "acompanhamento", acompanhamentos[0].id)
+    marcar_item_desnecessario(analise.id, "agendamento", agendamentos[0].id, desnecessario=True)
+
+    concluida = concluir_analise(analise.id)
+    assert concluida.status == "concluido"
+    assert concluida.concluido_em is not None
+
+
+def test_alerta_critico_trava_conclusao_ate_ciencia_marcada(usuario_teste):
+    dados = _dados_ia_simples(tem_alerta_critico=True)
+    analise = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", dados, _uso_fake())
+    acompanhamentos, agendamentos = listar_itens(analise.id)
+    marcar_item_pronto(analise.id, "acompanhamento", acompanhamentos[0].id)
+    marcar_item_pronto(analise.id, "agendamento", agendamentos[0].id)
+
+    with pytest.raises(ValueError):
+        concluir_analise(analise.id)
+
+    marcar_ciente_alerta_critico(analise.id)
+    concluida = concluir_analise(analise.id)
+    assert concluida.status == "concluido"
+
+
+def test_nao_permite_corrigir_item_apos_caso_concluido(usuario_teste):
+    analise = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
+    acompanhamentos, agendamentos = listar_itens(analise.id)
+    marcar_item_pronto(analise.id, "acompanhamento", acompanhamentos[0].id)
+    marcar_item_pronto(analise.id, "agendamento", agendamentos[0].id)
+    concluir_analise(analise.id)
+
+    with pytest.raises(ValueError):
+        marcar_item_pronto(analise.id, "acompanhamento", acompanhamentos[0].id, novo_tipo="OUTRO")
+
+    with pytest.raises(ValueError):
+        marcar_item_desnecessario(analise.id, "agendamento", agendamentos[0].id, desnecessario=True)

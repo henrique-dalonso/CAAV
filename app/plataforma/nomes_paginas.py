@@ -36,7 +36,7 @@ NOMES_POR_PREFIXO = {
     "/admin/ferramentas": "Ferramentas",
     "/admin/usuarios/novo": "Criar usuário",
     "/admin/usuarios": "Usuários",
-    "/leitor-publicacoes": "Leitor de Publicações",
+    "/crivus": "Crivus",
     **_rotulos_modulo("/extratus", "Extratus - Relatórios"),
     **_rotulos_modulo("/extratus-aburesi", "Extratus - Aburesi"),
 }

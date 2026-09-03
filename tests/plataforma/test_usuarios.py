@@ -197,7 +197,7 @@ def test_emblema_ferramenta_com_hifen_pega_uma_letra_de_cada_lado():
 
 
 def test_emblema_ferramenta_sem_hifen_pega_so_a_primeira_letra():
-    assert emblema_ferramenta("Leitor de Publicações") == "L"
+    assert emblema_ferramenta("Crivus") == "C"
 
 
 def test_emblema_ferramenta_vazio():
@@ -406,7 +406,7 @@ def test_registrar_acesso_incrementa_contagem(limpar_usuarios_teste):
 def test_mais_usadas_ordena_pela_contagem_e_respeita_permissao(limpar_usuarios_teste):
     extratus_id = _buscar_ferramenta_id_por_slug("extratus")
     aburesi_id = _buscar_ferramenta_id_por_slug("extratus-aburesi")
-    leitor_id = _buscar_ferramenta_id_por_slug("leitor-publicacoes")
+    crivus_id = _buscar_ferramenta_id_por_slug("leitor-publicacoes")
 
     usuario = criar_usuario(
         nome="Teste Coordenador",
@@ -415,7 +415,7 @@ def test_mais_usadas_ordena_pela_contagem_e_respeita_permissao(limpar_usuarios_t
         senha="senhaTeste123",
         eh_admin=False,
         cargo=CARGO_COORDENADOR,
-        # só libera extratus e aburesi -- leitor de publicacoes fica de fora
+        # só libera extratus e aburesi -- crivus fica de fora
         ferramenta_ids=[extratus_id, aburesi_id],
     )
 
@@ -424,7 +424,7 @@ def test_mais_usadas_ordena_pela_contagem_e_respeita_permissao(limpar_usuarios_t
         registrar_acesso_ferramenta(usuario.id, extratus_id)
     # tenta registrar uso de uma ferramenta que ele nao tem acesso (nao
     # deveria acontecer na pratica, mas a consulta tem que ignorar mesmo assim)
-    registrar_acesso_ferramenta(usuario.id, leitor_id)
+    registrar_acesso_ferramenta(usuario.id, crivus_id)
 
     mais_usadas = listar_ferramentas_mais_usadas(usuario)
 

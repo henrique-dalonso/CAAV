@@ -12,6 +12,7 @@ from app.plataforma.paths import PROJECT_ROOT
 from app.plataforma.db import models as _modelos_plataforma  # noqa: F401
 from app.ferramentas.extratus.db import models as _modelos_extratus  # noqa: F401
 from app.ferramentas.extratus_aburesi.db import models as _modelos_extratus_aburesi  # noqa: F401
+from app.ferramentas.crivus.db import models as _modelos_crivus  # noqa: F401
 
 
 DB_PATH = PROJECT_ROOT / "banco" / "plataforma.db"

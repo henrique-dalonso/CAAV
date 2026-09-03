@@ -919,7 +919,7 @@ html[data-theme="escuro"] .banner-revisao {
    de propósito tirava o efeito pedido sem necessidade. */
 
 /* Cabeçalho de página + cartão de seção — padrão repetido em toda tela
-   de ferramenta (Extratus, Leitor de Publicações, Perfil...). Cada tela
+   de ferramenta (Extratus, Crivus, Perfil...). Cada tela
    ainda pode ter seu próprio CSS por cima disso, mas o formato base
    (título, subtítulo, cartão com borda arredondada) é o mesmo em todo
    canto, então mora aqui em vez de ser copiado em cada arquivo. */

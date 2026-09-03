@@ -60,3 +60,18 @@ banco/*
 # Arquivo de controle do watchdog do servidor (número do processo atual,
 # recriado a cada vez que o servidor sobe - não é algo pra versionar)
 servidor.pid
+
+# Arquivo de trava temporário que o Excel/Word criam sozinhos enquanto um
+# .xlsx/.docx está aberto — nunca é conteúdo de verdade, nunca versionar.
+~$*.xlsx
+~$*.docx
+
+# Exportação real do NPJUR (Crivus) — mesma regra de "dado real de
+# cliente/processo nunca versionado" das pastas dados/ do Extratus acima.
+# Os manuais/prompt (.docx) na mesma pasta continuam versionados normalmente.
+app/ferramentas/crivus/config/*.xlsx
+
+# Anexos reais enviados no Leitor de Publicação (sentenças, petições —
+# documento de cliente) — mesma regra acima.
+app/ferramentas/crivus/dados/anexos/*
+!app/ferramentas/crivus/dados/anexos/.gitkeep

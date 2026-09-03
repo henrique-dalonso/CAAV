@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block titulo %}Crivus{% endblock %}
+{% block css_pagina %}<link rel="stylesheet" href="/crivus/static/crivus.css?v={{ v }}">{% endblock %}
+
+{% block conteudo %}
+<div class="cabecalho-ferramenta">
+    <div>
+        <h1>Análise da publicação</h1>
+        <p>
+            {% if analise.processo %}Processo {{ analise.processo }}{% else %}Processo não identificado{% endif %}
+            {% if analise.carteira %} — carteira {{ analise.carteira }}{% endif %}
+        </p>
+    </div>
+    <span class="selo-confianca confianca-{{ analise.nivel_confianca | lower }}">
+        Confiança {{ analise.nivel_confianca or "?" }}
+    </span>
+</div>
+
+{% if erro %}
+<p class="banner-erro">⚠ {{ erro }}</p>
+{% endif %}
+
+{% if analise.status == "concluido" %}
+<p class="banner-sucesso">✓ Caso concluído em {{ analise.concluido_em.strftime("%d/%m/%Y %H:%M") }}.</p>
+{% endif %}
+
+{% if analise.tem_alerta_critico %}
+<section class="cartao-alerta-critico">
+    <h2>🚨 Alerta crítico</h2>
+    <p>{{ analise.texto_alerta_critico }}</p>
+</section>
+{% endif %}
+
+<section class="cartao-secao">
+    <h2>Leitura da publicação</h2>
+    <p class="texto-leitura-ia">{{ analise.resumo_ia }}</p>
+    {% if analise.motivo_confianca %}
+    <p class="aviso-discreto">Motivo da confiança {{ analise.nivel_confianca }}: {{ analise.motivo_confianca }}</p>
+    {% endif %}
+</section>
+
+<section class="cartao-secao">
+    <h2>Acompanhamento{{ "s" if acompanhamentos|length != 1 else "" }}</h2>
+    {% if not acompanhamentos %}
+    <p class="vazio">Nenhum acompanhamento sugerido.</p>
+    {% endif %}
+    {% for item in acompanhamentos %}
+    <div class="item-revisao item-status-{{ item.status }}">
+        {% if item.status == "desnecessario" %}
+            <p class="item-riscado">{{ item.tipo }}</p>
+            <form method="post" action="/crivus/{{ analise.id }}/acompanhamento/{{ item.id }}/reverter">
+                <button type="submit" class="botao-secundario" {{ "disabled" if analise.status == "concluido" }}>Reverter</button>
+            </form>
+        {% else %}
+            <form method="post" action="/crivus/{{ analise.id }}/acompanhamento/{{ item.id }}/salvar" class="form-item">
+                <select name="tipo" {{ "disabled" if analise.status == "concluido" }}>
+                    {% for tipo in tipos_acompanhamento %}
+                    <option value="{{ tipo }}" {{ "selected" if tipo == item.tipo }}>{{ tipo }}</option>
+                    {% endfor %}
+                </select>
+                {% if item.tipo != item.tipo_sugerido %}
+                <span class="aviso-discreto">sugestão original: {{ item.tipo_sugerido }}</span>
+                {% endif %}
+                <div class="item-acoes">
+                    <button type="submit" formaction="/crivus/{{ analise.id }}/acompanhamento/{{ item.id }}/desnecessario" class="botao-secundario" {{ "disabled" if analise.status == "concluido" }}>Marcar desnecessário</button>
+                    <button type="submit" class="botao-primario" {{ "disabled" if analise.status == "concluido" }}>{{ "✓ Pronto" if item.status == "pronto" else "Pronto" }}</button>
+                </div>
+            </form>
+        {% endif %}
+    </div>
+    {% endfor %}
+</section>
+
+<section class="cartao-secao">
+    <h2>Agendamento{{ "s" if agendamentos|length != 1 else "" }}</h2>
+    {% if not agendamentos %}
+    <p class="vazio">Nenhum agendamento necessário.</p>
+    {% endif %}
+    {% for item in agendamentos %}
+    <div class="item-revisao item-status-{{ item.status }}">
+        {% if item.status == "desnecessario" %}
+            <p class="item-riscado">{{ item.tipo }} ({{ item.data_inicio.strftime("%d/%m") }} a {{ item.data_fim.strftime("%d/%m") }})</p>
+            <form method="post" action="/crivus/{{ analise.id }}/agendamento/{{ item.id }}/reverter">
+                <button type="submit" class="botao-secundario" {{ "disabled" if analise.status == "concluido" }}>Reverter</button>
+            </form>
+        {% else %}
+            <form method="post" action="/crivus/{{ analise.id }}/agendamento/{{ item.id }}/salvar" class="form-item">
+                <select name="tipo" {{ "disabled" if analise.status == "concluido" }}>
+                    {% for tipo in tipos_agendamento %}
+                    <option value="{{ tipo }}" {{ "selected" if tipo == item.tipo }}>{{ tipo }}</option>
+                    {% endfor %}
+                </select>
+                <label>Início <input type="date" name="data_inicio" value="{{ item.data_inicio }}" {{ "disabled" if analise.status == "concluido" }}></label>
+                <label>Fim <input type="date" name="data_fim" value="{{ item.data_fim }}" {{ "disabled" if analise.status == "concluido" }}></label>
+                {% if item.tipo != item.tipo_sugerido or item.data_inicio != item.data_inicio_sugerida or item.data_fim != item.data_fim_sugerida %}
+                <span class="aviso-discreto">
+                    sugestão original: {{ item.tipo_sugerido }} ({{ item.data_inicio_sugerida.strftime("%d/%m") }} a {{ item.data_fim_sugerida.strftime("%d/%m") }})
+                </span>
+                {% endif %}
+                <div class="item-acoes">
+                    <button type="submit" formaction="/crivus/{{ analise.id }}/agendamento/{{ item.id }}/desnecessario" class="botao-secundario" {{ "disabled" if analise.status == "concluido" }}>Marcar desnecessário</button>
+                    <button type="submit" class="botao-primario" {{ "disabled" if analise.status == "concluido" }}>{{ "✓ Pronto" if item.status == "pronto" else "Pronto" }}</button>
+                </div>
+            </form>
+        {% endif %}
+    </div>
+    {% endfor %}
+</section>
+
+{% if analise.status != "concluido" %}
+<footer class="rodape-conclusao">
+    {% if analise.tem_alerta_critico and not analise.ciente_alerta_critico %}
+    <form method="post" action="/crivus/{{ analise.id }}/ciente-alerta">
+        <label class="checkbox-ciencia">
+            <input type="checkbox" onchange="this.form.requestSubmit()">
+            Confirmo que estou ciente do alerta crítico acima e da providência necessária.
+        </label>
+    </form>
+    {% endif %}
+
+    <form method="post" action="/crivus/{{ analise.id }}/concluir">
+        <button type="submit" class="botao-primario" {{ "disabled" if not pode_concluir }}>Confirmar e concluir caso</button>
+    </form>
+    {% if not todos_prontos %}
+    <p class="aviso-discreto">Revise todos os itens (Pronto ou Marcar desnecessário) antes de concluir.</p>
+    {% elif analise.tem_alerta_critico and not analise.ciente_alerta_critico %}
+    <p class="aviso-discreto">Confirme a ciência do alerta crítico antes de concluir.</p>
+    {% endif %}
+</footer>
+{% endif %}
+{% endblock %}
