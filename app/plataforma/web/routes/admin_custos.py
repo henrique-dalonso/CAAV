@@ -61,7 +61,7 @@ PERIODOS_GRAFICO_VALIDOS = ("7d", "15d", "30d", "1a")
 # /extratus-aburesi/custos — mesmo sendo 100% admin-only. Realocada pra
 # valer dentro do admin de verdade, em /admin/custos/<chave>. Só entram
 # aqui ferramentas que de fato têm custo de IA rastreado hoje — uma
-# ferramenta nova sem isso ainda (ex: Leitor de Publicações) não aparece
+# ferramenta nova sem isso ainda (ex: Crivus) não aparece
 # na lista, mas também não quebra nada (ver CUSTOS_POR_CHAVE.get abaixo).
 CUSTOS_POR_CHAVE = {
     "extratus-relatorios": {

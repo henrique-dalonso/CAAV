@@ -51,10 +51,14 @@ FERRAMENTAS_PADRAO = [
         "cor_acento_fraco_escuro": "#134e4a",
     },
     {
-        "nome": "Leitor de Publicações",
+        "nome": "Crivus",
+        # slug NUNCA muda (mesma regra do "extratus" acima) — mesmo com o
+        # nome comercial batizado como "Crivus" (2026-09-02), o
+        # identificador técnico continua "leitor-publicacoes" pra não
+        # romper permissão/favorito de quem já tiver acesso concedido.
         "slug": "leitor-publicacoes",
         "descricao": "Pré-análise por IA de publicações, com sugestão de agendamento para revisão do advogado.",
-        "url": "/leitor-publicacoes/",
+        "url": "/crivus/",
         "suporta_fila_robo": False,
         **_SEM_COR_PROPRIA,
     },

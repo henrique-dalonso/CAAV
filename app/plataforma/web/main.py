@@ -33,7 +33,7 @@ from app.ferramentas.extratus_aburesi.web.routes import (
     relatorios_manuais as relatorios_manuais_aburesi,
     relatorios_robo as relatorios_robo_aburesi,
 )
-from app.ferramentas.leitor_publicacoes.web.routes import home as leitor_publicacoes_home
+from app.ferramentas.crivus.web.routes import home as crivus_home
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -206,13 +206,13 @@ app.mount(
     name="extratus-aburesi-static",
 )
 
-LEITOR_PUBLICACOES_STATIC_DIR = (
-    BASE_DIR.parent.parent / "ferramentas" / "leitor_publicacoes" / "web" / "static"
+CRIVUS_STATIC_DIR = (
+    BASE_DIR.parent.parent / "ferramentas" / "crivus" / "web" / "static"
 )
 app.mount(
-    "/leitor-publicacoes/static",
-    StaticFiles(directory=LEITOR_PUBLICACOES_STATIC_DIR),
-    name="leitor-publicacoes-static",
+    "/crivus/static",
+    StaticFiles(directory=CRIVUS_STATIC_DIR),
+    name="crivus-static",
 )
 
 app.include_router(auth.router)
@@ -230,7 +230,7 @@ app.include_router(gerar_relatorio_aburesi.router, prefix="/extratus-aburesi")
 app.include_router(relatorios_manuais_aburesi.router, prefix="/extratus-aburesi")
 app.include_router(fila_aburesi.router, prefix="/extratus-aburesi")
 app.include_router(relatorios_robo_aburesi.router, prefix="/extratus-aburesi")
-app.include_router(leitor_publicacoes_home.router, prefix="/leitor-publicacoes")
+app.include_router(crivus_home.router, prefix="/crivus")
 
 
 @app.exception_handler(NaoAutenticado)

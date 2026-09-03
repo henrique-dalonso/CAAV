@@ -1,0 +1,213 @@
+/* Tela do Crivus — cabeçalho/layout de página,
+   cabecalho-ferramenta e cartao-secao já vêm de base.css (compartilhados
+   com outras ferramentas). Aqui só entra o que é específico dessa tela. */
+
+.selo-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.selo-status::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: currentColor;
+}
+
+.selo-status.construcao {
+    background: var(--cor-acento-fraco);
+    color: var(--cor-acento);
+}
+
+.cartao-secao p {
+    line-height: 1.55;
+    color: var(--cor-texto);
+}
+
+.cartao-secao .vazio {
+    margin: 1rem 0 0;
+}
+
+/* --- Formulário de envio (home.html) --- */
+
+.form-crivus {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-crivus label {
+    font-weight: 600;
+    margin-top: 0.75rem;
+}
+
+.form-crivus textarea {
+    width: 100%;
+    resize: vertical;
+    font-family: inherit;
+    font-size: 0.95rem;
+    padding: 0.75rem;
+    border-radius: 8px;
+    border: 1px solid var(--cor-borda);
+    background: var(--cor-fundo-campo, var(--cor-cartao));
+    color: var(--cor-texto);
+}
+
+.form-crivus input[type="file"] {
+    padding: 0.5rem 0;
+}
+
+.form-crivus .botao-primario {
+    align-self: flex-start;
+    margin-top: 0.5rem;
+}
+
+/* --- Selo de nível de confiança (detalhe.html) — cores locais por
+   enquanto (não existe token --cor-aviso no site ainda); "baixa"
+   reaproveita o token de erro já existente, por ser o nível de maior
+   atenção. */
+
+.selo-confianca {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.8rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.confianca-alto {
+    background: #ecfdf5;
+    color: #047857;
+}
+
+.confianca-médio, .confianca-medio {
+    background: #fffbeb;
+    color: #b45309;
+}
+
+.confianca-baixo {
+    background: var(--cor-erro-fundo);
+    color: var(--cor-erro-texto);
+}
+
+html:not([data-theme="claro"]) .confianca-alto {
+    background: #052e21;
+    color: #34d399;
+}
+
+html:not([data-theme="claro"]) .confianca-médio,
+html:not([data-theme="claro"]) .confianca-medio {
+    background: #2d1d05;
+    color: #fbbf24;
+}
+
+/* --- Alerta crítico — trava obrigatória antes de concluir o caso
+   (Henrique, 2026-09-03: "ISSO É FUNDAMENTAL"). Visualmente mais forte
+   que um banner-erro comum, de propósito. --- */
+
+.cartao-alerta-critico {
+    border: 2px solid var(--cor-erro-borda);
+    background: var(--cor-erro-fundo);
+    color: var(--cor-erro-texto);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.cartao-alerta-critico h2 {
+    margin: 0 0 0.4rem;
+    font-size: 1rem;
+}
+
+.texto-leitura-ia {
+    white-space: pre-line;
+}
+
+/* --- Itens de Acompanhamento/Agendamento (detalhe.html) --- */
+
+.item-revisao {
+    border: 1px solid var(--cor-borda);
+    border-radius: 10px;
+    padding: 0.9rem 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.item-revisao.item-status-pronto {
+    border-color: #34d399;
+}
+
+.item-riscado {
+    text-decoration: line-through;
+    color: var(--cor-erro-texto);
+    opacity: 0.75;
+    margin: 0 0 0.5rem;
+}
+
+.form-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.form-item select {
+    flex: 1 1 260px;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    border: 1px solid var(--cor-borda);
+    background: var(--cor-cartao);
+    color: var(--cor-texto);
+}
+
+.form-item label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+}
+
+.form-item input[type="date"] {
+    padding: 0.3rem 0.5rem;
+    border-radius: 6px;
+    border: 1px solid var(--cor-borda);
+    background: var(--cor-cartao);
+    color: var(--cor-texto);
+}
+
+.item-acoes {
+    display: flex;
+    gap: 0.5rem;
+    margin-left: auto;
+}
+
+.form-item .aviso-discreto {
+    flex-basis: 100%;
+}
+
+/* --- Rodapé de conclusão --- */
+
+.rodape-conclusao {
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--cor-borda);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.checkbox-ciencia {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+}

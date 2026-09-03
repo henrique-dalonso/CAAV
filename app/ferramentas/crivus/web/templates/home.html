@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block titulo %}Crivus{% endblock %}
+{% block css_pagina %}<link rel="stylesheet" href="/crivus/static/crivus.css?v={{ v }}">{% endblock %}
+
+{% block conteudo %}
+<div class="cabecalho-ferramenta">
+    <div>
+        <h1>Crivus</h1>
+        <p>Cole o teor da publicação copiada do NPJUR — a IA sugere o acompanhamento e o(s) agendamento(s), você confere antes de lançar.</p>
+    </div>
+</div>
+
+{% if erro %}
+<p class="banner-erro">⚠ {{ erro }}</p>
+{% endif %}
+{% if sucesso %}
+<p class="banner-sucesso">✓ {{ sucesso }}</p>
+{% endif %}
+
+<section class="cartao-secao">
+    <form method="post" action="/crivus/analisar" enctype="multipart/form-data" class="form-crivus">
+        <label for="teor_publicacao">Teor da publicação</label>
+        <textarea
+            id="teor_publicacao"
+            name="teor_publicacao"
+            rows="10"
+            placeholder="Cole aqui o texto copiado da fila de publicações do NPJUR..."
+            required
+        ></textarea>
+
+        <label for="arquivos">
+            Documentos de apoio (opcional)
+            <span class="aviso-discreto">
+                {% if maximo_anexos %}até {{ maximo_anexos }} arquivos{% else %}sem limite fixo (coordenador/admin){% endif %}
+                — PDF, DOCX, PNG ou JPEG, até {{ tamanho_maximo_mb }}MB cada
+            </span>
+        </label>
+        <input type="file" id="arquivos" name="arquivos" multiple accept=".pdf,.docx,.png,.jpg,.jpeg">
+
+        <button type="submit" class="botao-primario">Enviar para análise</button>
+    </form>
+</section>
+{% endblock %}
