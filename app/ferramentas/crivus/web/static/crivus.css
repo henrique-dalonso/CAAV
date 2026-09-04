@@ -672,6 +672,10 @@ html[data-theme="escuro"] .confianca-medio {
     font-size: 0.85rem;
 }
 
+/* Vermelho sólido de propósito (Henrique, 2026-09-05: "deve ser
+   vermelho, mas o ícone deve ser preto pra ser bem visualizado") — cor
+   fixa, não os tokens de erro (que são um vermelho fraco/translúcido,
+   pensados pra fundo de aviso, não pra botão de ação). */
 .botao-editar-item {
     flex-shrink: 0;
     width: 26px;
@@ -681,21 +685,49 @@ html[data-theme="escuro"] .confianca-medio {
     justify-content: center;
     border: none;
     border-radius: 6px;
-    background: var(--cor-erro-fundo);
-    color: var(--cor-erro-texto);
+    background: #dc2626;
+    color: #000;
     cursor: pointer;
-    font-size: 0.85rem;
 }
 
 .botao-editar-item:hover {
-    background: var(--cor-erro-borda);
+    background: #b91c1c;
+}
+
+/* "Cancelar edição" — só a seta, sem fundo/borda (Henrique, 2026-09-05).
+   Ocupa o mesmo lugar do lápis (que vira .somente-exibicao e some
+   durante a edição) — por isso mesma largura/altura, sem preencher. */
+.botao-cancelar-edicao {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: none;
+    color: #dc2626;
+    cursor: pointer;
+    padding: 0;
+}
+
+.botao-cancelar-edicao:hover {
+    color: #b91c1c;
 }
 
 /* Alternância exibição/edição (crivus.js troca .modo-edicao) — vale
    pra Acompanhamento (.item-revisao) e Agendamento (.item-agendamento).
    .campo-edicao só aparece editando; .somente-exibicao é o inverso
-   (view de leitura + botão "Pronto", somem editando). */
-.campo-edicao {
+   (view de leitura + botão "Pronto", somem editando).
+
+   Especificidade de propósito (2 classes: ".item-revisao .campo-edicao",
+   não só ".campo-edicao") — achado real (2026-09-04): um seletor de 1
+   classe só empatava com ".botao-pronto" (também 1 classe) e quem
+   viesse depois no arquivo vencia, vazando "Salvar Alterações" fora do
+   modo edição. Com 2 classes aqui, essa regra sempre ganha de qualquer
+   estilo de botão de 1 classe só, não importa a ordem no arquivo. */
+.item-revisao .campo-edicao,
+.item-agendamento .campo-edicao {
     display: none;
     margin-top: 0.6rem;
 }
@@ -703,6 +735,15 @@ html[data-theme="escuro"] .confianca-medio {
 .item-revisao.modo-edicao .campo-edicao,
 .item-agendamento.modo-edicao .campo-edicao {
     display: block;
+}
+
+/* .campo-edicao também é usada em botões (Marcar desnecessário, Salvar) —
+   esses precisam voltar a ser inline-flex (pro ícone/gap centralizarem),
+   não o "block" genérico acima. Seletor com tipo de elemento (button.)
+   tem mais especificidade que o de cima, sempre ganha. */
+.item-revisao.modo-edicao button.campo-edicao,
+.item-agendamento.modo-edicao button.campo-edicao {
+    display: inline-flex;
 }
 
 .item-revisao.modo-edicao .somente-exibicao,
@@ -807,6 +848,13 @@ html[data-theme="escuro"] .confianca-medio {
     border: 1.5px solid #34d399;
     border-radius: 999px;
     cursor: pointer;
+}
+
+/* "Salvar as alterações" — só o ícone (Henrique, 2026-09-05), tooltip
+   via data-dica. Redondo/compacto em vez da pílula com texto. */
+.botao-pronto-icone {
+    padding: 0.45rem;
+    border-radius: 999px;
 }
 
 @media (prefers-color-scheme: dark) {

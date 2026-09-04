@@ -283,7 +283,7 @@
     // Acompanhamento/Agendamento (detalhe.html) — Henrique, 2026-09-04:
     // exibição só de leitura por padrão; o lápis (canto superior direito,
     // vermelho — "algo delicado") revela tipo/[datas] editáveis +
-    // "Marcar desnecessário" + troca "Pronto" por "Salvar Alterações". Só
+    // "Marcar desnecessário" + troca "Pronto" por um ícone de salvar. Só
     // troca uma classe — os campos continuam no DOM e são enviados no
     // POST mesmo escondidos, então clicar direto em "Pronto" sem nunca
     // abrir o modo edição preserva a sugestão da IA como está.
@@ -293,7 +293,21 @@
 
         var item = botao.closest(".item-revisao, .item-agendamento");
         if (item) {
-            item.classList.toggle("modo-edicao");
+            item.classList.add("modo-edicao");
+        }
+    });
+
+    // "Cancelar edição" (seta, sem borda) — Henrique, 2026-09-05: ocupa o
+    // mesmo lugar do lápis (que some durante a edição), sempre sai do
+    // modo edição (nunca alterna) — os campos voltam a ficar como
+    // estavam antes de abrir, já que nada foi enviado ao servidor.
+    document.addEventListener("click", function (evento) {
+        var botao = evento.target.closest(".botao-cancelar-edicao");
+        if (!botao) { return; }
+
+        var item = botao.closest(".item-revisao, .item-agendamento");
+        if (item) {
+            item.classList.remove("modo-edicao");
         }
     });
 
