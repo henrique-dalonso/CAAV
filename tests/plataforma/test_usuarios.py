@@ -553,3 +553,13 @@ def test_ferramenta_pela_url_fora_de_qualquer_modulo_devolve_none():
     assert ferramenta_pela_url("/admin") is None
     assert ferramenta_pela_url("/") is None
     assert ferramenta_pela_url("/login") is None
+
+
+def test_ferramenta_pela_url_funciona_mesmo_com_slug_diferente_da_url():
+    # Crivus: slug "leitor-publicacoes" (nunca muda, é o identificador de
+    # permissão) mas rotas em "/crivus/..." — comparar por slug nunca
+    # bateria; por segmento de url.py (Ferramenta.url = "/crivus/") bate.
+    ferramenta = ferramenta_pela_url("/crivus/")
+    assert ferramenta is not None
+    assert ferramenta.slug == "leitor-publicacoes"
+    assert ferramenta.nome == "Crivus"

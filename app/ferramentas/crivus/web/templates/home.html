@@ -18,27 +18,60 @@
 <p class="banner-sucesso">✓ {{ sucesso }}</p>
 {% endif %}
 
-<section class="cartao-secao">
+<section class="cartao-secao crivus-formulario">
     <form method="post" action="/crivus/analisar" enctype="multipart/form-data" class="form-crivus">
-        <label for="teor_publicacao">Teor da publicação</label>
-        <textarea
-            id="teor_publicacao"
-            name="teor_publicacao"
-            rows="10"
-            placeholder="Cole aqui o texto copiado da fila de publicações do NPJUR..."
-            required
-        ></textarea>
+        <div class="form-crivus-identificacao">
+            <label>
+                Número NPJUR
+                <input type="text" name="npjur" placeholder="Ex: 0119225" required>
+            </label>
+            <label>
+                Número CNJ do processo
+                <input type="text" name="processo" placeholder="0000000-00.0000.0.00.0000" required>
+            </label>
+        </div>
 
-        <label for="arquivos">
-            Documentos de apoio (opcional)
-            <span class="aviso-discreto">
-                {% if maximo_anexos %}até {{ maximo_anexos }} arquivos{% else %}sem limite fixo (coordenador/admin){% endif %}
-                — PDF, DOCX, PNG ou JPEG, até {{ tamanho_maximo_mb }}MB cada
-            </span>
-        </label>
-        <input type="file" id="arquivos" name="arquivos" multiple accept=".pdf,.docx,.png,.jpg,.jpeg">
+        <div class="form-crivus-corpo">
+            <div class="form-crivus-teor">
+                <label for="teor_publicacao">Teor da publicação</label>
+                <textarea
+                    id="teor_publicacao"
+                    name="teor_publicacao"
+                    placeholder="Cole aqui o texto copiado da fila de publicações do NPJUR..."
+                    required
+                ></textarea>
+            </div>
 
-        <button type="submit" class="botao-primario">Enviar para análise</button>
+            <div class="form-crivus-anexos">
+                <label>
+                    Documentos de apoio (opcional)
+                    <span class="aviso-discreto">
+                        {% if maximo_anexos %}até {{ maximo_anexos }} arquivos{% else %}sem limite fixo (coordenador/admin){% endif %}
+                        — PDF, DOCX, PNG ou JPEG, até {{ tamanho_maximo_mb }}MB cada
+                    </span>
+                </label>
+                <label for="arquivos" class="dropzone-crivus">
+                    <input
+                        type="file"
+                        id="arquivos"
+                        name="arquivos"
+                        multiple
+                        accept=".pdf,.docx,.png,.jpg,.jpeg"
+                        hidden
+                        onchange="
+                            document.getElementById('dropzone-crivus-badge').textContent = this.files.length || '+';
+                            document.getElementById('dropzone-crivus-texto').textContent = this.files.length
+                                ? Array.from(this.files).map(f => f.name).join(', ')
+                                : 'Clique para adicionar documentos';
+                        "
+                    >
+                    <span class="dropzone-crivus-badge" id="dropzone-crivus-badge">+</span>
+                    <span class="dropzone-crivus-texto" id="dropzone-crivus-texto">Clique para adicionar documentos</span>
+                </label>
+            </div>
+        </div>
+
+        <button type="submit" class="botao">Enviar para análise</button>
     </form>
 </section>
 {% endblock %}

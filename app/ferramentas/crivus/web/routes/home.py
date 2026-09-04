@@ -103,12 +103,17 @@ def pagina_inicial(
 
 @router.post("/analisar")
 async def analisar(
+    npjur: str = Form(...),
+    processo: str = Form(...),
     teor_publicacao: str = Form(...),
     arquivos: list[UploadFile] = File(default=[]),
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
     if not teor_publicacao or not teor_publicacao.strip():
         return _erro_home("Cole o teor da publicação antes de enviar.")
+
+    if not npjur.strip() or not processo.strip():
+        return _erro_home("Informe o número do NPJUR e o número CNJ do processo.")
 
     arquivos_validos = [arquivo for arquivo in arquivos if arquivo.filename]
 
@@ -148,7 +153,10 @@ async def analisar(
     except Exception as exc:
         return _erro_home(f"Falha ao analisar a publicação: {exc}")
 
-    analise = criar_analise_a_partir_da_ia(usuario.id, teor_publicacao, dados, uso, origem="individual")
+    analise = criar_analise_a_partir_da_ia(
+        usuario.id, teor_publicacao, dados, uso, origem="individual",
+        npjur=npjur.strip(), processo=processo.strip(),
+    )
 
     for nome_seguro, caminho_destino, tipo_mime, tamanho in anexos_para_salvar:
         adicionar_anexo(analise.id, usuario.id, nome_seguro, caminho_destino, tipo_mime, tamanho)

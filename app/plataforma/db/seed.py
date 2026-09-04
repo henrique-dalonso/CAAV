@@ -60,7 +60,15 @@ FERRAMENTAS_PADRAO = [
         "descricao": "Pré-análise por IA de publicações, com sugestão de agendamento para revisão do advogado.",
         "url": "/crivus/",
         "suporta_fila_robo": False,
-        **_SEM_COR_PROPRIA,
+        # Henrique, 2026-09-04: "torne a cor Verde a cor do Crivus" — mesma
+        # estrutura clara/escura da Aburesi acima, só trocando a rampa
+        # de cor (teal -> green).
+        "cor_acento": "#16a34a",
+        "cor_acento_hover": "#15803d",
+        "cor_acento_fraco": "#f0fdf4",
+        "cor_acento_escuro": "#4ade80",
+        "cor_acento_hover_escuro": "#86efac",
+        "cor_acento_fraco_escuro": "#14532d",
     },
 ]
 

@@ -11,16 +11,23 @@ from app.ferramentas.crivus.db.models import (
 from app.plataforma.db.session import obter_sessao
 
 
-def criar_analise_a_partir_da_ia(usuario_id, teor_publicacao, dados_ia, uso_ia, origem="individual"):
+def criar_analise_a_partir_da_ia(usuario_id, teor_publicacao, dados_ia, uso_ia, origem="individual",
+                                  npjur=None, processo=None):
     """Persiste o resultado de `ia_cliente.analisar_publicacao` — cria a
     AnalisePublicacao e os itens de Acompanhamento/Agendamento, todos com
-    `tipo_sugerido` == `tipo` (ainda não revisados, status "sugerido")."""
+    `tipo_sugerido` == `tipo` (ainda não revisados, status "sugerido").
+
+    `npjur`/`processo`, quando informados (modo individual, a pessoa já
+    os vê na fila do NPJUR), têm prioridade sobre o que a própria IA
+    tenta identificar lendo o teor — mais confiável que uma leitura
+    automática. No modo lote (ainda não construído), viriam da planilha."""
     with obter_sessao() as sessao:
         analise = AnalisePublicacao(
             usuario_id=usuario_id,
             origem=origem,
             teor_publicacao=teor_publicacao,
-            processo=dados_ia.get("processo") or None,
+            npjur=npjur,
+            processo=processo or (dados_ia.get("processo") or None),
             carteira=dados_ia.get("carteira"),
             resumo_ia=dados_ia.get("leitura_publicacao"),
             nivel_confianca=dados_ia.get("nivel_confianca"),

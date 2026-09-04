@@ -8,6 +8,7 @@
     <div>
         <h1>Análise da publicação</h1>
         <p>
+            {% if analise.npjur %}NPJUR {{ analise.npjur }} — {% endif %}
             {% if analise.processo %}Processo {{ analise.processo }}{% else %}Processo não identificado{% endif %}
             {% if analise.carteira %} — carteira {{ analise.carteira }}{% endif %}
         </p>
@@ -64,7 +65,7 @@
                 {% endif %}
                 <div class="item-acoes">
                     <button type="submit" formaction="/crivus/{{ analise.id }}/acompanhamento/{{ item.id }}/desnecessario" class="botao-secundario" {{ "disabled" if analise.status == "concluido" }}>Marcar desnecessário</button>
-                    <button type="submit" class="botao-primario" {{ "disabled" if analise.status == "concluido" }}>{{ "✓ Pronto" if item.status == "pronto" else "Pronto" }}</button>
+                    <button type="submit" class="botao" {{ "disabled" if analise.status == "concluido" }}>{{ "✓ Pronto" if item.status == "pronto" else "Pronto" }}</button>
                 </div>
             </form>
         {% endif %}
@@ -100,7 +101,7 @@
                 {% endif %}
                 <div class="item-acoes">
                     <button type="submit" formaction="/crivus/{{ analise.id }}/agendamento/{{ item.id }}/desnecessario" class="botao-secundario" {{ "disabled" if analise.status == "concluido" }}>Marcar desnecessário</button>
-                    <button type="submit" class="botao-primario" {{ "disabled" if analise.status == "concluido" }}>{{ "✓ Pronto" if item.status == "pronto" else "Pronto" }}</button>
+                    <button type="submit" class="botao" {{ "disabled" if analise.status == "concluido" }}>{{ "✓ Pronto" if item.status == "pronto" else "Pronto" }}</button>
                 </div>
             </form>
         {% endif %}
@@ -120,7 +121,7 @@
     {% endif %}
 
     <form method="post" action="/crivus/{{ analise.id }}/concluir">
-        <button type="submit" class="botao-primario" {{ "disabled" if not pode_concluir }}>Confirmar e concluir caso</button>
+        <button type="submit" class="botao" {{ "disabled" if not pode_concluir }}>Confirmar e concluir caso</button>
     </form>
     {% if not todos_prontos %}
     <p class="aviso-discreto">Revise todos os itens (Pronto ou Marcar desnecessário) antes de concluir.</p>

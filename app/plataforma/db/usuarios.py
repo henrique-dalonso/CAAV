@@ -196,6 +196,11 @@ def listar_ferramentas_do_usuario(usuario: Usuario):
         return sessao.exec(consulta).all()
 
 
+def _primeiro_segmento_url(caminho):
+    partes = [parte for parte in caminho.split("/") if parte]
+    return partes[0] if partes else ""
+
+
 def ferramenta_pela_url(caminho):
     """Qual ferramenta "dona" desse caminho de URL, se alguma — usado pra
     saber de qual ferramenta puxar a cor de identidade (ver
@@ -204,30 +209,35 @@ def ferramenta_pela_url(caminho):
     /extratus/relatorios-urgentes etc.), já que o middleware de "Mais
     utilizadas" só faz esse match exato pra raiz, não serve pra isso.
 
-    Henrique, 2026-09-02: achado real — comparava contra `Ferramenta.url`,
-    mas esse campo virou o link de destino do ÍCONE (seed.py, deploy
-    2026-08-21: "/extratus/fila", não mais a raiz "/extratus/"). Isso
-    fazia o nome da ferramenta (marca-sistema-ferramenta) só aparecer
+    Henrique, 2026-09-02: achado real — comparava contra `Ferramenta.url`
+    inteiro, mas esse campo virou o link de destino do ÍCONE (seed.py,
+    deploy 2026-08-21: "/extratus/fila", não mais a raiz "/extratus/").
+    Isso fazia o nome da ferramenta (marca-sistema-ferramenta) só aparecer
     dentro de /extratus/fila mesmo, voltando pra "Alonso & Verdiani" em
-    qualquer outra aba do mesmo módulo. Usa `slug` (sempre o prefixo real
-    de TODAS as rotas do módulo, ex: "extratus"/"extratus-aburesi") em
-    vez de `url` — com barra de fronteira explícita pra "extratus" não
-    casar com "/extratus-aburesi/...", que também começa com "extratus"."""
+    qualquer outra aba do mesmo módulo.
+
+    Corrigido comparando pelo PRIMEIRO SEGMENTO de `Ferramenta.url` (ex:
+    "extratus" de "/extratus/fila-robo"), não por `slug` — 2026-09-04,
+    achado real de novo: o Crivus tem slug "leitor-publicacoes" (nunca
+    muda, é o identificador de permissão — ver seed.py) mas rotas em
+    "/crivus/...", então comparar por slug nunca bate pra ele. Segmento
+    de URL já resolve sozinho a mesma proteção contra confundir
+    "/extratus/..." com "/extratus-aburesi/..." que a barra de fronteira
+    explícita dava antes, sem precisar de um caso especial por ferramenta."""
     with obter_sessao() as sessao:
         ferramentas = sessao.exec(select(Ferramenta)).all()
 
-    candidatas = [
-        f for f in ferramentas
-        if caminho == f"/{f.slug}" or caminho.startswith(f"/{f.slug}/")
-    ]
+    segmento_atual = _primeiro_segmento_url(caminho)
+
+    candidatas = [f for f in ferramentas if _primeiro_segmento_url(f.url) == segmento_atual]
 
     if not candidatas:
         return None
 
-    # Prefixo mais específico (slug mais longo) vence, se mais de um
-    # bater — não acontece com as URLs de hoje, mas evita ambiguidade
-    # silenciosa se um dia existir.
-    return max(candidatas, key=lambda f: len(f.slug))
+    # Comparação por segmento inteiro (não prefixo de string) — duas
+    # ferramentas com o mesmo primeiro segmento de URL seria erro de
+    # configuração, não ambiguidade a desempatar; a primeira já resolve.
+    return candidatas[0]
 
 
 def registrar_acesso_ferramenta(usuario_id, ferramenta_id):

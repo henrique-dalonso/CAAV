@@ -84,7 +84,7 @@ def test_pagina_inicial_renderiza_formulario(cliente_logado):
 
 def test_analisar_sem_teor_volta_com_erro(cliente_logado):
     cliente, _ = cliente_logado
-    resposta = cliente.post("/crivus/analisar", data={"teor_publicacao": "   "})
+    resposta = cliente.post("/crivus/analisar", data={"npjur": "0119225", "processo": "0000000-00.0000.0.00.0000", "teor_publicacao": "   "})
     assert resposta.status_code == 200
     assert "Cole o teor" in resposta.text
 
@@ -92,7 +92,7 @@ def test_analisar_sem_teor_volta_com_erro(cliente_logado):
 def test_fluxo_completo_analisar_corrigir_e_concluir(cliente_logado):
     cliente, usuario = cliente_logado
 
-    resposta = cliente.post("/crivus/analisar", data={"teor_publicacao": "teor de teste qualquer"})
+    resposta = cliente.post("/crivus/analisar", data={"npjur": "0119225", "processo": "0000000-00.0000.0.00.0000", "teor_publicacao": "teor de teste qualquer"})
     assert resposta.status_code == 200
     analise_id = int(str(resposta.url).rstrip("/").split("/")[-1])
     assert "PUBLICAÇÃO" in resposta.text or "MANIFESTA" in resposta.text
@@ -124,7 +124,7 @@ def test_fluxo_completo_analisar_corrigir_e_concluir(cliente_logado):
 
 def test_marcar_desnecessario_tambem_libera_conclusao(cliente_logado):
     cliente, usuario = cliente_logado
-    resposta = cliente.post("/crivus/analisar", data={"teor_publicacao": "teor de teste"})
+    resposta = cliente.post("/crivus/analisar", data={"npjur": "0119225", "processo": "0000000-00.0000.0.00.0000", "teor_publicacao": "teor de teste"})
     analise_id = int(str(resposta.url).rstrip("/").split("/")[-1])
 
     with obter_sessao() as sessao:
@@ -150,7 +150,7 @@ def test_alerta_critico_bloqueia_conclusao_sem_ciencia(monkeypatch):
     cliente.post("/login", data={"usuario_login": "teste_crivus_alerta", "senha": SENHA_TESTE})
 
     try:
-        resposta = cliente.post("/crivus/analisar", data={"teor_publicacao": "teor com alerta"})
+        resposta = cliente.post("/crivus/analisar", data={"npjur": "0119225", "processo": "0000000-00.0000.0.00.0000", "teor_publicacao": "teor com alerta"})
         analise_id = int(str(resposta.url).rstrip("/").split("/")[-1])
         assert "🚨" in resposta.text or "Alerta" in resposta.text
 
@@ -179,7 +179,7 @@ def test_alerta_critico_bloqueia_conclusao_sem_ciencia(monkeypatch):
 
 def test_usuario_nao_dono_recebe_404(cliente_logado):
     cliente, usuario = cliente_logado
-    resposta = cliente.post("/crivus/analisar", data={"teor_publicacao": "teor de teste"})
+    resposta = cliente.post("/crivus/analisar", data={"npjur": "0119225", "processo": "0000000-00.0000.0.00.0000", "teor_publicacao": "teor de teste"})
     analise_id = int(str(resposta.url).rstrip("/").split("/")[-1])
 
     outro = _criar_usuario_com_acesso("teste_crivus_outro")
@@ -196,7 +196,7 @@ def test_anexo_com_extensao_nao_aceita_e_rejeitado(cliente_logado):
     cliente, _ = cliente_logado
     resposta = cliente.post(
         "/crivus/analisar",
-        data={"teor_publicacao": "teor de teste"},
+        data={"npjur": "0119225", "processo": "0000000-00.0000.0.00.0000", "teor_publicacao": "teor de teste"},
         files={"arquivos": ("malicioso.exe", b"conteudo qualquer", "application/octet-stream")},
     )
     assert "não é um tipo de arquivo aceito" in resposta.text
@@ -207,7 +207,7 @@ def test_anexo_maior_que_limite_e_rejeitado(cliente_logado):
     conteudo_grande = b"%PDF" + b"0" * (6 * 1024 * 1024)
     resposta = cliente.post(
         "/crivus/analisar",
-        data={"teor_publicacao": "teor de teste"},
+        data={"npjur": "0119225", "processo": "0000000-00.0000.0.00.0000", "teor_publicacao": "teor de teste"},
         files={"arquivos": ("grande.pdf", conteudo_grande, "application/pdf")},
     )
     assert "tem mais de" in resposta.text
@@ -217,7 +217,7 @@ def test_anexo_com_conteudo_nao_correspondente_a_extensao_e_rejeitado(cliente_lo
     cliente, _ = cliente_logado
     resposta = cliente.post(
         "/crivus/analisar",
-        data={"teor_publicacao": "teor de teste"},
+        data={"npjur": "0119225", "processo": "0000000-00.0000.0.00.0000", "teor_publicacao": "teor de teste"},
         files={"arquivos": ("falso.pdf", b"isso nao e um pdf de verdade", "application/pdf")},
     )
     assert "não parece ser um arquivo válido" in resposta.text
@@ -231,7 +231,7 @@ def test_colaborador_nao_pode_passar_do_limite_de_anexos(cliente_logado):
     ]
     resposta = cliente.post(
         "/crivus/analisar",
-        data={"teor_publicacao": "teor de teste"},
+        data={"npjur": "0119225", "processo": "0000000-00.0000.0.00.0000", "teor_publicacao": "teor de teste"},
         files=arquivos,
     )
     assert "Máximo de 3 anexos" in resposta.text

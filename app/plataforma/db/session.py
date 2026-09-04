@@ -94,6 +94,12 @@ COLUNAS_PENDENTES = {
     "checagemfila_aburesi": {
         "solicitante_id": "INTEGER",
     },
+    "analisepublicacao": {
+        # Henrique, 2026-09-04: campo "Número NPJUR" adicionado ao
+        # formulário depois da tabela já existir (Crivus foi ao ar
+        # 2026-09-03 sem ele) — ver docstring de AnalisePublicacao.
+        "npjur": "VARCHAR",
+    },
 }
 
 

@@ -24,7 +24,13 @@ class AnalisePublicacao(SQLModel, table=True):
     origem: str = Field(default="individual")  # "individual" ou "lote"
 
     teor_publicacao: str
-    processo: Optional[str] = None  # extraído pela IA (campo "PROCESSO:" da leitura)
+
+    # Henrique, 2026-09-04: informados pela pessoa no formulário (ela já
+    # vê os dois na fila do NPJUR antes de copiar o teor) — mais
+    # confiável que depender só da IA adivinhar o processo lendo o texto.
+    npjur: Optional[str] = None
+    processo: Optional[str] = None  # nº CNJ, informado pela pessoa
+
     carteira: Optional[str] = None  # ITAÚ / VOLKSWAGEN / OUTRA — identificado pela IA
 
     resumo_ia: Optional[str] = None
