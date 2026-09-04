@@ -52,12 +52,12 @@
                         <span class="dropzone-crivus-texto">Clique para adicionar documentos</span>
                     </div>
                     <div class="dropzone-crivus-cartoes" id="dropzone-crivus-cartoes" hidden></div>
-                </div>
-                <div class="dropzone-crivus-rodape">
                     <span class="dropzone-crivus-info">
                         {% if maximo_anexos %}Até {{ maximo_anexos }} arquivos{% else %}Sem limite de arquivos{% endif %}
-                        (PDF, DOCX, PNG OU JPEG), até {{ tamanho_maximo_mb }}MB cada
+                        (PDF, DOCX, PNG OU JPEG), até {{ tamanho_maximo_mb }}MB cada*
                     </span>
+                </div>
+                <div class="dropzone-crivus-rodape">
                     <button type="button" class="botao-limpar-anexos" id="botao-limpar-anexos" hidden>Limpar</button>
                 </div>
             </div>
