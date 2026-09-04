@@ -46,15 +46,34 @@ FERRAMENTA_ANALISE_PUBLICACAO = {
                 "description": "Número do processo identificado (formato CNJ), se houver. Vazio se não identificado.",
             },
             "carteira": {"type": "string", "enum": ["ITAÚ", "VOLKSWAGEN", "OUTRA"]},
-            "leitura_publicacao": {
+            # Henrique, 2026-09-04: a leitura (seção 1 do prompt mestre) sai
+            # em campos separados, não texto livre — a tela renderiza cada
+            # um em sua própria linha, formatação sempre consistente
+            # (rótulo em maiúsculas + ";"), sem depender da IA "lembrar" de
+            # formatar direito toda vez.
+            "orgao_julgador": {
                 "type": "string",
-                "description": (
-                    "Seção 1 do formato obrigatório do prompt mestre: fase "
-                    "processual, posição do banco, natureza do ato, quem foi "
-                    "intimado, resumo objetivo, comando judicial, resultado "
-                    "para o banco. Texto corrido — é só informativo pra "
-                    "pessoa entender o raciocínio, não é campo corrigível."
-                ),
+                "description": "Vara/comarca/tribunal identificado, se houver (ex: \"5ª Vara Cível de Bauru\"). Vazio se não identificado.",
+            },
+            "carteira_detalhe": {
+                "type": "string",
+                "description": "Explicação/justificativa da classificação de carteira acima — por que ITAÚ, VOLKSWAGEN ou OUTRA.",
+            },
+            "fase_processual": {"type": "string"},
+            "posicao_parte": {
+                "type": "string",
+                "description": "Posição do banco/parte patrocinada no processo (autor, réu, exequente, executado, agravante etc.) e quem são as partes.",
+            },
+            "natureza_ato": {"type": "string"},
+            "quem_foi_intimado": {"type": "string"},
+            "resumo_objetivo": {"type": "string"},
+            "comando_judicial": {
+                "type": "string",
+                "description": "O que o juízo determinou exatamente — preferencialmente citando o trecho literal da decisão.",
+            },
+            "resultado_parte": {
+                "type": "string",
+                "description": "Resultado para o banco/parte intimada: favorável, desfavorável, parcialmente desfavorável ou neutro, com a justificativa.",
             },
             "conclusao_operacional": {
                 "type": "string",
@@ -116,8 +135,10 @@ FERRAMENTA_ANALISE_PUBLICACAO = {
             },
         },
         "required": [
-            "leitura_publicacao", "conclusao_operacional", "nivel_confianca",
-            "tem_alerta_critico", "acompanhamentos", "agendamentos",
+            "carteira_detalhe", "fase_processual", "posicao_parte", "natureza_ato",
+            "quem_foi_intimado", "resumo_objetivo", "comando_judicial", "resultado_parte",
+            "conclusao_operacional", "nivel_confianca", "tem_alerta_critico",
+            "acompanhamentos", "agendamentos",
         ],
     },
 }

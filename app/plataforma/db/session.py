@@ -99,6 +99,17 @@ COLUNAS_PENDENTES = {
         # formulário depois da tabela já existir (Crivus foi ao ar
         # 2026-09-03 sem ele) — ver docstring de AnalisePublicacao.
         "npjur": "VARCHAR",
+        # Mesmo dia: a "leitura" da publicação virou campos separados em
+        # vez de um texto único, pra formatação sempre consistente na tela.
+        "orgao_julgador": "VARCHAR",
+        "carteira_detalhe": "VARCHAR",
+        "fase_processual": "VARCHAR",
+        "posicao_parte": "VARCHAR",
+        "natureza_ato": "VARCHAR",
+        "quem_foi_intimado": "VARCHAR",
+        "resumo_objetivo": "VARCHAR",
+        "comando_judicial": "VARCHAR",
+        "resultado_parte": "VARCHAR",
     },
 }
 

@@ -33,6 +33,25 @@ class AnalisePublicacao(SQLModel, table=True):
 
     carteira: Optional[str] = None  # ITAÚ / VOLKSWAGEN / OUTRA — identificado pela IA
 
+    # Henrique, 2026-09-04: leitura (seção 1 do prompt mestre) em campos
+    # separados em vez de um texto único — a tela monta cada linha
+    # (RÓTULO: valor;) de forma sempre consistente, sem depender da IA
+    # formatar direito toda vez. Nenhum é corrigível/auditado (só
+    # informativo), ao contrário dos itens de Acompanhamento/Agendamento.
+    orgao_julgador: Optional[str] = None
+    carteira_detalhe: Optional[str] = None
+    fase_processual: Optional[str] = None
+    posicao_parte: Optional[str] = None
+    natureza_ato: Optional[str] = None
+    quem_foi_intimado: Optional[str] = None
+    resumo_objetivo: Optional[str] = None
+    comando_judicial: Optional[str] = None
+    resultado_parte: Optional[str] = None
+
+    # Nome do campo ficou de quando a leitura inteira era um texto único
+    # (2026-09-03) — hoje guarda a CONCLUSÃO OPERACIONAL (seção 8 do
+    # prompt mestre), não a leitura (que virou os campos acima). Manter o
+    # nome da coluna evita uma migração de rename só por causa disso.
     resumo_ia: Optional[str] = None
     nivel_confianca: Optional[str] = None  # "ALTO" / "MÉDIO" / "BAIXO"
 

@@ -6,7 +6,7 @@
 {% block conteudo %}
 <div class="cabecalho-ferramenta">
     <div>
-        <h1>Análise da publicação</h1>
+        <h1>Análise da Publicação</h1>
         <p>
             {% if analise.npjur %}NPJUR {{ analise.npjur }} — {% endif %}
             {% if analise.processo %}Processo {{ analise.processo }}{% else %}Processo não identificado{% endif %}
@@ -26,88 +26,123 @@
 <p class="banner-sucesso">✓ Caso concluído em {{ analise.concluido_em.strftime("%d/%m/%Y %H:%M") }}.</p>
 {% endif %}
 
-{% if analise.tem_alerta_critico %}
-<section class="cartao-alerta-critico">
-    <h2>🚨 Alerta crítico</h2>
-    <p>{{ analise.texto_alerta_critico }}</p>
-</section>
-{% endif %}
-
-<section class="cartao-secao">
-    <h2>Leitura da publicação</h2>
-    <p class="texto-leitura-ia">{{ analise.resumo_ia }}</p>
-    {% if analise.motivo_confianca %}
-    <p class="aviso-discreto">Motivo da confiança {{ analise.nivel_confianca }}: {{ analise.motivo_confianca }}</p>
-    {% endif %}
-</section>
-
-<section class="cartao-secao">
-    <h2>Acompanhamento{{ "s" if acompanhamentos|length != 1 else "" }}</h2>
-    {% if not acompanhamentos %}
-    <p class="vazio">Nenhum acompanhamento sugerido.</p>
-    {% endif %}
-    {% for item in acompanhamentos %}
-    <div class="item-revisao item-status-{{ item.status }}">
-        {% if item.status == "desnecessario" %}
-            <p class="item-riscado">{{ item.tipo }}</p>
-            <form method="post" action="/crivus/leitor-individual/{{ analise.id }}/acompanhamento/{{ item.id }}/reverter">
-                <button type="submit" class="botao-secundario" {{ "disabled" if analise.status == "concluido" }}>Reverter</button>
-            </form>
-        {% else %}
-            <form method="post" action="/crivus/leitor-individual/{{ analise.id }}/acompanhamento/{{ item.id }}/salvar" class="form-item">
-                <select name="tipo" {{ "disabled" if analise.status == "concluido" }}>
-                    {% for tipo in tipos_acompanhamento %}
-                    <option value="{{ tipo }}" {{ "selected" if tipo == item.tipo }}>{{ tipo }}</option>
-                    {% endfor %}
-                </select>
-                {% if item.tipo != item.tipo_sugerido %}
-                <span class="aviso-discreto">sugestão original: {{ item.tipo_sugerido }}</span>
-                {% endif %}
-                <div class="item-acoes">
-                    <button type="submit" formaction="/crivus/leitor-individual/{{ analise.id }}/acompanhamento/{{ item.id }}/desnecessario" class="botao-secundario" {{ "disabled" if analise.status == "concluido" }}>Marcar desnecessário</button>
-                    <button type="submit" class="botao" {{ "disabled" if analise.status == "concluido" }}>{{ "✓ Pronto" if item.status == "pronto" else "Pronto" }}</button>
-                </div>
-            </form>
+<div class="crivus-detalhe-corpo">
+    <div class="crivus-detalhe-leitura">
+        {% if analise.tem_alerta_critico %}
+        <section class="cartao-alerta-critico">
+            <h2>🚨 Alerta crítico</h2>
+            <p>{{ analise.texto_alerta_critico }}</p>
+        </section>
         {% endif %}
-    </div>
-    {% endfor %}
-</section>
 
-<section class="cartao-secao">
-    <h2>Agendamento{{ "s" if agendamentos|length != 1 else "" }}</h2>
-    {% if not agendamentos %}
-    <p class="vazio">Nenhum agendamento necessário.</p>
-    {% endif %}
-    {% for item in agendamentos %}
-    <div class="item-revisao item-status-{{ item.status }}">
-        {% if item.status == "desnecessario" %}
-            <p class="item-riscado">{{ item.tipo }} ({{ item.data_inicio.strftime("%d/%m") }} a {{ item.data_fim.strftime("%d/%m") }})</p>
-            <form method="post" action="/crivus/leitor-individual/{{ analise.id }}/agendamento/{{ item.id }}/reverter">
-                <button type="submit" class="botao-secundario" {{ "disabled" if analise.status == "concluido" }}>Reverter</button>
-            </form>
-        {% else %}
-            <form method="post" action="/crivus/leitor-individual/{{ analise.id }}/agendamento/{{ item.id }}/salvar" class="form-item">
-                <select name="tipo" {{ "disabled" if analise.status == "concluido" }}>
-                    {% for tipo in tipos_agendamento %}
-                    <option value="{{ tipo }}" {{ "selected" if tipo == item.tipo }}>{{ tipo }}</option>
-                    {% endfor %}
-                </select>
-                <label>Início <input type="date" name="data_inicio" value="{{ item.data_inicio }}" {{ "disabled" if analise.status == "concluido" }}></label>
-                <label>Fim <input type="date" name="data_fim" value="{{ item.data_fim }}" {{ "disabled" if analise.status == "concluido" }}></label>
-                {% if item.tipo != item.tipo_sugerido or item.data_inicio != item.data_inicio_sugerida or item.data_fim != item.data_fim_sugerida %}
-                <span class="aviso-discreto">
-                    sugestão original: {{ item.tipo_sugerido }} ({{ item.data_inicio_sugerida.strftime("%d/%m") }} a {{ item.data_fim_sugerida.strftime("%d/%m") }})
-                </span>
-                {% endif %}
-                <div class="item-acoes">
-                    <button type="submit" formaction="/crivus/leitor-individual/{{ analise.id }}/agendamento/{{ item.id }}/desnecessario" class="botao-secundario" {{ "disabled" if analise.status == "concluido" }}>Marcar desnecessário</button>
-                    <button type="submit" class="botao" {{ "disabled" if analise.status == "concluido" }}>{{ "✓ Pronto" if item.status == "pronto" else "Pronto" }}</button>
-                </div>
-            </form>
-        {% endif %}
+        <section class="cartao-secao">
+            <h2>Leitura da Publicação</h2>
+            <div class="leitura-formatada">
+                <p>
+                    <strong>PROCESSO {{ analise.processo or "NÃO IDENTIFICADO" }}{% if analise.orgao_julgador %} ({{ analise.orgao_julgador }}){% endif %}:</strong>
+                </p>
+                <p><strong>CARTEIRA:</strong> {{ analise.carteira_detalhe }};</p>
+                <p><strong>FASE PROCESSUAL:</strong> {{ analise.fase_processual }};</p>
+                <p><strong>POSIÇÃO DO BANCO/PARTE:</strong> {{ analise.posicao_parte }};</p>
+                <p><strong>NATUREZA DO ATO:</strong> {{ analise.natureza_ato }};</p>
+                <p><strong>QUEM FOI INTIMADO:</strong> {{ analise.quem_foi_intimado }};</p>
+                <p><strong>RESUMO OBJETIVO:</strong> {{ analise.resumo_objetivo }};</p>
+                <p><strong>COMANDO JUDICIAL:</strong> "{{ analise.comando_judicial }}";</p>
+                <p><strong>RESULTADO:</strong> {{ analise.resultado_parte }}</p>
+            </div>
+            {% if analise.resumo_ia %}
+            <p class="conclusao-operacional"><strong>Conclusão operacional:</strong> {{ analise.resumo_ia }}</p>
+            {% endif %}
+            {% if analise.motivo_confianca %}
+            <p class="aviso-discreto">Motivo da confiança {{ analise.nivel_confianca }}: {{ analise.motivo_confianca }}</p>
+            {% endif %}
+        </section>
     </div>
-    {% endfor %}
-</section>
+
+    <div class="crivus-detalhe-itens">
+        <section class="cartao-secao">
+            <h2>Acompanhamento{{ "s" if acompanhamentos|length != 1 else "" }}</h2>
+            {% if not acompanhamentos %}
+            <p class="vazio">Nenhum acompanhamento sugerido.</p>
+            {% endif %}
+            {% for item in acompanhamentos %}
+            <div class="item-revisao item-status-{{ item.status }}">
+                {% if item.status == "desnecessario" %}
+                    <p class="item-riscado">{{ item.tipo }}</p>
+                    <form method="post" action="/crivus/leitor-individual/{{ analise.id }}/acompanhamento/{{ item.id }}/reverter">
+                        <button type="submit" class="botao-secundario" {{ "disabled" if analise.status == "concluido" }}>Reverter</button>
+                    </form>
+                {% else %}
+                    <form method="post" action="/crivus/leitor-individual/{{ analise.id }}/acompanhamento/{{ item.id }}/salvar" class="form-item">
+                        <select name="tipo" {{ "disabled" if analise.status == "concluido" }}>
+                            {% for tipo in tipos_acompanhamento %}
+                            <option value="{{ tipo }}" {{ "selected" if tipo == item.tipo }}>{{ tipo }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if item.tipo != item.tipo_sugerido %}
+                        <span class="aviso-discreto">sugestão original: {{ item.tipo_sugerido }}</span>
+                        {% endif %}
+                        <div class="item-acoes">
+                            <button type="submit" formaction="/crivus/leitor-individual/{{ analise.id }}/acompanhamento/{{ item.id }}/desnecessario" class="botao-secundario" {{ "disabled" if analise.status == "concluido" }}>Marcar desnecessário</button>
+                            <button type="submit" class="botao-pronto" {{ "disabled" if analise.status == "concluido" }}>{{ "✓ Pronto" if item.status == "pronto" else 'Marcar como "Pronto"' }}</button>
+                        </div>
+                    </form>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </section>
+
+        <section class="cartao-secao cartao-agendamentos">
+            <h2>Agendamentos</h2>
+            {% if not agendamentos %}
+            <p class="vazio">Nenhum agendamento necessário.</p>
+            {% endif %}
+            {% for item in agendamentos %}
+            <div class="item-agendamento item-status-{{ item.status }}">
+                {% if item.status == "desnecessario" %}
+                    <p class="item-riscado">{{ item.tipo }} · {{ item.data_inicio.strftime("%d/%m") }} a {{ item.data_fim.strftime("%d/%m") }}</p>
+                    <form method="post" action="/crivus/leitor-individual/{{ analise.id }}/agendamento/{{ item.id }}/reverter">
+                        <button type="submit" class="botao-secundario" {{ "disabled" if analise.status == "concluido" }}>Reverter</button>
+                    </form>
+                {% else %}
+                    <div class="item-agendamento-topo">
+                        <div class="item-agendamento-exibicao">
+                            <strong>{{ item.tipo }}</strong>
+                            <span class="item-agendamento-datas">{{ item.data_inicio.strftime("%d/%m/%Y") }} a {{ item.data_fim.strftime("%d/%m/%Y") }}</span>
+                        </div>
+                        {% if analise.status != "concluido" %}
+                        <button type="button" class="botao-editar-agendamento" title="Editar agendamento" aria-label="Editar agendamento">✎</button>
+                        {% endif %}
+                    </div>
+
+                    <form method="post" action="/crivus/leitor-individual/{{ analise.id }}/agendamento/{{ item.id }}/salvar" class="form-item-agendamento">
+                        <div class="campo-edicao">
+                            <select name="tipo" {{ "disabled" if analise.status == "concluido" }}>
+                                {% for tipo in tipos_agendamento %}
+                                <option value="{{ tipo }}" {{ "selected" if tipo == item.tipo }}>{{ tipo }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="linha-datas">
+                                <label>Início <input type="date" name="data_inicio" value="{{ item.data_inicio }}" {{ "disabled" if analise.status == "concluido" }}></label>
+                                <label>Fim <input type="date" name="data_fim" value="{{ item.data_fim }}" {{ "disabled" if analise.status == "concluido" }}></label>
+                            </div>
+                            {% if item.tipo != item.tipo_sugerido or item.data_inicio != item.data_inicio_sugerida or item.data_fim != item.data_fim_sugerida %}
+                            <span class="aviso-discreto">
+                                sugestão original: {{ item.tipo_sugerido }} ({{ item.data_inicio_sugerida.strftime("%d/%m") }} a {{ item.data_fim_sugerida.strftime("%d/%m") }})
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div class="item-agendamento-acoes">
+                            <button type="submit" class="botao-pronto" {{ "disabled" if analise.status == "concluido" }}>{{ "✓ Pronto" if item.status == "pronto" else 'Marcar como "Pronto"' }}</button>
+                            <button type="submit" formaction="/crivus/leitor-individual/{{ analise.id }}/agendamento/{{ item.id }}/desnecessario" class="botao-secundario campo-edicao" {{ "disabled" if analise.status == "concluido" }}>Marcar desnecessário</button>
+                        </div>
+                    </form>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </section>
+    </div>
+</div>
 
 {% if analise.status != "concluido" %}
 <footer class="rodape-conclusao">
@@ -131,3 +166,5 @@
 </footer>
 {% endif %}
 {% endblock %}
+
+{% block js_pagina %}<script src="/crivus/static/crivus.js?v={{ v }}" defer></script>{% endblock %}

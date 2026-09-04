@@ -44,23 +44,13 @@
 
             <div class="form-crivus-anexos">
                 <label>Documentos de Apoio</label>
-                <label for="arquivos" class="dropzone-crivus">
-                    <input
-                        type="file"
-                        id="arquivos"
-                        name="arquivos"
-                        multiple
-                        accept=".pdf,.docx,.png,.jpg,.jpeg"
-                        hidden
-                        onchange="
-                            document.getElementById('dropzone-crivus-badge').textContent = this.files.length || '+';
-                            document.getElementById('dropzone-crivus-texto').textContent = this.files.length
-                                ? Array.from(this.files).map(f => f.name).join(', ')
-                                : 'Clique para adicionar documentos';
-                        "
-                    >
-                    <span class="dropzone-crivus-badge" id="dropzone-crivus-badge">+</span>
-                    <span class="dropzone-crivus-texto" id="dropzone-crivus-texto">Clique para adicionar documentos</span>
+                <label for="arquivos" class="dropzone-crivus" data-maximo="{{ maximo_anexos or '' }}">
+                    <input type="file" id="arquivos" name="arquivos" multiple accept=".pdf,.docx,.png,.jpg,.jpeg" hidden>
+                    <div class="dropzone-crivus-vazio">
+                        <span class="dropzone-crivus-badge">+</span>
+                        <span class="dropzone-crivus-texto">Clique para adicionar documentos</span>
+                    </div>
+                    <div class="dropzone-crivus-chips" hidden></div>
                     <span class="dropzone-crivus-info">
                         {% if maximo_anexos %}Até {{ maximo_anexos }} arquivos{% else %}Sem limite de arquivos{% endif %}
                         (PDF, DOCX, PNG OU JPEG), até {{ tamanho_maximo_mb }}MB cada
@@ -69,7 +59,15 @@
             </div>
         </div>
 
-        <button type="submit" class="botao">Enviar para análise</button>
+        <div class="form-crivus-acoes">
+            <button type="submit" class="botao botao-enviar-crivus">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+                Enviar para Análise
+            </button>
+        </div>
     </form>
 </section>
 {% endblock %}
