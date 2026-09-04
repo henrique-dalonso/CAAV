@@ -410,61 +410,34 @@
     font-weight: 600;
 }
 
-/* --- Selo de nível de confiança (detalhe.html) — cores locais por
-   enquanto (não existe token --cor-aviso no site ainda); "baixa"
-   reaproveita o token de erro já existente, por ser o nível de maior
-   atenção. */
+/* --- Selo de nível de confiança (detalhe.html) — Henrique, 2026-09-05:
+   "aumente o tamanho... o vermelho está fundindo com o fundo escuro".
+   Cores sólidas e saturadas (não mais um tom fraco/translúcido) com
+   texto branco — mesmo esquema claro ou escuro, sem precisar de bloco
+   de tema separado, e resolve o "fundir com o fundo" de vez. */
 
 .selo-confianca {
     display: inline-flex;
     align-items: center;
-    padding: 0.35rem 0.8rem;
+    padding: 0.55rem 1.1rem;
     border-radius: 999px;
-    font-size: 0.8rem;
-    font-weight: 700;
+    font-size: 0.95rem;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    color: #fff;
     white-space: nowrap;
 }
 
 .confianca-alto {
-    background: #ecfdf5;
-    color: #047857;
+    background: #059669;
 }
 
 .confianca-médio, .confianca-medio {
-    background: #fffbeb;
-    color: #b45309;
+    background: #d97706;
 }
 
 .confianca-baixo {
-    background: var(--cor-erro-fundo);
-    color: var(--cor-erro-texto);
-}
-
-/* Mesmo padrão de 3 blocos claro/escuro/sistema que base.css usa —
-   correção 2026-09-04: a versão anterior aplicava escuro sempre que
-   data-theme não fosse "claro", inclusive tema "sistema" com SO claro. */
-@media (prefers-color-scheme: dark) {
-    html:not([data-theme="claro"]) .confianca-alto {
-        background: #052e21;
-        color: #34d399;
-    }
-
-    html:not([data-theme="claro"]) .confianca-médio,
-    html:not([data-theme="claro"]) .confianca-medio {
-        background: #2d1d05;
-        color: #fbbf24;
-    }
-}
-
-html[data-theme="escuro"] .confianca-alto {
-    background: #052e21;
-    color: #34d399;
-}
-
-html[data-theme="escuro"] .confianca-médio,
-html[data-theme="escuro"] .confianca-medio {
-    background: #2d1d05;
-    color: #fbbf24;
+    background: #dc2626;
 }
 
 /* --- Alerta crítico — trava obrigatória antes de concluir o caso
@@ -483,6 +456,81 @@ html[data-theme="escuro"] .confianca-medio {
 .cartao-alerta-critico h2 {
     margin: 0 0 0.4rem;
     font-size: 1rem;
+}
+
+/* --- Linha de identificação + concluir (detalhe.html) — Henrique,
+   2026-09-05: NPJUR/CNJ/carteira como pílulas neutras (não mais um
+   "subtítulo mixaria"), e o botão de concluir subiu pra essa linha —
+   sempre visível, sem precisar rolar a página até o rodapé. --- */
+
+.crivus-detalhe-info-linha {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.crivus-detalhe-pilulas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.pilula-info {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--cor-texto-suave);
+    background: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+    white-space: nowrap;
+}
+
+.crivus-detalhe-concluir {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.4rem;
+    flex-shrink: 0;
+}
+
+.crivus-detalhe-concluir .aviso-discreto {
+    text-align: right;
+    max-width: 260px;
+}
+
+/* Ação principal da tela — Henrique, 2026-09-05: "está feio e simples",
+   ícone + texto curto, mais peso visual que um .botao comum. */
+.botao-concluir-caso {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.3rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    font-family: inherit;
+    color: #fff;
+    background: linear-gradient(135deg, var(--cor-acento), var(--cor-acento-hover));
+    border: none;
+    border-radius: 999px;
+    box-shadow: 0 4px 14px -4px var(--cor-acento);
+    cursor: pointer;
+    transition: transform 0.1s ease, box-shadow 0.15s ease;
+}
+
+.botao-concluir-caso:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px -4px var(--cor-acento);
+}
+
+.botao-concluir-caso:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
 }
 
 /* --- Layout de duas colunas da tela de detalhe — Henrique, 2026-09-04:
@@ -523,6 +571,22 @@ html[data-theme="escuro"] .confianca-medio {
     font-size: 0.92rem;
     line-height: 1.55;
     margin: 0;
+}
+
+/* Títulos de "Conclusão Operacional" e "Leitura da Publicação" — Henrique,
+   2026-09-05: "estão pouco destacados, parecem fazer parte do texto
+   corrido". Rótulo de seção (maiúsculas + cor de destaque + linha
+   embaixo), claramente separado do parágrafo abaixo. */
+.cartao-conclusao h2,
+.cartao-leitura-compacta h2 {
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--cor-acento);
+    padding-bottom: 0.65rem;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid var(--cor-borda);
 }
 
 /* --- Leitura da Publicação — agora compacta e independente da
