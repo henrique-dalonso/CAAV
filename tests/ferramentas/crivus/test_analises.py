@@ -8,6 +8,7 @@ from app.ferramentas.crivus.db.analises import (
     concluir_analise,
     criar_agendamento_manual,
     criar_analise_a_partir_da_ia,
+    descartar_alteracoes,
     listar_itens,
     marcar_ciente_alerta_critico,
     marcar_item_desnecessario,
@@ -210,3 +211,57 @@ def test_nao_permite_adicionar_agendamento_apos_concluido(usuario_teste):
 
     with pytest.raises(ValueError):
         criar_agendamento_manual(analise.id)
+
+
+def test_descartar_alteracoes_reverte_edicoes_ja_confirmadas(usuario_teste):
+    """Henrique, 2026-09-06: "Descartar alterações e Voltar" precisa
+    REALMENTE desfazer o que já foi gravado (marcar_item_pronto já
+    confirma no banco na hora, não existe rascunho) — não pode ser só um
+    link de volta."""
+    analise = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
+    acompanhamentos, agendamentos = listar_itens(analise.id)
+
+    marcar_item_pronto(analise.id, "acompanhamento", acompanhamentos[0].id, novo_tipo="OUTRO TIPO QUALQUER")
+    marcar_item_pronto(
+        analise.id, "agendamento", agendamentos[0].id,
+        novo_tipo="MANIFESTAÇÃO", nova_data_inicio=date.today(), nova_data_fim=date.today() + timedelta(days=1),
+    )
+    marcar_ciente_alerta_critico(analise.id)
+
+    descartar_alteracoes(analise.id)
+
+    acompanhamentos, agendamentos = listar_itens(analise.id)
+    assert acompanhamentos[0].tipo == acompanhamentos[0].tipo_sugerido == "AGUARDANDO AUDIÊNCIA DE CONCILIAÇÃO"
+    assert acompanhamentos[0].status == "sugerido"
+    assert agendamentos[0].tipo == agendamentos[0].tipo_sugerido == "AUDIÊNCIA DE CONCILIAÇÃO"
+    assert agendamentos[0].data_inicio == agendamentos[0].data_inicio_sugerida
+    assert agendamentos[0].data_fim == agendamentos[0].data_fim_sugerida
+    assert agendamentos[0].status == "sugerido"
+
+    analise_atualizada = obter_analise(analise.id)
+    assert analise_atualizada.ciente_alerta_critico is False
+
+
+def test_descartar_alteracoes_remove_agendamento_criado_manualmente(usuario_teste):
+    analise = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
+    criar_agendamento_manual(analise.id)
+
+    _, agendamentos = listar_itens(analise.id)
+    assert len(agendamentos) == 2
+
+    descartar_alteracoes(analise.id)
+
+    _, agendamentos = listar_itens(analise.id)
+    assert len(agendamentos) == 1
+    assert agendamentos[0].criado_manualmente is not True
+
+
+def test_nao_permite_descartar_apos_concluido(usuario_teste):
+    analise = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
+    acompanhamentos, agendamentos = listar_itens(analise.id)
+    marcar_item_pronto(analise.id, "acompanhamento", acompanhamentos[0].id)
+    marcar_item_pronto(analise.id, "agendamento", agendamentos[0].id)
+    concluir_analise(analise.id)
+
+    with pytest.raises(ValueError):
+        descartar_alteracoes(analise.id)

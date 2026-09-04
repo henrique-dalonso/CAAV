@@ -391,20 +391,7 @@
         return form && form.action && form.action.indexOf("/crivus/leitor-individual") !== -1;
     }
 
-    document.addEventListener("submit", function (evento) {
-        var form = evento.target;
-        if (!eFormularioCrivus(form)) { return; }
-
-        evento.preventDefault();
-
-        if (form.classList.contains("form-crivus")) {
-            var invalido = validarFormularioAntesDeEnviar(form);
-            if (invalido) {
-                invalido.focus();
-                return;
-            }
-        }
-
+    function enviarFormularioCrivus(form, botaoSubmit) {
         var ehAnalise = form.classList.contains("form-crivus");
         var intervaloPontos = ehAnalise ? mostrarCarregandoAnalise() : null;
 
@@ -412,7 +399,6 @@
         // formaction (botão "Marcar desnecessário" dentro do form de
         // "salvar") — FormData não sabe disso sozinho, precisa vir do
         // botão que efetivamente disparou o submit.
-        var botaoSubmit = evento.submitter;
         var destino = (botaoSubmit && botaoSubmit.getAttribute("formaction")) || form.action;
 
         fetch(destino, { method: "POST", body: formData })
@@ -428,6 +414,42 @@
                     window.mostrarBanner("Falha de conexão — tente novamente.", "erro");
                 }
             });
+    }
+
+    document.addEventListener("submit", function (evento) {
+        var form = evento.target;
+        if (!eFormularioCrivus(form)) { return; }
+
+        evento.preventDefault();
+
+        // "Descartar alterações e Voltar" — Henrique, 2026-09-06 pediu
+        // confirmação de que isso REALMENTE desfaz o que já foi
+        // confirmado (o servidor devolve tudo à sugestão original da IA,
+        // ver descartar_alteracoes em db/analises.py); like o resto das
+        // ações destrutivas do site, passa pelo modal padrão em vez de um
+        // confirm() nu.
+        if (form.classList.contains("form-descartar-crivus")) {
+            if (window.confirmarAcao) {
+                window.confirmarAcao(
+                    "Descartar as alterações feitas neste caso e voltar? As sugestões voltam a ser exatamente as da IA — o que já foi confirmado aqui se perde.",
+                    function () { enviarFormularioCrivus(form, null); },
+                    true
+                );
+            } else {
+                enviarFormularioCrivus(form, null);
+            }
+            return;
+        }
+
+        if (form.classList.contains("form-crivus")) {
+            var invalido = validarFormularioAntesDeEnviar(form);
+            if (invalido) {
+                invalido.focus();
+                return;
+            }
+        }
+
+        enviarFormularioCrivus(form, evento.submitter);
     });
 
     document.addEventListener("click", function (evento) {

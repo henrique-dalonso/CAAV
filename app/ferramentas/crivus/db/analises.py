@@ -253,6 +253,48 @@ def concluir_analise(analise_id):
         return analise
 
 
+def descartar_alteracoes(analise_id):
+    """Botão "Descartar alterações e Voltar" — Henrique, 2026-09-06
+    perguntou se isso REALMENTE desfaz o que já foi confirmado (não
+    basta só voltar pra lista, já que "Pronto"/"Salvar Alterações" já
+    gravam no banco na hora, não existe rascunho separado). Aqui devolve
+    cada item ao que a IA sugeriu originalmente (tipo/datas voltam de
+    tipo_sugerido/data_*_sugerida, status volta a "sugerido"), remove os
+    agendamentos adicionados manualmente (não têm sugestão da IA pra
+    voltar) e desfaz a ciência do alerta crítico."""
+    with obter_sessao() as sessao:
+        analise = sessao.get(AnalisePublicacao, analise_id)
+        if not analise:
+            raise ValueError("Análise não encontrada.")
+        if analise.status == "concluido":
+            raise ValueError("Caso já concluído — não é mais possível descartar alterações.")
+
+        acompanhamentos = sessao.exec(
+            select(ItemAcompanhamento).where(ItemAcompanhamento.analise_id == analise_id)
+        ).all()
+        for item in acompanhamentos:
+            item.tipo = item.tipo_sugerido
+            item.status = "sugerido"
+            sessao.add(item)
+
+        agendamentos = sessao.exec(
+            select(ItemAgendamento).where(ItemAgendamento.analise_id == analise_id)
+        ).all()
+        for item in agendamentos:
+            if item.criado_manualmente:
+                sessao.delete(item)
+                continue
+            item.tipo = item.tipo_sugerido
+            item.data_inicio = item.data_inicio_sugerida
+            item.data_fim = item.data_fim_sugerida
+            item.status = "sugerido"
+            sessao.add(item)
+
+        analise.ciente_alerta_critico = False
+        sessao.add(analise)
+        sessao.commit()
+
+
 def adicionar_anexo(analise_id, usuario_id, nome_arquivo, caminho, tipo_mime, tamanho_bytes):
     with obter_sessao() as sessao:
         anexo = AnexoAnalise(

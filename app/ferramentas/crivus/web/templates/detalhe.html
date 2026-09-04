@@ -33,7 +33,9 @@
         </span>
         {% if analise.status != "concluido" %}
         <div class="crivus-detalhe-concluir">
-            <a href="/crivus/leitor-individual" class="link-descartar-voltar">Descartar alterações e Voltar</a>
+            <form method="post" action="/crivus/leitor-individual/{{ analise.id }}/descartar" class="form-descartar-crivus">
+                <button type="submit" class="link-descartar-voltar">Descartar alterações e Voltar</button>
+            </form>
             <form method="post" action="/crivus/leitor-individual/{{ analise.id }}/concluir">
                 <button type="submit" class="botao-concluir-caso" {{ "disabled" if not pode_concluir }}>
                     <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

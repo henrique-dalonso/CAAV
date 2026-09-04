@@ -533,11 +533,16 @@
 }
 
 .link-descartar-voltar {
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: inherit;
     font-size: 0.82rem;
     font-weight: 600;
     color: var(--cor-erro-texto);
     text-decoration: underline;
     white-space: nowrap;
+    cursor: pointer;
 }
 
 .link-descartar-voltar:hover {
@@ -563,6 +568,15 @@
     border-radius: var(--raio-pequeno);
     cursor: pointer;
     transition: background 0.15s ease;
+    /* Henrique, 2026-09-06: texto branco puro sobre o verde do botão
+       cansa em monitores com brilho alto (contraste de luminância baixo
+       demais entre as duas cores) — um contorno escuro sutil no texto e
+       no ícone resolve sem precisar escurecer o branco em si. */
+    text-shadow: 0 1px 1.5px rgba(0, 0, 0, 0.45);
+}
+
+.botao-concluir-caso svg {
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.45));
 }
 
 .botao-concluir-caso:hover:not(:disabled) {

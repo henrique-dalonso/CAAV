@@ -13,6 +13,7 @@ from app.ferramentas.crivus.db.analises import (
     concluir_analise,
     criar_agendamento_manual,
     criar_analise_a_partir_da_ia,
+    descartar_alteracoes,
     listar_itens,
     marcar_ciente_alerta_critico,
     marcar_item_desnecessario,
@@ -329,6 +330,19 @@ async def ciente_alerta(
     _exigir_dono(analise_id, usuario)
     marcar_ciente_alerta_critico(analise_id)
     return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)
+
+
+@router.post("/leitor-individual/{analise_id}/descartar")
+async def descartar(
+    analise_id: int,
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
+):
+    _exigir_dono(analise_id, usuario)
+    try:
+        descartar_alteracoes(analise_id)
+    except ValueError as exc:
+        return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}?erro={quote(str(exc))}", status_code=303)
+    return RedirectResponse(url="/crivus/leitor-individual", status_code=303)
 
 
 @router.post("/leitor-individual/{analise_id}/concluir")
