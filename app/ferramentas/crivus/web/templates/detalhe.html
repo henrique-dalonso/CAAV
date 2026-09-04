@@ -124,7 +124,7 @@
                         {% endif %}
                     </div>
 
-                    <form method="post" action="/crivus/leitor-individual/{{ analise.id }}/acompanhamento/{{ item.id }}/salvar" class="form-item">
+                    <form method="post" action="/crivus/leitor-individual/{{ analise.id }}/acompanhamento/{{ item.id }}/salvar" class="form-item" novalidate>
                         <div class="campo-edicao">
                             <select name="tipo" required {{ "disabled" if analise.status == "concluido" }}>
                                 <option value="" disabled {{ "selected" if not item.tipo }}>(Selecione um tipo de acompanhamento)</option>
@@ -205,7 +205,7 @@
                         {% endif %}
                     </div>
 
-                    <form method="post" action="/crivus/leitor-individual/{{ analise.id }}/agendamento/{{ item.id }}/salvar" class="form-item-agendamento">
+                    <form method="post" action="/crivus/leitor-individual/{{ analise.id }}/agendamento/{{ item.id }}/salvar" class="form-item-agendamento" novalidate>
                         <div class="campo-edicao">
                             <select name="tipo" required {{ "disabled" if analise.status == "concluido" }}>
                                 <option value="" disabled {{ "selected" if not item.tipo }}>(Selecione um tipo de agendamento)</option>

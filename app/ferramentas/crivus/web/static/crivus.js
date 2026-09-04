@@ -334,7 +334,16 @@
 
         if (ativando && !form.checkValidity()) {
             input.checked = false;
-            form.reportValidity();
+            // Mesma validação customizada do formulário de análise (campo
+            // chacoalhando + mensagem inline) em vez do balão nativo do
+            // navegador — Henrique, 2026-09-06.
+            var campoTipo = form.querySelector("select[name='tipo']");
+            if (campoTipo && !campoTipo.value) {
+                mostrarErro(campoTipo, "Selecione um tipo antes de marcar como pronto.");
+                campoTipo.focus();
+            } else {
+                form.reportValidity();
+            }
             return;
         }
 
@@ -477,6 +486,30 @@
             if (invalido) {
                 invalido.focus();
                 return;
+            }
+        }
+
+        // Tipo do acompanhamento/agendamento (detalhe.html) — Henrique,
+        // 2026-09-06: mesma validação (campo chacoalhando em vermelho +
+        // mensagem inline) do formulário de análise, em vez do balão nativo
+        // do navegador. Só bloqueia quando o botão que disparou o submit
+        // realmente confirma o item (check de "salvar as alterações" ou o
+        // interruptor ligando) — "marcar desnecessário"/excluir/reverter/
+        // desligar o interruptor continuam liberados mesmo com o campo
+        // ainda vazio, ver crivus.css .campo-invalido.
+        if (form.classList.contains("form-item") || form.classList.contains("form-item-agendamento")) {
+            var botaoSubmit = evento.submitter;
+            var exigeTipo = botaoSubmit && (
+                botaoSubmit.classList.contains("botao-pronto-icone")
+                || botaoSubmit.classList.contains("botao-interruptor-ativar")
+            );
+            if (exigeTipo) {
+                var campoTipo = form.querySelector("select[name='tipo']");
+                if (campoTipo && !campoTipo.value) {
+                    mostrarErro(campoTipo, "Selecione um tipo antes de salvar.");
+                    campoTipo.focus();
+                    return;
+                }
             }
         }
 
