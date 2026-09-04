@@ -19,7 +19,7 @@
 {% endif %}
 
 <section class="cartao-secao crivus-formulario">
-    <form method="post" action="/crivus/analisar" enctype="multipart/form-data" class="form-crivus">
+    <form method="post" action="/crivus/analisar" enctype="multipart/form-data" class="form-crivus" novalidate>
         <div class="form-crivus-identificacao">
             <label>
                 Número NPJUR
@@ -27,13 +27,13 @@
             </label>
             <label>
                 Número CNJ do processo
-                <input type="text" name="processo" placeholder="0000000-00.0000.0.00.0000" required>
+                <input type="text" id="processo" name="processo" placeholder="0000000-00.0000.0.00.0000" required>
             </label>
         </div>
 
         <div class="form-crivus-corpo">
             <div class="form-crivus-teor">
-                <label for="teor_publicacao">Teor da publicação</label>
+                <label for="teor_publicacao">Teor da Publicação</label>
                 <textarea
                     id="teor_publicacao"
                     name="teor_publicacao"
@@ -43,13 +43,7 @@
             </div>
 
             <div class="form-crivus-anexos">
-                <label>
-                    Documentos de apoio (opcional)
-                    <span class="aviso-discreto">
-                        {% if maximo_anexos %}até {{ maximo_anexos }} arquivos{% else %}sem limite fixo (coordenador/admin){% endif %}
-                        — PDF, DOCX, PNG ou JPEG, até {{ tamanho_maximo_mb }}MB cada
-                    </span>
-                </label>
+                <label>Documentos de Apoio</label>
                 <label for="arquivos" class="dropzone-crivus">
                     <input
                         type="file"
@@ -67,6 +61,10 @@
                     >
                     <span class="dropzone-crivus-badge" id="dropzone-crivus-badge">+</span>
                     <span class="dropzone-crivus-texto" id="dropzone-crivus-texto">Clique para adicionar documentos</span>
+                    <span class="dropzone-crivus-info">
+                        {% if maximo_anexos %}até {{ maximo_anexos }} arquivos{% else %}sem limite fixo (coordenador/admin){% endif %}
+                        — PDF, DOCX, PNG ou JPEG, até {{ tamanho_maximo_mb }}MB cada
+                    </span>
                 </label>
             </div>
         </div>
@@ -75,3 +73,5 @@
     </form>
 </section>
 {% endblock %}
+
+{% block js_pagina %}<script src="/crivus/static/crivus.js?v={{ v }}" defer></script>{% endblock %}

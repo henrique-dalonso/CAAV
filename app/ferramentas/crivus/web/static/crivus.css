@@ -155,8 +155,37 @@
     word-break: break-word;
 }
 
+.dropzone-crivus-info {
+    color: var(--cor-texto-suave);
+    font-size: 0.78rem;
+    font-weight: 400;
+    opacity: 0.8;
+}
+
 .form-crivus > .botao {
     align-self: flex-start;
+}
+
+/* --- Validação customizada (crivus.js) — substitui o balão nativo feio
+   do navegador ("Preencha este campo") por campo chacoalhando em
+   vermelho + mensagem inline. Henrique, 2026-09-04. --- */
+
+@keyframes crivus-chacoalhar {
+    10%, 90% { transform: translateX(-1px); }
+    20%, 80% { transform: translateX(2px); }
+    30%, 50%, 70% { transform: translateX(-4px); }
+    40%, 60% { transform: translateX(4px); }
+}
+
+.campo-invalido {
+    border-color: var(--cor-erro-texto) !important;
+    animation: crivus-chacoalhar 0.4s ease;
+}
+
+.erro-campo-mensagem {
+    color: var(--cor-erro-texto);
+    font-size: 0.8rem;
+    font-weight: 600;
 }
 
 /* --- Selo de nível de confiança (detalhe.html) — cores locais por
