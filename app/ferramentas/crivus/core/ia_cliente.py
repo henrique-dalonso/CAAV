@@ -193,9 +193,16 @@ def montar_parametros_mensagem(teor_publicacao, anexos=None):
             {
                 # Cache: o texto das instruções é o mesmo em toda chamada,
                 # independente da publicação — mesmo padrão do Extratus.
+                # TTL de 1h (não o padrão de 5min) — Henrique, 2026-09-06:
+                # diferente do Robô do Extratus (chamadas em sequência), o
+                # uso do Crivus é uma pessoa lendo publicação por publicação
+                # da fila do NPJUR, com intervalo real entre cada uma; 5min
+                # expiraria o cache com frequência, pagando escrita (mais
+                # caro) em vez de leitura (mais barato) na maioria das
+                # chamadas seguintes.
                 "type": "text",
                 "text": instrucoes,
-                "cache_control": {"type": "ephemeral"},
+                "cache_control": {"type": "ephemeral", "ttl": "1h"},
             }
         ],
         "tools": [FERRAMENTA_ANALISE_PUBLICACAO],
@@ -214,18 +221,34 @@ def extrair_dados_e_uso(resposta):
 
     modelo = getattr(resposta, "model", None) or MODELO_PADRAO
     preco_entrada, preco_saida = PRECOS_POR_MILHAO_USD.get(modelo, PRECOS_POR_MILHAO_USD[MODELO_PADRAO])
-    preco_cache_escrita = preco_entrada * 1.25
+    # Escrita de cache custa diferente conforme o TTL — 1h (usado aqui,
+    # ver montar_parametros_mensagem) é 2x o preço normal de entrada;
+    # 5min (o padrão da API, mantido só como fallback abaixo pra resposta
+    # sem o detalhamento por TTL) é 1,25x. Leitura custa 10% em qualquer
+    # TTL. Henrique, 2026-09-06.
+    preco_cache_escrita_1h = preco_entrada * 2.00
+    preco_cache_escrita_5m = preco_entrada * 1.25
     preco_cache_leitura = preco_entrada * 0.10
 
     tokens_entrada = resposta.usage.input_tokens
     tokens_saida = resposta.usage.output_tokens
-    tokens_cache_escrita = getattr(resposta.usage, "cache_creation_input_tokens", 0) or 0
     tokens_cache_leitura = getattr(resposta.usage, "cache_read_input_tokens", 0) or 0
+
+    cache_creation = getattr(resposta.usage, "cache_creation", None)
+    if cache_creation:
+        tokens_cache_escrita_1h = cache_creation.ephemeral_1h_input_tokens or 0
+        tokens_cache_escrita_5m = cache_creation.ephemeral_5m_input_tokens or 0
+    else:
+        tokens_cache_escrita_1h = 0
+        tokens_cache_escrita_5m = getattr(resposta.usage, "cache_creation_input_tokens", 0) or 0
+
+    tokens_cache_escrita = tokens_cache_escrita_1h + tokens_cache_escrita_5m
 
     custo_estimado = (
         tokens_entrada / 1_000_000 * preco_entrada
         + tokens_saida / 1_000_000 * preco_saida
-        + tokens_cache_escrita / 1_000_000 * preco_cache_escrita
+        + tokens_cache_escrita_1h / 1_000_000 * preco_cache_escrita_1h
+        + tokens_cache_escrita_5m / 1_000_000 * preco_cache_escrita_5m
         + tokens_cache_leitura / 1_000_000 * preco_cache_leitura
     )
 

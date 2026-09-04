@@ -40,6 +40,32 @@ def test_extrair_dados_e_uso_calcula_custo_pelo_modelo_padrao():
     assert uso["tokens_saida"] == 1_000_000
 
 
+def test_extrair_dados_e_uso_cobra_escrita_de_cache_1h_mais_cara_que_5m():
+    """Henrique, 2026-09-06: escrita de cache de 1h custa 2x o preço
+    normal de entrada (vs 1,25x pra 5min) — cobrar como se fosse sempre
+    5min subestimaria o custo real depois da troca de TTL do Crivus."""
+    dados_ferramenta = {
+        "leitura_publicacao": "texto", "conclusao_operacional": "texto",
+        "nivel_confianca": "ALTO", "tem_alerta_critico": False,
+        "acompanhamentos": [], "agendamentos": [],
+    }
+    bloco = SimpleNamespace(type="tool_use", input=dados_ferramenta)
+    usage = SimpleNamespace(
+        input_tokens=0,
+        output_tokens=0,
+        cache_creation_input_tokens=1_000_000,
+        cache_read_input_tokens=0,
+        cache_creation=SimpleNamespace(ephemeral_1h_input_tokens=1_000_000, ephemeral_5m_input_tokens=0),
+    )
+    resposta = SimpleNamespace(content=[bloco], usage=usage, model=MODELO_PADRAO)
+
+    _, uso = extrair_dados_e_uso(resposta)
+
+    # 1M tokens de escrita de cache 1h a 2x o preço de entrada ($2) = $4
+    assert uso["custo_estimado_usd"] == 4.0
+    assert uso["tokens_entrada"] == 1_000_000
+
+
 def test_extrair_dados_e_uso_sem_tool_use_levanta_erro():
     resposta = SimpleNamespace(content=[SimpleNamespace(type="text", text="oops")], usage=None, model=MODELO_PADRAO)
 
@@ -56,7 +82,7 @@ def test_montar_parametros_mensagem_forca_a_ferramenta_estruturada():
     assert parametros["model"] == MODELO_PADRAO
     assert parametros["tool_choice"] == {"type": "tool", "name": "registrar_analise_publicacao"}
     assert parametros["tools"] == [FERRAMENTA_ANALISE_PUBLICACAO]
-    assert parametros["system"][0]["cache_control"] == {"type": "ephemeral"}
+    assert parametros["system"][0]["cache_control"] == {"type": "ephemeral", "ttl": "1h"}
 
     texto_usuario = parametros["messages"][0]["content"][0]["text"]
     assert "teor de teste qualquer" in texto_usuario
