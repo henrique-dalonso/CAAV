@@ -45,11 +45,7 @@
                 </button>
             </form>
         </div>
-        {% if not todos_prontos %}
-        <p class="aviso-discreto">Revise todos os itens antes de concluir.</p>
-        {% elif analise.tem_alerta_critico and not analise.ciente_alerta_critico %}
-        <p class="aviso-discreto">Confirme a ciência do alerta crítico antes de concluir.</p>
-        {% endif %}
+        <p class="aviso-discreto crivus-aviso-concluir{{ '' if aviso_concluir else ' aviso-discreto-oculto' }}">{{ aviso_concluir or "." }}</p>
         {% endif %}
     </div>
 </div>
@@ -95,7 +91,7 @@
     </div>
 
     <div class="crivus-detalhe-itens">
-        <section class="cartao-secao cartao-acompanhamentos">
+        <section class="cartao-secao cartao-acompanhamentos{{ ' cartao-secao-completa' if todos_acompanhamentos_prontos }}">
             <h2>Acompanhamento{{ "s" if acompanhamentos|length != 1 else "" }}</h2>
             {% if not acompanhamentos %}
             <p class="vazio">Nenhum acompanhamento sugerido.</p>
@@ -172,7 +168,7 @@
             {% endfor %}
         </section>
 
-        <section class="cartao-secao cartao-agendamentos">
+        <section class="cartao-secao cartao-agendamentos{{ ' cartao-secao-completa' if todos_agendamentos_prontos }}">
             <h2>Agendamentos</h2>
             {% if not agendamentos %}
             <p class="vazio">Nenhum agendamento necessário.</p>

@@ -180,6 +180,19 @@ def pagina_detalhe(
     todos_os_itens = list(acompanhamentos) + list(agendamentos)
     todos_prontos = all(item.status != "sugerido" for item in todos_os_itens) if todos_os_itens else True
 
+    # Henrique, 2026-09-06: "seção completa" fica verde quando TODOS os
+    # itens DELA já foram revisados — mas só se ela tiver algum item; uma
+    # seção vazia ("Nenhum agendamento necessário") não tem o que revisar,
+    # não é "completa" de verdade.
+    todos_acompanhamentos_prontos = bool(acompanhamentos) and all(item.status != "sugerido" for item in acompanhamentos)
+    todos_agendamentos_prontos = bool(agendamentos) and all(item.status != "sugerido" for item in agendamentos)
+
+    aviso_concluir = None
+    if not todos_prontos:
+        aviso_concluir = "Revise todos os itens antes de concluir."
+    elif analise.tem_alerta_critico and not analise.ciente_alerta_critico:
+        aviso_concluir = "Confirme a ciência do alerta crítico antes de concluir."
+
     return templates.TemplateResponse(
         request,
         "detalhe.html",
@@ -192,7 +205,10 @@ def pagina_detalhe(
             "tipos_agendamento": TIPOS_AGENDAMENTO + [NAO_IDENTIFICADO],
             "nao_identificado": NAO_IDENTIFICADO,
             "todos_prontos": todos_prontos,
+            "todos_acompanhamentos_prontos": todos_acompanhamentos_prontos,
+            "todos_agendamentos_prontos": todos_agendamentos_prontos,
             "pode_concluir": todos_prontos and (not analise.tem_alerta_critico or analise.ciente_alerta_critico),
+            "aviso_concluir": aviso_concluir,
             "erro": erro,
         },
     )

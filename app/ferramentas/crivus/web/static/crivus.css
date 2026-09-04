@@ -41,22 +41,22 @@
     --crivus-cor-borda-anexo: #1e3a5f;
 }
 
-/* Âmbar dos Agendamentos — Henrique, 2026-09-04: "momento sensível",
-   cor própria pra se destacar do resto da tela. Verde (identidade do
-   Crivus) equivalente pro Acompanhamento — Henrique, 2026-09-06: "tudo
-   que for feito aqui deve se adequar a tudo", mesmo tratamento visual
-   (seção com fundo esmaecido + item interno com fundo mais sólido na
-   mesma cor), cada seção com a sua própria cor. */
+/* Âmbar dos Agendamentos — Henrique, 2026-09-04: "momento sensível", cor
+   própria pra se destacar do resto da tela. Henrique, 2026-09-06: mesma
+   cor pro Acompanhamento também (não uma cor própria — as duas seções
+   usam a mesma âmbar); verde fica reservado só pro estado "pronto"
+   (item confirmado) e "seção completa" (todos os itens da seção
+   revisados), que têm cor bem própria de propósito — sinalizar
+   conclusão, nada a ver com a identidade âmbar das seções. */
 :root {
     --crivus-cor-fundo-agendamento: #fffbeb;
     --crivus-cor-borda-agendamento: #fde68a;
     --crivus-cor-fundo-agendamento-item: #fef3c7;
     --crivus-cor-borda-agendamento-item: #fcd34d;
 
-    --crivus-cor-fundo-acompanhamento: #f0fdf4;
-    --crivus-cor-borda-acompanhamento: #bbf7d0;
-    --crivus-cor-fundo-acompanhamento-item: #dcfce7;
-    --crivus-cor-borda-acompanhamento-item: #86efac;
+    --crivus-cor-fundo-pronto-item: #dcfce7;
+    --crivus-cor-fundo-secao-completa: #f0fdf4;
+    --crivus-cor-borda-secao-completa: #bbf7d0;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -66,10 +66,9 @@
         --crivus-cor-fundo-agendamento-item: #4a3709;
         --crivus-cor-borda-agendamento-item: #92400e;
 
-        --crivus-cor-fundo-acompanhamento: #052e16;
-        --crivus-cor-borda-acompanhamento: #14532d;
-        --crivus-cor-fundo-acompanhamento-item: #0d3b21;
-        --crivus-cor-borda-acompanhamento-item: #15803d;
+        --crivus-cor-fundo-pronto-item: #0d3b21;
+        --crivus-cor-fundo-secao-completa: #052e16;
+        --crivus-cor-borda-secao-completa: #14532d;
     }
 }
 
@@ -79,10 +78,9 @@
     --crivus-cor-fundo-agendamento-item: #4a3709;
     --crivus-cor-borda-agendamento-item: #92400e;
 
-    --crivus-cor-fundo-acompanhamento: #052e16;
-    --crivus-cor-borda-acompanhamento: #14532d;
-    --crivus-cor-fundo-acompanhamento-item: #0d3b21;
-    --crivus-cor-borda-acompanhamento-item: #15803d;
+    --crivus-cor-fundo-pronto-item: #0d3b21;
+    --crivus-cor-fundo-secao-completa: #052e16;
+    --crivus-cor-borda-secao-completa: #14532d;
 }
 
 .selo-status {
@@ -557,6 +555,20 @@
     max-width: 320px;
 }
 
+/* Henrique, 2026-09-06: "a página se mexe causando uma vertigem" quando
+   esse texto some — antes o <p> deixava de existir no DOM, encolhendo o
+   cabeçalho e empurrando os cards pra cima. Agora ele sempre existe
+   (min-height reserva a linha) e só fica invisível (visibility, não
+   display) quando não há aviso — o espaço nunca é recuperado, então
+   nada embaixo se move. */
+.crivus-aviso-concluir {
+    min-height: 1.3em;
+}
+
+.aviso-discreto-oculto {
+    visibility: hidden;
+}
+
 .link-descartar-voltar {
     background: none;
     border: none;
@@ -792,23 +804,17 @@
    só entra pra escolher a própria cor (verde/âmbar). --- */
 
 .item-caso {
-    border: 1.5px solid var(--cor-borda);
+    border: 1.5px solid var(--crivus-cor-borda-agendamento-item);
     border-radius: 8px;
     padding: 0.7rem 0.9rem;
     margin-bottom: 0.5rem;
-}
-
-.item-revisao.item-caso {
-    background: var(--crivus-cor-fundo-acompanhamento-item);
-    border-color: var(--crivus-cor-borda-acompanhamento-item);
-}
-
-.item-agendamento.item-caso {
     background: var(--crivus-cor-fundo-agendamento-item);
-    border-color: var(--crivus-cor-borda-agendamento-item);
 }
 
+/* Item confirmado ("Pronto") — Henrique, 2026-09-06: "pinte o card todo
+   de verde, não somente a borda" — fundo inteiro muda, não só o contorno. */
 .item-caso.item-status-pronto {
+    background: var(--crivus-cor-fundo-pronto-item);
     border-color: #34d399;
 }
 
@@ -972,10 +978,19 @@ option.opcao-nao-identificado {
     display: none;
 }
 
+/* width:100% de propósito — Henrique, 2026-09-06: fora do modo edição,
+   .campo-edicao (o outro filho de .form-item/.form-item-agendamento,
+   que é flex) fica com display:none, então esse vira o ÚNICO filho
+   visível da linha; sem uma largura explícita ele encolhe pro conteúdo e
+   gruda na esquerda (o pai que é flex não estica filho no eixo
+   principal), mesmo com justify-content:flex-end aqui dentro. Com
+   width:100% ele sempre ocupa a linha inteira e passa a alinhar de
+   verdade contra a borda direita do card. */
 .item-caso-acoes {
     display: flex;
     align-items: center;
     justify-content: flex-end;
+    width: 100%;
     gap: 0.5rem;
     margin-top: 0.5rem;
 }
@@ -992,14 +1007,21 @@ option.opcao-nao-identificado {
    edição, que revela tipo/datas editáveis + o cadeado de "marcar
    desnecessário" (crivus.js alterna a classe .modo-edicao). --- */
 
-.cartao-acompanhamentos {
-    background: var(--crivus-cor-fundo-acompanhamento);
-    border-color: var(--crivus-cor-borda-acompanhamento) !important;
-}
-
+.cartao-acompanhamentos,
 .cartao-agendamentos {
     background: var(--crivus-cor-fundo-agendamento);
     border-color: var(--crivus-cor-borda-agendamento) !important;
+}
+
+/* Seção completa — Henrique, 2026-09-06: quando TODOS os itens de uma
+   seção (Acompanhamento ou Agendamentos) já foram revisados (prontos ou
+   marcados desnecessários), a seção inteira vira verde — sinaliza "nada
+   pendente aqui" antes mesmo de olhar item por item. Vazio (nenhum item
+   sugerido) não conta como completo — não tem o que "revisar" de fato,
+   fica só neutro. */
+.cartao-secao-completa {
+    background: var(--crivus-cor-fundo-secao-completa) !important;
+    border-color: var(--crivus-cor-borda-secao-completa) !important;
 }
 
 .item-agendamento-datas {
