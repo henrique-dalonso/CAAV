@@ -4,6 +4,7 @@
 {% block css_pagina %}<link rel="stylesheet" href="/crivus/static/crivus.css?v={{ v }}">{% endblock %}
 
 {% block conteudo %}
+<div id="crivus-conteudo">
 <div class="cabecalho-ferramenta">
     <div>
         <h1>Análise da Publicação</h1>
@@ -165,6 +166,7 @@
     {% endif %}
 </footer>
 {% endif %}
+</div>
 {% endblock %}
 
 {% block js_pagina %}<script src="/crivus/static/crivus.js?v={{ v }}" defer></script>{% endblock %}

@@ -4,10 +4,11 @@
 {% block css_pagina %}<link rel="stylesheet" href="/crivus/static/crivus.css?v={{ v }}">{% endblock %}
 
 {% block conteudo %}
+<div id="crivus-conteudo">
 <div class="cabecalho-ferramenta">
     <div>
-        <h1>Crivus</h1>
-        <p>Cole o teor da publicação copiada do NPJUR — a IA sugere o acompanhamento e o(s) agendamento(s), você confere antes de lançar.</p>
+        <h1>Leitor Individual</h1>
+        <p>Cole o teor da publicação copiada do NPJUR, a IA sugere o acompanhamento e o(s) agendamento(s), você confere antes de lançar.</p>
     </div>
 </div>
 
@@ -44,18 +45,21 @@
 
             <div class="form-crivus-anexos">
                 <label>Documentos de Apoio</label>
-                <label for="arquivos" class="dropzone-crivus" data-maximo="{{ maximo_anexos or '' }}">
+                <div class="dropzone-crivus" id="dropzone-crivus" data-maximo="{{ maximo_anexos or '' }}">
                     <input type="file" id="arquivos" name="arquivos" multiple accept=".pdf,.docx,.png,.jpg,.jpeg" hidden>
-                    <div class="dropzone-crivus-vazio">
+                    <div class="dropzone-crivus-clique" id="dropzone-crivus-clique">
                         <span class="dropzone-crivus-badge">+</span>
                         <span class="dropzone-crivus-texto">Clique para adicionar documentos</span>
                     </div>
-                    <div class="dropzone-crivus-chips" hidden></div>
+                    <div class="dropzone-crivus-cartoes" id="dropzone-crivus-cartoes" hidden></div>
+                </div>
+                <div class="dropzone-crivus-rodape">
                     <span class="dropzone-crivus-info">
                         {% if maximo_anexos %}Até {{ maximo_anexos }} arquivos{% else %}Sem limite de arquivos{% endif %}
                         (PDF, DOCX, PNG OU JPEG), até {{ tamanho_maximo_mb }}MB cada
                     </span>
-                </label>
+                    <button type="button" class="botao-limpar-anexos" id="botao-limpar-anexos" hidden>Limpar</button>
+                </div>
             </div>
         </div>
 
@@ -70,6 +74,7 @@
         </div>
     </form>
 </section>
+</div>
 {% endblock %}
 
 {% block js_pagina %}<script src="/crivus/static/crivus.js?v={{ v }}" defer></script>{% endblock %}

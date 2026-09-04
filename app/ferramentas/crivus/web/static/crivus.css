@@ -170,14 +170,14 @@
     color: var(--cor-texto);
 }
 
-/* Área clicável de anexo — label envolvendo um <input type=file hidden>.
-   Fundo azulado próprio (--crivus-cor-fundo-anexo) pra marcar "isso é
-   anexação de arquivo". Enquanto vazio, mostra o "+"/texto
-   (.dropzone-crivus-vazio); depois de escolher arquivo(s), esse bloco
-   some e entram os chips (.dropzone-crivus-chips), lado a lado, um por
-   arquivo — Henrique, 2026-09-04: "não quero o + virando número, quero
-   os arquivos aparecendo, se acomodando lado a lado". Acumular
-   (não substituir) em seleções sucessivas é feito em crivus.js. */
+/* Área clicável de anexo. Fundo azulado próprio (--crivus-cor-fundo-anexo)
+   pra marcar "isso é anexação de arquivo". Enquanto vazio, mostra o
+   "+"/texto (.dropzone-crivus-clique); depois de escolher arquivo(s),
+   esse bloco some e entram os cartões (.dropzone-crivus-cartoes), lado
+   a lado — mesma arquitetura do upload da Fila do Robô (fila.js/
+   .arquivo-cartao), adaptada pro espaço menor daqui. Acumular (não
+   substituir) em seleções sucessivas é feito em crivus.js. Henrique,
+   2026-09-04. */
 .dropzone-crivus {
     flex: 1;
     min-height: 260px;
@@ -192,14 +192,14 @@
     border: 2px dashed var(--crivus-cor-borda-anexo);
     border-radius: 12px;
     cursor: pointer;
-    transition: border-color 0.15s ease, background 0.15s ease;
+    transition: border-color 0.15s ease;
 }
 
 .dropzone-crivus:hover {
     border-color: var(--cor-acento);
 }
 
-.dropzone-crivus-vazio {
+.dropzone-crivus-clique {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -226,14 +226,7 @@
     word-break: break-word;
 }
 
-.dropzone-crivus-info {
-    color: var(--cor-texto-suave);
-    font-size: 0.78rem;
-    font-weight: 400;
-    opacity: 0.8;
-}
-
-.dropzone-crivus-chips {
+.dropzone-crivus-cartoes {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -241,26 +234,147 @@
     gap: 0.5rem;
 }
 
-.anexo-chip {
-    display: inline-flex;
+.dropzone-crivus-rodape {
+    display: flex;
     align-items: center;
-    max-width: 140px;
-    padding: 0.5rem 0.8rem;
-    border-radius: 8px;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 0.4rem;
+}
+
+.dropzone-crivus-info {
+    color: var(--cor-texto-suave);
+    font-size: 0.78rem;
+    font-weight: 400;
+    opacity: 0.8;
+}
+
+.botao-limpar-anexos {
+    flex-shrink: 0;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+    font-family: inherit;
+    color: var(--cor-erro-texto);
+    background: none;
+    border: 1px solid var(--cor-erro-borda);
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.botao-limpar-anexos:hover {
+    background: var(--cor-erro-fundo);
+}
+
+/* Cartão de anexo — cópia adaptada de .arquivo-cartao (fila.js/
+   extratus.css), mesma ideia (ícone + nome + tamanho + remover),
+   miniatura menor pra caber 3 lado a lado nesse espaço. */
+.anexo-cartao {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 92px;
+    padding: 0.5rem 0.4rem 0.45rem;
     background: var(--cor-cartao);
     border: 1px solid var(--crivus-cor-borda-anexo);
-    color: var(--cor-texto);
-    font-size: 0.78rem;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.anexo-cartao-icone svg {
+    width: 24px;
+    height: 28px;
+}
+
+.anexo-cartao-nome {
+    width: 100%;
+    margin-top: 0.3rem;
+    font-size: 0.68rem;
     font-weight: 600;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.anexo-chip-mais {
+.anexo-cartao-tamanho {
+    margin-top: 0.1rem;
+    font-size: 0.62rem;
+    color: var(--cor-texto-suave);
+}
+
+.anexo-cartao-remover {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: 2px solid var(--cor-cartao);
+    border-radius: 999px;
+    background: var(--cor-erro-texto);
+    color: white;
+    font-size: 0.7rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.anexo-cartao-mais {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 92px;
+    height: 78px;
     color: var(--cor-acento);
     background: var(--cor-acento-fraco);
-    border-color: var(--cor-acento);
+    border: 1px solid var(--cor-acento);
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+
+/* --- Estado "processando" após enviar (home.html) — troca o formulário
+   inteiro, sem reload. Barra indeterminada (não há progresso real numa
+   chamada de IA só, diferente do upload em lote do Extratus) + texto
+   com reticências animadas via JS (crivus.js). Henrique, 2026-09-04. --- */
+
+.crivus-carregando {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 3rem 1rem;
+}
+
+.crivus-carregando-barra {
+    width: 260px;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--cor-borda);
+    overflow: hidden;
+}
+
+.crivus-carregando-barra-interna {
+    width: 40%;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--cor-acento);
+    animation: crivus-progresso-indeterminado 1.2s ease-in-out infinite;
+}
+
+@keyframes crivus-progresso-indeterminado {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(350%); }
+}
+
+.crivus-carregando-texto {
+    color: var(--cor-texto-suave);
+    font-size: 0.95rem;
+    font-weight: 600;
+    min-width: 12ch;
 }
 
 /* --- Botão de envio (home.html) — Henrique, 2026-09-04: alinhado à
