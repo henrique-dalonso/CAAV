@@ -223,6 +223,36 @@ def test_anexo_com_conteudo_nao_correspondente_a_extensao_e_rejeitado(cliente_lo
     assert "não parece ser um arquivo válido" in resposta.text
 
 
+def test_salvar_agendamento_com_tipo_vazio_mostra_erro_sem_quebrar(cliente_logado):
+    """Henrique, 2026-09-06: achado real testando o botão de excluir de
+    agendamento manual — um <select required> vazio nunca deveria chegar
+    ao servidor, mas se chegasse (tipo=""), o FastAPI devolvia um 422 cru
+    em vez do banner de erro normal (Form(...) tratava valor vazio como
+    campo ausente). Trocado pra Form("") nas rotas de salvar; a validação
+    de "precisa escolher um tipo" agora é responsabilidade da camada de
+    negócio, que mostra a mensagem certa."""
+    cliente, usuario = cliente_logado
+
+    resposta = cliente.post(
+        "/crivus/leitor-individual/analisar",
+        data={"npjur": "0119225", "processo": "0000000-00.0000.0.00.0000", "teor_publicacao": "teor de teste"},
+    )
+    analise_id = int(str(resposta.url).rstrip("/").split("/")[-1])
+    cliente.post(f"/crivus/leitor-individual/{analise_id}/agendamento/novo")
+
+    with obter_sessao() as sessao:
+        item = sessao.exec(
+            select(ItemAgendamento).where(ItemAgendamento.analise_id == analise_id, ItemAgendamento.criado_manualmente == True)  # noqa: E712
+        ).one()
+
+    resposta = cliente.post(
+        f"/crivus/leitor-individual/{analise_id}/agendamento/{item.id}/salvar",
+        data={"tipo": "", "data_inicio": str(item.data_inicio), "data_fim": str(item.data_fim)},
+    )
+    assert resposta.status_code == 200
+    assert "Selecione um tipo" in resposta.text
+
+
 def test_colaborador_nao_pode_passar_do_limite_de_anexos(cliente_logado):
     cliente, _ = cliente_logado
     arquivos = [

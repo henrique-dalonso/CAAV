@@ -171,9 +171,15 @@ def salvar_edicao_item(analise_id, tipo_item, item_id, novo_tipo, nova_data_inic
     Henrique, 2026-09-06: se a pessoa abrir o modo edição e clicar em
     salvar SEM mudar nada de fato, isso não pode desfazer um "Pronto" já
     dado — só conta como edição de verdade (e só então volta pra
-    "sugerido") quando tipo ou datas realmente mudaram."""
+    "sugerido") quando tipo ou datas realmente mudaram. Nem esse caso de
+    "nada mudou" livra de exigir um tipo escolhido: "nada foi selecionado
+    não pode ser salvo" vale sempre, mesmo num item recém-criado
+    manualmente que nunca teve tipo nenhum."""
     with obter_sessao() as sessao:
         item = _obter_item_editavel(sessao, analise_id, tipo_item, item_id)
+
+        if not novo_tipo:
+            raise ValueError("Selecione um tipo antes de salvar.")
 
         mudou = item.tipo != novo_tipo
         if tipo_item == "agendamento":
@@ -235,6 +241,30 @@ def criar_agendamento_manual(analise_id):
         sessao.refresh(item)
 
         return item
+
+
+def excluir_agendamento_manual(analise_id, item_id):
+    """Lata de lixo do agendamento adicionado manualmente — Henrique,
+    2026-09-06: diferente de "marcar desnecessário" (que só esconde,
+    preservando o registro pro double-check), aqui é exclusão de
+    verdade. Só faz sentido pra item `criado_manualmente=True`: não tinha
+    sugestão nenhuma da IA pra "preservar" caso a pessoa tenha adicionado
+    por engano — apagar é o correto, não esconder."""
+    with obter_sessao() as sessao:
+        analise = sessao.get(AnalisePublicacao, analise_id)
+        if not analise:
+            raise ValueError("Análise não encontrada.")
+        if analise.status == "concluido":
+            raise ValueError("Caso já concluído — não é mais possível excluir agendamento.")
+
+        item = sessao.get(ItemAgendamento, item_id)
+        if not item or item.analise_id != analise_id:
+            raise ValueError("Item não encontrado nesta análise.")
+        if not item.criado_manualmente:
+            raise ValueError("Só é possível excluir agendamentos adicionados manualmente.")
+
+        sessao.delete(item)
+        sessao.commit()
 
 
 def marcar_item_desnecessario(analise_id, tipo_item, item_id, desnecessario=True):

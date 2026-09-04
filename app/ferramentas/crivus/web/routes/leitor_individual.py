@@ -14,6 +14,7 @@ from app.ferramentas.crivus.db.analises import (
     criar_agendamento_manual,
     criar_analise_a_partir_da_ia,
     descartar_alteracoes,
+    excluir_agendamento_manual,
     listar_itens,
     marcar_ciente_alerta_critico,
     marcar_item_desnecessario,
@@ -201,8 +202,13 @@ def pagina_detalhe(
             "analise": analise,
             "acompanhamentos": acompanhamentos,
             "agendamentos": agendamentos,
-            "tipos_acompanhamento": TIPOS_ACOMPANHAMENTO + [NAO_IDENTIFICADO],
-            "tipos_agendamento": TIPOS_AGENDAMENTO + [NAO_IDENTIFICADO],
+            # Henrique, 2026-09-06: NAO_IDENTIFICADO NÃO entra na lista geral
+            # de opções — "é de uso exclusivo da IA", uma pessoa nunca deve
+            # poder escolhê-lo manualmente. Só aparece no <select> quando o
+            # item ATUAL já veio assim da IA (ver detalhe.html), pra pessoa
+            # enxergar o valor a corrigir, nunca como opção de lista nova.
+            "tipos_acompanhamento": TIPOS_ACOMPANHAMENTO,
+            "tipos_agendamento": TIPOS_AGENDAMENTO,
             "nao_identificado": NAO_IDENTIFICADO,
             "todos_prontos": todos_prontos,
             "todos_acompanhamentos_prontos": todos_acompanhamentos_prontos,
@@ -218,7 +224,15 @@ def pagina_detalhe(
 async def salvar_acompanhamento(
     analise_id: int,
     item_id: int,
-    tipo: str = Form(...),
+    # Form("") aqui e nas 3 rotas irmãs (não Form(...)) — achado real,
+    # 2026-09-06: um <select required> vazio não deveria conseguir
+    # submeter, mas se algo escapar disso (o campo some por completo do
+    # form data quando o valor é string vazia, gerando 422 puro do
+    # FastAPI em vez do banner de erro normal). Com default "" a
+    # validação de "tipo vazio" vira responsabilidade da camada de
+    # negócio (marcar_item_pronto/salvar_edicao_item), que já mostra a
+    # mensagem certa pra pessoa em vez de uma tela de erro genérica.
+    tipo: str = Form(""),
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
     _exigir_dono(analise_id, usuario)
@@ -233,7 +247,7 @@ async def salvar_acompanhamento(
 async def salvar_edicao_acompanhamento(
     analise_id: int,
     item_id: int,
-    tipo: str = Form(...),
+    tipo: str = Form(""),
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
     _exigir_dono(analise_id, usuario)
@@ -270,7 +284,7 @@ async def reverter_acompanhamento(
 async def salvar_agendamento(
     analise_id: int,
     item_id: int,
-    tipo: str = Form(...),
+    tipo: str = Form(""),
     data_inicio: date = Form(...),
     data_fim: date = Form(...),
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
@@ -290,7 +304,7 @@ async def salvar_agendamento(
 async def salvar_edicao_agendamento(
     analise_id: int,
     item_id: int,
-    tipo: str = Form(...),
+    tipo: str = Form(""),
     data_inicio: date = Form(...),
     data_fim: date = Form(...),
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
@@ -311,6 +325,20 @@ async def adicionar_agendamento(
     _exigir_dono(analise_id, usuario)
     try:
         criar_agendamento_manual(analise_id)
+    except ValueError as exc:
+        return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}?erro={quote(str(exc))}", status_code=303)
+    return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)
+
+
+@router.post("/leitor-individual/{analise_id}/agendamento/{item_id}/excluir")
+async def excluir_agendamento(
+    analise_id: int,
+    item_id: int,
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
+):
+    _exigir_dono(analise_id, usuario)
+    try:
+        excluir_agendamento_manual(analise_id, item_id)
     except ValueError as exc:
         return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}?erro={quote(str(exc))}", status_code=303)
     return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)

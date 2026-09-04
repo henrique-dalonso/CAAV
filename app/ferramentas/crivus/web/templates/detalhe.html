@@ -128,12 +128,15 @@
                         <div class="campo-edicao">
                             <select name="tipo" required {{ "disabled" if analise.status == "concluido" }}>
                                 <option value="" disabled {{ "selected" if not item.tipo }}>(Selecione um tipo de acompanhamento)</option>
+                                {% if item.tipo == nao_identificado %}
+                                <option value="{{ nao_identificado }}" class="opcao-nao-identificado" selected>{{ nao_identificado }}</option>
+                                {% endif %}
                                 {% for tipo in tipos_acompanhamento %}
-                                <option value="{{ tipo }}" class="{{ 'opcao-nao-identificado' if tipo == nao_identificado }}" {{ "selected" if tipo == item.tipo }}>{{ tipo }}</option>
+                                <option value="{{ tipo }}" {{ "selected" if tipo == item.tipo }}>{{ tipo }}</option>
                                 {% endfor %}
                             </select>
                             {% if item.tipo != item.tipo_sugerido %}
-                            <span class="aviso-discreto">sugestão original: {{ item.tipo_sugerido }}</span>
+                            <span class="aviso-discreto">* Sugestão original: {{ item.tipo_sugerido }}</span>
                             {% endif %}
                         </div>
                         <div class="item-caso-acoes">
@@ -206,8 +209,11 @@
                         <div class="campo-edicao">
                             <select name="tipo" required {{ "disabled" if analise.status == "concluido" }}>
                                 <option value="" disabled {{ "selected" if not item.tipo }}>(Selecione um tipo de agendamento)</option>
+                                {% if item.tipo == nao_identificado %}
+                                <option value="{{ nao_identificado }}" class="opcao-nao-identificado" selected>{{ nao_identificado }}</option>
+                                {% endif %}
                                 {% for tipo in tipos_agendamento %}
-                                <option value="{{ tipo }}" class="{{ 'opcao-nao-identificado' if tipo == nao_identificado }}" {{ "selected" if tipo == item.tipo }}>{{ tipo }}</option>
+                                <option value="{{ tipo }}" {{ "selected" if tipo == item.tipo }}>{{ tipo }}</option>
                                 {% endfor %}
                             </select>
                             <div class="linha-datas">
@@ -215,20 +221,31 @@
                                 <label>Fim: <input type="date" name="data_fim" value="{{ item.data_fim }}" {{ "disabled" if analise.status == "concluido" }}></label>
                             </div>
                             {% if item.criado_manualmente %}
-                            <span class="aviso-discreto">adicionado manualmente</span>
+                            <span class="aviso-discreto">* Adicionado manualmente</span>
                             {% elif item.tipo != item.tipo_sugerido or item.data_inicio != item.data_inicio_sugerida or item.data_fim != item.data_fim_sugerida %}
                             <span class="aviso-discreto">
-                                sugestão original: {{ item.tipo_sugerido }} ({{ item.data_inicio_sugerida.strftime("%d/%m") }} a {{ item.data_fim_sugerida.strftime("%d/%m") }})
+                                * Sugestão original: {{ item.tipo_sugerido }} ({{ item.data_inicio_sugerida.strftime("%d/%m") }} a {{ item.data_fim_sugerida.strftime("%d/%m") }})
                             </span>
                             {% endif %}
                         </div>
-                        <div class="item-caso-acoes">
+                        <div class="item-caso-acoes{{ ' item-caso-acoes-excluir' if item.criado_manualmente }}">
+                            {% if item.criado_manualmente %}
+                            <button type="submit" formaction="/crivus/leitor-individual/{{ analise.id }}/agendamento/{{ item.id }}/excluir" formnovalidate class="botao-excluir-manual campo-edicao" data-dica="Excluir agendamento" aria-label="Excluir agendamento" {{ "disabled" if analise.status == "concluido" }}>
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                                </svg>
+                            </button>
+                            {% else %}
                             <button type="submit" formaction="/crivus/leitor-individual/{{ analise.id }}/agendamento/{{ item.id }}/desnecessario" formnovalidate class="botao-marcar-desnecessario campo-edicao" data-dica="Marcar como desnecessário" aria-label="Marcar como desnecessário" {{ "disabled" if analise.status == "concluido" }}>
                                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                                     <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                                 </svg>
                             </button>
+                            {% endif %}
                             <button type="submit" formaction="/crivus/leitor-individual/{{ analise.id }}/agendamento/{{ item.id }}/salvar-edicao" class="botao-pronto botao-pronto-icone campo-edicao" data-dica="Salvar as alterações" {{ "disabled" if analise.status == "concluido" }}>
                                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                     <polyline points="20 6 9 17 4 12"></polyline>

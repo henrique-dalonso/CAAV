@@ -9,6 +9,7 @@ from app.ferramentas.crivus.db.analises import (
     criar_agendamento_manual,
     criar_analise_a_partir_da_ia,
     descartar_alteracoes,
+    excluir_agendamento_manual,
     listar_itens,
     marcar_ciente_alerta_critico,
     marcar_item_desnecessario,
@@ -216,6 +217,34 @@ def test_nao_permite_marcar_pronto_sem_tipo(usuario_teste):
 
     with pytest.raises(ValueError):
         marcar_item_pronto(analise.id, "agendamento", novo.id)
+
+
+def test_salvar_edicao_rejeita_tipo_vazio(usuario_teste):
+    """Henrique, 2026-09-06: "nada foi selecionado, não pode ser salvo" —
+    vale pro botão de salvar edição, não só pro interruptor de Pronto."""
+    analise = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
+    novo = criar_agendamento_manual(analise.id)
+
+    with pytest.raises(ValueError):
+        salvar_edicao_item(analise.id, "agendamento", novo.id, "")
+
+
+def test_excluir_agendamento_manual_remove_o_item(usuario_teste):
+    analise = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
+    novo = criar_agendamento_manual(analise.id)
+
+    excluir_agendamento_manual(analise.id, novo.id)
+
+    _, agendamentos = listar_itens(analise.id)
+    assert len(agendamentos) == 1  # só o da IA sobrou
+
+
+def test_excluir_agendamento_falha_se_nao_foi_criado_manualmente(usuario_teste):
+    analise = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
+    _, agendamentos = listar_itens(analise.id)
+
+    with pytest.raises(ValueError):
+        excluir_agendamento_manual(analise.id, agendamentos[0].id)
 
 
 def test_criar_agendamento_manual_nasce_em_branco(usuario_teste):

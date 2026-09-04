@@ -51,8 +51,8 @@
 :root {
     --crivus-cor-fundo-agendamento: #fffbeb;
     --crivus-cor-borda-agendamento: #fde68a;
-    --crivus-cor-fundo-agendamento-item: #fef3c7;
-    --crivus-cor-borda-agendamento-item: #fcd34d;
+    --crivus-cor-fundo-agendamento-item: #fde68a;
+    --crivus-cor-borda-agendamento-item: #fbbf24;
 
     --crivus-cor-fundo-pronto-item: #dcfce7;
     --crivus-cor-fundo-secao-completa: #f0fdf4;
@@ -63,8 +63,8 @@
     :root:not([data-theme="claro"]) {
         --crivus-cor-fundo-agendamento: #2d2205;
         --crivus-cor-borda-agendamento: #78350f;
-        --crivus-cor-fundo-agendamento-item: #4a3709;
-        --crivus-cor-borda-agendamento-item: #92400e;
+        --crivus-cor-fundo-agendamento-item: #5c4310;
+        --crivus-cor-borda-agendamento-item: #b45309;
 
         --crivus-cor-fundo-pronto-item: #0d3b21;
         --crivus-cor-fundo-secao-completa: #052e16;
@@ -75,8 +75,8 @@
 :root[data-theme="escuro"] {
     --crivus-cor-fundo-agendamento: #2d2205;
     --crivus-cor-borda-agendamento: #78350f;
-    --crivus-cor-fundo-agendamento-item: #4a3709;
-    --crivus-cor-borda-agendamento-item: #92400e;
+    --crivus-cor-fundo-agendamento-item: #5c4310;
+    --crivus-cor-borda-agendamento-item: #b45309;
 
     --crivus-cor-fundo-pronto-item: #0d3b21;
     --crivus-cor-fundo-secao-completa: #052e16;
@@ -114,6 +114,15 @@
 
 .cartao-secao .vazio {
     margin: 1rem 0 0;
+}
+
+/* Base de .aviso-discreto — Henrique, 2026-09-06: essa classe nunca
+   tinha um estilo base de verdade aqui (só sub-seletores mexendo em
+   layout), então herdava texto padrão — "largado, feio". Cinza discreto
+   de propósito ("mostrar ser informação básica"), tamanho reduzido. */
+.aviso-discreto {
+    font-size: 0.8rem;
+    color: var(--cor-texto-suave);
 }
 
 /* --- Formulário de envio (home.html) ---
@@ -803,10 +812,13 @@
    estrutural/comportamental, cada tipo (.item-revisao/.item-agendamento)
    só entra pra escolher a própria cor (verde/âmbar). --- */
 
+/* Henrique, 2026-09-06: mais respiro em cima/embaixo — o título ficava
+   "quase colado ao limite superior do card", com espaço vazio sobrando
+   embaixo do interruptor. */
 .item-caso {
     border: 1.5px solid var(--crivus-cor-borda-agendamento-item);
     border-radius: 8px;
-    padding: 0.7rem 0.9rem;
+    padding: 1rem 1rem 0.9rem;
     margin-bottom: 0.5rem;
     background: var(--crivus-cor-fundo-agendamento-item);
 }
@@ -992,12 +1004,44 @@ option.opcao-nao-identificado {
     justify-content: flex-end;
     width: 100%;
     gap: 0.5rem;
-    margin-top: 0.5rem;
+    margin-top: 0.85rem;
+}
+
+/* Agendamento adicionado manualmente — Henrique, 2026-09-06: a lata de
+   lixo (excluir de verdade, não "marcar desnecessário" — não existe
+   sugestão da IA pra preservar) fica isolada à ESQUERDA, o check de
+   salvar continua à direita. */
+.item-caso-acoes-excluir {
+    justify-content: space-between;
+}
+
+.botao-excluir-manual {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.45rem;
+    border-radius: 999px;
+    border: 1.5px solid var(--cor-erro-borda);
+    background: var(--cor-erro-fundo);
+    color: var(--cor-erro-texto);
+    cursor: pointer;
+}
+
+.botao-excluir-manual:hover:not(:disabled) {
+    background: var(--cor-erro-borda);
+    color: #fff;
+}
+
+.botao-excluir-manual:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .form-item .aviso-discreto,
 .form-item-agendamento .aviso-discreto {
     flex-basis: 100%;
+    margin-top: 0.5rem;
+    font-style: italic;
 }
 
 /* --- Bloco de Agendamentos — âmbar, "momento sensível" (Henrique,
