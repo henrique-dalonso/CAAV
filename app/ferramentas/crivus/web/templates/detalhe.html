@@ -3,6 +3,18 @@
 {% block titulo %}Crivus{% endblock %}
 {% block css_pagina %}<link rel="stylesheet" href="/crivus/static/crivus.css?v={{ v }}">{% endblock %}
 
+{% macro linhas_leitura(analise) %}
+<p><strong>PROCESSO {{ analise.processo or "NÃO IDENTIFICADO" }}{% if analise.orgao_julgador %} ({{ analise.orgao_julgador }}){% endif %}:</strong></p>
+<p><strong>CARTEIRA:</strong> {{ analise.carteira_detalhe }};</p>
+<p><strong>FASE PROCESSUAL:</strong> {{ analise.fase_processual }};</p>
+<p><strong>POSIÇÃO DO BANCO/PARTE:</strong> {{ analise.posicao_parte }};</p>
+<p><strong>NATUREZA DO ATO:</strong> {{ analise.natureza_ato }};</p>
+<p><strong>QUEM FOI INTIMADO:</strong> {{ analise.quem_foi_intimado }};</p>
+<p><strong>RESUMO OBJETIVO:</strong> {{ analise.resumo_objetivo }};</p>
+<p><strong>COMANDO JUDICIAL:</strong> "{{ analise.comando_judicial }}";</p>
+<p><strong>RESULTADO:</strong> {{ analise.resultado_parte }}</p>
+{% endmacro %}
+
 {% block conteudo %}
 <div id="crivus-conteudo">
 <div class="cabecalho-ferramenta">
@@ -36,31 +48,26 @@
         </section>
         {% endif %}
 
-        <section class="cartao-secao cartao-leitura" id="cartao-leitura">
+        <section class="cartao-secao">
+            <h2>Conclusão Operacional</h2>
+            <p class="conclusao-operacional-texto">{{ analise.resumo_ia }}</p>
+            {% if analise.motivo_confianca %}
+            <p class="aviso-discreto">Motivo da confiança {{ analise.nivel_confianca }}: {{ analise.motivo_confianca }}</p>
+            {% endif %}
+        </section>
+
+        <section class="cartao-secao cartao-leitura-compacta">
             <h2>Leitura da Publicação</h2>
-            <div class="leitura-formatada-wrapper">
-                <div class="leitura-formatada">
-                    <p>
-                        <strong>PROCESSO {{ analise.processo or "NÃO IDENTIFICADO" }}{% if analise.orgao_julgador %} ({{ analise.orgao_julgador }}){% endif %}:</strong>
-                    </p>
-                    <p><strong>CARTEIRA:</strong> {{ analise.carteira_detalhe }};</p>
-                    <p><strong>FASE PROCESSUAL:</strong> {{ analise.fase_processual }};</p>
-                    <p><strong>POSIÇÃO DO BANCO/PARTE:</strong> {{ analise.posicao_parte }};</p>
-                    <p><strong>NATUREZA DO ATO:</strong> {{ analise.natureza_ato }};</p>
-                    <p><strong>QUEM FOI INTIMADO:</strong> {{ analise.quem_foi_intimado }};</p>
-                    <p><strong>RESUMO OBJETIVO:</strong> {{ analise.resumo_objetivo }};</p>
-                    <p><strong>COMANDO JUDICIAL:</strong> "{{ analise.comando_judicial }}";</p>
-                    <p><strong>RESULTADO:</strong> {{ analise.resultado_parte }}</p>
-                </div>
-                {% if analise.resumo_ia %}
-                <p class="conclusao-operacional"><strong>Conclusão operacional:</strong> {{ analise.resumo_ia }}</p>
-                {% endif %}
-                {% if analise.motivo_confianca %}
-                <p class="aviso-discreto">Motivo da confiança {{ analise.nivel_confianca }}: {{ analise.motivo_confianca }}</p>
-                {% endif %}
-                <div class="leitura-formatada-fade"></div>
+            <div class="leitura-formatada leitura-formatada-compacta">
+                {{ linhas_leitura(analise) }}
             </div>
-            <button type="button" class="botao-expandir-leitura" id="botao-expandir-leitura">Expandir</button>
+            <button type="button" class="botao-ver-leitura" id="botao-ver-leitura">
+                Ver leitura
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+            </button>
         </section>
     </div>
 
@@ -221,6 +228,23 @@
     {% endif %}
 </footer>
 {% endif %}
+
+<div class="modal-leitura" id="modal-leitura" hidden>
+    <div class="modal-leitura-caixa" role="dialog" aria-modal="true" aria-labelledby="modal-leitura-titulo">
+        <div class="modal-leitura-cabecalho">
+            <h2 id="modal-leitura-titulo">Leitura da Publicação</h2>
+            <button type="button" class="modal-leitura-fechar" id="modal-leitura-fechar" aria-label="Fechar">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-leitura-corpo leitura-formatada">
+            {{ linhas_leitura(analise) }}
+        </div>
+    </div>
+</div>
 </div>
 {% endblock %}
 

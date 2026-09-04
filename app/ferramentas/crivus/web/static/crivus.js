@@ -311,19 +311,34 @@
         }
     });
 
-    // "Expandir"/"Recolher" o bloco de Leitura da Publicação — Henrique,
-    // 2026-09-04: o bloco fica com a mesma altura da coluna de itens ao
-    // lado (CSS, grid stretch), cortando o texto atrás de um degradê;
-    // esse botão libera a altura total.
+    // "Ver leitura" (detalhe.html) — Henrique, 2026-09-05: bloco de
+    // Leitura fica compacto (só as primeiras linhas, CSS line-clamp) por
+    // padrão; esse botão abre a leitura inteira num popup, melhor pra
+    // ler/rolar do que esticar a página. Fecha no X, clicando fora
+    // (fundo escurecido) ou Esc.
     document.addEventListener("click", function (evento) {
-        var botao = evento.target.closest("#botao-expandir-leitura");
-        if (!botao) { return; }
+        var modal = document.getElementById("modal-leitura");
+        if (!modal) { return; }
 
-        var cartao = document.getElementById("cartao-leitura");
-        if (!cartao) { return; }
+        if (evento.target.closest("#botao-ver-leitura")) {
+            modal.hidden = false;
+            return;
+        }
 
-        var expandido = cartao.classList.toggle("expandido");
-        botao.textContent = expandido ? "Recolher" : "Expandir";
+        if (modal.hidden) { return; }
+
+        if (evento.target.closest("#modal-leitura-fechar") || evento.target === modal) {
+            modal.hidden = true;
+        }
+    });
+
+    document.addEventListener("keydown", function (evento) {
+        if (evento.key !== "Escape") { return; }
+
+        var modal = document.getElementById("modal-leitura");
+        if (modal && !modal.hidden) {
+            modal.hidden = true;
+        }
     });
 
     // -----------------------------------------------------------------

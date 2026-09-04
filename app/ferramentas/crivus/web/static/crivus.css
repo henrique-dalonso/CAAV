@@ -498,12 +498,7 @@ html[data-theme="escuro"] .confianca-medio {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 1.5rem;
-    /* Sem align-items:start de propósito — o padrão do grid (stretch)
-       faz as duas colunas terminarem na mesma altura. É isso que permite
-       o bloco de Leitura (abaixo) se adaptar à altura da coluna de itens
-       ao lado, em vez de empurrar a página pra baixo com texto solto.
-       Henrique, 2026-09-04: "manter o rodapé do bloco sempre alinhado ao
-       último agendamento". */
+    align-items: start;
 }
 
 @media (max-width: 900px) {
@@ -519,58 +514,21 @@ html[data-theme="escuro"] .confianca-medio {
 .crivus-detalhe-leitura {
     display: flex;
     flex-direction: column;
-    min-height: 0;
 }
 
-/* Cartão de leitura ocupa o que sobrar da coluna esquerda (depois do
-   alerta crítico, se houver) e clipa o próprio conteúdo — degradê +
-   "Expandir" revelam o resto. min-height:0 é o que deixa um filho flex
-   encolher de verdade, sem isso overflow:hidden não faz nada aqui. */
-.cartao-leitura {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
+/* --- Conclusão Operacional — Henrique, 2026-09-05: virou a informação
+   PRINCIPAL da coluna esquerda, bloco próprio e independente. --- */
+
+.conclusao-operacional-texto {
+    font-size: 0.92rem;
+    line-height: 1.55;
+    margin: 0;
 }
 
-.leitura-formatada-wrapper {
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-    position: relative;
-}
-
-.leitura-formatada-fade {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 2.5rem;
-    background: linear-gradient(transparent, var(--cor-cartao));
-    pointer-events: none;
-}
-
-.cartao-leitura.expandido .leitura-formatada-wrapper {
-    overflow: visible;
-}
-
-.cartao-leitura.expandido .leitura-formatada-fade {
-    display: none;
-}
-
-.botao-expandir-leitura {
-    align-self: flex-start;
-    margin-top: 0.75rem;
-    padding: 0.3rem 0.7rem;
-    font-size: 0.78rem;
-    font-weight: 600;
-    font-family: inherit;
-    color: var(--cor-acento);
-    background: none;
-    border: 1px solid var(--cor-acento);
-    border-radius: 999px;
-    cursor: pointer;
-}
+/* --- Leitura da Publicação — agora compacta e independente da
+   Conclusão: só as primeiras linhas (line-clamp), sempre fechada, com
+   "Ver leitura" abrindo o texto inteiro num popup (ver .modal-leitura
+   abaixo) em vez de esticar a página. --- */
 
 .leitura-formatada p {
     margin: 0 0 0.55rem;
@@ -586,16 +544,101 @@ html[data-theme="escuro"] .confianca-medio {
     color: var(--cor-texto);
 }
 
-.conclusao-operacional {
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--cor-borda);
-    font-size: 0.9rem;
-    line-height: 1.5;
+.leitura-formatada-compacta {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
 }
 
-.texto-leitura-ia {
-    white-space: pre-line;
+.botao-ver-leitura {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.75rem;
+    padding: 0.3rem 0.7rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    font-family: inherit;
+    color: var(--cor-acento);
+    background: none;
+    border: 1px solid var(--cor-acento);
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.botao-ver-leitura:hover {
+    background: var(--cor-acento-fraco);
+}
+
+/* --- Popup de leitura inteira — mesma linguagem visual do
+   .modal-confirmacao (base.css), só mais largo e com corpo rolável,
+   pensado pra ler um texto comprido, não confirmar uma ação curta. --- */
+
+.modal-leitura {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.45);
+    padding: 1rem;
+}
+
+.modal-leitura[hidden] {
+    display: none;
+}
+
+.modal-leitura-caixa {
+    width: min(700px, 100%);
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--cor-cartao);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio);
+    box-shadow: var(--sombra);
+}
+
+.modal-leitura-cabecalho {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.1rem 1.4rem;
+    border-bottom: 1px solid var(--cor-borda);
+    flex-shrink: 0;
+}
+
+.modal-leitura-cabecalho h2 {
+    margin: 0;
+    font-size: 0.98rem;
+}
+
+.modal-leitura-fechar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    background: none;
+    color: var(--cor-texto-suave);
+    cursor: pointer;
+}
+
+.modal-leitura-fechar:hover {
+    background: var(--cor-fundo);
+    color: var(--cor-texto);
+}
+
+.modal-leitura-corpo {
+    padding: 1.4rem;
+    overflow-y: auto;
 }
 
 /* --- Item de Acompanhamento — enxuto (Henrique, 2026-09-04: "muito
