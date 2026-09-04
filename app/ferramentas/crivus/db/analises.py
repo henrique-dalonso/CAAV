@@ -268,6 +268,17 @@ def excluir_agendamento_manual(analise_id, item_id):
 
 
 def marcar_item_desnecessario(analise_id, tipo_item, item_id, desnecessario=True):
+    """Henrique, 2026-09-06: Acompanhamento NUNCA pode virar
+    "desnecessario" — sempre há exatamente 1 por análise; se estiver
+    errado, corrige-se (edita o tipo), não se descarta. Reverter
+    (desnecessario=False) continua liberado por segurança (caminho de
+    conserto pra qualquer registro antigo que já tenha entrado nesse
+    estado antes dessa regra existir)."""
+    if tipo_item == "acompanhamento" and desnecessario:
+        raise ValueError(
+            "Acompanhamento não pode ser marcado como desnecessário — sempre há exatamente 1, corrija o tipo em vez de descartar."
+        )
+
     with obter_sessao() as sessao:
         item = _obter_item_editavel(sessao, analise_id, tipo_item, item_id)
 

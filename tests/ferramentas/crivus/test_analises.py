@@ -121,6 +121,19 @@ def test_marcar_desnecessario_e_reverter(usuario_teste):
     assert agendamentos[0].status == "sugerido"
 
 
+def test_acompanhamento_nunca_pode_virar_desnecessario(usuario_teste):
+    """Henrique, 2026-09-06: sempre há exatamente 1 acompanhamento por
+    análise — se estiver errado, corrige-se o tipo, não se descarta."""
+    analise = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
+    acompanhamentos, _ = listar_itens(analise.id)
+
+    with pytest.raises(ValueError):
+        marcar_item_desnecessario(analise.id, "acompanhamento", acompanhamentos[0].id, desnecessario=True)
+
+    acompanhamentos, _ = listar_itens(analise.id)
+    assert acompanhamentos[0].status == "sugerido"
+
+
 def test_concluir_falha_com_item_pendente(usuario_teste):
     analise = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
 

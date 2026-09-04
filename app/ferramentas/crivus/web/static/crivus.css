@@ -1037,6 +1037,16 @@ option.opcao-nao-identificado {
     cursor: not-allowed;
 }
 
+/* "*Agendamento criado manualmente" — Henrique, 2026-09-06: eye cue
+   permanente (fora do modo edição, ao lado do interruptor) pra
+   distinguir um item digitado pela pessoa de uma sugestão da IA, sem
+   precisar abrir o lápis pra descobrir. */
+.texto-criado-manualmente {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--cor-erro-texto);
+}
+
 .form-item .aviso-discreto,
 .form-item-agendamento .aviso-discreto {
     flex-basis: 100%;

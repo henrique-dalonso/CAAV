@@ -265,7 +265,10 @@ async def marcar_acompanhamento_desnecessario(
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
     _exigir_dono(analise_id, usuario)
-    marcar_item_desnecessario(analise_id, "acompanhamento", item_id, desnecessario=True)
+    try:
+        marcar_item_desnecessario(analise_id, "acompanhamento", item_id, desnecessario=True)
+    except ValueError as exc:
+        return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}?erro={quote(str(exc))}", status_code=303)
     return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)
 
 

@@ -123,6 +123,10 @@ def test_fluxo_completo_analisar_corrigir_e_concluir(cliente_logado):
 
 
 def test_marcar_desnecessario_tambem_libera_conclusao(cliente_logado):
+    """Henrique, 2026-09-06: Acompanhamento nunca pode virar
+    "desnecessario" (sempre há exatamente 1, corrige-se em vez de
+    descartar) — só o agendamento tem esse caminho; o acompanhamento
+    precisa ser marcado "pronto" pra liberar a conclusão."""
     cliente, usuario = cliente_logado
     resposta = cliente.post("/crivus/leitor-individual/analisar", data={"npjur": "0119225", "processo": "0000000-00.0000.0.00.0000", "teor_publicacao": "teor de teste"})
     analise_id = int(str(resposta.url).rstrip("/").split("/")[-1])
@@ -131,11 +135,27 @@ def test_marcar_desnecessario_tambem_libera_conclusao(cliente_logado):
         acomp = sessao.exec(select(ItemAcompanhamento).where(ItemAcompanhamento.analise_id == analise_id)).one()
         agend = sessao.exec(select(ItemAgendamento).where(ItemAgendamento.analise_id == analise_id)).one()
 
-    cliente.post(f"/crivus/leitor-individual/{analise_id}/acompanhamento/{acomp.id}/desnecessario")
+    cliente.post(f"/crivus/leitor-individual/{analise_id}/acompanhamento/{acomp.id}/salvar", data={"tipo": acomp.tipo})
     cliente.post(f"/crivus/leitor-individual/{analise_id}/agendamento/{agend.id}/desnecessario")
 
     resposta = cliente.post(f"/crivus/leitor-individual/{analise_id}/concluir")
     assert "sucesso" in str(resposta.url)
+
+
+def test_acompanhamento_nao_pode_ser_marcado_desnecessario(cliente_logado):
+    cliente, usuario = cliente_logado
+    resposta = cliente.post("/crivus/leitor-individual/analisar", data={"npjur": "0119225", "processo": "0000000-00.0000.0.00.0000", "teor_publicacao": "teor de teste"})
+    analise_id = int(str(resposta.url).rstrip("/").split("/")[-1])
+
+    with obter_sessao() as sessao:
+        acomp = sessao.exec(select(ItemAcompanhamento).where(ItemAcompanhamento.analise_id == analise_id)).one()
+
+    resposta = cliente.post(f"/crivus/leitor-individual/{analise_id}/acompanhamento/{acomp.id}/desnecessario")
+    assert "não pode ser marcado como desnecessário" in resposta.text
+
+    with obter_sessao() as sessao:
+        acomp_atual = sessao.get(ItemAcompanhamento, acomp.id)
+        assert acomp_atual.status == "sugerido"
 
 
 def test_alerta_critico_bloqueia_conclusao_sem_ciencia(monkeypatch):
