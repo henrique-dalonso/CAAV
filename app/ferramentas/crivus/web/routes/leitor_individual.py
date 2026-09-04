@@ -71,7 +71,7 @@ def _limite_anexos(usuario):
 
 
 def _erro_home(mensagem):
-    return RedirectResponse(url=f"/crivus/?erro={quote(mensagem)}", status_code=303)
+    return RedirectResponse(url=f"/crivus/leitor-individual?erro={quote(mensagem)}", status_code=303)
 
 
 def _exigir_dono(analise_id, usuario):
@@ -81,7 +81,7 @@ def _exigir_dono(analise_id, usuario):
     return analise
 
 
-@router.get("/")
+@router.get("/leitor-individual")
 def pagina_inicial(
     request: Request,
     erro: str | None = None,
@@ -101,7 +101,7 @@ def pagina_inicial(
     )
 
 
-@router.post("/analisar")
+@router.post("/leitor-individual/analisar")
 async def analisar(
     npjur: str = Form(...),
     processo: str = Form(...),
@@ -161,10 +161,10 @@ async def analisar(
     for nome_seguro, caminho_destino, tipo_mime, tamanho in anexos_para_salvar:
         adicionar_anexo(analise.id, usuario.id, nome_seguro, caminho_destino, tipo_mime, tamanho)
 
-    return RedirectResponse(url=f"/crivus/{analise.id}", status_code=303)
+    return RedirectResponse(url=f"/crivus/leitor-individual/{analise.id}", status_code=303)
 
 
-@router.get("/{analise_id}")
+@router.get("/leitor-individual/{analise_id}")
 def pagina_detalhe(
     analise_id: int,
     request: Request,
@@ -194,7 +194,7 @@ def pagina_detalhe(
     )
 
 
-@router.post("/{analise_id}/acompanhamento/{item_id}/salvar")
+@router.post("/leitor-individual/{analise_id}/acompanhamento/{item_id}/salvar")
 async def salvar_acompanhamento(
     analise_id: int,
     item_id: int,
@@ -205,11 +205,11 @@ async def salvar_acompanhamento(
     try:
         marcar_item_pronto(analise_id, "acompanhamento", item_id, novo_tipo=tipo)
     except ValueError as exc:
-        return RedirectResponse(url=f"/crivus/{analise_id}?erro={quote(str(exc))}", status_code=303)
-    return RedirectResponse(url=f"/crivus/{analise_id}", status_code=303)
+        return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}?erro={quote(str(exc))}", status_code=303)
+    return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)
 
 
-@router.post("/{analise_id}/acompanhamento/{item_id}/desnecessario")
+@router.post("/leitor-individual/{analise_id}/acompanhamento/{item_id}/desnecessario")
 async def marcar_acompanhamento_desnecessario(
     analise_id: int,
     item_id: int,
@@ -217,10 +217,10 @@ async def marcar_acompanhamento_desnecessario(
 ):
     _exigir_dono(analise_id, usuario)
     marcar_item_desnecessario(analise_id, "acompanhamento", item_id, desnecessario=True)
-    return RedirectResponse(url=f"/crivus/{analise_id}", status_code=303)
+    return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)
 
 
-@router.post("/{analise_id}/acompanhamento/{item_id}/reverter")
+@router.post("/leitor-individual/{analise_id}/acompanhamento/{item_id}/reverter")
 async def reverter_acompanhamento(
     analise_id: int,
     item_id: int,
@@ -228,10 +228,10 @@ async def reverter_acompanhamento(
 ):
     _exigir_dono(analise_id, usuario)
     marcar_item_desnecessario(analise_id, "acompanhamento", item_id, desnecessario=False)
-    return RedirectResponse(url=f"/crivus/{analise_id}", status_code=303)
+    return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)
 
 
-@router.post("/{analise_id}/agendamento/{item_id}/salvar")
+@router.post("/leitor-individual/{analise_id}/agendamento/{item_id}/salvar")
 async def salvar_agendamento(
     analise_id: int,
     item_id: int,
@@ -247,11 +247,11 @@ async def salvar_agendamento(
             novo_tipo=tipo, nova_data_inicio=data_inicio, nova_data_fim=data_fim,
         )
     except ValueError as exc:
-        return RedirectResponse(url=f"/crivus/{analise_id}?erro={quote(str(exc))}", status_code=303)
-    return RedirectResponse(url=f"/crivus/{analise_id}", status_code=303)
+        return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}?erro={quote(str(exc))}", status_code=303)
+    return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)
 
 
-@router.post("/{analise_id}/agendamento/{item_id}/desnecessario")
+@router.post("/leitor-individual/{analise_id}/agendamento/{item_id}/desnecessario")
 async def marcar_agendamento_desnecessario(
     analise_id: int,
     item_id: int,
@@ -259,10 +259,10 @@ async def marcar_agendamento_desnecessario(
 ):
     _exigir_dono(analise_id, usuario)
     marcar_item_desnecessario(analise_id, "agendamento", item_id, desnecessario=True)
-    return RedirectResponse(url=f"/crivus/{analise_id}", status_code=303)
+    return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)
 
 
-@router.post("/{analise_id}/agendamento/{item_id}/reverter")
+@router.post("/leitor-individual/{analise_id}/agendamento/{item_id}/reverter")
 async def reverter_agendamento(
     analise_id: int,
     item_id: int,
@@ -270,20 +270,20 @@ async def reverter_agendamento(
 ):
     _exigir_dono(analise_id, usuario)
     marcar_item_desnecessario(analise_id, "agendamento", item_id, desnecessario=False)
-    return RedirectResponse(url=f"/crivus/{analise_id}", status_code=303)
+    return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)
 
 
-@router.post("/{analise_id}/ciente-alerta")
+@router.post("/leitor-individual/{analise_id}/ciente-alerta")
 async def ciente_alerta(
     analise_id: int,
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
     _exigir_dono(analise_id, usuario)
     marcar_ciente_alerta_critico(analise_id)
-    return RedirectResponse(url=f"/crivus/{analise_id}", status_code=303)
+    return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)
 
 
-@router.post("/{analise_id}/concluir")
+@router.post("/leitor-individual/{analise_id}/concluir")
 async def concluir(
     analise_id: int,
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
@@ -292,5 +292,5 @@ async def concluir(
     try:
         concluir_analise(analise_id)
     except ValueError as exc:
-        return RedirectResponse(url=f"/crivus/{analise_id}?erro={quote(str(exc))}", status_code=303)
-    return RedirectResponse(url=f"/crivus/?sucesso={quote('Caso concluído.')}", status_code=303)
+        return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}?erro={quote(str(exc))}", status_code=303)
+    return RedirectResponse(url=f"/crivus/leitor-individual?sucesso={quote('Caso concluído.')}", status_code=303)

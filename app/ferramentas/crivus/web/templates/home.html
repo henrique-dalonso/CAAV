@@ -19,7 +19,7 @@
 {% endif %}
 
 <section class="cartao-secao crivus-formulario">
-    <form method="post" action="/crivus/analisar" enctype="multipart/form-data" class="form-crivus" novalidate>
+    <form method="post" action="/crivus/leitor-individual/analisar" enctype="multipart/form-data" class="form-crivus" novalidate>
         <div class="form-crivus-identificacao">
             <label>
                 Número NPJUR
@@ -62,8 +62,8 @@
                     <span class="dropzone-crivus-badge" id="dropzone-crivus-badge">+</span>
                     <span class="dropzone-crivus-texto" id="dropzone-crivus-texto">Clique para adicionar documentos</span>
                     <span class="dropzone-crivus-info">
-                        {% if maximo_anexos %}até {{ maximo_anexos }} arquivos{% else %}sem limite fixo (coordenador/admin){% endif %}
-                        — PDF, DOCX, PNG ou JPEG, até {{ tamanho_maximo_mb }}MB cada
+                        {% if maximo_anexos %}Até {{ maximo_anexos }} arquivos{% else %}Sem limite de arquivos{% endif %}
+                        (PDF, DOCX, PNG OU JPEG), até {{ tamanho_maximo_mb }}MB cada
                     </span>
                 </label>
             </div>

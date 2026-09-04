@@ -58,7 +58,10 @@ FERRAMENTAS_PADRAO = [
         # romper permissão/favorito de quem já tiver acesso concedido.
         "slug": "leitor-publicacoes",
         "descricao": "Pré-análise por IA de publicações, com sugestão de agendamento para revisão do advogado.",
-        "url": "/crivus/",
+        # Henrique, 2026-09-04: cada aba do Crivus ganha URL própria (mesmo
+        # padrão do Extratus — "/extratus/fila-robo" etc.), começando pelo
+        # Leitor Individual; o clique no ícone leva direto pra ela.
+        "url": "/crivus/leitor-individual",
         "suporta_fila_robo": False,
         # Henrique, 2026-09-04: "torne a cor Verde a cor do Crivus" — mesma
         # estrutura clara/escura da Aburesi acima, só trocando a rampa

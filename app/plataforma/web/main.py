@@ -33,7 +33,7 @@ from app.ferramentas.extratus_aburesi.web.routes import (
     relatorios_manuais as relatorios_manuais_aburesi,
     relatorios_robo as relatorios_robo_aburesi,
 )
-from app.ferramentas.crivus.web.routes import home as crivus_home
+from app.ferramentas.crivus.web.routes import leitor_individual as crivus_leitor_individual
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -230,7 +230,7 @@ app.include_router(gerar_relatorio_aburesi.router, prefix="/extratus-aburesi")
 app.include_router(relatorios_manuais_aburesi.router, prefix="/extratus-aburesi")
 app.include_router(fila_aburesi.router, prefix="/extratus-aburesi")
 app.include_router(relatorios_robo_aburesi.router, prefix="/extratus-aburesi")
-app.include_router(crivus_home.router, prefix="/crivus")
+app.include_router(crivus_leitor_individual.router, prefix="/crivus")
 
 
 @app.exception_handler(NaoAutenticado)

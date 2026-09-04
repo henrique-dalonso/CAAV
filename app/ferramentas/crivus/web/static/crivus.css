@@ -2,6 +2,25 @@
    cabecalho-ferramenta e cartao-secao já vêm de base.css (compartilhados
    com outras ferramentas). Aqui só entra o que é específico dessa tela. */
 
+/* Fundo de campo de formulário (input/select/textarea) do Crivus —
+   Henrique, 2026-09-04: "muito claro" usando --cor-cartao (se confundia
+   com o cartão em volta), mas não tão escuro quanto os campos do
+   Extratus (--cor-fundo, o fundo da PÁGINA inteira) — um meio-termo
+   próprio, pra criar distinção imediata sem parecer um buraco escuro. */
+:root {
+    --crivus-cor-fundo-campo: #f3f4f7;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="claro"]) {
+        --crivus-cor-fundo-campo: #10141f;
+    }
+}
+
+:root[data-theme="escuro"] {
+    --crivus-cor-fundo-campo: #10141f;
+}
+
 .selo-status {
     display: inline-flex;
     align-items: center;
@@ -73,7 +92,7 @@
     padding: 0.6rem 0.75rem;
     border-radius: 8px;
     border: 1px solid var(--cor-borda);
-    background: var(--cor-cartao);
+    background: var(--crivus-cor-fundo-campo);
     color: var(--cor-texto);
 }
 
@@ -108,7 +127,7 @@
     padding: 0.75rem;
     border-radius: 8px;
     border: 1px solid var(--cor-borda);
-    background: var(--cor-cartao);
+    background: var(--crivus-cor-fundo-campo);
     color: var(--cor-texto);
 }
 
@@ -218,13 +237,29 @@
     color: var(--cor-erro-texto);
 }
 
-html:not([data-theme="claro"]) .confianca-alto {
+/* Mesmo padrão de 3 blocos claro/escuro/sistema que base.css usa —
+   correção 2026-09-04: a versão anterior aplicava escuro sempre que
+   data-theme não fosse "claro", inclusive tema "sistema" com SO claro. */
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme="claro"]) .confianca-alto {
+        background: #052e21;
+        color: #34d399;
+    }
+
+    html:not([data-theme="claro"]) .confianca-médio,
+    html:not([data-theme="claro"]) .confianca-medio {
+        background: #2d1d05;
+        color: #fbbf24;
+    }
+}
+
+html[data-theme="escuro"] .confianca-alto {
     background: #052e21;
     color: #34d399;
 }
 
-html:not([data-theme="claro"]) .confianca-médio,
-html:not([data-theme="claro"]) .confianca-medio {
+html[data-theme="escuro"] .confianca-médio,
+html[data-theme="escuro"] .confianca-medio {
     background: #2d1d05;
     color: #fbbf24;
 }
@@ -283,7 +318,7 @@ html:not([data-theme="claro"]) .confianca-medio {
     padding: 0.4rem 0.6rem;
     border-radius: 6px;
     border: 1px solid var(--cor-borda);
-    background: var(--cor-cartao);
+    background: var(--crivus-cor-fundo-campo);
     color: var(--cor-texto);
 }
 
@@ -298,7 +333,7 @@ html:not([data-theme="claro"]) .confianca-medio {
     padding: 0.3rem 0.5rem;
     border-radius: 6px;
     border: 1px solid var(--cor-borda);
-    background: var(--cor-cartao);
+    background: var(--crivus-cor-fundo-campo);
     color: var(--cor-texto);
 }
 
