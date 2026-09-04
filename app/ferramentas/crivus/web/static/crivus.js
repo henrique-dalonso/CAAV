@@ -311,6 +311,36 @@
         }
     });
 
+    // Interruptor "Pronto"/"Não Verificado" (detalhe.html) — Henrique,
+    // 2026-09-06: substitui o botão "Marcar como Pronto". Ligar/desligar
+    // o checkbox dispara um POST de verdade (ligar = mesma rota de
+    // "Pronto", desligar = "reverter"), usando um botão escondido só pra
+    // dar o formaction certo pro requestSubmit (que aciona o listener de
+    // "submit" mais abaixo, mesmo caminho AJAX de sempre). Se o tipo
+    // ainda não foi escolhido (select "required" vazio — item novo,
+    // adicionado manualmente), barra ANTES de tentar ligar e devolve o
+    // interruptor pro estado desligado, senão ele ficaria visualmente
+    // "ligado" mesmo sem nada salvo de verdade.
+    document.addEventListener("change", function (evento) {
+        var input = evento.target.closest(".interruptor-pronto-input");
+        if (!input) { return; }
+
+        var form = input.closest("form");
+        if (!form) { return; }
+
+        var ativando = input.checked;
+        var botaoAlvo = form.querySelector(ativando ? ".botao-interruptor-ativar" : ".botao-interruptor-desativar");
+        if (!botaoAlvo) { return; }
+
+        if (ativando && !form.checkValidity()) {
+            input.checked = false;
+            form.reportValidity();
+            return;
+        }
+
+        form.requestSubmit(botaoAlvo);
+    });
+
     // "Ver leitura" (detalhe.html) — Henrique, 2026-09-05: bloco de
     // Leitura fica compacto (só as primeiras linhas, CSS line-clamp) por
     // padrão; esse botão abre a leitura inteira num popup, melhor pra

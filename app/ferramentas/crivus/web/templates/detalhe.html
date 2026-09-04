@@ -95,13 +95,13 @@
     </div>
 
     <div class="crivus-detalhe-itens">
-        <section class="cartao-secao">
+        <section class="cartao-secao cartao-acompanhamentos">
             <h2>Acompanhamento{{ "s" if acompanhamentos|length != 1 else "" }}</h2>
             {% if not acompanhamentos %}
             <p class="vazio">Nenhum acompanhamento sugerido.</p>
             {% endif %}
             {% for item in acompanhamentos %}
-            <div class="item-revisao item-status-{{ item.status }}{{ ' modo-edicao' if item.tipo == nao_identificado }}">
+            <div class="item-caso item-revisao item-status-{{ item.status }}{{ ' modo-edicao' if (item.tipo == nao_identificado or not item.tipo) }}">
                 {% if item.status == "desnecessario" %}
                     <p class="item-riscado">{{ item.tipo }}</p>
                     <form method="post" action="/crivus/leitor-individual/{{ analise.id }}/acompanhamento/{{ item.id }}/reverter">
@@ -110,7 +110,7 @@
                 {% else %}
                     <div class="item-topo">
                         <div class="item-exibicao somente-exibicao">
-                            <strong>{{ item.tipo }}</strong>
+                            <strong class="{{ 'texto-nao-identificado' if item.tipo == nao_identificado }}">{{ item.tipo }}</strong>
                         </div>
                         {% if analise.status != "concluido" %}
                         <button type="button" class="botao-editar-item somente-exibicao" data-dica="Editar acompanhamento" aria-label="Editar acompanhamento">
@@ -130,23 +130,41 @@
 
                     <form method="post" action="/crivus/leitor-individual/{{ analise.id }}/acompanhamento/{{ item.id }}/salvar" class="form-item">
                         <div class="campo-edicao">
-                            <select name="tipo" {{ "disabled" if analise.status == "concluido" }}>
+                            <select name="tipo" required {{ "disabled" if analise.status == "concluido" }}>
+                                <option value="" disabled {{ "selected" if not item.tipo }}>(Selecione um tipo de acompanhamento)</option>
                                 {% for tipo in tipos_acompanhamento %}
-                                <option value="{{ tipo }}" {{ "selected" if tipo == item.tipo }}>{{ tipo }}</option>
+                                <option value="{{ tipo }}" class="{{ 'opcao-nao-identificado' if tipo == nao_identificado }}" {{ "selected" if tipo == item.tipo }}>{{ tipo }}</option>
                                 {% endfor %}
                             </select>
                             {% if item.tipo != item.tipo_sugerido %}
                             <span class="aviso-discreto">sugestão original: {{ item.tipo_sugerido }}</span>
                             {% endif %}
                         </div>
-                        <div class="item-acoes">
-                            <button type="submit" formaction="/crivus/leitor-individual/{{ analise.id }}/acompanhamento/{{ item.id }}/desnecessario" class="botao-secundario campo-edicao" {{ "disabled" if analise.status == "concluido" }}>Marcar desnecessário</button>
+                        <div class="item-caso-acoes">
+                            <button type="submit" formaction="/crivus/leitor-individual/{{ analise.id }}/acompanhamento/{{ item.id }}/desnecessario" formnovalidate class="botao-marcar-desnecessario campo-edicao" data-dica="Marcar como desnecessário" aria-label="Marcar como desnecessário" {{ "disabled" if analise.status == "concluido" }}>
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                </svg>
+                            </button>
                             <button type="submit" formaction="/crivus/leitor-individual/{{ analise.id }}/acompanhamento/{{ item.id }}/salvar-edicao" class="botao-pronto botao-pronto-icone campo-edicao" data-dica="Salvar as alterações" {{ "disabled" if analise.status == "concluido" }}>
                                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                     <polyline points="20 6 9 17 4 12"></polyline>
                                 </svg>
                             </button>
-                            <button type="submit" class="botao-pronto somente-exibicao" {{ "disabled" if analise.status == "concluido" }}>{{ "✓ Pronto" if item.status == "pronto" else 'Marcar como "Pronto"' }}</button>
+                            <button type="submit" formaction="/crivus/leitor-individual/{{ analise.id }}/acompanhamento/{{ item.id }}/salvar" class="botao-interruptor-ativar"></button>
+                            <button type="submit" formaction="/crivus/leitor-individual/{{ analise.id }}/acompanhamento/{{ item.id }}/reverter" formnovalidate class="botao-interruptor-desativar"></button>
+                            <label class="interruptor-pronto somente-exibicao">
+                                <input type="checkbox" class="interruptor-pronto-input" {{ "checked" if item.status == "pronto" }} {{ "disabled" if analise.status == "concluido" }}>
+                                <span class="interruptor-trilho"><span class="interruptor-bolinha"></span></span>
+                                <span class="interruptor-texto interruptor-texto-off">Não Verificado</span>
+                                <span class="interruptor-texto interruptor-texto-on">
+                                    Pronto
+                                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                </span>
+                            </label>
                         </div>
                     </form>
                 {% endif %}
@@ -160,17 +178,17 @@
             <p class="vazio">Nenhum agendamento necessário.</p>
             {% endif %}
             {% for item in agendamentos %}
-            <div class="item-agendamento item-status-{{ item.status }}{{ ' modo-edicao' if item.tipo == nao_identificado }}">
+            <div class="item-caso item-agendamento item-status-{{ item.status }}{{ ' modo-edicao' if (item.tipo == nao_identificado or not item.tipo) }}">
                 {% if item.status == "desnecessario" %}
-                    <p class="item-riscado">{{ item.tipo }} · {{ item.data_inicio.strftime("%d/%m") }} a {{ item.data_fim.strftime("%d/%m") }}</p>
+                    <p class="item-riscado">{{ item.tipo }} · Data: {{ item.data_inicio.strftime("%d/%m") }} a {{ item.data_fim.strftime("%d/%m") }}</p>
                     <form method="post" action="/crivus/leitor-individual/{{ analise.id }}/agendamento/{{ item.id }}/reverter">
                         <button type="submit" class="botao-secundario" {{ "disabled" if analise.status == "concluido" }}>Reverter</button>
                     </form>
                 {% else %}
                     <div class="item-topo">
                         <div class="item-exibicao somente-exibicao">
-                            <strong>{{ item.tipo }}</strong>
-                            <span class="item-agendamento-datas">{{ item.data_inicio.strftime("%d/%m/%Y") }} a {{ item.data_fim.strftime("%d/%m/%Y") }}</span>
+                            <strong class="{{ 'texto-nao-identificado' if item.tipo == nao_identificado }}">{{ item.tipo }}</strong>
+                            <span class="item-agendamento-datas">Data: {{ item.data_inicio.strftime("%d/%m/%Y") }} a {{ item.data_fim.strftime("%d/%m/%Y") }}</span>
                         </div>
                         {% if analise.status != "concluido" %}
                         <button type="button" class="botao-editar-item somente-exibicao" data-dica="Editar agendamento" aria-label="Editar agendamento">
@@ -190,9 +208,10 @@
 
                     <form method="post" action="/crivus/leitor-individual/{{ analise.id }}/agendamento/{{ item.id }}/salvar" class="form-item-agendamento">
                         <div class="campo-edicao">
-                            <select name="tipo" {{ "disabled" if analise.status == "concluido" }}>
+                            <select name="tipo" required {{ "disabled" if analise.status == "concluido" }}>
+                                <option value="" disabled {{ "selected" if not item.tipo }}>(Selecione um tipo de agendamento)</option>
                                 {% for tipo in tipos_agendamento %}
-                                <option value="{{ tipo }}" {{ "selected" if tipo == item.tipo }}>{{ tipo }}</option>
+                                <option value="{{ tipo }}" class="{{ 'opcao-nao-identificado' if tipo == nao_identificado }}" {{ "selected" if tipo == item.tipo }}>{{ tipo }}</option>
                                 {% endfor %}
                             </select>
                             <div class="linha-datas">
@@ -207,14 +226,31 @@
                             </span>
                             {% endif %}
                         </div>
-                        <div class="item-agendamento-acoes">
-                            <button type="submit" formaction="/crivus/leitor-individual/{{ analise.id }}/agendamento/{{ item.id }}/desnecessario" class="botao-secundario campo-edicao" {{ "disabled" if analise.status == "concluido" }}>Marcar desnecessário</button>
+                        <div class="item-caso-acoes">
+                            <button type="submit" formaction="/crivus/leitor-individual/{{ analise.id }}/agendamento/{{ item.id }}/desnecessario" formnovalidate class="botao-marcar-desnecessario campo-edicao" data-dica="Marcar como desnecessário" aria-label="Marcar como desnecessário" {{ "disabled" if analise.status == "concluido" }}>
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                </svg>
+                            </button>
                             <button type="submit" formaction="/crivus/leitor-individual/{{ analise.id }}/agendamento/{{ item.id }}/salvar-edicao" class="botao-pronto botao-pronto-icone campo-edicao" data-dica="Salvar as alterações" {{ "disabled" if analise.status == "concluido" }}>
                                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                     <polyline points="20 6 9 17 4 12"></polyline>
                                 </svg>
                             </button>
-                            <button type="submit" class="botao-pronto somente-exibicao" {{ "disabled" if analise.status == "concluido" }}>{{ "✓ Pronto" if item.status == "pronto" else 'Marcar como "Pronto"' }}</button>
+                            <button type="submit" formaction="/crivus/leitor-individual/{{ analise.id }}/agendamento/{{ item.id }}/salvar" class="botao-interruptor-ativar"></button>
+                            <button type="submit" formaction="/crivus/leitor-individual/{{ analise.id }}/agendamento/{{ item.id }}/reverter" formnovalidate class="botao-interruptor-desativar"></button>
+                            <label class="interruptor-pronto somente-exibicao">
+                                <input type="checkbox" class="interruptor-pronto-input" {{ "checked" if item.status == "pronto" }} {{ "disabled" if analise.status == "concluido" }}>
+                                <span class="interruptor-trilho"><span class="interruptor-bolinha"></span></span>
+                                <span class="interruptor-texto interruptor-texto-off">Não Verificado</span>
+                                <span class="interruptor-texto interruptor-texto-on">
+                                    Pronto
+                                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                </span>
+                            </label>
                         </div>
                     </form>
                 {% endif %}

@@ -144,7 +144,7 @@ SEM_AGENDAMENTO = "SEM AGENDAMENTO"
 # Escape hatch obrigatório — mesma regra "NÃO INVENTAR" do prompt mestre:
 # quando a IA (ou a pessoa corrigindo) não encontra correspondência real
 # nas listas acima, sinaliza em vez de forçar um tipo errado.
-NAO_IDENTIFICADO = "NÃO IDENTIFICADO — validar nomenclatura no NPJUR"
+NAO_IDENTIFICADO = "NÃO IDENTIFICADO - SELECIONE MANUALMENTE"
 
 # SLA interno (Manual, seção 8) — "primeira data" / "segunda data" =
 # quantos dias corridos após a leitura somar pra calcular a DATA INÍCIO e

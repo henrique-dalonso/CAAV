@@ -42,22 +42,47 @@
 }
 
 /* Âmbar dos Agendamentos — Henrique, 2026-09-04: "momento sensível",
-   cor própria pra se destacar do resto da tela. */
+   cor própria pra se destacar do resto da tela. Verde (identidade do
+   Crivus) equivalente pro Acompanhamento — Henrique, 2026-09-06: "tudo
+   que for feito aqui deve se adequar a tudo", mesmo tratamento visual
+   (seção com fundo esmaecido + item interno com fundo mais sólido na
+   mesma cor), cada seção com a sua própria cor. */
 :root {
     --crivus-cor-fundo-agendamento: #fffbeb;
     --crivus-cor-borda-agendamento: #fde68a;
+    --crivus-cor-fundo-agendamento-item: #fef3c7;
+    --crivus-cor-borda-agendamento-item: #fcd34d;
+
+    --crivus-cor-fundo-acompanhamento: #f0fdf4;
+    --crivus-cor-borda-acompanhamento: #bbf7d0;
+    --crivus-cor-fundo-acompanhamento-item: #dcfce7;
+    --crivus-cor-borda-acompanhamento-item: #86efac;
 }
 
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme="claro"]) {
         --crivus-cor-fundo-agendamento: #2d2205;
         --crivus-cor-borda-agendamento: #78350f;
+        --crivus-cor-fundo-agendamento-item: #4a3709;
+        --crivus-cor-borda-agendamento-item: #92400e;
+
+        --crivus-cor-fundo-acompanhamento: #052e16;
+        --crivus-cor-borda-acompanhamento: #14532d;
+        --crivus-cor-fundo-acompanhamento-item: #0d3b21;
+        --crivus-cor-borda-acompanhamento-item: #15803d;
     }
 }
 
 :root[data-theme="escuro"] {
     --crivus-cor-fundo-agendamento: #2d2205;
     --crivus-cor-borda-agendamento: #78350f;
+    --crivus-cor-fundo-agendamento-item: #4a3709;
+    --crivus-cor-borda-agendamento-item: #92400e;
+
+    --crivus-cor-fundo-acompanhamento: #052e16;
+    --crivus-cor-borda-acompanhamento: #14532d;
+    --crivus-cor-fundo-acompanhamento-item: #0d3b21;
+    --crivus-cor-borda-acompanhamento-item: #15803d;
 }
 
 .selo-status {
@@ -760,17 +785,30 @@
     overflow-y: auto;
 }
 
-/* --- Item de Acompanhamento — enxuto (Henrique, 2026-09-04: "muito
-   largo, espaçoso demais"). --- */
+/* --- Item de Acompanhamento/Agendamento — Henrique, 2026-09-06: "o
+   comportamento das seções são iguais, então qualquer mudança aplicada
+   a um, deve ir ao outro" — uma classe só (.item-caso) pro que é
+   estrutural/comportamental, cada tipo (.item-revisao/.item-agendamento)
+   só entra pra escolher a própria cor (verde/âmbar). --- */
 
-.item-revisao {
+.item-caso {
     border: 1.5px solid var(--cor-borda);
     border-radius: 8px;
-    padding: 0.55rem 0.7rem;
+    padding: 0.7rem 0.9rem;
     margin-bottom: 0.5rem;
 }
 
-.item-revisao.item-status-pronto {
+.item-revisao.item-caso {
+    background: var(--crivus-cor-fundo-acompanhamento-item);
+    border-color: var(--crivus-cor-borda-acompanhamento-item);
+}
+
+.item-agendamento.item-caso {
+    background: var(--crivus-cor-fundo-agendamento-item);
+    border-color: var(--crivus-cor-borda-agendamento-item);
+}
+
+.item-caso.item-status-pronto {
     border-color: #34d399;
 }
 
@@ -788,15 +826,18 @@
     border-color: var(--cor-erro-borda) !important;
 }
 
-.form-item {
+.form-item,
+.form-item-agendamento {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 0.5rem;
 }
 
-.form-item select {
+.form-item select,
+.form-item-agendamento select {
     flex: 1 1 220px;
+    width: 100%;
     padding: 0.35rem 0.55rem;
     font-size: 0.85rem;
     border-radius: 6px;
@@ -805,19 +846,33 @@
     color: var(--cor-texto);
 }
 
-.form-item label {
+.form-item label,
+.form-item-agendamento label {
     display: flex;
     align-items: center;
     gap: 0.35rem;
     font-size: 0.85rem;
 }
 
-.form-item input[type="date"] {
+.form-item input[type="date"],
+.form-item-agendamento input[type="date"] {
     padding: 0.3rem 0.5rem;
     border-radius: 6px;
     border: 1px solid var(--cor-borda);
     background: var(--crivus-cor-fundo-campo);
     color: var(--cor-texto);
+}
+
+/* NÃO IDENTIFICADO — Henrique, 2026-09-06: "é a mensagem de erro, deve
+   ser facilmente compreendida", vermelho tanto na opção do dropdown
+   quanto no título exibido do item (fora do modo edição). */
+option.opcao-nao-identificado {
+    color: #dc2626;
+    font-weight: 700;
+}
+
+.texto-nao-identificado {
+    color: #dc2626;
 }
 
 .item-topo {
@@ -830,8 +885,12 @@
 .item-exibicao {
     display: flex;
     flex-direction: column;
-    gap: 0.15rem;
-    font-size: 0.85rem;
+    gap: 0.25rem;
+    font-size: 0.95rem;
+}
+
+.item-exibicao strong {
+    font-size: 1rem;
 }
 
 /* Vermelho sólido de propósito (Henrique, 2026-09-05: "deve ser
@@ -913,53 +972,39 @@
     display: none;
 }
 
-.item-acoes {
+.item-caso-acoes {
     display: flex;
+    align-items: center;
     justify-content: flex-end;
     gap: 0.5rem;
-    margin-top: 0.4rem;
+    margin-top: 0.5rem;
 }
 
-.form-item .aviso-discreto {
+.form-item .aviso-discreto,
+.form-item-agendamento .aviso-discreto {
     flex-basis: 100%;
 }
 
 /* --- Bloco de Agendamentos — âmbar, "momento sensível" (Henrique,
-   2026-09-04). Exibição só de leitura por padrão; o lápis (vermelho,
-   canto superior direito) abre o modo edição, que revela tipo/datas
-   editáveis + "Marcar desnecessário" (crivus.js alterna a classe
-   .modo-edicao). --- */
+   2026-09-04); Acompanhamento — verde, identidade do Crivus (Henrique,
+   2026-09-06, ver variáveis no topo do arquivo). Exibição só de leitura
+   por padrão; o lápis (vermelho, canto superior direito) abre o modo
+   edição, que revela tipo/datas editáveis + o cadeado de "marcar
+   desnecessário" (crivus.js alterna a classe .modo-edicao). --- */
+
+.cartao-acompanhamentos {
+    background: var(--crivus-cor-fundo-acompanhamento);
+    border-color: var(--crivus-cor-borda-acompanhamento) !important;
+}
 
 .cartao-agendamentos {
     background: var(--crivus-cor-fundo-agendamento);
     border-color: var(--crivus-cor-borda-agendamento) !important;
 }
 
-.item-agendamento {
-    background: var(--cor-cartao);
-    border: 1.5px solid var(--crivus-cor-borda-agendamento);
-    border-radius: 8px;
-    padding: 0.55rem 0.7rem;
-    margin-bottom: 0.5rem;
-}
-
-.item-agendamento.item-status-pronto {
-    border-color: #34d399;
-}
-
 .item-agendamento-datas {
     color: var(--cor-texto-suave);
-    font-size: 0.8rem;
-}
-
-.form-item-agendamento select {
-    width: 100%;
-    padding: 0.35rem 0.55rem;
-    font-size: 0.85rem;
-    border-radius: 6px;
-    border: 1px solid var(--cor-borda);
-    background: var(--crivus-cor-fundo-campo);
-    color: var(--cor-texto);
+    font-size: 0.88rem;
 }
 
 .linha-datas {
@@ -985,12 +1030,31 @@
     color: var(--cor-texto);
 }
 
-.item-agendamento-acoes {
-    display: flex;
+/* Cadeado "Marcar como desnecessário" — Henrique, 2026-09-06: substitui
+   o botão de texto por um símbolo vermelho, mesmo par visual do check
+   verde de "Salvar as alterações" ao lado (mesmo tamanho/formato
+   redondo, cores opostas — destrutivo vs. confirmar). Tooltip via
+   data-dica, não texto. */
+.botao-marcar-desnecessario {
+    display: inline-flex;
     align-items: center;
-    justify-content: flex-end;
-    gap: 0.5rem;
-    margin-top: 0.6rem;
+    justify-content: center;
+    padding: 0.45rem;
+    border-radius: 999px;
+    border: 1.5px solid var(--cor-erro-borda);
+    background: var(--cor-erro-fundo);
+    color: var(--cor-erro-texto);
+    cursor: pointer;
+}
+
+.botao-marcar-desnecessario:hover:not(:disabled) {
+    background: var(--cor-erro-borda);
+    color: #fff;
+}
+
+.botao-marcar-desnecessario:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 /* --- "Pronto"/"Salvar Alterações" — visual distinto de propósito
@@ -1036,6 +1100,105 @@ html[data-theme="escuro"] .botao-pronto {
 .botao-pronto:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+}
+
+/* --- Interruptor "Pronto"/"Não Verificado" — Henrique, 2026-09-06:
+   substitui o botão "Marcar como Pronto" por um botão deslizante.
+   Cinza+"Não Verificado" desligado, verde+"Pronto"+check ligado. Puro
+   CSS via :checked (o "checkbox hack") pra reagir instantaneamente ao
+   clique, sem esperar a resposta do servidor — o texto/estado real só é
+   confirmado depois que crivus.js troca o HTML com a resposta. Os dois
+   botões escondidos (.botao-interruptor-ativar/-desativar) existem só
+   pra dar um "formaction" pro requestSubmit — ver listener de "change"
+   em crivus.js. --- */
+
+.botao-interruptor-ativar,
+.botao-interruptor-desativar {
+    display: none;
+}
+
+.interruptor-pronto {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.interruptor-pronto-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.interruptor-trilho {
+    position: relative;
+    flex-shrink: 0;
+    width: 34px;
+    height: 19px;
+    border-radius: 999px;
+    background: var(--cor-borda);
+    transition: background 0.15s ease;
+}
+
+.interruptor-bolinha {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 15px;
+    height: 15px;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    transition: transform 0.15s ease;
+}
+
+.interruptor-pronto-input:checked ~ .interruptor-trilho {
+    background: #34d399;
+}
+
+.interruptor-pronto-input:checked ~ .interruptor-trilho .interruptor-bolinha {
+    transform: translateX(15px);
+}
+
+.interruptor-pronto-input:disabled ~ .interruptor-trilho {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.interruptor-texto {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--cor-texto-suave);
+    white-space: nowrap;
+}
+
+.interruptor-texto-on {
+    display: none;
+    color: #059669;
+}
+
+.interruptor-pronto-input:checked ~ .interruptor-texto-off {
+    display: none;
+}
+
+.interruptor-pronto-input:checked ~ .interruptor-texto-on {
+    display: inline-flex;
+}
+
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme="claro"]) .interruptor-texto-on {
+        color: #34d399;
+    }
+}
+
+html[data-theme="escuro"] .interruptor-texto-on {
+    color: #34d399;
 }
 
 /* Botão "+" — Henrique, 2026-09-04: acrescentar agendamento que a IA não

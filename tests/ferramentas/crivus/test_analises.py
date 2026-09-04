@@ -99,10 +99,10 @@ def test_marcar_item_pronto_preserva_sugestao_original(usuario_teste):
     acompanhamentos, _ = listar_itens(analise.id)
     item = acompanhamentos[0]
 
-    atualizado = marcar_item_pronto(analise.id, "acompanhamento", item.id, novo_tipo="NÃO IDENTIFICADO — validar nomenclatura no NPJUR")
+    atualizado = marcar_item_pronto(analise.id, "acompanhamento", item.id, novo_tipo=NAO_IDENTIFICADO)
 
     assert atualizado.status == "pronto"
-    assert atualizado.tipo == "NÃO IDENTIFICADO — validar nomenclatura no NPJUR"
+    assert atualizado.tipo == NAO_IDENTIFICADO
     assert atualizado.tipo_sugerido == "AGUARDANDO AUDIÊNCIA DE CONCILIAÇÃO"
 
 
@@ -187,13 +187,44 @@ def test_salvar_edicao_nao_confirma_o_item(usuario_teste):
     assert atualizado.tipo_sugerido == "AUDIÊNCIA DE CONCILIAÇÃO"
 
 
+def test_salvar_edicao_sem_mudanca_nao_desfaz_pronto(usuario_teste):
+    """Henrique, 2026-09-06: abrir o lápis, não mudar nada de verdade e
+    clicar no check não pode desfazer um "Pronto" já dado — só uma
+    edição real (tipo ou data diferente) volta o item pra "sugerido"."""
+    analise = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
+    acompanhamentos, agendamentos = listar_itens(analise.id)
+
+    marcar_item_pronto(analise.id, "acompanhamento", acompanhamentos[0].id)
+    atualizado = salvar_edicao_item(analise.id, "acompanhamento", acompanhamentos[0].id, acompanhamentos[0].tipo)
+    assert atualizado.status == "pronto"
+
+    marcar_item_pronto(analise.id, "agendamento", agendamentos[0].id)
+    item = agendamentos[0]
+    atualizado = salvar_edicao_item(
+        analise.id, "agendamento", item.id, item.tipo,
+        nova_data_inicio=item.data_inicio, nova_data_fim=item.data_fim,
+    )
+    assert atualizado.status == "pronto"
+
+
+def test_nao_permite_marcar_pronto_sem_tipo(usuario_teste):
+    """Henrique, 2026-09-06: mesmo que o "required" do HTML e o
+    interruptor em crivus.js barrem isso na tela, o servidor não pode
+    confiar só neles — POST direto com tipo vazio tem que falhar."""
+    analise = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
+    novo = criar_agendamento_manual(analise.id)
+
+    with pytest.raises(ValueError):
+        marcar_item_pronto(analise.id, "agendamento", novo.id)
+
+
 def test_criar_agendamento_manual_nasce_em_branco(usuario_teste):
     analise = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
 
     novo = criar_agendamento_manual(analise.id)
 
-    assert novo.tipo == NAO_IDENTIFICADO
-    assert novo.tipo_sugerido == NAO_IDENTIFICADO
+    assert novo.tipo == ""
+    assert novo.tipo_sugerido == ""
     assert novo.criado_manualmente is True
     assert novo.status == "sugerido"
     assert novo.data_inicio == date.today()

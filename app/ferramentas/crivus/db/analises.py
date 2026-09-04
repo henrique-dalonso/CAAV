@@ -2,7 +2,6 @@ from datetime import date, datetime, timedelta
 
 from sqlmodel import select
 
-from app.ferramentas.crivus.config.taxonomia import NAO_IDENTIFICADO
 from app.ferramentas.crivus.db.models import (
     AnalisePublicacao,
     AnexoAnalise,
@@ -133,7 +132,13 @@ def marcar_item_pronto(analise_id, tipo_item, item_id, novo_tipo=None, nova_data
     """Botão "Pronto" (fora do modo edição) — aplica o que já estiver nos
     campos (sem alteração, se a pessoa nunca abriu o lápis) e confirma o
     item de vez. Nunca mexe em `tipo_sugerido`/`data_*_sugerida`, que
-    preservam o que a IA disse originalmente pro double-check."""
+    preservam o que a IA disse originalmente pro double-check.
+
+    Henrique, 2026-09-06: o <select> do tipo tem "required" no HTML (o
+    interruptor "Pronto"/"Não Verificado" também barra antes de tentar
+    ligar, ver crivus.js), mas um item recém-adicionado manualmente pode
+    chegar aqui com tipo ainda vazio — trava de novo aqui embaixo, não dá
+    pra confiar só na validação do navegador."""
     with obter_sessao() as sessao:
         item = _obter_item_editavel(sessao, analise_id, tipo_item, item_id)
 
@@ -144,6 +149,9 @@ def marcar_item_pronto(analise_id, tipo_item, item_id, novo_tipo=None, nova_data
                 item.data_inicio = nova_data_inicio
             if nova_data_fim:
                 item.data_fim = nova_data_fim
+
+        if not item.tipo:
+            raise ValueError("Selecione um tipo antes de marcar como pronto.")
 
         item.status = "pronto"
         sessao.add(item)
@@ -158,9 +166,24 @@ def salvar_edicao_item(analise_id, tipo_item, item_id, novo_tipo, nova_data_inic
     — Henrique, 2026-09-04: diferente de "Pronto", isso NÃO confirma o
     item. Aplica a correção e devolve pro estado "aguardando confirmação"
     (sempre "sugerido", mesmo que já estivesse "pronto" antes de reabrir
-    o lápis) — a pessoa ainda precisa clicar "Pronto" depois de editar."""
+    o lápis) — a pessoa ainda precisa clicar "Pronto" depois de editar.
+
+    Henrique, 2026-09-06: se a pessoa abrir o modo edição e clicar em
+    salvar SEM mudar nada de fato, isso não pode desfazer um "Pronto" já
+    dado — só conta como edição de verdade (e só então volta pra
+    "sugerido") quando tipo ou datas realmente mudaram."""
     with obter_sessao() as sessao:
         item = _obter_item_editavel(sessao, analise_id, tipo_item, item_id)
+
+        mudou = item.tipo != novo_tipo
+        if tipo_item == "agendamento":
+            if nova_data_inicio and item.data_inicio != nova_data_inicio:
+                mudou = True
+            if nova_data_fim and item.data_fim != nova_data_fim:
+                mudou = True
+
+        if not mudou:
+            return item
 
         item.tipo = novo_tipo
         if tipo_item == "agendamento":
@@ -180,9 +203,15 @@ def salvar_edicao_item(analise_id, tipo_item, item_id, novo_tipo, nova_data_inic
 def criar_agendamento_manual(analise_id):
     """Botão "+" abaixo da lista de Agendamentos — Henrique, 2026-09-04:
     acrescenta um agendamento que a IA não sugeriu. Nasce em branco (tipo
-    NÃO IDENTIFICADO, datas de hoje) e a tela abre ele já em modo edição
-    (ver detalhe.html: qualquer item com tipo NAO_IDENTIFICADO nasce
-    aberto), pra pessoa preencher na hora."""
+    vazio, datas de hoje) e a tela abre ele já em modo edição (ver
+    detalhe.html: qualquer item sem tipo escolhido nasce aberto), pra
+    pessoa preencher na hora.
+
+    Henrique, 2026-09-06: tipo vazio (não mais NAO_IDENTIFICADO) de
+    propósito — o dropdown mostra o placeholder neutro "(Selecione um
+    tipo de agendamento)" já selecionado, em vez de vir com o item de
+    escape-hatch da IA pré-marcado, que não faz sentido pra algo que a
+    própria pessoa está criando do zero."""
     with obter_sessao() as sessao:
         analise = sessao.get(AnalisePublicacao, analise_id)
         if not analise:
@@ -193,8 +222,8 @@ def criar_agendamento_manual(analise_id):
         hoje = date.today()
         item = ItemAgendamento(
             analise_id=analise_id,
-            tipo_sugerido=NAO_IDENTIFICADO,
-            tipo=NAO_IDENTIFICADO,
+            tipo_sugerido="",
+            tipo="",
             data_inicio_sugerida=hoje,
             data_fim_sugerida=hoje,
             data_inicio=hoje,
