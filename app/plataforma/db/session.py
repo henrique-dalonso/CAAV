@@ -111,6 +111,11 @@ COLUNAS_PENDENTES = {
         "comando_judicial": "VARCHAR",
         "resultado_parte": "VARCHAR",
     },
+    "itemagendamento": {
+        # Henrique, 2026-09-04: botão "+" pra acrescentar agendamento que
+        # a IA não sugeriu — ver docstring de ItemAgendamento.
+        "criado_manualmente": "BOOLEAN DEFAULT 0",
+    },
 }
 
 

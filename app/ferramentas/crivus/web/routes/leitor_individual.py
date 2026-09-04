@@ -11,12 +11,14 @@ from app.ferramentas.crivus.core.ia_cliente import analisar_publicacao
 from app.ferramentas.crivus.db.analises import (
     adicionar_anexo,
     concluir_analise,
+    criar_agendamento_manual,
     criar_analise_a_partir_da_ia,
     listar_itens,
     marcar_ciente_alerta_critico,
     marcar_item_desnecessario,
     marcar_item_pronto,
     obter_analise,
+    salvar_edicao_item,
 )
 from app.plataforma.db.models import CARGO_COORDENADOR, Usuario
 from app.plataforma.web.auth import exigir_acesso_ferramenta
@@ -187,6 +189,7 @@ def pagina_detalhe(
             "agendamentos": agendamentos,
             "tipos_acompanhamento": TIPOS_ACOMPANHAMENTO + [NAO_IDENTIFICADO],
             "tipos_agendamento": TIPOS_AGENDAMENTO + [NAO_IDENTIFICADO],
+            "nao_identificado": NAO_IDENTIFICADO,
             "todos_prontos": todos_prontos,
             "pode_concluir": todos_prontos and (not analise.tem_alerta_critico or analise.ciente_alerta_critico),
             "erro": erro,
@@ -204,6 +207,21 @@ async def salvar_acompanhamento(
     _exigir_dono(analise_id, usuario)
     try:
         marcar_item_pronto(analise_id, "acompanhamento", item_id, novo_tipo=tipo)
+    except ValueError as exc:
+        return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}?erro={quote(str(exc))}", status_code=303)
+    return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)
+
+
+@router.post("/leitor-individual/{analise_id}/acompanhamento/{item_id}/salvar-edicao")
+async def salvar_edicao_acompanhamento(
+    analise_id: int,
+    item_id: int,
+    tipo: str = Form(...),
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
+):
+    _exigir_dono(analise_id, usuario)
+    try:
+        salvar_edicao_item(analise_id, "acompanhamento", item_id, tipo)
     except ValueError as exc:
         return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}?erro={quote(str(exc))}", status_code=303)
     return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)
@@ -246,6 +264,36 @@ async def salvar_agendamento(
             analise_id, "agendamento", item_id,
             novo_tipo=tipo, nova_data_inicio=data_inicio, nova_data_fim=data_fim,
         )
+    except ValueError as exc:
+        return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}?erro={quote(str(exc))}", status_code=303)
+    return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)
+
+
+@router.post("/leitor-individual/{analise_id}/agendamento/{item_id}/salvar-edicao")
+async def salvar_edicao_agendamento(
+    analise_id: int,
+    item_id: int,
+    tipo: str = Form(...),
+    data_inicio: date = Form(...),
+    data_fim: date = Form(...),
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
+):
+    _exigir_dono(analise_id, usuario)
+    try:
+        salvar_edicao_item(analise_id, "agendamento", item_id, tipo, nova_data_inicio=data_inicio, nova_data_fim=data_fim)
+    except ValueError as exc:
+        return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}?erro={quote(str(exc))}", status_code=303)
+    return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)
+
+
+@router.post("/leitor-individual/{analise_id}/agendamento/novo")
+async def adicionar_agendamento(
+    analise_id: int,
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
+):
+    _exigir_dono(analise_id, usuario)
+    try:
+        criar_agendamento_manual(analise_id)
     except ValueError as exc:
         return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}?erro={quote(str(exc))}", status_code=303)
     return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)

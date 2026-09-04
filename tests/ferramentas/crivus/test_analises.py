@@ -3,14 +3,17 @@ from datetime import date, timedelta
 import pytest
 from sqlmodel import delete, select
 
+from app.ferramentas.crivus.config.taxonomia import NAO_IDENTIFICADO
 from app.ferramentas.crivus.db.analises import (
     concluir_analise,
+    criar_agendamento_manual,
     criar_analise_a_partir_da_ia,
     listar_itens,
     marcar_ciente_alerta_critico,
     marcar_item_desnecessario,
     marcar_item_pronto,
     obter_analise,
+    salvar_edicao_item,
 )
 from app.ferramentas.crivus.db.models import AnalisePublicacao, AnexoAnalise, ItemAcompanhamento, ItemAgendamento
 from app.plataforma.db.models import CARGO_COLABORADOR
@@ -162,3 +165,48 @@ def test_nao_permite_corrigir_item_apos_caso_concluido(usuario_teste):
 
     with pytest.raises(ValueError):
         marcar_item_desnecessario(analise.id, "agendamento", agendamentos[0].id, desnecessario=True)
+
+
+def test_salvar_edicao_nao_confirma_o_item(usuario_teste):
+    """Henrique, 2026-09-04: "Salvar Alterações" (modo edição) aplica a
+    correção mas NÃO marca pronto — volta pro estado "aguardando
+    confirmação", mesmo que já estivesse "pronto" antes de reabrir."""
+    analise = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
+    acompanhamentos, agendamentos = listar_itens(analise.id)
+
+    marcar_item_pronto(analise.id, "agendamento", agendamentos[0].id)
+    atualizado = salvar_edicao_item(
+        analise.id, "agendamento", agendamentos[0].id,
+        "MANIFESTAÇÃO", nova_data_inicio=date.today(), nova_data_fim=date.today() + timedelta(days=3),
+    )
+
+    assert atualizado.status == "sugerido"
+    assert atualizado.tipo == "MANIFESTAÇÃO"
+    # sugestão original da IA preservada, não sobrescrita pela edição
+    assert atualizado.tipo_sugerido == "AUDIÊNCIA DE CONCILIAÇÃO"
+
+
+def test_criar_agendamento_manual_nasce_em_branco(usuario_teste):
+    analise = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
+
+    novo = criar_agendamento_manual(analise.id)
+
+    assert novo.tipo == NAO_IDENTIFICADO
+    assert novo.tipo_sugerido == NAO_IDENTIFICADO
+    assert novo.criado_manualmente is True
+    assert novo.status == "sugerido"
+    assert novo.data_inicio == date.today()
+
+    _, agendamentos = listar_itens(analise.id)
+    assert len(agendamentos) == 2  # o original da IA + o manual
+
+
+def test_nao_permite_adicionar_agendamento_apos_concluido(usuario_teste):
+    analise = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
+    acompanhamentos, agendamentos = listar_itens(analise.id)
+    marcar_item_pronto(analise.id, "acompanhamento", acompanhamentos[0].id)
+    marcar_item_pronto(analise.id, "agendamento", agendamentos[0].id)
+    concluir_analise(analise.id)
+
+    with pytest.raises(ValueError):
+        criar_agendamento_manual(analise.id)

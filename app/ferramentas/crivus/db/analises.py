@@ -2,6 +2,7 @@ from datetime import date, datetime, timedelta
 
 from sqlmodel import select
 
+from app.ferramentas.crivus.config.taxonomia import NAO_IDENTIFICADO
 from app.ferramentas.crivus.db.models import (
     AnalisePublicacao,
     AnexoAnalise,
@@ -114,21 +115,27 @@ def _todos_prontos(analise_id, sessao):
     return pendentes is None
 
 
-def marcar_item_pronto(analise_id, tipo_item, item_id, novo_tipo=None, nova_data_inicio=None, nova_data_fim=None):
-    """`tipo_item` é "acompanhamento" ou "agendamento". Aplica a correção
-    (se houver) e marca o item como "pronto" — nunca mexe em
-    `tipo_sugerido`/`data_*_sugerida`, que preservam o que a IA disse
-    originalmente pro double-check."""
+def _obter_item_editavel(sessao, analise_id, tipo_item, item_id):
     modelo = ItemAcompanhamento if tipo_item == "acompanhamento" else ItemAgendamento
 
-    with obter_sessao() as sessao:
-        analise = sessao.get(AnalisePublicacao, analise_id)
-        if analise and analise.status == "concluido":
-            raise ValueError("Caso já concluído — não é mais possível corrigir itens.")
+    analise = sessao.get(AnalisePublicacao, analise_id)
+    if analise and analise.status == "concluido":
+        raise ValueError("Caso já concluído — não é mais possível corrigir itens.")
 
-        item = sessao.get(modelo, item_id)
-        if not item or item.analise_id != analise_id:
-            raise ValueError("Item não encontrado nesta análise.")
+    item = sessao.get(modelo, item_id)
+    if not item or item.analise_id != analise_id:
+        raise ValueError("Item não encontrado nesta análise.")
+
+    return item
+
+
+def marcar_item_pronto(analise_id, tipo_item, item_id, novo_tipo=None, nova_data_inicio=None, nova_data_fim=None):
+    """Botão "Pronto" (fora do modo edição) — aplica o que já estiver nos
+    campos (sem alteração, se a pessoa nunca abriu o lápis) e confirma o
+    item de vez. Nunca mexe em `tipo_sugerido`/`data_*_sugerida`, que
+    preservam o que a IA disse originalmente pro double-check."""
+    with obter_sessao() as sessao:
+        item = _obter_item_editavel(sessao, analise_id, tipo_item, item_id)
 
         if novo_tipo:
             item.tipo = novo_tipo
@@ -146,17 +153,64 @@ def marcar_item_pronto(analise_id, tipo_item, item_id, novo_tipo=None, nova_data
         return item
 
 
-def marcar_item_desnecessario(analise_id, tipo_item, item_id, desnecessario=True):
-    modelo = ItemAcompanhamento if tipo_item == "acompanhamento" else ItemAgendamento
+def salvar_edicao_item(analise_id, tipo_item, item_id, novo_tipo, nova_data_inicio=None, nova_data_fim=None):
+    """Botão "Salvar Alterações" (dentro do modo edição, lápis já aberto)
+    — Henrique, 2026-09-04: diferente de "Pronto", isso NÃO confirma o
+    item. Aplica a correção e devolve pro estado "aguardando confirmação"
+    (sempre "sugerido", mesmo que já estivesse "pronto" antes de reabrir
+    o lápis) — a pessoa ainda precisa clicar "Pronto" depois de editar."""
+    with obter_sessao() as sessao:
+        item = _obter_item_editavel(sessao, analise_id, tipo_item, item_id)
 
+        item.tipo = novo_tipo
+        if tipo_item == "agendamento":
+            if nova_data_inicio:
+                item.data_inicio = nova_data_inicio
+            if nova_data_fim:
+                item.data_fim = nova_data_fim
+
+        item.status = "sugerido"
+        sessao.add(item)
+        sessao.commit()
+        sessao.refresh(item)
+
+        return item
+
+
+def criar_agendamento_manual(analise_id):
+    """Botão "+" abaixo da lista de Agendamentos — Henrique, 2026-09-04:
+    acrescenta um agendamento que a IA não sugeriu. Nasce em branco (tipo
+    NÃO IDENTIFICADO, datas de hoje) e a tela abre ele já em modo edição
+    (ver detalhe.html: qualquer item com tipo NAO_IDENTIFICADO nasce
+    aberto), pra pessoa preencher na hora."""
     with obter_sessao() as sessao:
         analise = sessao.get(AnalisePublicacao, analise_id)
-        if analise and analise.status == "concluido":
-            raise ValueError("Caso já concluído — não é mais possível corrigir itens.")
+        if not analise:
+            raise ValueError("Análise não encontrada.")
+        if analise.status == "concluido":
+            raise ValueError("Caso já concluído — não é mais possível adicionar agendamento.")
 
-        item = sessao.get(modelo, item_id)
-        if not item or item.analise_id != analise_id:
-            raise ValueError("Item não encontrado nesta análise.")
+        hoje = date.today()
+        item = ItemAgendamento(
+            analise_id=analise_id,
+            tipo_sugerido=NAO_IDENTIFICADO,
+            tipo=NAO_IDENTIFICADO,
+            data_inicio_sugerida=hoje,
+            data_fim_sugerida=hoje,
+            data_inicio=hoje,
+            data_fim=hoje,
+            criado_manualmente=True,
+        )
+        sessao.add(item)
+        sessao.commit()
+        sessao.refresh(item)
+
+        return item
+
+
+def marcar_item_desnecessario(analise_id, tipo_item, item_id, desnecessario=True):
+    with obter_sessao() as sessao:
+        item = _obter_item_editavel(sessao, analise_id, tipo_item, item_id)
 
         item.status = "desnecessario" if desnecessario else "sugerido"
         sessao.add(item)

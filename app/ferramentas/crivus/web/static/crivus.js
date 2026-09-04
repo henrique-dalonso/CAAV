@@ -280,21 +280,36 @@
         });
     }
 
-    // Agendamento (detalhe.html) — Henrique, 2026-09-04: exibição só de
-    // leitura por padrão; o lápis (canto superior direito, vermelho —
-    // "algo delicado") revela tipo/datas editáveis + "Marcar
-    // desnecessário". Só troca uma classe — os campos continuam no DOM
-    // e são enviados no POST mesmo escondidos, então clicar direto em
-    // "Marcar como Pronto" sem nunca abrir o modo edição preserva a
-    // sugestão da IA como está.
+    // Acompanhamento/Agendamento (detalhe.html) — Henrique, 2026-09-04:
+    // exibição só de leitura por padrão; o lápis (canto superior direito,
+    // vermelho — "algo delicado") revela tipo/[datas] editáveis +
+    // "Marcar desnecessário" + troca "Pronto" por "Salvar Alterações". Só
+    // troca uma classe — os campos continuam no DOM e são enviados no
+    // POST mesmo escondidos, então clicar direto em "Pronto" sem nunca
+    // abrir o modo edição preserva a sugestão da IA como está.
     document.addEventListener("click", function (evento) {
-        var botao = evento.target.closest(".botao-editar-agendamento");
+        var botao = evento.target.closest(".botao-editar-item");
         if (!botao) { return; }
 
-        var item = botao.closest(".item-agendamento");
+        var item = botao.closest(".item-revisao, .item-agendamento");
         if (item) {
             item.classList.toggle("modo-edicao");
         }
+    });
+
+    // "Expandir"/"Recolher" o bloco de Leitura da Publicação — Henrique,
+    // 2026-09-04: o bloco fica com a mesma altura da coluna de itens ao
+    // lado (CSS, grid stretch), cortando o texto atrás de um degradê;
+    // esse botão libera a altura total.
+    document.addEventListener("click", function (evento) {
+        var botao = evento.target.closest("#botao-expandir-leitura");
+        if (!botao) { return; }
+
+        var cartao = document.getElementById("cartao-leitura");
+        if (!cartao) { return; }
+
+        var expandido = cartao.classList.toggle("expandido");
+        botao.textContent = expandido ? "Recolher" : "Expandir";
     });
 
     // -----------------------------------------------------------------

@@ -125,6 +125,13 @@ class ItemAgendamento(SQLModel, table=True):
 
     status: str = Field(default="sugerido")
 
+    # Henrique, 2026-09-04: botão "+" pra acrescentar agendamento que a
+    # IA não sugeriu — nasce em branco (tipo NAO_IDENTIFICADO, datas de
+    # hoje) e já abre em modo edição. Distingue de um item real da IA
+    # pra tela não mostrar uma "sugestão original" que nunca existiu, e
+    # pra auditoria futura (quantos agendamentos a IA deixou passar).
+    criado_manualmente: bool = Field(default=False)
+
     criado_em: datetime = Field(default_factory=datetime.now)
 
 

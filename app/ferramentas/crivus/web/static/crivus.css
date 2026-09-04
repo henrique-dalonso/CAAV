@@ -499,7 +499,12 @@ html[data-theme="escuro"] .confianca-medio {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 1.5rem;
-    align-items: start;
+    /* Sem align-items:start de propósito — o padrão do grid (stretch)
+       faz as duas colunas terminarem na mesma altura. É isso que permite
+       o bloco de Leitura (abaixo) se adaptar à altura da coluna de itens
+       ao lado, em vez de empurrar a página pra baixo com texto solto.
+       Henrique, 2026-09-04: "manter o rodapé do bloco sempre alinhado ao
+       último agendamento". */
 }
 
 @media (max-width: 900px) {
@@ -510,6 +515,62 @@ html[data-theme="escuro"] .confianca-medio {
 
 .crivus-detalhe-corpo .cartao-secao {
     border-width: 1.5px;
+}
+
+.crivus-detalhe-leitura {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+/* Cartão de leitura ocupa o que sobrar da coluna esquerda (depois do
+   alerta crítico, se houver) e clipa o próprio conteúdo — degradê +
+   "Expandir" revelam o resto. min-height:0 é o que deixa um filho flex
+   encolher de verdade, sem isso overflow:hidden não faz nada aqui. */
+.cartao-leitura {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.leitura-formatada-wrapper {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    position: relative;
+}
+
+.leitura-formatada-fade {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2.5rem;
+    background: linear-gradient(transparent, var(--cor-cartao));
+    pointer-events: none;
+}
+
+.cartao-leitura.expandido .leitura-formatada-wrapper {
+    overflow: visible;
+}
+
+.cartao-leitura.expandido .leitura-formatada-fade {
+    display: none;
+}
+
+.botao-expandir-leitura {
+    align-self: flex-start;
+    margin-top: 0.75rem;
+    padding: 0.3rem 0.7rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    font-family: inherit;
+    color: var(--cor-acento);
+    background: none;
+    border: 1px solid var(--cor-acento);
+    border-radius: 999px;
+    cursor: pointer;
 }
 
 .leitura-formatada p {
@@ -598,8 +659,61 @@ html[data-theme="escuro"] .confianca-medio {
     color: var(--cor-texto);
 }
 
+.item-topo {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.item-exibicao {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    font-size: 0.85rem;
+}
+
+.botao-editar-item {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 6px;
+    background: var(--cor-erro-fundo);
+    color: var(--cor-erro-texto);
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.botao-editar-item:hover {
+    background: var(--cor-erro-borda);
+}
+
+/* Alternância exibição/edição (crivus.js troca .modo-edicao) — vale
+   pra Acompanhamento (.item-revisao) e Agendamento (.item-agendamento).
+   .campo-edicao só aparece editando; .somente-exibicao é o inverso
+   (view de leitura + botão "Pronto", somem editando). */
+.campo-edicao {
+    display: none;
+    margin-top: 0.6rem;
+}
+
+.item-revisao.modo-edicao .campo-edicao,
+.item-agendamento.modo-edicao .campo-edicao {
+    display: block;
+}
+
+.item-revisao.modo-edicao .somente-exibicao,
+.item-agendamento.modo-edicao .somente-exibicao {
+    display: none;
+}
+
 .item-acoes {
     display: flex;
+    justify-content: flex-end;
     gap: 0.5rem;
     margin-top: 0.4rem;
 }
@@ -631,55 +745,9 @@ html[data-theme="escuro"] .confianca-medio {
     border-color: #34d399;
 }
 
-.item-agendamento-topo {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 0.5rem;
-}
-
-.item-agendamento-exibicao {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-    font-size: 0.85rem;
-}
-
 .item-agendamento-datas {
     color: var(--cor-texto-suave);
     font-size: 0.8rem;
-}
-
-.botao-editar-agendamento {
-    flex-shrink: 0;
-    width: 26px;
-    height: 26px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border: none;
-    border-radius: 6px;
-    background: var(--cor-erro-fundo);
-    color: var(--cor-erro-texto);
-    cursor: pointer;
-    font-size: 0.85rem;
-}
-
-.botao-editar-agendamento:hover {
-    background: var(--cor-erro-borda);
-}
-
-.campo-edicao {
-    display: none;
-    margin-top: 0.6rem;
-}
-
-.item-agendamento.modo-edicao .campo-edicao {
-    display: block;
-}
-
-.item-agendamento.modo-edicao .item-agendamento-exibicao {
-    display: none;
 }
 
 .form-item-agendamento select {
@@ -718,13 +786,14 @@ html[data-theme="escuro"] .confianca-medio {
 .item-agendamento-acoes {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
     gap: 0.5rem;
     margin-top: 0.6rem;
 }
 
-/* --- "Marcar como Pronto" — visual distinto de propósito (Henrique,
-   2026-09-04: "outro design, pra facilitar identificação da intenção"),
-   à esquerda em vez do padrão de ficar ao lado dos outros botões. --- */
+/* --- "Pronto"/"Salvar Alterações" — visual distinto de propósito
+   (Henrique, 2026-09-04: "outro design, pra facilitar identificação da
+   intenção"), alinhado à direita junto das demais ações. --- */
 
 .botao-pronto {
     display: inline-flex;
@@ -739,7 +808,6 @@ html[data-theme="escuro"] .confianca-medio {
     border: 1.5px solid #34d399;
     border-radius: 999px;
     cursor: pointer;
-    margin-right: auto;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -759,6 +827,28 @@ html[data-theme="escuro"] .botao-pronto {
 .botao-pronto:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+}
+
+/* Botão "+" — Henrique, 2026-09-04: acrescentar agendamento que a IA não
+   sugeriu. Sempre por último na lista (ordem natural do template), pra
+   continuar disponível depois de já ter adicionado algum. */
+.botao-adicionar-agendamento {
+    width: 100%;
+    padding: 0.5rem;
+    margin-top: 0.25rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    font-family: inherit;
+    color: var(--cor-texto-suave);
+    background: none;
+    border: 1.5px dashed var(--crivus-cor-borda-agendamento);
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.botao-adicionar-agendamento:hover {
+    color: var(--cor-acento);
+    border-color: var(--cor-acento);
 }
 
 /* --- Rodapé de conclusão --- */
