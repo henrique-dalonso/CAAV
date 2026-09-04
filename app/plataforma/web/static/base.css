@@ -277,6 +277,11 @@ a {
     line-height: 1.45;
 }
 
+.modal-confirmacao-mensagem .destaque-perigo {
+    color: var(--cor-erro-texto);
+    font-weight: 700;
+}
+
 .modal-confirmacao-acoes {
     display: flex;
     justify-content: flex-end;

@@ -407,11 +407,19 @@
         // acesso às variáveis daqui; `window.confirmarAcao` é o mesmo
         // padrão já usado por `window.mostrarBanner`/`mostrarBannerDetalhado`
         // (mais acima neste arquivo) pra cruzar esse limite.
-        window.confirmarAcao = function (mensagem, aoConfirmar, perigo) {
+        // `html`: só usado quando quem chama passa uma string fixa (nunca
+        // dado de usuário) e quer destacar uma palavra, ex: <span
+        // class="destaque-perigo">DESCARTAR</span> — por padrão continua
+        // texto puro (textContent), mais seguro.
+        window.confirmarAcao = function (mensagem, aoConfirmar, perigo, html) {
             formPendente = null;
             callbackPendente = aoConfirmar;
             elementoAnteriorFoco = document.activeElement;
-            mensagemConfirmacao.textContent = mensagem;
+            if (html) {
+                mensagemConfirmacao.innerHTML = mensagem;
+            } else {
+                mensagemConfirmacao.textContent = mensagem;
+            }
             botaoConfirmarConfirmacao.classList.toggle("modal-confirmacao-confirmar-perigo", perigo === true);
             modalConfirmacao.hidden = false;
             botaoCancelarConfirmacao.focus();

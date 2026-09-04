@@ -411,7 +411,7 @@
             .catch(function () {
                 if (intervaloPontos) { window.clearInterval(intervaloPontos); }
                 if (window.mostrarBanner) {
-                    window.mostrarBanner("Falha de conexão — tente novamente.", "erro");
+                    window.mostrarBanner("Falha de conexão. Tente novamente.", "erro");
                 }
             });
     }
@@ -425,14 +425,15 @@
         // "Descartar alterações e Voltar" — Henrique, 2026-09-06 pediu
         // confirmação de que isso REALMENTE desfaz o que já foi
         // confirmado (o servidor devolve tudo à sugestão original da IA,
-        // ver descartar_alteracoes em db/analises.py); like o resto das
-        // ações destrutivas do site, passa pelo modal padrão em vez de um
+        // ver descartar_alteracoes em db/analises.py); mesmo modal padrão
+        // usado nas outras ações destrutivas do site, em vez de um
         // confirm() nu.
         if (form.classList.contains("form-descartar-crivus")) {
             if (window.confirmarAcao) {
                 window.confirmarAcao(
-                    "Descartar as alterações feitas neste caso e voltar? As sugestões voltam a ser exatamente as da IA — o que já foi confirmado aqui se perde.",
+                    'Deseja realmente <span class="destaque-perigo">DESCARTAR</span> e voltar para o Leitor Individual?',
                     function () { enviarFormularioCrivus(form, null); },
+                    true,
                     true
                 );
             } else {

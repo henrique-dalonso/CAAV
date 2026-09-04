@@ -267,7 +267,7 @@ def descartar_alteracoes(analise_id):
         if not analise:
             raise ValueError("Análise não encontrada.")
         if analise.status == "concluido":
-            raise ValueError("Caso já concluído — não é mais possível descartar alterações.")
+            raise ValueError("Caso já concluído: não é mais possível descartar alterações.")
 
         acompanhamentos = sessao.exec(
             select(ItemAcompanhamento).where(ItemAcompanhamento.analise_id == analise_id)
