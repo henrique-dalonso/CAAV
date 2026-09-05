@@ -97,7 +97,7 @@
             <p class="vazio">Nenhum acompanhamento sugerido.</p>
             {% endif %}
             {% for item in acompanhamentos %}
-            <div class="item-caso item-revisao item-status-{{ item.status }}{{ ' modo-edicao' if (item.tipo == nao_identificado or not item.tipo) }}">
+            <div class="item-caso item-revisao item-status-{{ item.status }}{{ ' modo-edicao' if (item.tipo == nao_identificado or not item.tipo) }}" data-item-chave="acompanhamento-{{ item.id }}">
                 {% if item.status == "desnecessario" %}
                     <p class="item-riscado">{{ item.tipo }}</p>
                     <form method="post" action="/crivus/leitor-individual/{{ analise.id }}/acompanhamento/{{ item.id }}/reverter">
@@ -173,7 +173,7 @@
             <p class="vazio">Nenhum agendamento necessário.</p>
             {% endif %}
             {% for item in agendamentos %}
-            <div class="item-caso item-agendamento item-status-{{ item.status }}{{ ' modo-edicao' if (item.tipo == nao_identificado or not item.tipo) }}">
+            <div class="item-caso item-agendamento item-status-{{ item.status }}{{ ' modo-edicao' if (item.tipo == nao_identificado or not item.tipo) }}" data-item-chave="agendamento-{{ item.id }}">
                 {% if item.status == "desnecessario" %}
                     <p class="item-riscado">{{ item.tipo }} · Data: {{ item.data_inicio.strftime("%d/%m") }} a {{ item.data_fim.strftime("%d/%m") }}</p>
                     <form method="post" action="/crivus/leitor-individual/{{ analise.id }}/agendamento/{{ item.id }}/reverter">

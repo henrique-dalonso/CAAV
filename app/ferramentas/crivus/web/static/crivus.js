@@ -395,13 +395,38 @@
         return document.getElementById("crivus-conteudo");
     }
 
-    function substituirConteudo(html, novaUrl, novoTitulo) {
+    function substituirConteudo(html, novaUrl, novoTitulo, chaveDoItemSalvo) {
         var doc = new DOMParser().parseFromString(html, "text/html");
         var novoConteudo = doc.getElementById("crivus-conteudo");
         var atual = elementoConteudo();
 
         if (novoConteudo && atual) {
+            // Henrique, 2026-09-06: achado real — editar um item (lápis
+            // aberto) e confirmar OUTRO em qualquer lugar da tela fechava a
+            // edição do primeiro sem querer, porque essa troca substitui
+            // #crivus-conteudo inteiro pelo HTML novo do servidor, que só
+            // reabre .modo-edicao pra quem realmente precisa (tipo vazio/
+            // flag da IA) — um lápis aberto manualmente nunca foi salvo em
+            // lugar nenhum, então sumia. Guarda quem estava em edição
+            // (por data-item-chave) ANTES da troca e reabre depois, pra
+            // outras ações na tela nunca fecharem uma edição em andamento.
+            // `chaveDoItemSalvo` fica de fora dessa reabertura de propósito:
+            // é o próprio item cujo formulário acabou de ser confirmado, e
+            // esse SIM deve fechar normalmente (o servidor já reflete o
+            // resultado certo pra ele).
+            var chavesEmEdicao = [];
+            atual.querySelectorAll(".modo-edicao[data-item-chave]").forEach(function (item) {
+                if (item.dataset.itemChave !== chaveDoItemSalvo) {
+                    chavesEmEdicao.push(item.dataset.itemChave);
+                }
+            });
+
             atual.innerHTML = novoConteudo.innerHTML;
+
+            chavesEmEdicao.forEach(function (chave) {
+                var item = atual.querySelector('[data-item-chave="' + chave + '"]');
+                if (item) { item.classList.add("modo-edicao"); }
+            });
         }
 
         if (novoTitulo) { document.title = novoTitulo; }
@@ -434,6 +459,12 @@
         var ehAnalise = form.classList.contains("form-crivus");
         var intervaloPontos = ehAnalise ? mostrarCarregandoAnalise() : null;
 
+        // O próprio item dono desse formulário — usado só pra excluí-lo da
+        // reabertura de edição em substituirConteudo (ver comentário lá):
+        // ESSE item deve fechar normalmente após a ação, não os outros.
+        var itemDoForm = form.closest("[data-item-chave]");
+        var chaveDoItem = itemDoForm ? itemDoForm.dataset.itemChave : null;
+
         var formData = new FormData(form);
         // formaction (botão "Marcar desnecessário" dentro do form de
         // "salvar") — FormData não sabe disso sozinho, precisa vir do
@@ -445,7 +476,7 @@
             .then(function (resultado) {
                 if (intervaloPontos) { window.clearInterval(intervaloPontos); }
                 var tituloDoc = new DOMParser().parseFromString(resultado.html, "text/html").title;
-                substituirConteudo(resultado.html, resultado.url, tituloDoc);
+                substituirConteudo(resultado.html, resultado.url, tituloDoc, chaveDoItem);
             })
             .catch(function () {
                 if (intervaloPontos) { window.clearInterval(intervaloPontos); }
