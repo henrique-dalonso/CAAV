@@ -77,8 +77,16 @@ servidor.pid
 
 # Exportação real do NPJUR (Crivus) — mesma regra de "dado real de
 # cliente/processo nunca versionado" das pastas dados/ do Extratus acima.
-# Os manuais/prompt (.docx) na mesma pasta continuam versionados normalmente.
 app/ferramentas/crivus/config/*.xlsx
+
+# Prompt mestre + manual complementar do Crivus (Henrique, 2026-09-09:
+# "PROMPTS NÃO DEVEM SER VERSIONADOS NO GIT, ELES DEVEM SER
+# IRRASTREÁVEIS PARA NÃO FICAR ALTERANDO SEMPRE") — decisão invertida da
+# anterior (esses .docx eram versionados normalmente até aqui). Trocar o
+# conteúdo agora é só sobrescrever o arquivo em config/ + reiniciar o
+# servidor, nunca mais via commit/git pull.
+app/ferramentas/crivus/config/Prompt PUBLICAÇÕES.docx
+app/ferramentas/crivus/config/COMPLEMENTAR - MANUAL.docx
 
 # Anexos reais enviados no Leitor de Publicação (sentenças, petições —
 # documento de cliente) — mesma regra acima.
