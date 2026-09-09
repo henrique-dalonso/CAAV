@@ -220,7 +220,7 @@ def _preparar_novo_lote(config, cliente, tipo=None, ferramenta_slug=FERRAMENTA_S
                     pdf, paginas=paginas, total_paginas=total_paginas, cliente=cliente
                 )
             )
-            parametros = montar_parametros_mensagem(pdf, processo, instrucoes, diagnostico=diagnostico, tipo=tipo)
+            parametros = montar_parametros_mensagem(pdf, processo, instrucoes, cliente, diagnostico=diagnostico, tipo=tipo)
         except Exception as erro:
             tratar_erro(
                 pdf, processo, "erro_ia", erro, pasta_erros,

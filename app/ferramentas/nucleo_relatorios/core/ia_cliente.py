@@ -28,20 +28,45 @@ MODELO_PEDACO = "claude-haiku-4-5"
 # --- Limites de segurança para a análise via texto extraído localmente ---
 # (ver memória de redução de custo — validados com testes reais em 2026-07-29)
 
-# Estimativa de tokens por caractere do texto extraído, calibrada com dois
-# testes reais pagos (0,53 e 0,58 tokens/caractere) — usamos 0,6 pra ter
-# margem de segurança pra cima, já que subestimar aqui é o que pode causar
-# um erro de "excedeu a janela de contexto" no meio do processamento.
+# Estimativa BARATA (sem chamar a API) de tokens por caractere do texto
+# extraído, calibrada com dois testes reais pagos (0,53 e 0,58 tokens/
+# caractere) — 0,6 já tinha margem de segurança pra cima. Usada só como
+# filtro rápido pra decidir se vale a pena gastar a chamada de contagem
+# real (ver `contar_tokens_requisicao` abaixo) — processo pequeno nem
+# chega a fazer essa chamada extra.
 TOKENS_POR_CARACTERE_ESTIMADO = 0.6
 
-# Deixamos uma folga generosa da janela real de 1 milhão de tokens do
-# modelo (Sonnet 5) — ~200 mil de sobra pro prompt do Max, o schema da
-# ferramenta e a resposta. Corrigido em 2026-08-12: o valor antigo (150 mil)
-# partia de uma suposição desatualizada de janela de 200 mil tokens (gerações
-# antigas do Sonnet) — documentos grandes estavam sendo divididos em pedaços
-# à toa, pagando várias chamadas de saída (mais cara) em vez de uma só, e
-# caindo em "revisão" automaticamente mesmo sem precisar.
-LIMITE_TOKENS_TEXTO_EXTRAIDO = 800_000
+# Reservado pra saída da chamada (ver "max_tokens" abaixo) e uma margem de
+# segurança pra variação de tamanho do prompt/schema ao longo do tempo —
+# tudo isso soma tokens à janela de contexto do modelo além do texto do
+# processo em si.
+MAX_TOKENS_RESPOSTA = 8192
+MARGEM_SEGURANCA_TOKENS = 20_000
+
+# Janela de contexto real do modelo padrão (Sonnet 5), confirmada na
+# documentação da Anthropic em 2026-09-09: 1 milhão de tokens, SEM
+# cobrança diferenciada por usar a janela inteira (uma requisição de 900
+# mil tokens custa o mesmo por token que uma de 9 mil). Achado no mesmo
+# dia, junto com Henrique, investigando por que processos de ~1000-1300
+# páginas travavam com "processo grande demais" mesmo cabendo
+# tranquilamente na janela real do modelo — o valor antigo (800 mil) e o
+# comentário que o acompanhava ("~200 mil de sobra") nunca tinham sido
+# medidos de verdade contra a API; a sobra real (prompt + schema +
+# tool_choice, via `contar_tokens_requisicao`) é de ~5,5 mil tokens, não
+# 200 mil.
+LIMITE_CONTEXTO_MODELO = 1_000_000
+
+# Limite final usado pra decidir se um processo cabe numa chamada só —
+# mantém o nome antigo (várias funções/testes já importam por ele) mas o
+# valor agora vem de verdade da janela real do modelo, não de uma
+# suposição. A decisão de "cabe ou não" em si usa a contagem REAL de
+# tokens (`contar_tokens_requisicao`), não a estimativa por caractere
+# acima — a estimativa por caractere se mostrou pouco confiável nos 3
+# processos reais testados em 2026-09-09 (variou de 0,85x a 1,02x do
+# valor real conforme o documento, ora estimando a mais, ora a menos),
+# então usá-la sozinha pra decidir algo tão perto do limite arriscaria
+# deixar passar um processo que na hora H estoura a janela de verdade.
+LIMITE_TOKENS_TEXTO_EXTRAIDO = LIMITE_CONTEXTO_MODELO - MAX_TOKENS_RESPOSTA - MARGEM_SEGURANCA_TOKENS
 
 # A Anthropic rejeita (HTTP 413) requisições acima de 32MB. Um PDF em
 # base64 fica ~1,33x maior que o arquivo original — por isso o teto aqui
@@ -425,6 +450,43 @@ def estimar_tokens_texto(texto):
     return int(len(texto) * TOKENS_POR_CARACTERE_ESTIMADO)
 
 
+# Só vale gastar uma chamada de rede (ainda que de graça) pra contar
+# tokens de verdade quando a estimativa barata já sugere que o processo
+# está perto do limite — a esmagadora maioria dos processos reais fica
+# bem abaixo disso e nem precisa dessa checagem extra.
+LIMIAR_PARA_CONTAGEM_REAL = LIMITE_TOKENS_TEXTO_EXTRAIDO * 0.6
+
+
+def contar_tokens_requisicao(cliente, texto, instrucoes, tipo=None):
+    """Conta os tokens REAIS que a requisição completa (prompt + schema da
+    ferramenta + texto do processo) vai ocupar, via
+    `messages.count_tokens` da Anthropic — chamada gratuita, não gera
+    resposta nenhuma, só tokeniza.
+
+    Substitui `estimar_tokens_texto` na decisão de "cabe numa chamada só"
+    perto do limite: a estimativa por caractere é rápida mas se mostrou
+    pouco confiável nos 3 processos reais testados em 2026-09-09 (variou
+    de 0,85x a 1,02x do valor real dependendo do documento — às vezes
+    estimando A MENOS que o real, o pior lado de errar aqui). Contar de
+    verdade elimina essa incerteza bem no ponto onde ela mais importa."""
+    schema_relatorio = _resolver_tipo(tipo).schema_relatorio
+
+    resultado = cliente.messages.count_tokens(
+        model=MODELO_PADRAO,
+        system=[
+            {
+                "type": "text",
+                "text": instrucoes + _instrucao_formato(),
+                "cache_control": {"type": "ephemeral"},
+            }
+        ],
+        tools=[schema_relatorio],
+        tool_choice={"type": "tool", "name": "preencher_relatorio"},
+        messages=[{"role": "user", "content": texto}],
+    )
+    return resultado.input_tokens
+
+
 def cabe_no_limite_pdf_nativo(caminho_pdf):
     tamanho_mb = Path(caminho_pdf).stat().st_size / 1_000_000
     return tamanho_mb <= LIMITE_MB_ARQUIVO_PARA_PDF_NATIVO
@@ -729,7 +791,7 @@ def gerar_relatorio_claude_dividido(caminho_pdf, processo_detectado, cliente, in
     return dados_finais, uso_total
 
 
-def montar_parametros_mensagem(caminho_pdf, processo_detectado, instrucoes, diagnostico=None, tipo=None):
+def montar_parametros_mensagem(caminho_pdf, processo_detectado, instrucoes, cliente, diagnostico=None, tipo=None):
     """Monta o dict de parâmetros pra uma chamada `messages.create` (sem
     disparar a chamada) — usado tanto pelo fluxo em tempo real (fila
     manual) quanto pelo Batch API (Robô), que só diferem em COMO essa
@@ -745,7 +807,10 @@ def montar_parametros_mensagem(caminho_pdf, processo_detectado, instrucoes, diag
     - Se o texto extraído for grande demais pra caber numa única chamada
       (processos muito extensos), erro claro pedindo revisão manual — em
       vez de tentar e estourar a janela de contexto do modelo no meio do
-      processamento.
+      processamento. `cliente` é usado SÓ pra essa checagem (contagem real
+      de tokens perto do limite, ver `contar_tokens_requisicao`), nunca
+      pra gerar nada aqui — quem chama essa função decide se/quando
+      disparar `messages.create` de verdade com o dict devolvido.
     """
     caminho_pdf = Path(caminho_pdf)
     if diagnostico is None:
@@ -798,14 +863,20 @@ def montar_parametros_mensagem(caminho_pdf, processo_detectado, instrucoes, diag
     else:
         tokens_estimados = estimar_tokens_texto(diagnostico["texto"])
 
-        if tokens_estimados > LIMITE_TOKENS_TEXTO_EXTRAIDO:
-            raise RuntimeError(
-                f"'{caminho_pdf.name}' tem {diagnostico['total_paginas']} páginas "
-                f"(~{tokens_estimados} tokens estimados) — processo grande demais "
-                "para ser analisado em uma única chamada de IA hoje. Precisa da "
-                "funcionalidade de divisão em partes (ainda não implementada) ou "
-                "de revisão manual."
-            )
+        # Só gasta a chamada de contagem real quando a estimativa barata já
+        # sugere que está perto do limite — ver LIMIAR_PARA_CONTAGEM_REAL.
+        # A grande maioria dos processos fica bem abaixo disso.
+        if tokens_estimados > LIMIAR_PARA_CONTAGEM_REAL:
+            tokens_reais = contar_tokens_requisicao(cliente, diagnostico["texto"], instrucoes, tipo=tipo)
+
+            if tokens_reais > LIMITE_TOKENS_TEXTO_EXTRAIDO:
+                raise RuntimeError(
+                    f"'{caminho_pdf.name}' tem {diagnostico['total_paginas']} páginas "
+                    f"({tokens_reais} tokens reais, contados pela própria API) — "
+                    "processo grande demais para ser analisado em uma única chamada "
+                    "de IA hoje. Precisa da funcionalidade de divisão em partes "
+                    "(ainda não implementada no Robô) ou de revisão manual."
+                )
 
         conteudo_usuario = [
             {
@@ -824,7 +895,7 @@ def montar_parametros_mensagem(caminho_pdf, processo_detectado, instrucoes, diag
         # 4096 já foi visto batendo no teto em processo real (risco de
         # resposta cortada no meio) — 8192 dá folga, e o custo de saída é
         # uma fração pequena do custo total mesmo assim.
-        "max_tokens": 8192,
+        "max_tokens": MAX_TOKENS_RESPOSTA,
         "system": [
             {
                 "type": "text",
@@ -873,10 +944,16 @@ def gerar_relatorio_claude(caminho_pdf, processo_detectado, tipo=None):
         montar_diagnostico_com_triagem(caminho_pdf, cliente=cliente)
     )
 
-    precisa_dividir = (
-        not parece_digitalizado(diagnostico["total_paginas"], diagnostico["paginas_sem_texto"])
-        and estimar_tokens_texto(diagnostico["texto"]) > LIMITE_TOKENS_TEXTO_EXTRAIDO
-    )
+    nao_digitalizado = not parece_digitalizado(diagnostico["total_paginas"], diagnostico["paginas_sem_texto"])
+    tokens_estimados = estimar_tokens_texto(diagnostico["texto"]) if nao_digitalizado else 0
+
+    # Mesmo raciocínio de duas etapas de montar_parametros_mensagem: só
+    # gasta a contagem real (via API, de graça) quando a estimativa barata
+    # já sugere que está perto do limite.
+    precisa_dividir = False
+    if nao_digitalizado and tokens_estimados > LIMIAR_PARA_CONTAGEM_REAL:
+        tokens_reais = contar_tokens_requisicao(cliente, diagnostico["texto"], instrucoes, tipo=tipo)
+        precisa_dividir = tokens_reais > LIMITE_TOKENS_TEXTO_EXTRAIDO
 
     if precisa_dividir:
         dados, uso = gerar_relatorio_claude_dividido(
@@ -884,7 +961,7 @@ def gerar_relatorio_claude(caminho_pdf, processo_detectado, tipo=None):
         )
     else:
         parametros = montar_parametros_mensagem(
-            caminho_pdf, processo_detectado, instrucoes, diagnostico=diagnostico, tipo=tipo
+            caminho_pdf, processo_detectado, instrucoes, cliente, diagnostico=diagnostico, tipo=tipo
         )
         resposta = cliente.messages.create(**parametros)
         dados, uso = extrair_dados_e_uso(resposta)

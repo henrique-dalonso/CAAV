@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+from app.ferramentas.nucleo_relatorios.core import ia_cliente
 from app.ferramentas.nucleo_relatorios.core.ia_cliente import (
     LIMITE_MB_ARQUIVO_PARA_PDF_NATIVO,
     LIMITE_TOKENS_TEXTO_EXTRAIDO,
@@ -13,12 +14,14 @@ from app.ferramentas.nucleo_relatorios.core.ia_cliente import (
     _pagina_parece_extracao_quebrada,
     _pagina_parece_lista_de_terceiros,
     cabe_no_limite_pdf_nativo,
+    contar_tokens_requisicao,
     estimar_tokens_texto,
     extrair_dados_e_uso,
     filtrar_paginas_extracao_quebrada,
     filtrar_paginas_lista_de_terceiros,
     gerar_relatorio_claude_dividido,
     montar_diagnostico_com_triagem,
+    montar_parametros_mensagem,
     parece_digitalizado,
 )
 
@@ -69,6 +72,78 @@ def test_limite_tokens_texto_extraido_deixa_folga_da_janela_de_contexto():
     # Sanity check do valor em si: tem que deixar espaço pra prompt/schema/
     # resposta dentro da janela real de 1 milhão de tokens do Sonnet 5.
     assert LIMITE_TOKENS_TEXTO_EXTRAIDO < 1_000_000
+
+
+def _diagnostico_texto(total_paginas=10, paginas_sem_texto=0, texto="processo de teste"):
+    return {"total_paginas": total_paginas, "paginas_sem_texto": paginas_sem_texto, "texto": texto}
+
+
+def test_montar_parametros_mensagem_processo_pequeno_nao_chama_contagem_real(tmp_path):
+    # Achado real, 2026-09-09: a estimativa por caractere só serve de
+    # filtro prévio barato — processo claramente pequeno nem deve gastar
+    # a chamada de contagem real (ver LIMIAR_PARA_CONTAGEM_REAL).
+    arquivo = tmp_path / "pequeno.pdf"
+    arquivo.write_bytes(b"%PDF-1.4")
+    cliente_fake = MagicMock()
+
+    parametros = montar_parametros_mensagem(
+        arquivo, "0000000-00.2026.8.00.0000", "instruções do Max", cliente_fake,
+        diagnostico=_diagnostico_texto(),
+    )
+
+    cliente_fake.messages.count_tokens.assert_not_called()
+    assert parametros["model"] == MODELO_PADRAO
+
+
+def test_montar_parametros_mensagem_perto_do_limite_usa_contagem_real_e_deixa_passar(tmp_path):
+    arquivo = tmp_path / "grande.pdf"
+    arquivo.write_bytes(b"%PDF-1.4")
+    cliente_fake = MagicMock()
+    cliente_fake.messages.count_tokens.return_value = SimpleNamespace(
+        input_tokens=LIMITE_TOKENS_TEXTO_EXTRAIDO - 1
+    )
+
+    with patch.object(ia_cliente, "LIMIAR_PARA_CONTAGEM_REAL", 100):
+        parametros = montar_parametros_mensagem(
+            arquivo, "0000000-00.2026.8.00.0000", "instruções do Max", cliente_fake,
+            diagnostico=_diagnostico_texto(texto="x" * 500),
+        )
+
+    cliente_fake.messages.count_tokens.assert_called_once()
+    assert parametros["model"] == MODELO_PADRAO
+
+
+def test_montar_parametros_mensagem_grande_demais_de_verdade_leva_erro_com_contagem_real(tmp_path):
+    arquivo = tmp_path / "gigante.pdf"
+    arquivo.write_bytes(b"%PDF-1.4")
+    cliente_fake = MagicMock()
+    cliente_fake.messages.count_tokens.return_value = SimpleNamespace(
+        input_tokens=LIMITE_TOKENS_TEXTO_EXTRAIDO + 1
+    )
+
+    with patch.object(ia_cliente, "LIMIAR_PARA_CONTAGEM_REAL", 100):
+        try:
+            montar_parametros_mensagem(
+                arquivo, "0000000-00.2026.8.00.0000", "instruções do Max", cliente_fake,
+                diagnostico=_diagnostico_texto(texto="x" * 500),
+            )
+            assert False, "deveria ter levantado RuntimeError"
+        except RuntimeError as erro:
+            assert str(LIMITE_TOKENS_TEXTO_EXTRAIDO + 1) in str(erro)
+            assert "divisão em partes" in str(erro)
+
+
+def test_contar_tokens_requisicao_usa_a_api_de_contagem_gratuita():
+    cliente_fake = MagicMock()
+    cliente_fake.messages.count_tokens.return_value = SimpleNamespace(input_tokens=12345)
+
+    resultado = contar_tokens_requisicao(cliente_fake, "texto do processo", "instruções")
+
+    assert resultado == 12345
+    cliente_fake.messages.count_tokens.assert_called_once()
+    kwargs = cliente_fake.messages.count_tokens.call_args.kwargs
+    assert kwargs["model"] == MODELO_PADRAO
+    assert kwargs["tool_choice"] == {"type": "tool", "name": "preencher_relatorio"}
 
 
 def _resposta_fake(tokens_entrada=100_000, tokens_saida=1_000, modelo=None):
