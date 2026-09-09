@@ -624,7 +624,7 @@ def contar_tokens_requisicao(cliente, texto, instrucoes, tipo=None):
             }
         ],
         tools=[schema_relatorio],
-        tool_choice={"type": "tool", "name": "preencher_relatorio"},
+        tool_choice={"type": "tool", "name": schema_relatorio["name"]},
         messages=[{"role": "user", "content": texto}],
     )
     return resultado.input_tokens
@@ -784,7 +784,7 @@ def _montar_parametros_pedaco(texto_pedaco, indice, total, processo_detectado, i
             }
         ],
         "tools": [schema_pedaco],
-        "tool_choice": {"type": "tool", "name": "registrar_trecho"},
+        "tool_choice": {"type": "tool", "name": schema_pedaco["name"]},
         "messages": [
             {"role": "user", "content": [{"type": "text", "text": f"{pedido}\n\n{texto_pedaco}"}]}
         ],
@@ -871,7 +871,7 @@ def _montar_parametros_reducao(resumo_texto, processo_detectado, instrucoes, tip
             }
         ],
         "tools": [schema_relatorio],
-        "tool_choice": {"type": "tool", "name": "preencher_relatorio"},
+        "tool_choice": {"type": "tool", "name": schema_relatorio["name"]},
         "messages": [
             {"role": "user", "content": [{"type": "text", "text": f"{pedido_analise}\n\n{resumo_texto}"}]}
         ],
@@ -1049,7 +1049,7 @@ def montar_parametros_mensagem(caminho_pdf, processo_detectado, instrucoes, clie
             }
         ],
         "tools": [schema_relatorio],
-        "tool_choice": {"type": "tool", "name": "preencher_relatorio"},
+        "tool_choice": {"type": "tool", "name": schema_relatorio["name"]},
         "messages": [{"role": "user", "content": conteudo_usuario}],
     }
 
