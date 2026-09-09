@@ -325,29 +325,29 @@ FERRAMENTA_RELATORIO = {
                     "properties": {
                         "data": {"type": "string", "description": "Formato DD/MM/AAAA"},
                         "ator": {"type": "string", "description": "Quem praticou o ato"},
-                        "descricao": {"type": "string", "description": "Máximo 3 linhas"},
+                        # Sem regra de estilo/tamanho aqui de propósito (ver
+                        # docstring de FERRAMENTA_RELATORIO) — só o texto
+                        # livre (instrucoes_relatorio.txt, editável pela
+                        # tela) decide isso, pra nunca ficar desatualizado
+                        # aqui quando alguém mudar a regra lá.
+                        "descricao": {"type": "string", "description": "O que aconteceu neste evento."},
                     },
                     "required": ["data", "ator", "descricao"],
                 },
             },
-            "parecer": {
-                "type": "string",
-                "description": (
-                    "Objetivo e direto, no máximo 4 a 5 linhas. Uma frase por ideia, no "
-                    "formato fato, base legal e prazo ou status — sem frases de transição "
-                    "('é importante destacar', 'diante do exposto'), sem repetir o mesmo "
-                    "ponto em frases diferentes e sem desenvolver a argumentação de teses "
-                    "já pacificadas. Contendo: recomendação de ação imediata em NEGRITO "
-                    "(recurso/prazo/diligência, ou dispensa de recurso justificada em 1 "
-                    "frase); jurisprudência controvertida, se houver, em 1 frase; "
-                    "incidentes separados, se houver, analisados individualmente antes do "
-                    "parecer geral, no mesmo padrão objetivo."
-                ),
-            },
+            # "parecer" e "status_atual" abaixo: sem regra de estilo/tamanho
+            # na description de propósito (achado real, 2026-09-09 — a
+            # description antiga aqui, "3 a 6 parágrafos", sobrevivia a uma
+            # edição de prompt inteira feita só no texto livre pela tela de
+            # Configurações, e continuou concorrendo com ela silenciosamente
+            # por uma semana inteira, gerando relatório errado sem erro
+            # nenhum aparecer). Só o texto livre (instrucoes_relatorio.txt)
+            # decide como escrever — aqui só diz O QUE vai em cada campo.
+            "parecer": {"type": "string", "description": "Parecer do escritório sobre o processo."},
             "data_publicacao": {"type": "string"},
             "prazo_fatal_ed": {"type": "string"},
             "prazo_fatal": {"type": "string"},
-            "status_atual": {"type": "string", "description": "Resumo em 1 linha."},
+            "status_atual": {"type": "string", "description": "Situação atual do processo."},
         },
         "required": [
             "tipo_acao", "numero_processo", "valor_causa", "valor_divida",
@@ -380,7 +380,7 @@ FERRAMENTA_PEDACO = {
                     "properties": {
                         "data": {"type": "string", "description": "Formato DD/MM/AAAA"},
                         "ator": {"type": "string", "description": "Quem praticou o ato"},
-                        "descricao": {"type": "string", "description": "Máximo 3 linhas"},
+                        "descricao": {"type": "string", "description": "O que aconteceu neste evento."},
                     },
                     "required": ["data", "ator", "descricao"],
                 },
