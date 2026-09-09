@@ -9,9 +9,16 @@ __pycache__/
 app/ferramentas/extratus/config/config.json
 app/ferramentas/extratus_aburesi/config/config.json
 
-# Prompt de instruções sobrescrito pela tela do Motor - histórico local,
-# não versionado (cada backup é um arquivo com carimbo de data/hora)
-app/ferramentas/extratus/config/historico_prompts/
+# Prompt de instruções: definido e sobrescrito pela tela de Configurações
+# (upload/edição ao vivo pelo admin), não pelo código - nunca deve ser
+# versionado. Achado real (2026-09-09): o arquivo ativo tinha ficado
+# tracked por engano, uma edição ao vivo de uma semana quase se perdeu no
+# primeiro deploy que tocou nesse caminho. Histórico de versões
+# (historico_prompts/) já era ignorado antes, agora o próprio arquivo
+# ativo também é.
+app/ferramentas/nucleo_relatorios/config/instrucoes_relatorio.txt
+app/ferramentas/nucleo_relatorios/config/historico_prompts/
+app/ferramentas/extratus_aburesi/config/instrucoes_relatorio.txt
 app/ferramentas/extratus_aburesi/config/historico_prompts/
 
 # Dados reais de clientes / processos - nunca versionar
