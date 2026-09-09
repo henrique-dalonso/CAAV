@@ -56,7 +56,7 @@ FERRAMENTAS_PADRAO = [
         # nucleo_relatorios/tipos.py). slug "emenda" é novo de fábrica,
         # sem histórico de permissão/favorito pra preservar, diferente de
         # "extratus"/"extratus-aburesi" acima.
-        "nome": "Emenda",
+        "nome": "Extratus - Emendas",
         "slug": "emenda",
         "descricao": "Análise de emenda/despacho, cálculo do prazo fatal e e-mail pronto para a carteira.",
         "url": "/emenda/fila-robo",

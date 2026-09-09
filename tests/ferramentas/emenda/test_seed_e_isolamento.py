@@ -26,7 +26,7 @@ def test_ferramenta_emenda_registrada_com_dados_corretos():
         ).first()
 
     assert ferramenta is not None
-    assert ferramenta.nome == "Emenda"
+    assert ferramenta.nome == "Extratus - Emendas"
     assert ferramenta.url == "/emenda/fila-robo"
     assert ferramenta.suporta_fila_robo is True
     # Cor própria (roxo) — não deve ficar sem identidade (None cairia no
