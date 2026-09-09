@@ -153,6 +153,17 @@ COLUNAS_OBSOLETAS = {
     # "admin só desta ferramenta" removida por completo, ver docstring de
     # UsuarioFerramenta em db/models.py.
     "usuarioferramenta": ["fila_motor", "admin_ferramenta"],
+    # suporta_fila_motor: mesma renomeação Motor->Robô do item acima
+    # (2026-08-19), só que esta coluna ficou pra trás — NOT NULL sem
+    # default, então nunca dava erro em produção porque nenhuma
+    # Ferramenta NOVA tinha sido inserida desde a renomeação... até a
+    # Emenda (2026-09-09), que derrubou o site inteiro na subida
+    # (INSERT falhava por violar o NOT NULL de uma coluna que o código
+    # nem sabe mais que existe). Corrigido na hora direto no banco da VM
+    # pra reativar o site; esta entrada existe pra garantir que uma
+    # instalação nova (ou um banco recriado do zero) nunca tropece nisso
+    # de novo.
+    "ferramenta": ["suporta_fila_motor"],
 }
 
 
