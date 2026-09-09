@@ -25,25 +25,23 @@ def _resultado(processo=None, nivel="alta", motivo="ok"):
 def test_rodar_ciclo_checagem_sincroniza_e_checa_cada_pendente():
     registro = SimpleNamespace(id=1, nome_arquivo="a.pdf")
 
-    with patch.object(checagem_lote, "carregar_config", return_value=CONFIG_EXEMPLO), \
-         patch.object(checagem_lote, "listar_pdfs", return_value=[Path("/pasta/robô/a.pdf")]), \
+    with patch.object(checagem_lote, "listar_pdfs", return_value=[Path("/pasta/robô/a.pdf")]), \
          patch.object(checagem_lote, "listar_arquivos_ja_reivindicados", return_value=set()), \
          patch.object(checagem_lote, "sincronizar_registros", return_value=[registro]) as sincronizar_mock, \
          patch.object(checagem_lote, "_checar_um_arquivo") as checar_mock:
-        checagem_lote.rodar_ciclo_checagem()
+        checagem_lote.rodar_ciclo_checagem(CONFIG_EXEMPLO)
 
     sincronizar_mock.assert_called_once_with({"a.pdf"}, ferramenta_slug="extratus-relatorios")
     checar_mock.assert_called_once_with(registro, Path("/pasta/robô"), "/pasta/erros", "extratus-relatorios")
 
 
 def test_rodar_ciclo_checagem_exclui_ja_reivindicado_dos_candidatos():
-    with patch.object(checagem_lote, "carregar_config", return_value=CONFIG_EXEMPLO), \
-         patch.object(checagem_lote, "listar_pdfs", return_value=[
+    with patch.object(checagem_lote, "listar_pdfs", return_value=[
              Path("/pasta/robô/a.pdf"), Path("/pasta/robô/ja_reivindicado.pdf"),
          ]), \
          patch.object(checagem_lote, "listar_arquivos_ja_reivindicados", return_value={"ja_reivindicado.pdf"}), \
          patch.object(checagem_lote, "sincronizar_registros", return_value=[]) as sincronizar_mock:
-        checagem_lote.rodar_ciclo_checagem()
+        checagem_lote.rodar_ciclo_checagem(CONFIG_EXEMPLO)
 
     sincronizar_mock.assert_called_once_with({"a.pdf"}, ferramenta_slug="extratus-relatorios")
 

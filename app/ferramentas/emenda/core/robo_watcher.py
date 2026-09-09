@@ -1,6 +1,7 @@
 import asyncio
 import traceback
 
+from app.ferramentas.emenda.core.config_manager import carregar_config
 from app.ferramentas.nucleo_relatorios.core.app_logger import registrar_log
 from app.ferramentas.nucleo_relatorios.core.robo_lote import rodar_ciclo_robo
 from app.ferramentas.nucleo_relatorios.tipos import REGISTRO_TIPOS
@@ -28,7 +29,8 @@ async def loop_robo():
     próximo tick."""
     while True:
         try:
-            await asyncio.to_thread(rodar_ciclo_robo, TIPO_RELATORIO, FERRAMENTA_SLUG)
+            config = carregar_config()
+            await asyncio.to_thread(rodar_ciclo_robo, config, TIPO_RELATORIO, FERRAMENTA_SLUG)
         except Exception as erro:
             registrar_log(f"Erro no ciclo do robô: {erro}\n{traceback.format_exc()}")
 

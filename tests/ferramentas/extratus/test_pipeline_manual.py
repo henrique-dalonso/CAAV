@@ -41,7 +41,7 @@ def test_triar_e_processar_aprovado_dispara_geracao_sem_estado_intermediario():
         pipeline_manual, "finalizar_processamento",
         return_value={"sucesso": True, "job_id": 4242},
     ) as finalizar_mock:
-        pipeline_manual._triar_e_processar(registro.id)
+        pipeline_manual._triar_e_processar(registro.id, {})
 
     assert finalizar_mock.called
 
@@ -59,7 +59,7 @@ def test_triar_e_processar_processo_nao_encontrado_nao_chama_ia():
         pipeline_manual, "analisar_pdf_isolado",
         return_value={"dominante": None, "confianca": {"nivel": "revisao", "motivo": "nada encontrado"}},
     ), patch.object(pipeline_manual, "gerar_relatorio_claude") as gerar_mock:
-        pipeline_manual._triar_e_processar(registro.id)
+        pipeline_manual._triar_e_processar(registro.id, {})
 
     assert not gerar_mock.called
 
@@ -81,7 +81,7 @@ def test_triar_e_processar_falha_ao_ler_pdf_vira_inconsistencia_nao_erro_definit
     ), patch.object(pipeline_manual, "gerar_relatorio_claude") as gerar_mock, patch.object(
         pipeline_manual, "tratar_erro",
     ) as tratar_erro_mock:
-        pipeline_manual._triar_e_processar(registro.id)
+        pipeline_manual._triar_e_processar(registro.id, {})
 
     assert not gerar_mock.called
     assert not tratar_erro_mock.called  # nenhum Job "erro" criado na hora
@@ -107,7 +107,7 @@ def test_triar_e_processar_duplicado_relatorio_do_robo_marca_origem_robo():
     ), patch.object(
         pipeline_manual, "obter_relatorio_existente_para_processo", return_value=_job_falso(usuario_id=None),
     ), patch.object(pipeline_manual, "gerar_relatorio_claude") as gerar_mock:
-        pipeline_manual._triar_e_processar(registro.id)
+        pipeline_manual._triar_e_processar(registro.id, {})
 
     assert not gerar_mock.called
 
@@ -127,7 +127,7 @@ def test_triar_e_processar_duplicado_relatorio_manual_marca_origem_manual():
     ), patch.object(
         pipeline_manual, "obter_relatorio_existente_para_processo", return_value=_job_falso(usuario_id=-1234),
     ), patch.object(pipeline_manual, "gerar_relatorio_claude") as gerar_mock:
-        pipeline_manual._triar_e_processar(registro.id)
+        pipeline_manual._triar_e_processar(registro.id, {})
 
     assert not gerar_mock.called
 
@@ -149,7 +149,7 @@ def test_triar_e_processar_duplicado_em_andamento_nao_chama_ia():
     ), patch.object(
         pipeline_manual, "existe_conflito_de_processo", return_value=True,
     ), patch.object(pipeline_manual, "gerar_relatorio_claude") as gerar_mock:
-        pipeline_manual._triar_e_processar(registro.id)
+        pipeline_manual._triar_e_processar(registro.id, {})
 
     assert not gerar_mock.called
 
@@ -172,7 +172,7 @@ def test_triar_e_processar_falha_na_ia_marca_erro():
     ), patch.object(
         pipeline_manual, "gerar_relatorio_claude", side_effect=RuntimeError("falha simulada"),
     ), patch.object(pipeline_manual, "tratar_erro", return_value={"sucesso": False}):
-        pipeline_manual._triar_e_processar(registro.id)
+        pipeline_manual._triar_e_processar(registro.id, {})
 
     atualizado = db_triagem.obter_registro(registro.id)
     assert atualizado.status == db_triagem.ERRO
@@ -191,7 +191,7 @@ def test_retomar_apos_conferencia_aprova_e_gera_direto():
         pipeline_manual, "finalizar_processamento",
         return_value={"sucesso": True, "job_id": 7777},
     ) as finalizar_mock:
-        pipeline_manual._retomar_apos_conferencia_sync(registro.id, "0000000-00.2026.8.00.0500")
+        pipeline_manual._retomar_apos_conferencia_sync(registro.id, {}, "0000000-00.2026.8.00.0500")
 
     assert finalizar_mock.called
 
@@ -217,7 +217,7 @@ def test_retomar_apos_conferencia_a_partir_de_falha_leitura_com_processo_manual(
         pipeline_manual, "finalizar_processamento",
         return_value={"sucesso": True, "job_id": 8888},
     ) as finalizar_mock:
-        pipeline_manual._retomar_apos_conferencia_sync(registro.id, "0000000-00.2026.8.00.0600")
+        pipeline_manual._retomar_apos_conferencia_sync(registro.id, {}, "0000000-00.2026.8.00.0600")
 
     assert finalizar_mock.called
 

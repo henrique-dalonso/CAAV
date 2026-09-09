@@ -1,7 +1,6 @@
 import asyncio
 
 from app.ferramentas.nucleo_relatorios.core.checagem_lote import analisar_pdf_isolado
-from app.ferramentas.extratus.core.config_manager import carregar_config
 from app.ferramentas.nucleo_relatorios.core.pipeline import (
     ajustar_confianca_pos_ia,
     finalizar_processamento,
@@ -15,24 +14,32 @@ from app.ferramentas.nucleo_relatorios.db.jobs import obter_relatorio_existente_
 from app.ferramentas.nucleo_relatorios.db.models import FERRAMENTA_SLUG_PADRAO
 
 
-async def processar_upload_manual(registro_id, tipo=None, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
+async def processar_upload_manual(registro_id, config, tipo=None, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Agendada via `BackgroundTasks` uma vez por arquivo, logo depois do
     upload (web/routes/gerar_relatorio.py) — todas agendadas juntas rodam
     concorrentemente. `asyncio.to_thread` pra não travar o event loop do
     servidor (mesmo padrão dos watchers em core/robo_watcher.py e
-    core/checagem_watcher.py)."""
-    await asyncio.to_thread(_triar_e_processar, registro_id, tipo, ferramenta_slug)
+    core/checagem_watcher.py).
+
+    `config` vem já carregado pela rota (config_manager DAQUELA TELA) —
+    achado real, 2026-09-09: até esta correção, o processamento manual
+    sempre carregava a config do Extratus-Relatórios por dentro, então
+    um upload manual em Aburesi ou Emenda tinha o PDF salvo na pasta
+    certa (isso a própria rota já fazia certo) mas processado/movido
+    (revisão, erro, processados) nas pastas do Extratus-Relatórios."""
+    await asyncio.to_thread(_triar_e_processar, registro_id, config, tipo, ferramenta_slug)
 
 
-async def retomar_apos_conferencia(registro_id, processo_manual=None, tipo=None, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
+async def retomar_apos_conferencia(registro_id, config, processo_manual=None, tipo=None, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Ação "Aprovar/Prosseguir" do painel de Conferências manual — a
     própria aprovação já é o gatilho pra geração, sem esperar nada (mesma
     filosofia do resto deste fluxo: "a triagem que dá sinal verde",
-    Henrique 2026-08-11)."""
-    await asyncio.to_thread(_retomar_apos_conferencia_sync, registro_id, processo_manual, tipo, ferramenta_slug)
+    Henrique 2026-08-11). `config` — ver docstring de
+    `processar_upload_manual` acima."""
+    await asyncio.to_thread(_retomar_apos_conferencia_sync, registro_id, config, processo_manual, tipo, ferramenta_slug)
 
 
-def _triar_e_processar(registro_id, tipo=None, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
+def _triar_e_processar(registro_id, config, tipo=None, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Espelha core/checagem_lote.py::_checar_um_arquivo (mesma lógica de
     duplicidade que a Fila do Robô usa — reaproveitada tal como está,
     já é cross-origin por natureza), com uma diferença: aqui, assim que
@@ -42,8 +49,6 @@ def _triar_e_processar(registro_id, tipo=None, ferramenta_slug=FERRAMENTA_SLUG_P
 
     if not registro:
         return
-
-    config = carregar_config()
 
     try:
         resultado = analisar_pdf_isolado(registro.caminho_pdf)
@@ -103,13 +108,12 @@ def _triar_e_processar(registro_id, tipo=None, ferramenta_slug=FERRAMENTA_SLUG_P
     _gerar_e_finalizar(registro, {"nivel": nivel, "motivo": motivo}, config, tipo, ferramenta_slug)
 
 
-def _retomar_apos_conferencia_sync(registro_id, processo_manual, tipo=None, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
+def _retomar_apos_conferencia_sync(registro_id, config, processo_manual, tipo=None, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     registro = db_triagem.aprovar_manualmente(registro_id, processo_manual, ferramenta_slug=ferramenta_slug)
 
     if not registro:
         return
 
-    config = carregar_config()
     _gerar_e_finalizar(
         registro,
         {"nivel": registro.confianca_nivel, "motivo": registro.confianca_motivo},

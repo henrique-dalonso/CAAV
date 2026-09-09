@@ -267,7 +267,7 @@ async def enviar_pdfs(
 
         registro = criar_registro(nome_seguro, caminho_destino, usuario.id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
         background_tasks.add_task(
-            processar_upload_manual, registro.id, tipo=TIPO_RELATORIO, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO,
+            processar_upload_manual, registro.id, config, tipo=TIPO_RELATORIO, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO,
         )
         enviados.append(nome_seguro)
 
@@ -303,7 +303,7 @@ async def aprovar_conferencia(
 
     registrar_decisao(nome_arquivo, tipo_original, "aprovado", usuario.id, processo_informado=processo_informado, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
     background_tasks.add_task(
-        retomar_apos_conferencia, registro_id, processo_informado, TIPO_RELATORIO, FERRAMENTA_SLUG_NUCLEO,
+        retomar_apos_conferencia, registro_id, carregar_config(), processo_informado, TIPO_RELATORIO, FERRAMENTA_SLUG_NUCLEO,
     )
 
     return _redirecionar(sucesso=f'"{nome_arquivo}" liberado — gerando o relatório agora.')

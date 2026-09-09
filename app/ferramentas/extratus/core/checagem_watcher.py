@@ -1,6 +1,7 @@
 import asyncio
 import traceback
 
+from app.ferramentas.extratus.core.config_manager import carregar_config
 from app.ferramentas.nucleo_relatorios.core.app_logger import registrar_log
 from app.ferramentas.nucleo_relatorios.core.checagem_lote import rodar_ciclo_checagem
 
@@ -21,10 +22,13 @@ FERRAMENTA_SLUG = "extratus-relatorios"
 async def loop_checagem():
     """Mesmo padrão do loop_robo() (robo_watcher.py) — roda pra sempre
     em segundo plano, nunca derruba o servidor se um ciclo falhar, só
-    loga e tenta de novo no próximo tick."""
+    loga e tenta de novo no próximo tick. `config` carregado a cada tick
+    e passado explicitamente — ver docstring equivalente em
+    robo_watcher.py::loop_robo pro porquê (achado real, 2026-09-09)."""
     while True:
         try:
-            await asyncio.to_thread(rodar_ciclo_checagem, FERRAMENTA_SLUG)
+            config = carregar_config()
+            await asyncio.to_thread(rodar_ciclo_checagem, config, FERRAMENTA_SLUG)
         except Exception as erro:
             registrar_log(f"Erro no ciclo de checagem da fila: {erro}\n{traceback.format_exc()}")
 

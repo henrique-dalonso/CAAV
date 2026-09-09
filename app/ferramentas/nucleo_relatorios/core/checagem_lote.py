@@ -1,7 +1,6 @@
 from pathlib import Path
 
 from app.ferramentas.nucleo_relatorios.core.app_logger import registrar_log
-from app.ferramentas.extratus.core.config_manager import carregar_config
 from app.ferramentas.nucleo_relatorios.core.pdf_isolado import executar_isolado
 from app.ferramentas.nucleo_relatorios.core.pdf_manager import listar_pdfs
 from app.ferramentas.nucleo_relatorios.core.pipeline import tratar_erro
@@ -30,17 +29,22 @@ def analisar_pdf_isolado(caminho):
     return executar_isolado(analisar_pdf, caminho)
 
 
-def rodar_ciclo_checagem(ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
+def rodar_ciclo_checagem(config, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Um "tick" da checagem da Fila do Robô — a "triagem" de
     duplicidade que Henrique pediu (2026-08-06). Roda muito mais rápido
     que o Robô (ver checagem_watcher.py, poucos segundos vs. 5 minutos)
     porque é 100% local (ler PDF, comparar texto, consultar o banco) —
     zero custo de API, então não tem motivo pra esperar o ritmo do Robô.
 
+    `config` vem já carregado pelo `config_manager` DAQUELA TELA (ver
+    docstring de `robo_lote.rodar_ciclo_robo` — mesmo bug real, mesma
+    correção: até 2026-09-09 esta função carregava sempre a config do
+    Extratus-Relatórios, então Aburesi e Emenda estavam checando o PDF
+    de entrada de outra tela).
+
     NÃO confundir com `ia_cliente.montar_diagnostico_com_triagem` (outra
     função, filtro de anexo de terceiros) nem com `robo_lote.py` (que
     continua cuidando só de enviar/coletar lotes do Batch API)."""
-    config = carregar_config()
     pasta = Path(config.get("robo_pasta_entrada", "robo_entrada_pdfs"))
     pasta_erros = config.get("pasta_erros")
 

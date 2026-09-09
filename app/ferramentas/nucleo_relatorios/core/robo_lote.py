@@ -5,7 +5,6 @@ from pathlib import Path
 import anthropic
 
 from app.ferramentas.nucleo_relatorios.core.app_logger import registrar_log
-from app.ferramentas.extratus.core.config_manager import carregar_config
 from app.ferramentas.nucleo_relatorios.core.ia_cliente import (
     extrair_dados_e_uso,
     montar_diagnostico_com_triagem,
@@ -276,9 +275,19 @@ def _submeter_lote(cliente, itens, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     return lote
 
 
-def rodar_ciclo_robo(tipo=None, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
+def rodar_ciclo_robo(config, tipo=None, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Um "tick" do vigia do Robô — chamado periodicamente pelo
-    `robo_watcher.py`. Fecha lote(s) já enviados pra Anthropic SEMPRE,
+    `robo_watcher.py`, que passa `config` já carregado do
+    `config_manager` DAQUELA TELA (nunca carregado aqui dentro) — achado
+    real, 2026-09-09: até esta correção, esta função sempre importava e
+    chamava `config_manager.carregar_config()` do módulo `extratus`
+    diretamente, então TODA tela que usa o motor compartilhado (Aburesi
+    desde a migração da manhã, Emenda desde a tela nova à noite) estava
+    lendo/gravando nas pastas do Extratus-Relatórios por engano — nunca
+    nas próprias. Corrigido derrubando esse import fixo e recebendo
+    `config` de fora, já carregado pela config_manager certa.
+
+    Fecha lote(s) já enviados pra Anthropic SEMPRE,
     mesmo com `robo_ativo` desligado — um lote, uma vez enviado, continua
     rodando do lado da Anthropic independente do interruptor local; se a
     coleta só acontecesse com o robô ligado, um lote que terminou depois
@@ -299,8 +308,6 @@ def rodar_ciclo_robo(tipo=None, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     Volume real do escritório está muito longe do limite da Anthropic
     pra requisições de batch em fila (200 mil a 500 mil, dependendo do
     tier, por organização inteira — não é um limite por lote)."""
-    config = carregar_config()
-
     if listar_lotes_em_andamento(ferramenta_slug=ferramenta_slug):
         cliente = _obter_cliente()
         _coletar_lotes_pendentes(cliente, config, tipo=tipo, ferramenta_slug=ferramenta_slug)

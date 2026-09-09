@@ -16,10 +16,9 @@ CONFIG_EXEMPLO = {
 
 
 def test_rodar_ciclo_robo_nao_faz_nada_se_desligado_e_sem_lote_pendente():
-    with patch.object(robo_lote, "carregar_config", return_value={"robo_ativo": False}), \
-         patch.object(robo_lote, "listar_lotes_em_andamento", return_value=[]), \
+    with patch.object(robo_lote, "listar_lotes_em_andamento", return_value=[]), \
          patch.object(robo_lote, "_obter_cliente") as cliente_mock:
-        robo_lote.rodar_ciclo_robo()
+        robo_lote.rodar_ciclo_robo({"robo_ativo": False})
 
     cliente_mock.assert_not_called()
 
@@ -28,13 +27,12 @@ def test_rodar_ciclo_robo_coleta_lote_pendente_mesmo_desligado():
     """Um lote já enviado pra Anthropic continua rodando do lado de lá
     independente do interruptor local — desligar o robô não pode deixar
     esse lote preso pra sempre sem nunca virar relatório."""
-    with patch.object(robo_lote, "carregar_config", return_value={"robo_ativo": False}), \
-         patch.object(robo_lote, "listar_lotes_em_andamento", return_value=[SimpleNamespace(id=1)]), \
+    with patch.object(robo_lote, "listar_lotes_em_andamento", return_value=[SimpleNamespace(id=1)]), \
          patch.object(robo_lote, "_obter_cliente", return_value=MagicMock()) as cliente_mock, \
          patch.object(robo_lote, "_coletar_lotes_pendentes", return_value=False) as coletar_mock, \
          patch.object(robo_lote, "_preparar_novo_lote") as preparar_mock, \
          patch.object(robo_lote, "_submeter_lote") as submeter_mock:
-        robo_lote.rodar_ciclo_robo()
+        robo_lote.rodar_ciclo_robo({"robo_ativo": False})
 
     cliente_mock.assert_called_once()
     coletar_mock.assert_called_once()
@@ -52,13 +50,12 @@ def test_rodar_ciclo_robo_submete_novo_lote_mesmo_com_outro_em_voo():
     lote novo mesmo com outro pendente nunca duplica processamento."""
     itens_fake = [{"custom_id": "x", "arquivo_pdf": "a.pdf"}]
 
-    with patch.object(robo_lote, "carregar_config", return_value=CONFIG_EXEMPLO), \
-         patch.object(robo_lote, "listar_lotes_em_andamento", return_value=[SimpleNamespace(id=1)]), \
+    with patch.object(robo_lote, "listar_lotes_em_andamento", return_value=[SimpleNamespace(id=1)]), \
          patch.object(robo_lote, "_obter_cliente", return_value=MagicMock()), \
          patch.object(robo_lote, "_coletar_lotes_pendentes", return_value=True) as coletar_mock, \
          patch.object(robo_lote, "_preparar_novo_lote", return_value=itens_fake) as preparar_mock, \
          patch.object(robo_lote, "_submeter_lote") as submeter_mock:
-        robo_lote.rodar_ciclo_robo()
+        robo_lote.rodar_ciclo_robo(CONFIG_EXEMPLO)
 
     coletar_mock.assert_called_once()
     preparar_mock.assert_called_once()
@@ -68,23 +65,21 @@ def test_rodar_ciclo_robo_submete_novo_lote_mesmo_com_outro_em_voo():
 def test_rodar_ciclo_robo_submete_lote_quando_ha_itens_elegiveis():
     itens_fake = [{"custom_id": "x", "arquivo_pdf": "a.pdf"}]
 
-    with patch.object(robo_lote, "carregar_config", return_value=CONFIG_EXEMPLO), \
-         patch.object(robo_lote, "listar_lotes_em_andamento", return_value=[]), \
+    with patch.object(robo_lote, "listar_lotes_em_andamento", return_value=[]), \
          patch.object(robo_lote, "_obter_cliente", return_value=MagicMock()), \
          patch.object(robo_lote, "_preparar_novo_lote", return_value=itens_fake), \
          patch.object(robo_lote, "_submeter_lote") as submeter_mock:
-        robo_lote.rodar_ciclo_robo()
+        robo_lote.rodar_ciclo_robo(CONFIG_EXEMPLO)
 
     submeter_mock.assert_called_once()
 
 
 def test_rodar_ciclo_robo_nao_submete_nada_se_nenhum_arquivo_elegivel():
-    with patch.object(robo_lote, "carregar_config", return_value=CONFIG_EXEMPLO), \
-         patch.object(robo_lote, "listar_lotes_em_andamento", return_value=[]), \
+    with patch.object(robo_lote, "listar_lotes_em_andamento", return_value=[]), \
          patch.object(robo_lote, "_obter_cliente", return_value=MagicMock()), \
          patch.object(robo_lote, "_preparar_novo_lote", return_value=[]), \
          patch.object(robo_lote, "_submeter_lote") as submeter_mock:
-        robo_lote.rodar_ciclo_robo()
+        robo_lote.rodar_ciclo_robo(CONFIG_EXEMPLO)
 
     submeter_mock.assert_not_called()
 
