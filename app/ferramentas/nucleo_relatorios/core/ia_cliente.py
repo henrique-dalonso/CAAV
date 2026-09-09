@@ -333,9 +333,15 @@ FERRAMENTA_RELATORIO = {
             "parecer": {
                 "type": "string",
                 "description": (
-                    "3 a 6 parágrafos: síntese da situação atual, análise de risco "
-                    "jurídico, recomendação de ação imediata (recurso/prazo/diligência), "
-                    "e análise de incidentes separados, se houver."
+                    "Objetivo e direto, no máximo 4 a 5 linhas. Uma frase por ideia, no "
+                    "formato fato, base legal e prazo ou status — sem frases de transição "
+                    "('é importante destacar', 'diante do exposto'), sem repetir o mesmo "
+                    "ponto em frases diferentes e sem desenvolver a argumentação de teses "
+                    "já pacificadas. Contendo: recomendação de ação imediata em NEGRITO "
+                    "(recurso/prazo/diligência, ou dispensa de recurso justificada em 1 "
+                    "frase); jurisprudência controvertida, se houver, em 1 frase; "
+                    "incidentes separados, se houver, analisados individualmente antes do "
+                    "parecer geral, no mesmo padrão objetivo."
                 ),
             },
             "data_publicacao": {"type": "string"},
