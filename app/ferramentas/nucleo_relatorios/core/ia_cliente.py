@@ -382,6 +382,149 @@ FERRAMENTA_RELATORIO = {
 }
 
 
+# Schema do tipo "emenda" (ver nucleo_relatorios/tipos.py) — captura
+# exatamente os campos que PARTE 1 do prompt de emenda
+# (config/prompts/emenda.txt) pede, estruturados pro template
+# config/templates/emenda.docx.
+#
+# Princípio seguido à risca aqui (achado real, 2026-09-09, ver comentário
+# em FERRAMENTA_RELATORIO acima sobre "parecer"/"status_atual"): os campos
+# abaixo só dizem O QUE a IA deve preencher (estrutura/semântica) — regra
+# de ESTILO ou TAMANHO (quantas linhas, que tom usar, o que nunca repetir)
+# mora só no texto livre do prompt, nunca duplicada aqui numa description.
+# Duplicar essas regras nos dois lugares foi o bug real que gerou uma
+# semana de relatório errado sem erro nenhum aparecer, quando o texto
+# livre foi editado pela tela de Configurações e a description antiga
+# sobreviveu, divergente, sem ninguém perceber.
+#
+# Outro princípio seguido aqui, também por decisão consciente (ver
+# docstring do módulo e a seção "O e-mail padrão..." do prompt): o
+# ESQUELETO fixo do e-mail (saudação padronizada, "bom dia", a linha
+# "FATAL: [data]", o fechamento "No aguardo.", o formato do Assunto) é
+# montado por TEMPLATE/CÓDIGO (ver nucleo_relatorios/scripts/
+# gerar_template_emenda.py), não re-digitado pela IA — ela só preenche o
+# CONTEÚDO variável de cada pedaço (a descrição do que foi identificado,
+# o pedido específico). Isso evita a IA "inventar" uma saudação diferente
+# ou esquecer o "No aguardo." num caso e não noutro.
+#
+# A data final do prazo fatal NUNCA é pedida à IA como campo direto —
+# só os FATOS brutos que permitem calculá-la de verdade em código
+# (calculadores/prazo_fatal.py). Ver docstring desse módulo pro porquê:
+# LLM erra conta de data com frequência, sobretudo perto de feriado ou
+# recesso forense — a aritmética roda sempre no calculador determinístico,
+# nunca na resposta da IA.
+FERRAMENTA_EMENDA = {
+    "name": "preencher_analise_emenda",
+    "description": (
+        "Preenche a análise da emenda/despacho e a solicitação à carteira "
+        "com base no documento judicial anexado."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            # --- Identificação do processo ---
+            "npjur": {"type": "string", "description": "Número interno do escritório (NPJur), se localizado. Vazio se não localizado."},
+            "cnj": {"type": "string", "description": "Número do processo no padrão CNJ."},
+            "cliente": {"type": "string", "description": "Nome do cliente contratante do escritório."},
+            "carteira": {"type": "string", "description": "Nome da carteira responsável (ex: MAPFRE, BV, Honda)."},
+            "autor": {"type": "string"},
+            "reu": {"type": "string"},
+            "comarca_vara": {"type": "string"},
+
+            # --- Decisão do juízo ---
+            "decisao_resumo": {
+                "type": "string",
+                "description": (
+                    "Resumo objetivo do que o juízo determinou: exigência "
+                    "específica, fundamento central, prazo fixado e a "
+                    "quem se destina, consequência do descumprimento."
+                ),
+            },
+
+            # --- Fatos brutos do prazo (a conta de verdade é feita pelo
+            # calculador determinístico, nunca pela IA — ver docstring do
+            # módulo) ---
+            "data_intimacao_confirmada": {
+                "type": "string",
+                "description": (
+                    "Data da intimação eletrônica CONFIRMADA (leitura ou "
+                    "decurso do prazo de consulta), nunca a de expedição "
+                    "ou disponibilização. Formato DD/MM/AAAA. Se não "
+                    "localizada nos autos, deixe vazio."
+                ),
+            },
+            "prazo_dias": {"type": "integer", "description": "Quantidade de dias do prazo fixado na decisão."},
+            "prazo_dias_uteis": {
+                "type": "boolean",
+                "description": "True se o prazo é contado em dias úteis; False se a decisão fixar dias corridos.",
+            },
+            "data_fatal_email_interno": {
+                "type": "string",
+                "description": (
+                    "Se um e-mail interno do escritório ou a própria "
+                    "decisão já indicarem uma data \"FATAL\" explícita, "
+                    "informe-a aqui (DD/MM/AAAA) para conferência cruzada "
+                    "com o cálculo. Vazio se nenhuma data assim aparecer "
+                    "nos autos."
+                ),
+            },
+
+            # --- Regra pré-definida: veículo em nome de terceiro ---
+            "veiculo_em_nome_terceiro": {
+                "type": "boolean",
+                "description": "True se a decisão apontar que o veículo consta em nome de terceiro.",
+            },
+
+            # --- Verificação de completude dos autos ---
+            "documentos_ja_nos_autos": {
+                "type": "array",
+                "description": "Documentos/informações que a IA já localizou nos autos, para nunca serem solicitados de novo à carteira.",
+                "items": {"type": "string"},
+            },
+            "checklist_verificacao": {
+                "type": "array",
+                "description": (
+                    "Itens que o colaborador precisa conferir antes de "
+                    "solicitar qualquer providência à carteira (ex: "
+                    "pesquisa de processos relacionados, confirmação do "
+                    "prazo, registro no SENATRAN quando aplicável)."
+                ),
+                "items": {"type": "string"},
+            },
+            "processos_relacionados_flag": {
+                "type": "boolean",
+                "description": "True se a decisão mencionar litispendência, ação conexa ou recurso pendente.",
+            },
+            "processos_relacionados_detalhe": {
+                "type": "string",
+                "description": "Detalhe do que foi identificado sobre processos relacionados. Vazio se processos_relacionados_flag for False.",
+            },
+
+            # --- Solicitação à carteira ---
+            "providencia_solicitada": {
+                "type": "string",
+                "description": "O documento ou informação específica a ser solicitado à carteira.",
+            },
+            "email_carteira_descricao": {
+                "type": "string",
+                "description": "Descrição objetiva do que foi identificado na decisão, para compor o corpo do e-mail à carteira.",
+            },
+            "identificador_carteira": {
+                "type": "string",
+                "description": "Identificador/handle da carteira usado na saudação do e-mail (ex: nome do contato ou da própria carteira).",
+            },
+            "uf": {"type": "string", "description": "Sigla da unidade federativa do processo, para compor o Assunto do e-mail."},
+        },
+        "required": [
+            "cnj", "cliente", "carteira", "autor", "reu", "comarca_vara",
+            "decisao_resumo", "prazo_dias", "prazo_dias_uteis",
+            "veiculo_em_nome_terceiro", "providencia_solicitada",
+            "email_carteira_descricao",
+        ],
+    },
+}
+
+
 # Schema "mapa" — usado só nos pedaços de um processo dividido, nunca no
 # relatório final. Deliberadamente menor que FERRAMENTA_RELATORIO: um
 # trecho não tem visão do processo inteiro, então não faz sentido pedir

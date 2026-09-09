@@ -1,12 +1,9 @@
-from functools import partial
 from pathlib import Path
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import RedirectResponse
 
-from app.ferramentas.extratus.core import config_manager as _config_extratus
-from app.ferramentas.nucleo_relatorios.core import prompt_manager as _prompt_nucleo
 from app.ferramentas.nucleo_relatorios.db.jobs import (
     contar_relatorios_robo_concluidos as _contar_relatorios_robo_concluidos_nucleo,
 )
@@ -15,7 +12,7 @@ from app.ferramentas.nucleo_relatorios.db.lotes import (
     listar_lotes_em_andamento as _listar_lotes_em_andamento_nucleo,
     obter_estatisticas_lotes as _obter_estatisticas_lotes_nucleo,
 )
-from app.ferramentas.extratus_aburesi.core import config_manager as _config_aburesi
+from app.ferramentas.nucleo_relatorios.telas import REGISTRO_TELAS, ligado_a_ferramenta, prompt_manager_da_tela
 from app.plataforma.db.models import Usuario
 from app.plataforma.db.usuarios import listar_todas_ferramentas, listar_todos_usuarios
 from app.plataforma.paths import PROJECT_ROOT
@@ -29,37 +26,26 @@ from app.plataforma.web.templates_util import criar_templates
 # admin_ferramenta) e virou parte do admin — configurar uma ferramenta
 # agora exige ser admin da plataforma, sem meio-termo ("área extremamente
 # sensível"). admin_ferramenta foi removido por completo (ver docstring
-# de UsuarioFerramenta, db/models.py). Registro manual de qual ferramenta
-# tem essa tela — mesmo padrão de CUSTOS_POR_CHAVE em admin_custos.py.
-_SLUG_ABURESI = "extratus-aburesi"
-
+# de UsuarioFerramenta, db/models.py).
+#
+# Derivado de REGISTRO_TELAS (nucleo_relatorios/telas.py) desde a tarefa
+# Emenda (2026-09-09) — antes disso este dict era escrito à mão, uma
+# entrada por ferramenta, cada uma repetindo os mesmos 4 imports de
+# nucleo_relatorios.db.lotes/jobs. `ligado_a_ferramenta` amarra
+# `ferramenta_slug` explicitamente pra TODA tela (inclusive
+# extratus-relatorios, que antes contava com o default do módulo bater
+# por coincidência) — ver docstring de `ligado_a_ferramenta`.
 CONFIGURACOES_POR_CHAVE = {
-    "extratus-relatorios": {
-        "nome": "Extratus - Relatórios",
-        "config_manager": _config_extratus,
-        "prompt_manager": _prompt_nucleo,
-        "listar_lotes_em_andamento": _listar_lotes_em_andamento_nucleo,
-        "listar_itens_do_lote": _listar_itens_do_lote_nucleo,
-        "obter_estatisticas_lotes": _obter_estatisticas_lotes_nucleo,
-        "contar_relatorios_robo_concluidos": _contar_relatorios_robo_concluidos_nucleo,
-    },
-    "extratus-aburesi": {
-        "nome": "Extratus - Aburesi",
-        "config_manager": _config_aburesi,
-        # Mesmo motor compartilhado (nucleo_relatorios) do Extratus -
-        # Relatórios acima, só amarrado ao ferramenta_slug desta
-        # ferramenta via partial — as funções abaixo são chamadas sem
-        # esse argumento nos call sites deste arquivo (ver
-        # pagina_ferramenta_detalhe), então o default do próprio módulo
-        # (FERRAMENTA_SLUG_PADRAO = "extratus-relatorios") teria que ser
-        # sobrescrito de algum jeito pra não misturar lotes/estatísticas
-        # das duas ferramentas.
-        "prompt_manager": _prompt_nucleo,
-        "listar_lotes_em_andamento": partial(_listar_lotes_em_andamento_nucleo, ferramenta_slug=_SLUG_ABURESI),
-        "listar_itens_do_lote": partial(_listar_itens_do_lote_nucleo, ferramenta_slug=_SLUG_ABURESI),
-        "obter_estatisticas_lotes": partial(_obter_estatisticas_lotes_nucleo, ferramenta_slug=_SLUG_ABURESI),
-        "contar_relatorios_robo_concluidos": partial(_contar_relatorios_robo_concluidos_nucleo, ferramenta_slug=_SLUG_ABURESI),
-    },
+    chave: {
+        "nome": tela.nome_exibicao,
+        "config_manager": tela.config_manager,
+        "prompt_manager": prompt_manager_da_tela(tela),
+        "listar_lotes_em_andamento": ligado_a_ferramenta(_listar_lotes_em_andamento_nucleo, tela.ferramenta_slug),
+        "listar_itens_do_lote": ligado_a_ferramenta(_listar_itens_do_lote_nucleo, tela.ferramenta_slug),
+        "obter_estatisticas_lotes": ligado_a_ferramenta(_obter_estatisticas_lotes_nucleo, tela.ferramenta_slug),
+        "contar_relatorios_robo_concluidos": ligado_a_ferramenta(_contar_relatorios_robo_concluidos_nucleo, tela.ferramenta_slug),
+    }
+    for chave, tela in REGISTRO_TELAS.items()
 }
 
 

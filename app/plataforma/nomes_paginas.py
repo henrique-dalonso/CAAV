@@ -10,7 +10,15 @@ entrada aqui simplesmente não aparece com nome (o botão mostra só
 "Voltar", genérico, mas continua funcionando) — não quebra nada,
 só fica menos claro. Comparação por PREFIXO mais longo que bate
 primeiro, então sub-rotas (ex: /admin/custos/extratus-relatorios)
-não precisam de entrada própria."""
+não precisam de entrada própria.
+
+`_rotulos_modulo` por ferramenta do motor compartilhado (nucleo_relatorios)
+é gerado em loop sobre REGISTRO_TELAS desde a tarefa Emenda (2026-09-09) —
+ver docstring de nucleo_relatorios/telas.py. Entradas fixas da plataforma
+(Início, Perfil, admin/*, Crivus) continuam à mão abaixo, fora do loop —
+Crivus não é uma tela deste motor (ver mesma docstring)."""
+
+from app.ferramentas.nucleo_relatorios.telas import REGISTRO_TELAS
 
 
 def _rotulos_modulo(prefixo, nome_ferramenta):
@@ -37,8 +45,11 @@ NOMES_POR_PREFIXO = {
     "/admin/usuarios/novo": "Criar usuário",
     "/admin/usuarios": "Usuários",
     "/crivus": "Crivus",
-    **_rotulos_modulo("/extratus", "Extratus - Relatórios"),
-    **_rotulos_modulo("/extratus-aburesi", "Extratus - Aburesi"),
+    **{
+        chave: rotulo
+        for tela in REGISTRO_TELAS.values()
+        for chave, rotulo in _rotulos_modulo(tela.url_base, tela.nome_exibicao).items()
+    },
 }
 
 

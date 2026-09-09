@@ -11,9 +11,13 @@ slug antigo.
 Só entram aqui ferramentas que JÁ têm alguma tela própria em pelo menos
 uma das duas seções — uma ferramenta sem entrada aqui (ex: Leitor de
 Publicações, ainda "em construção") aparece com o cartão desabilitado
-nas duas grades em vez de dar 404."""
+nas duas grades em vez de dar 404.
 
-CHAVE_POR_SLUG = {
-    "extratus": "extratus-relatorios",
-    "extratus-aburesi": "extratus-aburesi",
-}
+Derivado de REGISTRO_TELAS (nucleo_relatorios/telas.py) desde a tarefa
+Emenda (2026-09-09) — ver docstring de telas.py pro raciocínio completo da
+generalização. Crivus continua fora (motor separado, sem entrada aqui,
+mesmo comportamento de antes)."""
+
+from app.ferramentas.nucleo_relatorios.telas import REGISTRO_TELAS
+
+CHAVE_POR_SLUG = {tela.slug_plataforma: tela.chave_admin for tela in REGISTRO_TELAS.values()}

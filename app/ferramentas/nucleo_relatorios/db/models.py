@@ -71,6 +71,21 @@ class Job(SQLModel, table=True):
     # visível, de propósito — ver web/notificacoes.py.
     notificacao_resolvida: bool = Field(default=False)
 
+    # --- Campos específicos do tipo "emenda" (ver nucleo_relatorios/
+    # tipos.py e core/pos_processamento_emenda.py) — só preenchidos quando
+    # tipo_relatorio == "emenda"; ficam NULL/default em toda linha de
+    # qualquer outro tipo (inclusive todo o histórico "bancario" existente
+    # até aqui). Guardados como colunas próprias do Job (em vez de só
+    # dentro do .docx gerado) pra dar pra listar/filtrar relatório de
+    # emenda por prazo sem precisar reabrir o arquivo — ex: futura tela
+    # "vencendo esta semana".
+    emenda_data_intimacao: Optional[str] = None  # "DD/MM/AAAA", como extraído pela IA
+    emenda_prazo_dias: Optional[int] = None
+    emenda_dias_uteis: Optional[bool] = None
+    emenda_prazo_calculado: Optional[str] = None  # "DD/MM/AAAA", resultado de calculadores/prazo_fatal.py
+    emenda_prazo_ja_expirado: Optional[bool] = None
+    emenda_veiculo_terceiro: Optional[bool] = None
+
     criado_em: datetime = Field(default_factory=datetime.now)
 
 

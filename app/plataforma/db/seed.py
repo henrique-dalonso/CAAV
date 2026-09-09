@@ -51,6 +51,27 @@ FERRAMENTAS_PADRAO = [
         "cor_acento_fraco_escuro": "#134e4a",
     },
     {
+        # 4ª ferramenta no motor compartilhado (nucleo_relatorios,
+        # 2026-09-09) — 1º tipo de relatório novo além de "bancario" (ver
+        # nucleo_relatorios/tipos.py). slug "emenda" é novo de fábrica,
+        # sem histórico de permissão/favorito pra preservar, diferente de
+        # "extratus"/"extratus-aburesi" acima.
+        "nome": "Emenda",
+        "slug": "emenda",
+        "descricao": "Análise de emenda/despacho, cálculo do prazo fatal e e-mail pronto para a carteira.",
+        "url": "/emenda/fila-robo",
+        "suporta_fila_robo": True,
+        # Roxo — distinto do azul padrão (Extratus - Relatórios), do
+        # verde-azulado da Aburesi e do verde do Crivus, mesma estrutura
+        # clara/escura das outras ferramentas com cor própria.
+        "cor_acento": "#7c3aed",
+        "cor_acento_hover": "#6d28d9",
+        "cor_acento_fraco": "#f5f3ff",
+        "cor_acento_escuro": "#a78bfa",
+        "cor_acento_hover_escuro": "#c4b5fd",
+        "cor_acento_fraco_escuro": "#4c1d95",
+    },
+    {
         "nome": "Crivus",
         # slug NUNCA muda (mesma regra do "extratus" acima) — mesmo com o
         # nome comercial batizado como "Crivus" (2026-09-02), o

@@ -62,6 +62,17 @@ COLUNAS_PENDENTES = {
         # histórico inteiro sem precisar de um UPDATE manual.
         "ferramenta_slug": "VARCHAR DEFAULT 'extratus-relatorios'",
         "tipo_relatorio": "VARCHAR DEFAULT 'bancario'",
+        # Emenda (2026-09-09) — ver docstring dos campos `emenda_*` em
+        # Job (db/models.py) e TipoRelatorio.pos_processar em
+        # nucleo_relatorios/tipos.py. Sem DEFAULT não-NULL de propósito:
+        # todo o histórico "bancario" existente até aqui deve mesmo ficar
+        # com esses campos NULL, nunca um valor inventado.
+        "emenda_data_intimacao": "VARCHAR",
+        "emenda_prazo_dias": "INTEGER",
+        "emenda_dias_uteis": "BOOLEAN",
+        "emenda_prazo_calculado": "VARCHAR",
+        "emenda_prazo_ja_expirado": "BOOLEAN",
+        "emenda_veiculo_terceiro": "BOOLEAN",
     },
     "triagemmanual": {
         "origem_duplicado": "VARCHAR",

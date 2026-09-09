@@ -1,14 +1,9 @@
 import json
-from functools import partial
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 
-from app.ferramentas.extratus.core.config_manager import (
-    atualizar_parametros_economia as _atualizar_parametros_economia_extratus,
-    carregar_config as _carregar_config_extratus,
-)
 from app.ferramentas.nucleo_relatorios.db.checagem_fila import (
     resolver_solicitantes as _resolver_solicitantes_nucleo,
 )
@@ -21,18 +16,7 @@ from app.ferramentas.nucleo_relatorios.db.jobs import (
     serie_temporal_custo as _serie_temporal_custo_nucleo,
     somar_custo_por_usuario as _somar_custo_por_usuario_nucleo,
 )
-from app.ferramentas.extratus.web.rotulos import (
-    rotulo_erro as _rotulo_erro_extratus,
-    rotulo_status as _rotulo_status_extratus,
-)
-from app.ferramentas.extratus_aburesi.core.config_manager import (
-    atualizar_parametros_economia as _atualizar_parametros_economia_aburesi,
-    carregar_config as _carregar_config_aburesi,
-)
-from app.ferramentas.extratus_aburesi.web.rotulos import (
-    rotulo_erro as _rotulo_erro_aburesi,
-    rotulo_status as _rotulo_status_aburesi,
-)
+from app.ferramentas.nucleo_relatorios.telas import REGISTRO_TELAS, ligado_a_ferramenta
 from app.plataforma.cambio import obter_cotacao_usd_brl
 from app.plataforma.db.models import Usuario
 from app.plataforma.db.usuarios import listar_todas_ferramentas, listar_todos_usuarios
@@ -52,51 +36,35 @@ PERIODOS_GRAFICO_VALIDOS = ("7d", "15d", "30d", "1a")
 # aqui ferramentas que de fato têm custo de IA rastreado hoje — uma
 # ferramenta nova sem isso ainda (ex: Crivus) não aparece
 # na lista, mas também não quebra nada (ver CUSTOS_POR_CHAVE.get abaixo).
-_SLUG_ABURESI = "extratus-aburesi"
-
+#
+# Derivado de REGISTRO_TELAS (nucleo_relatorios/telas.py) desde a tarefa
+# Emenda (2026-09-09) — ver docstring equivalente em admin_ferramentas.py
+# (CONFIGURACOES_POR_CHAVE) pro raciocínio completo da generalização.
 CUSTOS_POR_CHAVE = {
-    "extratus-relatorios": {
-        "nome": "Extratus - Relatórios",
-        "slug_ferramenta": "extratus",
+    chave: {
+        "nome": tela.nome_exibicao,
+        "slug_ferramenta": tela.slug_plataforma,
         # Prefixo real de URL da ferramenta (onde /download/{arquivo}
         # de fato mora, ver gerar_relatorio.py) — diferente da "chave"
         # usada nas URLs do admin (essa é a raiz travada em seed.py,
         # nunca pode mudar, ver [[extratus-duas-frentes]]).
-        "url_base": "/extratus",
-        "listar_jobs": _listar_jobs_nucleo,
-        "somar_custo_por_usuario": _somar_custo_por_usuario_nucleo,
-        "resumo_mes_atual": _resumo_mes_atual_nucleo,
-        "serie_temporal_custo": _serie_temporal_custo_nucleo,
-        "detalhar_custo_e_quantidade_por_usuario": _detalhar_custo_e_quantidade_por_usuario_nucleo,
-        "resumo_por_status_com_custo": _resumo_por_status_com_custo_nucleo,
-        "resumo_por_modelo": _resumo_por_modelo_nucleo,
-        "carregar_config": _carregar_config_extratus,
-        "atualizar_parametros_economia": _atualizar_parametros_economia_extratus,
-        "resolver_solicitantes": _resolver_solicitantes_nucleo,
-        "rotulo_status": _rotulo_status_extratus,
-        "rotulo_erro": _rotulo_erro_extratus,
-    },
-    "extratus-aburesi": {
-        "nome": "Extratus - Aburesi",
-        "slug_ferramenta": "extratus-aburesi",
-        "url_base": "/extratus-aburesi",
-        # Mesmo motor compartilhado (nucleo_relatorios) do Extratus -
-        # Relatórios acima, amarrado ao ferramenta_slug desta ferramenta
-        # via partial — ver mesmo comentário em admin_ferramentas.py
-        # (CONFIGURACOES_POR_CHAVE) pro raciocínio completo.
-        "listar_jobs": partial(_listar_jobs_nucleo, ferramenta_slug=_SLUG_ABURESI),
-        "somar_custo_por_usuario": partial(_somar_custo_por_usuario_nucleo, ferramenta_slug=_SLUG_ABURESI),
-        "resumo_mes_atual": partial(_resumo_mes_atual_nucleo, ferramenta_slug=_SLUG_ABURESI),
-        "serie_temporal_custo": partial(_serie_temporal_custo_nucleo, ferramenta_slug=_SLUG_ABURESI),
-        "detalhar_custo_e_quantidade_por_usuario": partial(_detalhar_custo_e_quantidade_por_usuario_nucleo, ferramenta_slug=_SLUG_ABURESI),
-        "resumo_por_status_com_custo": partial(_resumo_por_status_com_custo_nucleo, ferramenta_slug=_SLUG_ABURESI),
-        "resumo_por_modelo": partial(_resumo_por_modelo_nucleo, ferramenta_slug=_SLUG_ABURESI),
-        "carregar_config": _carregar_config_aburesi,
-        "atualizar_parametros_economia": _atualizar_parametros_economia_aburesi,
-        "resolver_solicitantes": partial(_resolver_solicitantes_nucleo, ferramenta_slug=_SLUG_ABURESI),
-        "rotulo_status": _rotulo_status_aburesi,
-        "rotulo_erro": _rotulo_erro_aburesi,
-    },
+        "url_base": tela.url_base,
+        "listar_jobs": ligado_a_ferramenta(_listar_jobs_nucleo, tela.ferramenta_slug),
+        "somar_custo_por_usuario": ligado_a_ferramenta(_somar_custo_por_usuario_nucleo, tela.ferramenta_slug),
+        "resumo_mes_atual": ligado_a_ferramenta(_resumo_mes_atual_nucleo, tela.ferramenta_slug),
+        "serie_temporal_custo": ligado_a_ferramenta(_serie_temporal_custo_nucleo, tela.ferramenta_slug),
+        "detalhar_custo_e_quantidade_por_usuario": ligado_a_ferramenta(
+            _detalhar_custo_e_quantidade_por_usuario_nucleo, tela.ferramenta_slug
+        ),
+        "resumo_por_status_com_custo": ligado_a_ferramenta(_resumo_por_status_com_custo_nucleo, tela.ferramenta_slug),
+        "resumo_por_modelo": ligado_a_ferramenta(_resumo_por_modelo_nucleo, tela.ferramenta_slug),
+        "carregar_config": tela.config_manager.carregar_config,
+        "atualizar_parametros_economia": tela.config_manager.atualizar_parametros_economia,
+        "resolver_solicitantes": ligado_a_ferramenta(_resolver_solicitantes_nucleo, tela.ferramenta_slug),
+        "rotulo_status": tela.rotulo_status,
+        "rotulo_erro": tela.rotulo_erro,
+    }
+    for chave, tela in REGISTRO_TELAS.items()
 }
 
 

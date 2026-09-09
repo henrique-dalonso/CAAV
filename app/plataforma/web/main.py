@@ -33,6 +33,14 @@ from app.ferramentas.extratus_aburesi.web.routes import (
     relatorios_manuais as relatorios_manuais_aburesi,
     relatorios_robo as relatorios_robo_aburesi,
 )
+from app.ferramentas.emenda.core.checagem_watcher import loop_checagem as loop_checagem_emenda
+from app.ferramentas.emenda.core.robo_watcher import loop_robo as loop_robo_emenda
+from app.ferramentas.emenda.web.routes import (
+    fila as fila_emenda,
+    gerar_relatorio as gerar_relatorio_emenda,
+    relatorios_manuais as relatorios_manuais_emenda,
+    relatorios_robo as relatorios_robo_emenda,
+)
 from app.ferramentas.crivus.web.routes import leitor_individual as crivus_leitor_individual
 
 
@@ -66,6 +74,10 @@ async def lifespan(app: FastAPI):
     # bem mais rápido que o do Robô, só leitura local, sem custo de API.
     tarefa_checagem = asyncio.create_task(loop_checagem())
     tarefa_checagem_aburesi = asyncio.create_task(loop_checagem_aburesi())
+    # Emenda (2026-09-09) — 1º tipo novo no motor compartilhado, mesmo
+    # padrão de vigia próprio das duas ferramentas acima.
+    tarefa_robo_emenda = asyncio.create_task(loop_robo_emenda())
+    tarefa_checagem_emenda = asyncio.create_task(loop_checagem_emenda())
 
     yield
 
@@ -73,6 +85,8 @@ async def lifespan(app: FastAPI):
     tarefa_robo_aburesi.cancel()
     tarefa_checagem.cancel()
     tarefa_checagem_aburesi.cancel()
+    tarefa_robo_emenda.cancel()
+    tarefa_checagem_emenda.cancel()
 
 
 app = FastAPI(
@@ -206,6 +220,15 @@ app.mount(
     name="extratus-aburesi-static",
 )
 
+EMENDA_STATIC_DIR = (
+    BASE_DIR.parent.parent / "ferramentas" / "emenda" / "web" / "static"
+)
+app.mount(
+    "/emenda/static",
+    StaticFiles(directory=EMENDA_STATIC_DIR),
+    name="emenda-static",
+)
+
 CRIVUS_STATIC_DIR = (
     BASE_DIR.parent.parent / "ferramentas" / "crivus" / "web" / "static"
 )
@@ -230,6 +253,10 @@ app.include_router(gerar_relatorio_aburesi.router, prefix="/extratus-aburesi")
 app.include_router(relatorios_manuais_aburesi.router, prefix="/extratus-aburesi")
 app.include_router(fila_aburesi.router, prefix="/extratus-aburesi")
 app.include_router(relatorios_robo_aburesi.router, prefix="/extratus-aburesi")
+app.include_router(gerar_relatorio_emenda.router, prefix="/emenda")
+app.include_router(relatorios_manuais_emenda.router, prefix="/emenda")
+app.include_router(fila_emenda.router, prefix="/emenda")
+app.include_router(relatorios_robo_emenda.router, prefix="/emenda")
 app.include_router(crivus_leitor_individual.router, prefix="/crivus")
 
 

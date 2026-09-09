@@ -8,6 +8,7 @@ __pycache__/
 .env
 app/ferramentas/extratus/config/config.json
 app/ferramentas/extratus_aburesi/config/config.json
+app/ferramentas/emenda/config/config.json
 
 # Prompt de instruções: definido e sobrescrito pela tela de Configurações
 # (upload/edição ao vivo pelo admin), não pelo código - nunca deve ser
@@ -20,6 +21,11 @@ app/ferramentas/nucleo_relatorios/config/instrucoes_relatorio.txt
 app/ferramentas/nucleo_relatorios/config/historico_prompts/
 app/ferramentas/extratus_aburesi/config/instrucoes_relatorio.txt
 app/ferramentas/extratus_aburesi/config/historico_prompts/
+# EMENDA (2026-09-09): mesmo motivo acima, mesmo padrão — prompt mora numa
+# subpasta própria por tipo (config/prompts/, ver nucleo_relatorios/
+# tipos.py), então o histórico de versões também fica dentro dela.
+app/ferramentas/nucleo_relatorios/config/prompts/emenda.txt
+app/ferramentas/nucleo_relatorios/config/prompts/historico_prompts/
 
 # Dados reais de clientes / processos - nunca versionar
 app/ferramentas/extratus/dados/entrada_pdfs/*
@@ -50,11 +56,27 @@ app/ferramentas/extratus_aburesi/dados/relatorios_prontos/*
 app/ferramentas/extratus_aburesi/dados/robo_entrada_pdfs/*
 !app/ferramentas/extratus_aburesi/dados/robo_entrada_pdfs/.gitkeep
 
+# Mesma regra acima, espelhada pro módulo EMENDA (2026-09-09)
+app/ferramentas/emenda/dados/entrada_pdfs/*
+!app/ferramentas/emenda/dados/entrada_pdfs/.gitkeep
+app/ferramentas/emenda/dados/processados/*
+!app/ferramentas/emenda/dados/processados/.gitkeep
+app/ferramentas/emenda/dados/erros/*
+!app/ferramentas/emenda/dados/erros/.gitkeep
+app/ferramentas/emenda/dados/revisao/*
+!app/ferramentas/emenda/dados/revisao/.gitkeep
+app/ferramentas/emenda/dados/relatorios_prontos/*
+!app/ferramentas/emenda/dados/relatorios_prontos/.gitkeep
+app/ferramentas/emenda/dados/robo_entrada_pdfs/*
+!app/ferramentas/emenda/dados/robo_entrada_pdfs/.gitkeep
+
 # Logs (contêm dado real de processamento)
 app/ferramentas/extratus/logs/*
 !app/ferramentas/extratus/logs/.gitkeep
 app/ferramentas/extratus_aburesi/logs/*
 !app/ferramentas/extratus_aburesi/logs/.gitkeep
+app/ferramentas/emenda/logs/*
+!app/ferramentas/emenda/logs/.gitkeep
 app/ferramentas/nucleo_relatorios/logs/*
 !app/ferramentas/nucleo_relatorios/logs/.gitkeep
 app/plataforma/logs/*

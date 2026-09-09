@@ -21,6 +21,7 @@ def registrar_processado(
     solicitante_id=None,
     ferramenta_slug=FERRAMENTA_SLUG_PADRAO,
     tipo_relatorio=None,
+    campos_extra=None,
 ):
     """Registra um PDF que gerou relatório — status "sucesso" (confiança
     alta) ou "revisao" (confiança média/baixa, precisa de olho humano).
@@ -36,6 +37,11 @@ def registrar_processado(
     nucleo_relatorios/tipos.py) e qual tipo de relatório dentro dela essa
     linha pertence — default cobre o único caso que existe hoje
     (Extratus-Relatórios, tipo "bancario").
+    `campos_extra` — dict opcional de colunas EXTRA do Job, específicas de
+    um tipo (ex: os `emenda_*` de TipoRelatorio "emenda" — ver
+    core/pos_processamento_emenda.py e TipoRelatorio.pos_processar em
+    nucleo_relatorios/tipos.py). None/vazio pra qualquer tipo que não
+    declarar colunas próprias (é o caso de "bancario" hoje).
     """
     status = "sucesso" if str(confianca).strip().lower() == "alta" else "revisao"
     uso_ia = uso_ia or {}
@@ -57,6 +63,7 @@ def registrar_processado(
             solicitante_id=solicitante_id,
             ferramenta_slug=ferramenta_slug,
             **({"tipo_relatorio": tipo_relatorio} if tipo_relatorio else {}),
+            **(campos_extra or {}),
         )
 
         sessao.add(job)

@@ -1,23 +1,20 @@
-from app.ferramentas.extratus.web.notificacoes import (
-    listar_notificacoes as listar_notificacoes_extratus,
-    listar_notificacoes_pessoais as listar_notificacoes_pessoais_extratus,
-)
-from app.ferramentas.extratus_aburesi.web.notificacoes import (
-    listar_notificacoes as listar_notificacoes_extratus_aburesi,
-    listar_notificacoes_pessoais as listar_notificacoes_pessoais_extratus_aburesi,
-)
+from app.ferramentas.nucleo_relatorios.telas import REGISTRO_TELAS
 from app.plataforma.db.usuarios import usuario_tem_acesso
 
 
 # Um registro simples (slug + nome de exibição da ferramenta -> funções
 # que listam as pendências dela) em vez de alguma abstração de plugin —
-# mesmo padrão já usado em main.py pros watchers do Robô/checagem, cada
-# ferramenta nova entra aqui na mão. Nome de exibição repetido aqui (em
-# vez de consultar Ferramenta no banco a cada notificação) porque o
-# registro já é mantido à mão mesmo — mesmos nomes de `seed.py`.
+# mesmo padrão já usado em main.py pros watchers do Robô/checagem.
+#
+# Derivado de REGISTRO_TELAS (nucleo_relatorios/telas.py) desde a tarefa
+# Emenda (2026-09-09) — antes disso cada ferramenta nova entrava aqui na
+# mão, com seu próprio import de web/notificacoes.py. Crivus continua de
+# fora de REGISTRO_TELAS (motor genuinamente separado, ver docstring de
+# telas.py) — se um dia tiver notificação própria, entra aqui do jeito
+# antigo, adicionando uma tupla à mão à lista.
 REGISTRO_NOTIFICACOES = [
-    ("extratus", "Extratus - Relatórios", listar_notificacoes_extratus, listar_notificacoes_pessoais_extratus),
-    ("extratus-aburesi", "Extratus - Aburesi", listar_notificacoes_extratus_aburesi, listar_notificacoes_pessoais_extratus_aburesi),
+    (tela.slug_plataforma, tela.nome_exibicao, tela.listar_notificacoes, tela.listar_notificacoes_pessoais)
+    for tela in REGISTRO_TELAS.values()
 ]
 
 

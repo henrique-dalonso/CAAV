@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block titulo %}Relatórios URGENTES — Emenda{% endblock %}
+{% block css_pagina %}<link rel="stylesheet" href="/emenda/static/extratus.css?v={{ v }}">{% endblock %}
+
+{% from "_macros_extratus.html" import nav_abas_extratus %}
+
+{% block conteudo %}
+<div class="cabecalho-ferramenta">
+    <div>
+        <h1>Relatórios URGENTES</h1>
+        <p>Veja os relatórios URGENTES já prontos. Clique em um relatório para baixar e abrir.</p>
+    </div>
+</div>
+
+{{ nav_abas_extratus(usuario, "emenda", "/emenda", "relatorios") }}
+
+{% if erro %}
+<p class="banner-erro">⚠ {{ erro }}</p>
+{% endif %}
+{% if sucesso %}
+<p class="banner-sucesso">✓ {{ sucesso }}</p>
+{% endif %}
+
+<section class="cartao-secao">
+    {% if jobs %}
+    <div class="barra-filtros">
+        <input type="search" class="campo-busca" placeholder="Buscar por número de processo ou nome do arquivo..." aria-label="Buscar por número de processo ou nome do arquivo" id="campo-busca-relatorios" data-processo-inicial="{{ processo_busca or '' }}">
+        <div class="chips-filtro">
+            <button type="button" class="chip chip-ativo" data-status="todos">Todos</button>
+            <button type="button" class="chip" data-status="sucesso">Sucesso</button>
+            <button type="button" class="chip" data-status="revisao">Revisão</button>
+            <button type="button" class="chip" data-status="erro">Erro</button>
+        </div>
+    </div>
+    <div class="filtro-meus-linha">
+        <label class="filtro-meus">
+            <input type="checkbox" id="check-meus-relatorios" class="check-input" data-usuario-id="{{ usuario.id }}" checked>
+            <span class="check-caixa"></span>
+            Solicitados por mim
+        </label>
+    </div>
+    <ul class="lista-relatorios">
+        {% for job in jobs %}
+        <li class="relatorio-item" data-status="{{ job.status }}" data-usuario-id="{{ job.usuario_id or '' }}" data-processo="{{ job.processo or '' }}" data-busca="{{ ((job.processo or '') ~ ' ' ~ job.arquivo_pdf) | lower }}">
+            <span class="status status-{{ job.status }}">{{ job.status | rotulo_status }}</span>
+            <div class="relatorio-info{% if job.relatorio_path %} relatorio-info-clicavel{% endif %}"{% if job.relatorio_path %} data-download="download/{{ job.relatorio_path.split('\\')[-1].split('/')[-1] }}"{% endif %}>
+                {% if job.processo %}
+                <strong class="truncavel" data-dica="{{ job.processo }}">{{ job.processo }}</strong>
+                <span class="relatorio-meta truncavel" data-dica="{{ job.arquivo_pdf }} · {{ job.criado_em.strftime('%d/%m/%Y %H:%M') }}">{% if job.destino_pdf %}<a href="/emenda/relatorios-urgentes/{{ job.id }}/pdf" target="_blank" rel="noopener" class="link-pdf-original">{{ job.arquivo_pdf }}</a>{% else %}{{ job.arquivo_pdf }}{% endif %} · {{ job.criado_em.strftime("%d/%m/%Y %H:%M") }}</span>
+                {% else %}
+                <strong class="truncavel" data-dica="{{ job.arquivo_pdf }}">{% if job.destino_pdf %}<a href="/emenda/relatorios-urgentes/{{ job.id }}/pdf" target="_blank" rel="noopener" class="link-pdf-original">{{ job.arquivo_pdf }}</a>{% else %}{{ job.arquivo_pdf }}{% endif %}</strong>
+                <span class="relatorio-meta truncavel" data-dica="{{ job.criado_em.strftime('%d/%m/%Y %H:%M') }}">{{ job.criado_em.strftime("%d/%m/%Y %H:%M") }}</span>
+                {% endif %}
+                {% if job.status == "revisao" and job.motivo_confianca %}
+                <span class="motivo" data-dica="{{ job.motivo_confianca }}">{{ job.motivo_confianca }}</span>
+                {% elif job.status == "erro" and job.erro_mensagem %}
+                <span class="motivo" data-dica="{{ job.erro_mensagem }}">{{ job.tipo_erro | rotulo_erro }}</span>
+                {% endif %}
+                {% if job.emenda_prazo_calculado %}
+                <span class="motivo{% if job.emenda_prazo_ja_expirado %} motivo-prazo-vencido{% endif %}" data-dica="Prazo fatal calculado automaticamente a partir da intimação e do prazo identificados pela IA — ver análise completa no .docx">
+                    {% if job.emenda_prazo_ja_expirado %}Prazo VENCIDO: {% else %}Prazo fatal: {% endif %}{{ job.emenda_prazo_calculado }}
+                </span>
+                {% endif %}
+                {% if job.status == "revisao" and not job.notificacao_resolvida and job.usuario_id == usuario.id %}
+                <button type="button" class="botao-marcar-revisado" data-job-id="{{ job.id }}" data-dica="Remove a notificação do &quot;sininho&quot;">Marcar como revisado</button>
+                {% endif %}
+            </div>
+            <div class="relatorio-solicitante">
+                <span class="divisor-vertical" aria-hidden="true"></span>
+                {% set nome_solicitante = "Solicitante: " ~ nomes_por_id.get(job.usuario_id, "—") %}
+                <span class="solicitante-texto truncavel" data-dica="{{ nome_solicitante }}">{{ nome_solicitante }}</span>
+            </div>
+            {% if job.relatorio_path %}
+            <a href="download/{{ job.relatorio_path.split('\\')[-1].split('/')[-1] }}" class="botao-download" data-dica="Baixar relatório" aria-label="Baixar relatório">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+            </a>
+            {% else %}
+            <span class="botao-download botao-fantasma" aria-hidden="true"></span>
+            {% endif %}
+            {% if usuario.eh_admin %}
+            <form action="/emenda/relatorios-urgentes/{{ job.id }}/excluir" method="post" data-perigo="true"
+                data-confirm="Excluir este relatório permanentemente? O arquivo e o PDF de origem serão apagados. Essa ação não pode ser desfeita.">
+                <button type="submit" class="botao-excluir" data-dica="Excluir relatório" aria-label="Excluir relatório">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                </button>
+            </form>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    <p class="vazio filtro-vazio" hidden>Nenhum relatório encontrado com esse filtro.</p>
+    {% else %}
+    <p class="vazio">Nenhum relatório URGENTE gerado ainda ou disponível.</p>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block js_pagina %}<script src="/emenda/static/relatorios_manuais.js?v={{ v }}" defer></script>{% endblock %}

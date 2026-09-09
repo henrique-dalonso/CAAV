@@ -141,7 +141,19 @@ def finalizar_processamento(
     `solicitante_id`: ver docstring de Job.solicitante_id — só usado pelo
     Robô. `tipo` (ver nucleo_relatorios/tipos.py) diz qual template .docx
     preencher — quando None, salvar_relatorio_docx cai no template
-    "bancario" (único que existe hoje)."""
+    "bancario" (único que existe hoje).
+
+    `tipo.pos_processar`, quando definido (só "emenda" usa isso hoje —
+    ver core/pos_processamento_emenda.py), roda ANTES do .docx ser
+    preenchido: é aqui, e só aqui, que os 3 caminhos que convergem nesta
+    função (fila manual, Robô, retomada pós-conferência) ganham a etapa
+    determinística (não-IA) de cálculo de prazo fatal, sem precisar
+    duplicar a chamada em cada um dos 3 lugares."""
+    campos_extra_job = None
+
+    if tipo is not None and tipo.pos_processar is not None:
+        dados_relatorio, campos_extra_job = tipo.pos_processar(dados_relatorio)
+
     try:
         nome_relatorio = gerar_nome_relatorio(processo)
         caminho_saida_base = Path(pasta_saida) / nome_relatorio
@@ -184,6 +196,7 @@ def finalizar_processamento(
         solicitante_id=solicitante_id,
         ferramenta_slug=ferramenta_slug,
         tipo_relatorio=(tipo.chave if tipo is not None else None),
+        campos_extra=campos_extra_job,
     )
 
     return {
