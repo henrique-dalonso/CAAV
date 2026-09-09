@@ -242,20 +242,26 @@ def rodar_ciclo_robo():
     coleta só acontecesse com o robô ligado, um lote que terminou depois
     de alguém desligar a chave ficava preso pra sempre (nunca virava
     relatório, nunca saía da tela como "em andamento"). Só abrir lote NOVO
-    é que respeita `robo_ativo`."""
-    config = carregar_config()
+    é que respeita `robo_ativo`.
 
-    algum_lote_em_andamento = False
+    Vários lotes podem ficar em voo ao mesmo tempo, de propósito — até
+    2026-09-09 o robô só deixava existir um lote "enviado" por vez, então
+    um único caso isolado abrindo um lote pequeno segurava dezenas de
+    casos novos esperando ele fechar (mesmo achado do Extratus-Relatórios,
+    espelhado aqui — ver nucleo_relatorios/core/robo_lote.py). Nada aqui
+    depende de "o" lote: `_coletar_lotes_pendentes` já percorre todos os
+    lotes em andamento, e `_preparar_novo_lote` já exclui (via
+    `listar_arquivos_ja_reivindicados`) qualquer arquivo já reivindicado
+    por QUALQUER lote ainda "enviado" — então abrir um lote novo a cada
+    ciclo, mesmo com outros ainda em voo, nunca duplica processamento."""
+    config = carregar_config()
 
     if listar_lotes_em_andamento():
         cliente = _obter_cliente()
-        algum_lote_em_andamento = _coletar_lotes_pendentes(cliente, config)
+        _coletar_lotes_pendentes(cliente, config)
 
     if not config.get("robo_ativo"):
         return
-
-    if algum_lote_em_andamento:
-        return  # só um lote em voo por vez
 
     cliente = _obter_cliente()
     itens = _preparar_novo_lote(config, cliente)

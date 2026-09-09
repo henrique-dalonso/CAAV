@@ -43,18 +43,26 @@ def test_rodar_ciclo_robo_coleta_lote_pendente_mesmo_desligado():
     submeter_mock.assert_not_called()
 
 
-def test_rodar_ciclo_robo_nao_submete_novo_lote_se_ja_tem_um_em_voo():
+def test_rodar_ciclo_robo_submete_novo_lote_mesmo_com_outro_em_voo():
+    """Até 2026-09-09 o robô só deixava existir um lote "enviado" por vez
+    — um único caso isolado abrindo um lote pequeno segurava dezenas de
+    casos novos esperando ele fechar (congestionamento real, Henrique).
+    `_preparar_novo_lote` já exclui arquivo reivindicado por QUALQUER
+    lote em voo (via listar_arquivos_ja_reivindicados), então abrir um
+    lote novo mesmo com outro pendente nunca duplica processamento."""
+    itens_fake = [{"custom_id": "x", "arquivo_pdf": "a.pdf"}]
+
     with patch.object(robo_lote, "carregar_config", return_value=CONFIG_EXEMPLO), \
          patch.object(robo_lote, "listar_lotes_em_andamento", return_value=[SimpleNamespace(id=1)]), \
          patch.object(robo_lote, "_obter_cliente", return_value=MagicMock()), \
          patch.object(robo_lote, "_coletar_lotes_pendentes", return_value=True) as coletar_mock, \
-         patch.object(robo_lote, "_preparar_novo_lote") as preparar_mock, \
+         patch.object(robo_lote, "_preparar_novo_lote", return_value=itens_fake) as preparar_mock, \
          patch.object(robo_lote, "_submeter_lote") as submeter_mock:
         robo_lote.rodar_ciclo_robo()
 
     coletar_mock.assert_called_once()
-    preparar_mock.assert_not_called()
-    submeter_mock.assert_not_called()
+    preparar_mock.assert_called_once()
+    submeter_mock.assert_called_once()
 
 
 def test_rodar_ciclo_robo_submete_lote_quando_ha_itens_elegiveis():

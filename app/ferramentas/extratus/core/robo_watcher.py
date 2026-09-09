@@ -6,10 +6,15 @@ from app.ferramentas.nucleo_relatorios.core.robo_lote import rodar_ciclo_robo
 from app.ferramentas.nucleo_relatorios.tipos import REGISTRO_TIPOS
 
 
-# 5 minutos: dá folga (lotes do Batch API raramente terminam em menos que
-# isso) sem ficar pesado no servidor — fácil de ajustar depois se
-# necessário, não é um valor crítico.
-INTERVALO_SEGUNDOS = 300
+# 2 minutos (era 5 até 2026-09-09) — Henrique: o intervalo maior somado à
+# antiga trava de "um lote por vez" (removida em robo_lote.py) fazia
+# dezenas de casos novos esperarem um lote pequeno terminar antes de
+# subir. Múltiplos lotes em voo já é seguro (ver docstring de
+# rodar_ciclo_robo), então o intervalo menor só reduz o tempo até notar
+# trabalho novo — checar status de lote não custa token nem chega perto
+# de limite de requisição da Anthropic (1000+/min mesmo no tier mais
+# baixo). Não é um valor crítico, fácil de ajustar de novo se precisar.
+INTERVALO_SEGUNDOS = 120
 
 # Extratus-Relatórios, tipo "bancario" — única ferramenta/tipo que usa o
 # motor compartilhado (nucleo_relatorios) hoje, ver
