@@ -2,9 +2,9 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import delete, select
 
-from app.ferramentas.extratus.db.checagem_fila import registrar_upload
-from app.ferramentas.extratus.db.jobs import registrar_processado
-from app.ferramentas.extratus.db.models import Job, UploadFilaRobo
+from app.ferramentas.nucleo_relatorios.db.checagem_fila import registrar_upload
+from app.ferramentas.nucleo_relatorios.db.jobs import registrar_processado
+from app.ferramentas.nucleo_relatorios.db.models import Job, UploadFilaRobo
 from app.plataforma.db.models import Usuario
 from app.plataforma.db.session import obter_sessao
 from app.plataforma.db.usuarios import criar_usuario

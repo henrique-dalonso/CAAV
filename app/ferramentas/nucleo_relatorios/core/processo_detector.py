@@ -2,7 +2,7 @@ import re
 from pathlib import Path
 from collections import Counter
 
-from app.ferramentas.extratus.core.texto_manager import (
+from app.ferramentas.nucleo_relatorios.core.texto_manager import (
     extrair_texto_pdf_com_diagnostico,
     parece_digitalizado,
 )

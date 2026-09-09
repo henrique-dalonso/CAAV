@@ -1,12 +1,12 @@
 from pathlib import Path
 
-from app.ferramentas.extratus.core.app_logger import registrar_log
+from app.ferramentas.nucleo_relatorios.core.app_logger import registrar_log
 from app.ferramentas.extratus.core.config_manager import carregar_config
-from app.ferramentas.extratus.core.pdf_isolado import executar_isolado
-from app.ferramentas.extratus.core.pdf_manager import listar_pdfs
-from app.ferramentas.extratus.core.pipeline import tratar_erro
-from app.ferramentas.extratus.core.processo_detector import analisar_pdf
-from app.ferramentas.extratus.db.checagem_fila import (
+from app.ferramentas.nucleo_relatorios.core.pdf_isolado import executar_isolado
+from app.ferramentas.nucleo_relatorios.core.pdf_manager import listar_pdfs
+from app.ferramentas.nucleo_relatorios.core.pipeline import tratar_erro
+from app.ferramentas.nucleo_relatorios.core.processo_detector import analisar_pdf
+from app.ferramentas.nucleo_relatorios.db.checagem_fila import (
     APROVADO,
     DUPLICADO_EM_ANDAMENTO,
     DUPLICADO_RELATORIO,
@@ -15,8 +15,9 @@ from app.ferramentas.extratus.db.checagem_fila import (
     existe_conflito_de_processo,
     sincronizar_registros,
 )
-from app.ferramentas.extratus.db.jobs import existe_relatorio_gerado_para_processo
-from app.ferramentas.extratus.db.lotes import listar_arquivos_ja_reivindicados
+from app.ferramentas.nucleo_relatorios.db.jobs import existe_relatorio_gerado_para_processo
+from app.ferramentas.nucleo_relatorios.db.lotes import listar_arquivos_ja_reivindicados
+from app.ferramentas.nucleo_relatorios.db.models import FERRAMENTA_SLUG_PADRAO
 
 
 def analisar_pdf_isolado(caminho):
@@ -29,7 +30,7 @@ def analisar_pdf_isolado(caminho):
     return executar_isolado(analisar_pdf, caminho)
 
 
-def rodar_ciclo_checagem():
+def rodar_ciclo_checagem(ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Um "tick" da checagem da Fila do Robô — a "triagem" de
     duplicidade que Henrique pediu (2026-08-06). Roda muito mais rápido
     que o Robô (ver checagem_watcher.py, poucos segundos vs. 5 minutos)
@@ -44,7 +45,7 @@ def rodar_ciclo_checagem():
     pasta_erros = config.get("pasta_erros")
 
     nomes_no_disco = {pdf.name for pdf in listar_pdfs(pasta)}
-    ja_reivindicados = listar_arquivos_ja_reivindicados()
+    ja_reivindicados = listar_arquivos_ja_reivindicados(ferramenta_slug=ferramenta_slug)
 
     # Um arquivo já reivindicado por um lote não precisa mais de
     # checagem nenhuma (é tarde demais pra travar ele, e o próprio
@@ -54,13 +55,13 @@ def rodar_ciclo_checagem():
     # está "esperando" nalgum sentido.
     candidatos = nomes_no_disco - ja_reivindicados
 
-    pendentes = sincronizar_registros(candidatos)
+    pendentes = sincronizar_registros(candidatos, ferramenta_slug=ferramenta_slug)
 
     for registro in pendentes:
-        _checar_um_arquivo(registro, pasta, pasta_erros)
+        _checar_um_arquivo(registro, pasta, pasta_erros, ferramenta_slug)
 
 
-def _checar_um_arquivo(registro, pasta, pasta_erros):
+def _checar_um_arquivo(registro, pasta, pasta_erros, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     caminho = pasta / registro.nome_arquivo
 
     try:
@@ -90,7 +91,7 @@ def _checar_um_arquivo(registro, pasta, pasta_erros):
         # (pasta_erros, Job status "erro") que já era usado antes daqui
         # existir. A linha em ChecagemFila se limpa sozinha no próximo
         # ciclo (o arquivo já não está mais em robo_pasta_entrada).
-        tratar_erro(caminho, None, "erro_pdf", erro, pasta_erros)
+        tratar_erro(caminho, None, "erro_pdf", erro, pasta_erros, ferramenta_slug=ferramenta_slug)
         registrar_log(f"Checagem: falha ao ler {registro.nome_arquivo}: {erro}")
         return
 
@@ -100,23 +101,25 @@ def _checar_um_arquivo(registro, pasta, pasta_erros):
     motivo = confianca.get("motivo")
 
     if not dominante:
-        atualizar_apos_checagem(registro.id, NAO_ENCONTRADO, None, nivel, motivo)
+        atualizar_apos_checagem(registro.id, NAO_ENCONTRADO, None, nivel, motivo, ferramenta_slug=ferramenta_slug)
         return
 
     processo = dominante["processo"]
 
-    if existe_relatorio_gerado_para_processo(processo):
+    if existe_relatorio_gerado_para_processo(processo, ferramenta_slug=ferramenta_slug):
         atualizar_apos_checagem(
             registro.id, DUPLICADO_RELATORIO, processo, nivel,
             "Já existe um relatório gerado para esse número de processo.",
+            ferramenta_slug=ferramenta_slug,
         )
         return
 
-    if existe_conflito_de_processo(processo, exceto_nome_arquivo=registro.nome_arquivo):
+    if existe_conflito_de_processo(processo, exceto_nome_arquivo=registro.nome_arquivo, ferramenta_slug=ferramenta_slug):
         atualizar_apos_checagem(
             registro.id, DUPLICADO_EM_ANDAMENTO, processo, nivel,
             "Esse número de processo já está sendo processado por outro arquivo na fila.",
+            ferramenta_slug=ferramenta_slug,
         )
         return
 
-    atualizar_apos_checagem(registro.id, APROVADO, processo, nivel, motivo)
+    atualizar_apos_checagem(registro.id, APROVADO, processo, nivel, motivo, ferramenta_slug=ferramenta_slug)

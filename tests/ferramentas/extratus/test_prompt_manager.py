@@ -1,6 +1,6 @@
 import pytest
 
-from app.ferramentas.extratus.core import prompt_manager
+from app.ferramentas.nucleo_relatorios.core import prompt_manager
 
 
 @pytest.fixture

@@ -1,5 +1,5 @@
-from app.ferramentas.extratus.core.pdf_manager import listar_pdfs
-from app.ferramentas.extratus.core.processo_filter import filtrar_fila
+from app.ferramentas.nucleo_relatorios.core.pdf_manager import listar_pdfs
+from app.ferramentas.nucleo_relatorios.core.processo_filter import filtrar_fila
 
 
 def montar_fila(

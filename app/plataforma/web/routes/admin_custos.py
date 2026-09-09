@@ -8,10 +8,10 @@ from app.ferramentas.extratus.core.config_manager import (
     atualizar_parametros_economia as _atualizar_parametros_economia_extratus,
     carregar_config as _carregar_config_extratus,
 )
-from app.ferramentas.extratus.db.checagem_fila import (
+from app.ferramentas.nucleo_relatorios.db.checagem_fila import (
     resolver_solicitantes as _resolver_solicitantes_extratus,
 )
-from app.ferramentas.extratus.db.jobs import (
+from app.ferramentas.nucleo_relatorios.db.jobs import (
     detalhar_custo_e_quantidade_por_usuario as _detalhar_custo_e_quantidade_por_usuario_extratus,
     listar_jobs as _listar_jobs_extratus,
     resumo_mes_atual as _resumo_mes_atual_extratus,

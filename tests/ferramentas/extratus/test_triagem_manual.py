@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from app.ferramentas.extratus.db import triagem_manual as db_triagem
+from app.ferramentas.nucleo_relatorios.db import triagem_manual as db_triagem
 
 # IDs negativos de propósito — não colidem com usuário real, mesmo padrão
 # de tests/ferramentas/extratus/test_checagem_fila.py e test_jobs.py.

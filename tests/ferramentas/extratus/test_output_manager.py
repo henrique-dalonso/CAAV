@@ -1,4 +1,4 @@
-from app.ferramentas.extratus.core.output_manager import gerar_caminho_unico, mover_por_confianca
+from app.ferramentas.nucleo_relatorios.core.output_manager import gerar_caminho_unico, mover_por_confianca
 
 
 def test_gerar_caminho_unico_devolve_mesmo_caminho_se_nao_existe(tmp_path):

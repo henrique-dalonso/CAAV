@@ -305,7 +305,7 @@ def test_checagem_aburesi_isolada_da_checagem_extratus(limpar_checagem_teste):
     """Confirma que a tabela é realmente separada (__tablename__
     checagemfila_aburesi) — um nome marcado aqui não deveria aparecer na
     checagem do outro módulo."""
-    from app.ferramentas.extratus.db.checagem_fila import estado_por_nome as estado_extratus
+    from app.ferramentas.nucleo_relatorios.db.checagem_fila import estado_por_nome as estado_extratus
 
     nome = f"{PREFIXO_TESTE}isolamento.pdf"
     _sincronizar_so_de_teste({nome})

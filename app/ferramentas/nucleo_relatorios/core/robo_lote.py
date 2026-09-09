@@ -4,23 +4,23 @@ from pathlib import Path
 
 import anthropic
 
-from app.ferramentas.extratus.core.app_logger import registrar_log
+from app.ferramentas.nucleo_relatorios.core.app_logger import registrar_log
 from app.ferramentas.extratus.core.config_manager import carregar_config
-from app.ferramentas.extratus.core.ia_cliente import (
+from app.ferramentas.nucleo_relatorios.core.ia_cliente import (
     extrair_dados_e_uso,
     montar_diagnostico_com_triagem,
     montar_parametros_mensagem,
 )
-from app.ferramentas.extratus.core.pdf_isolado import executar_isolado
-from app.ferramentas.extratus.core.pdf_manager import listar_pdfs
-from app.ferramentas.extratus.core.pipeline import (
+from app.ferramentas.nucleo_relatorios.core.pdf_isolado import executar_isolado
+from app.ferramentas.nucleo_relatorios.core.pdf_manager import listar_pdfs
+from app.ferramentas.nucleo_relatorios.core.pipeline import (
     finalizar_processamento,
     tratar_erro,
 )
-from app.ferramentas.extratus.core.prompt_manager import carregar_instrucoes_relatorio
-from app.ferramentas.extratus.core.texto_manager import extrair_paginas_pdf
-from app.ferramentas.extratus.db.checagem_fila import listar_aprovados_por_nome
-from app.ferramentas.extratus.db.lotes import (
+from app.ferramentas.nucleo_relatorios.core.prompt_manager import carregar_instrucoes_relatorio
+from app.ferramentas.nucleo_relatorios.core.texto_manager import extrair_paginas_pdf
+from app.ferramentas.nucleo_relatorios.db.checagem_fila import listar_aprovados_por_nome
+from app.ferramentas.nucleo_relatorios.db.lotes import (
     criar_lote,
     listar_arquivos_ja_reivindicados,
     listar_itens_do_lote,
@@ -28,6 +28,7 @@ from app.ferramentas.extratus.db.lotes import (
     marcar_item_concluido,
     marcar_lote_concluido,
 )
+from app.ferramentas.nucleo_relatorios.db.models import FERRAMENTA_SLUG_PADRAO
 
 
 def extrair_paginas_isolado(pdf):
@@ -64,7 +65,7 @@ def _obter_cliente():
     return anthropic.Anthropic(api_key=api_key)
 
 
-def _coletar_lotes_pendentes(cliente, config):
+def _coletar_lotes_pendentes(cliente, config, tipo=None, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Confere todo lote com status "enviado": se já terminou na Anthropic,
     processa cada resultado (sucesso ou erro) e fecha o lote. Devolve True
     se sobrar algum lote ainda em andamento depois disso (nesse caso não
@@ -77,14 +78,16 @@ def _coletar_lotes_pendentes(cliente, config):
 
     algum_ainda_em_andamento = False
 
-    for lote in listar_lotes_em_andamento():
+    for lote in listar_lotes_em_andamento(ferramenta_slug=ferramenta_slug):
         info_lote = cliente.messages.batches.retrieve(lote.batch_id)
 
         if info_lote.processing_status != "ended":
             algum_ainda_em_andamento = True
             continue
 
-        itens_por_custom_id = {item.custom_id: item for item in listar_itens_do_lote(lote.id)}
+        itens_por_custom_id = {
+            item.custom_id: item for item in listar_itens_do_lote(lote.id, ferramenta_slug=ferramenta_slug)
+        }
 
         for resultado in cliente.messages.batches.results(lote.batch_id):
             item = itens_por_custom_id.get(resultado.custom_id)
@@ -124,14 +127,16 @@ def _coletar_lotes_pendentes(cliente, config):
                         pasta_erros,
                         usuario_id=None,
                         solicitante_id=item.solicitante_id,
+                        tipo=tipo,
+                        ferramenta_slug=ferramenta_slug,
                     )
-                    marcar_item_concluido(item.id, "sucesso")
+                    marcar_item_concluido(item.id, "sucesso", ferramenta_slug=ferramenta_slug)
                 except Exception as erro:
                     tratar_erro(
                         caminho_pdf, item.processo_detectado, "erro_ia", erro, pasta_erros,
-                        solicitante_id=item.solicitante_id,
+                        solicitante_id=item.solicitante_id, ferramenta_slug=ferramenta_slug,
                     )
-                    marcar_item_concluido(item.id, "erro")
+                    marcar_item_concluido(item.id, "erro", ferramenta_slug=ferramenta_slug)
             else:
                 # "errored", "expired" ou "canceled" — falha do lado da
                 # Anthropic pra esse item específico, não derruba os
@@ -141,16 +146,16 @@ def _coletar_lotes_pendentes(cliente, config):
                 )
                 tratar_erro(
                     caminho_pdf, item.processo_detectado, "erro_ia", mensagem, pasta_erros,
-                    solicitante_id=item.solicitante_id,
+                    solicitante_id=item.solicitante_id, ferramenta_slug=ferramenta_slug,
                 )
-                marcar_item_concluido(item.id, "erro")
+                marcar_item_concluido(item.id, "erro", ferramenta_slug=ferramenta_slug)
 
-        marcar_lote_concluido(lote.id)
+        marcar_lote_concluido(lote.id, ferramenta_slug=ferramenta_slug)
 
     return algum_ainda_em_andamento
 
 
-def _preparar_novo_lote(config, cliente):
+def _preparar_novo_lote(config, cliente, tipo=None, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Olha os PDFs em robo_pasta_entrada ainda não reivindicados por
     nenhum lote (passado ou presente) e monta os itens elegíveis pra um
     lote novo. Arquivos que já estourarem os limites de segurança
@@ -171,9 +176,9 @@ def _preparar_novo_lote(config, cliente):
     pasta_robo = config.get("robo_pasta_entrada")
     pasta_erros = config.get("pasta_erros")
 
-    ja_reivindicados = listar_arquivos_ja_reivindicados()
-    aprovados = listar_aprovados_por_nome()
-    instrucoes = carregar_instrucoes_relatorio()
+    ja_reivindicados = listar_arquivos_ja_reivindicados(ferramenta_slug=ferramenta_slug)
+    aprovados = listar_aprovados_por_nome(ferramenta_slug=ferramenta_slug)
+    instrucoes = carregar_instrucoes_relatorio(tipo=tipo)
 
     itens_para_lote = []
 
@@ -215,9 +220,12 @@ def _preparar_novo_lote(config, cliente):
                     pdf, paginas=paginas, total_paginas=total_paginas, cliente=cliente
                 )
             )
-            parametros = montar_parametros_mensagem(pdf, processo, instrucoes, diagnostico=diagnostico)
+            parametros = montar_parametros_mensagem(pdf, processo, instrucoes, diagnostico=diagnostico, tipo=tipo)
         except Exception as erro:
-            tratar_erro(pdf, processo, "erro_ia", erro, pasta_erros, solicitante_id=checagem.solicitante_id)
+            tratar_erro(
+                pdf, processo, "erro_ia", erro, pasta_erros,
+                solicitante_id=checagem.solicitante_id, ferramenta_slug=ferramenta_slug,
+            )
             continue
 
         if paginas_excluidas_triagem or paginas_transcritas:
@@ -251,7 +259,7 @@ def _preparar_novo_lote(config, cliente):
     return itens_para_lote
 
 
-def _submeter_lote(cliente, itens):
+def _submeter_lote(cliente, itens, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     lote_anthropic = cliente.messages.batches.create(
         requests=[
             {"custom_id": item["custom_id"], "params": item["params"]}
@@ -259,7 +267,7 @@ def _submeter_lote(cliente, itens):
         ]
     )
 
-    lote = criar_lote(lote_anthropic.id, itens)
+    lote = criar_lote(lote_anthropic.id, itens, ferramenta_slug=ferramenta_slug)
 
     registrar_log(
         f"Lote enviado ao Robô: {lote_anthropic.id} ({len(itens)} arquivo(s))."
@@ -268,7 +276,7 @@ def _submeter_lote(cliente, itens):
     return lote
 
 
-def rodar_ciclo_robo():
+def rodar_ciclo_robo(tipo=None, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Um "tick" do vigia do Robô — chamado periodicamente pelo
     `robo_watcher.py`. Fecha lote(s) já enviados pra Anthropic SEMPRE,
     mesmo com `robo_ativo` desligado — um lote, uma vez enviado, continua
@@ -281,9 +289,9 @@ def rodar_ciclo_robo():
 
     algum_lote_em_andamento = False
 
-    if listar_lotes_em_andamento():
+    if listar_lotes_em_andamento(ferramenta_slug=ferramenta_slug):
         cliente = _obter_cliente()
-        algum_lote_em_andamento = _coletar_lotes_pendentes(cliente, config)
+        algum_lote_em_andamento = _coletar_lotes_pendentes(cliente, config, tipo=tipo, ferramenta_slug=ferramenta_slug)
 
     if not config.get("robo_ativo"):
         return
@@ -292,7 +300,7 @@ def rodar_ciclo_robo():
         return  # só um lote em voo por vez
 
     cliente = _obter_cliente()
-    itens = _preparar_novo_lote(config, cliente)
+    itens = _preparar_novo_lote(config, cliente, tipo=tipo, ferramenta_slug=ferramenta_slug)
 
     if itens:
-        _submeter_lote(cliente, itens)
+        _submeter_lote(cliente, itens, ferramenta_slug=ferramenta_slug)

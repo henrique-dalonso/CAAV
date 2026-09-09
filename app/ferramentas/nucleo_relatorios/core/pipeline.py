@@ -1,16 +1,17 @@
 from pathlib import Path
 
-from app.ferramentas.extratus.core.app_logger import registrar_log
-from app.ferramentas.extratus.core.processo_detector import analisar_pdf
-from app.ferramentas.extratus.core.ia_cliente import gerar_relatorio_claude
-from app.ferramentas.extratus.core.relatorio_manager import salvar_relatorio_docx
-from app.ferramentas.extratus.core.output_manager import (
+from app.ferramentas.nucleo_relatorios.core.app_logger import registrar_log
+from app.ferramentas.nucleo_relatorios.core.processo_detector import analisar_pdf
+from app.ferramentas.nucleo_relatorios.core.ia_cliente import gerar_relatorio_claude
+from app.ferramentas.nucleo_relatorios.core.relatorio_manager import salvar_relatorio_docx
+from app.ferramentas.nucleo_relatorios.core.output_manager import (
     gerar_caminho_unico,
     mover_para_erros,
     mover_por_confianca
 )
-from app.ferramentas.extratus.core.nomeador_relatorio import gerar_nome_relatorio
-from app.ferramentas.extratus.db.jobs import registrar_processado, registrar_erro
+from app.ferramentas.nucleo_relatorios.core.nomeador_relatorio import gerar_nome_relatorio
+from app.ferramentas.nucleo_relatorios.db.jobs import registrar_processado, registrar_erro
+from app.ferramentas.nucleo_relatorios.db.models import FERRAMENTA_SLUG_PADRAO
 
 
 def obter_dados_deteccao(caminho_pdf):
@@ -68,7 +69,16 @@ def ajustar_confianca_pos_ia(confianca, uso_ia):
     return confianca
 
 
-def tratar_erro(pdf, processo, tipo_erro, erro, pasta_erros, usuario_id=None, solicitante_id=None):
+def tratar_erro(
+    pdf,
+    processo,
+    tipo_erro,
+    erro,
+    pasta_erros,
+    usuario_id=None,
+    solicitante_id=None,
+    ferramenta_slug=FERRAMENTA_SLUG_PADRAO,
+):
     """Registra uma falha de processamento (PDF, IA, docx ou movimentação)
     e move o PDF pra pasta de erros. Reaproveitada tanto pelo fluxo
     síncrono (`processar_pdf`) quanto pelo Robô (itens de um lote do
@@ -95,6 +105,7 @@ def tratar_erro(pdf, processo, tipo_erro, erro, pasta_erros, usuario_id=None, so
         destino_pdf=destino_pdf,
         usuario_id=usuario_id,
         solicitante_id=solicitante_id,
+        ferramenta_slug=ferramenta_slug,
     )
 
     return {
@@ -117,6 +128,8 @@ def finalizar_processamento(
     pasta_erros,
     usuario_id=None,
     solicitante_id=None,
+    tipo=None,
+    ferramenta_slug=FERRAMENTA_SLUG_PADRAO,
 ):
     """Etapa final, depois que os dados do relatório já existem (vieram de
     uma chamada em tempo real ou de um resultado de lote coletado depois):
@@ -126,15 +139,20 @@ def finalizar_processamento(
     lugares divergentes fazendo a mesma coisa.
 
     `solicitante_id`: ver docstring de Job.solicitante_id — só usado pelo
-    Robô."""
+    Robô. `tipo` (ver nucleo_relatorios/tipos.py) diz qual template .docx
+    preencher — quando None, salvar_relatorio_docx cai no template
+    "bancario" (único que existe hoje)."""
     try:
         nome_relatorio = gerar_nome_relatorio(processo)
         caminho_saida_base = Path(pasta_saida) / nome_relatorio
         caminho_saida = gerar_caminho_unico(caminho_saida_base)
 
-        salvar_relatorio_docx(dados_relatorio, caminho_saida)
+        template_docx_path = tipo.template_docx_path if tipo is not None else None
+        salvar_relatorio_docx(dados_relatorio, caminho_saida, template_docx_path=template_docx_path)
     except Exception as erro:
-        return tratar_erro(pdf, processo, "erro_docx", erro, pasta_erros, usuario_id, solicitante_id)
+        return tratar_erro(
+            pdf, processo, "erro_docx", erro, pasta_erros, usuario_id, solicitante_id, ferramenta_slug=ferramenta_slug
+        )
 
     try:
         destino_pdf = mover_por_confianca(
@@ -144,7 +162,10 @@ def finalizar_processamento(
             pasta_revisao
         )
     except Exception as erro:
-        return tratar_erro(pdf, processo, "erro_movimentacao", erro, pasta_erros, usuario_id, solicitante_id)
+        return tratar_erro(
+            pdf, processo, "erro_movimentacao", erro, pasta_erros, usuario_id, solicitante_id,
+            ferramenta_slug=ferramenta_slug,
+        )
 
     registrar_log(
         f"Relatório gerado (confiança {confianca.get('nivel')}): {caminho_saida}"
@@ -161,6 +182,8 @@ def finalizar_processamento(
         uso_ia=uso_ia,
         usuario_id=usuario_id,
         solicitante_id=solicitante_id,
+        ferramenta_slug=ferramenta_slug,
+        tipo_relatorio=(tipo.chave if tipo is not None else None),
     )
 
     return {
@@ -181,6 +204,8 @@ def processar_pdf(
     pasta_erros,
     pasta_revisao,
     usuario_id=None,
+    tipo=None,
+    ferramenta_slug=FERRAMENTA_SLUG_PADRAO,
 ):
     """Processa um único PDF: detecta o processo, gera o relatório, move o
     arquivo conforme a confiança da detecção e registra o resultado.
@@ -198,12 +223,12 @@ def processar_pdf(
     try:
         processo, confianca = obter_dados_deteccao(pdf)
     except Exception as erro:
-        return tratar_erro(pdf, None, "erro_pdf", erro, pasta_erros, usuario_id)
+        return tratar_erro(pdf, None, "erro_pdf", erro, pasta_erros, usuario_id, ferramenta_slug=ferramenta_slug)
 
     try:
-        dados_relatorio, uso_ia = gerar_relatorio_claude(pdf, processo)
+        dados_relatorio, uso_ia = gerar_relatorio_claude(pdf, processo, tipo=tipo)
     except Exception as erro:
-        return tratar_erro(pdf, processo, "erro_ia", erro, pasta_erros, usuario_id)
+        return tratar_erro(pdf, processo, "erro_ia", erro, pasta_erros, usuario_id, ferramenta_slug=ferramenta_slug)
 
     confianca = ajustar_confianca_pos_ia(confianca, uso_ia)
 
@@ -218,4 +243,6 @@ def processar_pdf(
         pasta_revisao,
         pasta_erros,
         usuario_id,
+        tipo=tipo,
+        ferramenta_slug=ferramenta_slug,
     )

@@ -4,6 +4,16 @@ from typing import Optional
 from sqlmodel import SQLModel, Field
 
 
+# Valor único hoje (Extratus-Relatórios é a única ferramenta usando este
+# motor compartilhado) — ver docstring do módulo nucleo_relatorios/tipos.py.
+# Repetido como default literal em cada tabela abaixo (em vez de um import
+# de app.ferramentas.extratus) porque este módulo de banco não deve
+# depender de nenhuma ferramenta específica — é o motor compartilhado,
+# quem sabe qual ferramenta é dono de cada linha é sempre quem chama.
+FERRAMENTA_SLUG_PADRAO = "extratus-relatorios"
+TIPO_RELATORIO_PADRAO = "bancario"
+
+
 class Job(SQLModel, table=True):
     """Um registro de processamento de PDF — sucesso ou erro.
 
@@ -12,6 +22,15 @@ class Job(SQLModel, table=True):
     """
 
     id: Optional[int] = Field(default=None, primary_key=True)
+
+    # Qual ferramenta (Extratus-Relatórios hoje, outras no futuro — ver
+    # nucleo_relatorios/tipos.py) e qual tipo de relatório dentro dela
+    # ("bancario" hoje, EMENDA/CONDENAÇÃO no futuro) essa linha pertence.
+    # Toda consulta em db/jobs.py filtra por ferramenta_slug explicitamente
+    # — decisão arquitetural tomada agora pra não precisar de um retrofit
+    # bem mais difícil quando o dado do Aburesi for unificado aqui depois.
+    ferramenta_slug: str = Field(default=FERRAMENTA_SLUG_PADRAO, index=True)
+    tipo_relatorio: str = Field(default=TIPO_RELATORIO_PADRAO)
 
     usuario_id: Optional[int] = Field(default=None, foreign_key="usuario.id")
 
@@ -62,6 +81,8 @@ class LoteRobo(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
+    ferramenta_slug: str = Field(default=FERRAMENTA_SLUG_PADRAO, index=True)
+
     batch_id: str  # id do lote devolvido pela Anthropic (ex: "msgbatch_...")
     status: str  # "enviado" ou "concluido"
 
@@ -76,6 +97,8 @@ class ItemLoteRobo(SQLModel, table=True):
     pra terminar o processamento (gerar .docx, mover PDF, registrar Job)."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
+
+    ferramenta_slug: str = Field(default=FERRAMENTA_SLUG_PADRAO, index=True)
 
     lote_id: int = Field(foreign_key="loterobo.id")
     custom_id: str
@@ -127,6 +150,8 @@ class ChecagemFila(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
+    ferramenta_slug: str = Field(default=FERRAMENTA_SLUG_PADRAO, index=True)
+
     nome_arquivo: str = Field(unique=True, index=True)
     status: str = Field(default="pendente")
 
@@ -162,6 +187,8 @@ class RegistroConferencia(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
+    ferramenta_slug: str = Field(default=FERRAMENTA_SLUG_PADRAO, index=True)
+
     nome_arquivo: str
     tipo_inconsistencia: str  # o status que o ChecagemFila tinha (DUPLICADO_RELATORIO etc)
     decisao: str  # "aprovado" ou "descartado"
@@ -186,6 +213,8 @@ class UploadFilaRobo(SQLModel, table=True):
     veio — por isso esse é um registro à parte, não um campo a mais lá."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
+
+    ferramenta_slug: str = Field(default=FERRAMENTA_SLUG_PADRAO, index=True)
 
     nome_arquivo: str = Field(index=True)
     usuario_id: int = Field(foreign_key="usuario.id")
@@ -218,6 +247,8 @@ class TriagemManual(SQLModel, table=True):
     """
 
     id: Optional[int] = Field(default=None, primary_key=True)
+
+    ferramenta_slug: str = Field(default=FERRAMENTA_SLUG_PADRAO, index=True)
 
     usuario_id: int = Field(foreign_key="usuario.id")
     nome_arquivo: str

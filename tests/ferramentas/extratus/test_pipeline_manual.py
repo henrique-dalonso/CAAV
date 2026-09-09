@@ -1,8 +1,8 @@
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from app.ferramentas.extratus.core import pipeline_manual
-from app.ferramentas.extratus.db import triagem_manual as db_triagem
+from app.ferramentas.nucleo_relatorios.core import pipeline_manual
+from app.ferramentas.nucleo_relatorios.db import triagem_manual as db_triagem
 
 # ID negativo de propósito — não colide com usuário real (FK não é
 # imposta pelo SQLite por padrão neste projeto, mesmo padrão de

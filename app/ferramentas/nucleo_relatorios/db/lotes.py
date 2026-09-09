@@ -2,11 +2,11 @@ from datetime import datetime
 
 from sqlmodel import select
 
-from app.ferramentas.extratus.db.models import ItemLoteRobo, LoteRobo
+from app.ferramentas.nucleo_relatorios.db.models import FERRAMENTA_SLUG_PADRAO, ItemLoteRobo, LoteRobo
 from app.plataforma.db.session import obter_sessao
 
 
-def criar_lote(batch_id, itens):
+def criar_lote(batch_id, itens, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Registra um novo lote enviado ao Batch API, com um `ItemLoteRobo`
     por PDF incluído nele. `itens` é uma lista de dicts com custom_id,
     arquivo_pdf, processo_detectado, confianca_nivel, confianca_motivo,
@@ -14,7 +14,7 @@ def criar_lote(batch_id, itens):
     db/models.py).
     """
     with obter_sessao() as sessao:
-        lote = LoteRobo(batch_id=batch_id, status="enviado")
+        lote = LoteRobo(batch_id=batch_id, status="enviado", ferramenta_slug=ferramenta_slug)
         sessao.add(lote)
         sessao.commit()
         sessao.refresh(lote)
@@ -30,6 +30,7 @@ def criar_lote(batch_id, itens):
                     confianca_motivo=item.get("confianca_motivo"),
                     custo_transcricao_usd=item.get("custo_transcricao_usd") or 0.0,
                     solicitante_id=item.get("solicitante_id"),
+                    ferramenta_slug=ferramenta_slug,
                 )
             )
 
@@ -39,20 +40,24 @@ def criar_lote(batch_id, itens):
         return lote
 
 
-def listar_lotes_em_andamento():
+def listar_lotes_em_andamento(ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     with obter_sessao() as sessao:
-        consulta = select(LoteRobo).where(LoteRobo.status == "enviado")
+        consulta = select(LoteRobo).where(
+            LoteRobo.ferramenta_slug == ferramenta_slug, LoteRobo.status == "enviado"
+        )
         return sessao.exec(consulta).all()
 
 
-def obter_estatisticas_lotes():
+def obter_estatisticas_lotes(ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Resumo rápido pra tela de Configurações (admin) — total de lotes já
     concluídos e quando foi o último, sem precisar abrir Relatórios do
     Robô pra ter essa noção. `None` em ultimo_concluido_em quando o Robô
     nunca terminou um lote ainda (site novo, ou nunca foi ligado)."""
     with obter_sessao() as sessao:
         total_concluidos = sessao.exec(
-            select(LoteRobo).where(LoteRobo.status == "concluido")
+            select(LoteRobo).where(
+                LoteRobo.ferramenta_slug == ferramenta_slug, LoteRobo.status == "concluido"
+            )
         ).all()
 
         ultimo_concluido_em = max(
@@ -66,13 +71,15 @@ def obter_estatisticas_lotes():
         }
 
 
-def listar_itens_do_lote(lote_id):
+def listar_itens_do_lote(lote_id, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     with obter_sessao() as sessao:
-        consulta = select(ItemLoteRobo).where(ItemLoteRobo.lote_id == lote_id)
+        consulta = select(ItemLoteRobo).where(
+            ItemLoteRobo.lote_id == lote_id, ItemLoteRobo.ferramenta_slug == ferramenta_slug
+        )
         return sessao.exec(consulta).all()
 
 
-def listar_arquivos_ja_reivindicados():
+def listar_arquivos_ja_reivindicados(ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Nomes de arquivo com um `ItemLoteRobo` num lote AINDA em andamento
     (`LoteRobo.status == "enviado"`) — evita reenviar o mesmo PDF pra um
     lote novo enquanto ele ainda está em voo.
@@ -95,26 +102,26 @@ def listar_arquivos_ja_reivindicados():
         consulta = (
             select(ItemLoteRobo.arquivo_pdf)
             .join(LoteRobo, LoteRobo.id == ItemLoteRobo.lote_id)
-            .where(LoteRobo.status == "enviado")
+            .where(LoteRobo.ferramenta_slug == ferramenta_slug, LoteRobo.status == "enviado")
         )
         return set(sessao.exec(consulta).all())
 
 
-def marcar_item_concluido(item_id, status):
+def marcar_item_concluido(item_id, status, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     with obter_sessao() as sessao:
         item = sessao.get(ItemLoteRobo, item_id)
 
-        if item:
+        if item and item.ferramenta_slug == ferramenta_slug:
             item.status = status
             sessao.add(item)
             sessao.commit()
 
 
-def marcar_lote_concluido(lote_id):
+def marcar_lote_concluido(lote_id, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     with obter_sessao() as sessao:
         lote = sessao.get(LoteRobo, lote_id)
 
-        if lote:
+        if lote and lote.ferramenta_slug == ferramenta_slug:
             lote.status = "concluido"
             lote.finalizado_em = datetime.now()
             sessao.add(lote)

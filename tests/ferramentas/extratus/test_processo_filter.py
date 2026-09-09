@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from app.ferramentas.extratus.core.processo_filter import filtrar_fila, filtrar_por_nome, normalizar_processo
+from app.ferramentas.nucleo_relatorios.core.processo_filter import filtrar_fila, filtrar_por_nome, normalizar_processo
 
 
 def test_normalizar_processo_remove_espacos():

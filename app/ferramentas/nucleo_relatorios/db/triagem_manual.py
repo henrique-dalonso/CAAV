@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import func, select, update
 
-from app.ferramentas.extratus.db.models import TriagemManual
+from app.ferramentas.nucleo_relatorios.db.models import FERRAMENTA_SLUG_PADRAO, TriagemManual
 from app.plataforma.db.session import obter_sessao
 from app.plataforma.web.eventos_sse import avisar_mudanca
 
@@ -43,12 +43,13 @@ MENSAGENS_INCONSISTENCIA = {
 }
 
 
-def criar_registro(nome_arquivo, caminho_pdf, usuario_id):
+def criar_registro(nome_arquivo, caminho_pdf, usuario_id, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     with obter_sessao() as sessao:
         registro = TriagemManual(
             nome_arquivo=nome_arquivo,
             caminho_pdf=str(caminho_pdf),
             usuario_id=usuario_id,
+            ferramenta_slug=ferramenta_slug,
         )
         sessao.add(registro)
         sessao.commit()
@@ -57,12 +58,21 @@ def criar_registro(nome_arquivo, caminho_pdf, usuario_id):
         return registro
 
 
-def obter_registro(registro_id):
+def obter_registro(registro_id, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     with obter_sessao() as sessao:
-        return sessao.get(TriagemManual, registro_id)
+        registro = sessao.get(TriagemManual, registro_id)
+        return registro if registro and registro.ferramenta_slug == ferramenta_slug else None
 
 
-def atualizar_apos_triagem(registro_id, status, processo_detectado, confianca_nivel, confianca_motivo, origem_duplicado=None):
+def atualizar_apos_triagem(
+    registro_id,
+    status,
+    processo_detectado,
+    confianca_nivel,
+    confianca_motivo,
+    origem_duplicado=None,
+    ferramenta_slug=FERRAMENTA_SLUG_PADRAO,
+):
     """Resultado da checagem de duplicidade (mesma lógica de
     core/checagem_lote.py, reaproveitada em core/pipeline_manual.py) —
     usada tanto pras inconsistências (trava, espera Conferências) quanto
@@ -86,7 +96,7 @@ def atualizar_apos_triagem(registro_id, status, processo_detectado, confianca_ni
     with obter_sessao() as sessao:
         registro = sessao.get(TriagemManual, registro_id)
 
-        if not registro:
+        if not registro or registro.ferramenta_slug != ferramenta_slug:
             return None
 
         registro.status = status
@@ -118,11 +128,11 @@ def atualizar_apos_triagem(registro_id, status, processo_detectado, confianca_ni
         return registro
 
 
-def concluir(registro_id, job_id):
+def concluir(registro_id, job_id, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     with obter_sessao() as sessao:
         registro = sessao.get(TriagemManual, registro_id)
 
-        if not registro:
+        if not registro or registro.ferramenta_slug != ferramenta_slug:
             return None
 
         registro.status = CONCLUIDO
@@ -138,11 +148,11 @@ def concluir(registro_id, job_id):
         return registro
 
 
-def marcar_erro(registro_id, mensagem):
+def marcar_erro(registro_id, mensagem, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     with obter_sessao() as sessao:
         registro = sessao.get(TriagemManual, registro_id)
 
-        if not registro:
+        if not registro or registro.ferramenta_slug != ferramenta_slug:
             return None
 
         registro.status = ERRO
@@ -158,7 +168,7 @@ def marcar_erro(registro_id, mensagem):
         return registro
 
 
-def aprovar_manualmente(registro_id, processo_manual=None):
+def aprovar_manualmente(registro_id, processo_manual=None, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Ação "Prosseguir" do painel de Conferências manual — mesma ideia
     de checagem_fila.aprovar_manualmente: pula a trava automática,
     confiança sempre forçada pra "revisão" (nunca herda alta confiança
@@ -188,7 +198,11 @@ def aprovar_manualmente(registro_id, processo_manual=None):
         try:
             resultado = sessao.exec(
                 update(TriagemManual)
-                .where(TriagemManual.id == registro_id, TriagemManual.status.in_(STATUS_INCONSISTENCIA))
+                .where(
+                    TriagemManual.id == registro_id,
+                    TriagemManual.ferramenta_slug == ferramenta_slug,
+                    TriagemManual.status.in_(STATUS_INCONSISTENCIA),
+                )
                 .values(**valores)
             )
             sessao.commit()
@@ -220,11 +234,11 @@ def aprovar_manualmente(registro_id, processo_manual=None):
         return registro
 
 
-def descartar(registro_id):
+def descartar(registro_id, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     with obter_sessao() as sessao:
         registro = sessao.get(TriagemManual, registro_id)
 
-        if not registro:
+        if not registro or registro.ferramenta_slug != ferramenta_slug:
             return
 
         sessao.delete(registro)
@@ -233,7 +247,7 @@ def descartar(registro_id):
         avisar_mudanca()
 
 
-def listar_estado_do_usuario(usuario_id):
+def listar_estado_do_usuario(usuario_id, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """{"pendentes": [...], "processando": [...]} — todos os registros
     ativos do próprio usuário. Henrique, 2026-08-12: uma inconsistência
     (trava a triagem, espera Conferências) NÃO some de Pendentes — ela
@@ -243,7 +257,9 @@ def listar_estado_do_usuario(usuario_id):
     Descartar apaga a linha). Concluído/erro entram em "processando"
     (o front mostra o badge final antes de dispensar)."""
     with obter_sessao() as sessao:
-        consulta = select(TriagemManual).where(TriagemManual.usuario_id == usuario_id)
+        consulta = select(TriagemManual).where(
+            TriagemManual.ferramenta_slug == ferramenta_slug, TriagemManual.usuario_id == usuario_id
+        )
         registros = sessao.exec(consulta).all()
 
         return {
@@ -252,16 +268,17 @@ def listar_estado_do_usuario(usuario_id):
         }
 
 
-def listar_inconsistencias_do_usuario(usuario_id):
+def listar_inconsistencias_do_usuario(usuario_id, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     with obter_sessao() as sessao:
         consulta = select(TriagemManual).where(
+            TriagemManual.ferramenta_slug == ferramenta_slug,
             TriagemManual.usuario_id == usuario_id,
             TriagemManual.status.in_(STATUS_INCONSISTENCIA),
         )
         return sessao.exec(consulta).all()
 
 
-def listar_erros_do_usuario(usuario_id):
+def listar_erros_do_usuario(usuario_id, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Registros de erro do PRÓPRIO usuário no fluxo manual — alimenta a
     aba "Minhas" do sininho (Henrique, 2026-08-13). Fica visível enquanto
     o registro existir — some sozinho quando a pessoa dispensa com o "×"
@@ -269,26 +286,28 @@ def listar_erros_do_usuario(usuario_id):
     uma notificação "lida"."""
     with obter_sessao() as sessao:
         consulta = select(TriagemManual).where(
+            TriagemManual.ferramenta_slug == ferramenta_slug,
             TriagemManual.usuario_id == usuario_id,
             TriagemManual.status == ERRO,
         )
         return sessao.exec(consulta).all()
 
 
-def contar_registros_recentes_do_usuario(usuario_id, desde):
+def contar_registros_recentes_do_usuario(usuario_id, desde, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Quantos arquivos esse usuário enviou (aceitos, viraram registro de
     triagem) desde `desde` — usado pra limitar repetição na rota de
     upload (duplo clique, várias abas, script), já que cada registro
     aceito dispara uma chamada de IA cobrada."""
     with obter_sessao() as sessao:
         consulta = select(func.count()).select_from(TriagemManual).where(
+            TriagemManual.ferramenta_slug == ferramenta_slug,
             TriagemManual.usuario_id == usuario_id,
             TriagemManual.criado_em > desde,
         )
         return sessao.exec(consulta).one()
 
 
-def contar_inconsistencias_ativas_do_usuario(usuario_id):
+def contar_inconsistencias_ativas_do_usuario(usuario_id, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Quantas Conferências do PRÓPRIO usuário estão pendentes AGORA, sem
     filtro de tempo — alimenta o badge "+N" da aba "Gerar Relatório URGENTE".
     Henrique, 2026-08-13: "não pode sumir só de entrar [na aba],
@@ -299,13 +318,14 @@ def contar_inconsistencias_ativas_do_usuario(usuario_id):
     já vale pro sininho de notificações)."""
     with obter_sessao() as sessao:
         consulta = select(func.count()).select_from(TriagemManual).where(
+            TriagemManual.ferramenta_slug == ferramenta_slug,
             TriagemManual.usuario_id == usuario_id,
             TriagemManual.status.in_(STATUS_INCONSISTENCIA),
         )
         return sessao.exec(consulta).one()
 
 
-def contar_inconsistencias_novas_do_usuario(usuario_id, desde):
+def contar_inconsistencias_novas_do_usuario(usuario_id, desde, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Quantas Conferências do PRÓPRIO usuário (inconsistência esperando
     decisão em "Gerar Relatório URGENTE") surgiram desde `desde` — alimenta o
     badge "+N" (cor de revisão, único número dessa aba) em rotulos.py.
@@ -315,6 +335,7 @@ def contar_inconsistencias_novas_do_usuario(usuario_id, desde):
     ela nunca é reescrita de novo, então essa data não se move sozinha."""
     with obter_sessao() as sessao:
         consulta = select(func.count()).select_from(TriagemManual).where(
+            TriagemManual.ferramenta_slug == ferramenta_slug,
             TriagemManual.usuario_id == usuario_id,
             TriagemManual.status.in_(STATUS_INCONSISTENCIA),
             TriagemManual.atualizado_em > desde,

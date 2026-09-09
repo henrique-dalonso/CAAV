@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from app.ferramentas.extratus.core.ia_cliente import (
+from app.ferramentas.nucleo_relatorios.core.ia_cliente import (
     LIMITE_MB_ARQUIVO_PARA_PDF_NATIVO,
     LIMITE_TOKENS_TEXTO_EXTRAIDO,
     MODELO_PADRAO,
@@ -253,10 +253,10 @@ def test_gerar_relatorio_claude_dividido_faz_uma_chamada_por_pedaco_mais_reducao
     ]
 
     with patch(
-        "app.ferramentas.extratus.core.ia_cliente.extrair_paginas_pdf",
+        "app.ferramentas.nucleo_relatorios.core.ia_cliente.extrair_paginas_pdf",
         return_value=([], 2),
     ), patch(
-        "app.ferramentas.extratus.core.ia_cliente._dividir_paginas_em_pedacos",
+        "app.ferramentas.nucleo_relatorios.core.ia_cliente._dividir_paginas_em_pedacos",
         return_value=["texto do pedaço 1", "texto do pedaço 2"],
     ):
         dados, uso = gerar_relatorio_claude_dividido(arquivo, "0000000-00.2026.8.06.0300", cliente_fake, "instruções do Max")
@@ -462,7 +462,7 @@ def test_montar_diagnostico_extrai_paginas_quando_nao_fornecidas():
     paginas_fake = [_pagina_fake_completa(1, "Vistos. Defiro o pedido de busca e apreensão do bem.")]
 
     with patch(
-        "app.ferramentas.extratus.core.ia_cliente.extrair_paginas_pdf",
+        "app.ferramentas.nucleo_relatorios.core.ia_cliente.extrair_paginas_pdf",
         return_value=(paginas_fake, 1),
     ) as extrair_paginas_mock:
         diagnostico, _, _, _, _ = montar_diagnostico_com_triagem("qualquer.pdf")
@@ -487,7 +487,7 @@ def test_montar_diagnostico_resgata_pagina_problematica_com_cliente(monkeypatch)
         return {2: "Texto resgatado da página 2, agora legível."}, [uso]
 
     monkeypatch.setattr(
-        "app.ferramentas.extratus.core.transcricao_paginas.transcrever_paginas", _transcrever_fake
+        "app.ferramentas.nucleo_relatorios.core.transcricao_paginas.transcrever_paginas", _transcrever_fake
     )
 
     cliente_fake = MagicMock()

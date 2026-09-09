@@ -1,7 +1,12 @@
 from app.ferramentas.extratus.core.config_manager import carregar_config
-from app.ferramentas.extratus.core.app_logger import registrar_log
-from app.ferramentas.extratus.core.fila_manager import montar_fila
-from app.ferramentas.extratus.core.pipeline import processar_pdf
+from app.ferramentas.nucleo_relatorios.core.app_logger import registrar_log
+from app.ferramentas.nucleo_relatorios.core.fila_manager import montar_fila
+from app.ferramentas.nucleo_relatorios.core.pipeline import processar_pdf
+from app.ferramentas.nucleo_relatorios.tipos import REGISTRO_TIPOS
+
+
+FERRAMENTA_SLUG = "extratus-relatorios"
+TIPO_RELATORIO = REGISTRO_TIPOS["bancario"]
 
 
 def main():
@@ -54,7 +59,8 @@ def main():
 
     for pdf in resultado_fila["pdfs"]:
         processar_pdf(
-            pdf, pasta_saida, pasta_processados, pasta_erros, pasta_revisao
+            pdf, pasta_saida, pasta_processados, pasta_erros, pasta_revisao,
+            tipo=TIPO_RELATORIO, ferramenta_slug=FERRAMENTA_SLUG,
         )
 
     registrar_log("Extratus finalizado.")

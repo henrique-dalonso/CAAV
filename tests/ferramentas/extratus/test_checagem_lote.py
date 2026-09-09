@@ -2,8 +2,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from app.ferramentas.extratus.core import checagem_lote
-from app.ferramentas.extratus.db.checagem_fila import (
+from app.ferramentas.nucleo_relatorios.core import checagem_lote
+from app.ferramentas.nucleo_relatorios.db.checagem_fila import (
     APROVADO,
     DUPLICADO_EM_ANDAMENTO,
     DUPLICADO_RELATORIO,
@@ -32,8 +32,8 @@ def test_rodar_ciclo_checagem_sincroniza_e_checa_cada_pendente():
          patch.object(checagem_lote, "_checar_um_arquivo") as checar_mock:
         checagem_lote.rodar_ciclo_checagem()
 
-    sincronizar_mock.assert_called_once_with({"a.pdf"})
-    checar_mock.assert_called_once_with(registro, Path("/pasta/robô"), "/pasta/erros")
+    sincronizar_mock.assert_called_once_with({"a.pdf"}, ferramenta_slug="extratus-relatorios")
+    checar_mock.assert_called_once_with(registro, Path("/pasta/robô"), "/pasta/erros", "extratus-relatorios")
 
 
 def test_rodar_ciclo_checagem_exclui_ja_reivindicado_dos_candidatos():
@@ -45,7 +45,7 @@ def test_rodar_ciclo_checagem_exclui_ja_reivindicado_dos_candidatos():
          patch.object(checagem_lote, "sincronizar_registros", return_value=[]) as sincronizar_mock:
         checagem_lote.rodar_ciclo_checagem()
 
-    sincronizar_mock.assert_called_once_with({"a.pdf"})
+    sincronizar_mock.assert_called_once_with({"a.pdf"}, ferramenta_slug="extratus-relatorios")
 
 
 def test_checar_um_arquivo_aprova_quando_tudo_ok():
@@ -57,7 +57,7 @@ def test_checar_um_arquivo_aprova_quando_tudo_ok():
          patch.object(checagem_lote, "atualizar_apos_checagem") as atualizar_mock:
         checagem_lote._checar_um_arquivo(registro, Path("/pasta/robô"), "/pasta/erros")
 
-    atualizar_mock.assert_called_once_with(1, APROVADO, "123", "alta", "ok")
+    atualizar_mock.assert_called_once_with(1, APROVADO, "123", "alta", "ok", ferramenta_slug="extratus-relatorios")
 
 
 def test_checar_um_arquivo_marca_processo_nao_encontrado():

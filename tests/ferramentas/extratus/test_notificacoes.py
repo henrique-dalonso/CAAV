@@ -3,19 +3,19 @@ from datetime import datetime
 import pytest
 from sqlmodel import delete
 
-from app.ferramentas.extratus.db.checagem_fila import (
+from app.ferramentas.nucleo_relatorios.db.checagem_fila import (
     APROVADO,
     DUPLICADO_RELATORIO,
     PENDENTE,
 )
-from app.ferramentas.extratus.db.jobs import (
+from app.ferramentas.nucleo_relatorios.db.jobs import (
     marcar_notificacao_resolvida,
     marcar_notificacao_resolvida_robo,
     registrar_erro,
     registrar_processado,
 )
-from app.ferramentas.extratus.db.models import ChecagemFila, Job, TriagemManual
-from app.ferramentas.extratus.db.triagem_manual import NAO_ENCONTRADO, atualizar_apos_triagem, criar_registro, marcar_erro
+from app.ferramentas.nucleo_relatorios.db.models import ChecagemFila, Job, TriagemManual
+from app.ferramentas.nucleo_relatorios.db.triagem_manual import NAO_ENCONTRADO, atualizar_apos_triagem, criar_registro, marcar_erro
 from app.ferramentas.extratus.web.notificacoes import listar_notificacoes, listar_notificacoes_pessoais
 from app.plataforma.db.session import obter_sessao
 

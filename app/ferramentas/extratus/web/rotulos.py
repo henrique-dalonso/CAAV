@@ -22,13 +22,21 @@ revisão) lado a lado.
 
 from datetime import datetime
 
-from app.ferramentas.extratus.db.checagem_fila import contar_inconsistencias_ativas
-from app.ferramentas.extratus.db.jobs import (
+from app.ferramentas.nucleo_relatorios.db.checagem_fila import contar_inconsistencias_ativas
+from app.ferramentas.nucleo_relatorios.db.jobs import (
     contar_relatorios_robo_novos,
     contar_relatorios_novos_do_usuario,
 )
-from app.ferramentas.extratus.db.triagem_manual import contar_inconsistencias_ativas_do_usuario
+from app.ferramentas.nucleo_relatorios.db.triagem_manual import contar_inconsistencias_ativas_do_usuario
 from app.plataforma.db.usuarios import obter_ultimo_visto
+
+
+# ferramenta_slug das tabelas de nucleo_relatorios (Job/ChecagemFila/
+# TriagemManual etc.) — NÃO confundir com FERRAMENTA_SLUG abaixo, que é o
+# slug da PLATAFORMA (Ferramenta.slug, usado em obter_ultimo_visto/badges
+# de navegação) — os dois valores coincidem só por hoje existir uma única
+# ferramenta usando o motor compartilhado, mas são conceitos diferentes.
+_FERRAMENTA_SLUG_NUCLEO = "extratus-relatorios"
 
 STATUS_LABELS = {
     "sucesso": "Sucesso",
@@ -75,14 +83,14 @@ def contagem_nav_conferencias_manual(usuario):
     Conferências do próprio usuário estão pendentes AGORA (duplicidade,
     processo não encontrado etc.). Fica ligado até alguém aprovar ou
     descartar — só visitar a aba não zera (Henrique, 2026-08-13)."""
-    return contar_inconsistencias_ativas_do_usuario(usuario.id)
+    return contar_inconsistencias_ativas_do_usuario(usuario.id, ferramenta_slug=_FERRAMENTA_SLUG_NUCLEO)
 
 
 def contagem_nav_conferencias_fila(usuario):
     """Badge (só cor de revisão) da aba "Fila do Robô" — quantas
     Conferências (compartilhadas, não é por usuário) estão pendentes
     AGORA. Mesmo comportamento "fica ligado até resolver" do item acima."""
-    return contar_inconsistencias_ativas()
+    return contar_inconsistencias_ativas(ferramenta_slug=_FERRAMENTA_SLUG_NUCLEO)
 
 
 def contagem_nav_relatorios(usuario):
@@ -90,7 +98,7 @@ def contagem_nav_relatorios(usuario):
     de relatórios MANUAIS do próprio usuário que terminaram desde a
     última visita."""
     desde = obter_ultimo_visto(usuario.id, FERRAMENTA_SLUG, ABA_RELATORIOS) or _DESDE_SEMPRE
-    return contar_relatorios_novos_do_usuario(usuario.id, desde)
+    return contar_relatorios_novos_do_usuario(usuario.id, desde, ferramenta_slug=_FERRAMENTA_SLUG_NUCLEO)
 
 
 def contagem_nav_relatorios_robo(usuario):
@@ -100,4 +108,4 @@ def contagem_nav_relatorios_robo(usuario):
     contava a fila inteira, compartilhada — agora só o que é seu, mesma
     regra da aba "Minhas" do sino)."""
     desde = obter_ultimo_visto(usuario.id, FERRAMENTA_SLUG, ABA_RELATORIOS_ROBO) or _DESDE_SEMPRE
-    return contar_relatorios_robo_novos(usuario.id, desde)
+    return contar_relatorios_robo_novos(usuario.id, desde, ferramenta_slug=_FERRAMENTA_SLUG_NUCLEO)

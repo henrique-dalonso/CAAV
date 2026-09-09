@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from app.ferramentas.extratus.core import pipeline
+from app.ferramentas.nucleo_relatorios.core import pipeline
 
 
 def test_processo_dividido_forca_confianca_revisao_mesmo_com_deteccao_alta():

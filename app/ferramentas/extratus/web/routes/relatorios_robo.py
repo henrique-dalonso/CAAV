@@ -7,8 +7,13 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import FileResponse, RedirectResponse, Response
 
-from app.ferramentas.extratus.db.checagem_fila import resolver_solicitantes
-from app.ferramentas.extratus.db.jobs import excluir_job, listar_jobs_robo, marcar_notificacao_resolvida_robo, obter_job
+from app.ferramentas.nucleo_relatorios.db.checagem_fila import resolver_solicitantes
+from app.ferramentas.nucleo_relatorios.db.jobs import (
+    excluir_job,
+    listar_jobs_robo,
+    marcar_notificacao_resolvida_robo,
+    obter_job,
+)
 from app.ferramentas.extratus.web.rotulos import (
     ABA_RELATORIOS_ROBO,
     FERRAMENTA_SLUG,
@@ -23,6 +28,11 @@ from app.plataforma.db.models import Usuario
 from app.plataforma.db.usuarios import listar_todos_usuarios, marcar_aba_vista
 from app.plataforma.web.auth import exigir_acesso_ferramenta, exigir_admin
 from app.plataforma.web.templates_util import criar_templates
+
+
+# ferramenta_slug das tabelas de nucleo_relatorios — ver mesmo comentário
+# em web/rotulos.py.
+FERRAMENTA_SLUG_NUCLEO = "extratus-relatorios"
 
 
 # "Relatórios do Robô" — repositório universal do que o ROBÔ já
@@ -57,7 +67,7 @@ def pagina_relatorios_robo(
     erro: str | None = None,
     sucesso: str | None = None,
 ):
-    jobs = listar_jobs_robo()
+    jobs = listar_jobs_robo(ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
 
     # Henrique, diretoria, 2026-08-27: a diretoria perguntou "o
     # coordenador fulano colocou os processos que pedi no robô?" e não
@@ -73,7 +83,7 @@ def pagina_relatorios_robo(
     # reaproveitar o mesmo bloco visual (.relatorio-solicitante) já
     # existente.
     nomes_por_id = {u.id: u.nome for u in listar_todos_usuarios()}
-    solicitante_por_job_id = resolver_solicitantes(jobs)
+    solicitante_por_job_id = resolver_solicitantes(jobs, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
     ids_solicitantes_reais = {sid for sid in solicitante_por_job_id.values() if sid}
 
     # Só os solicitantes que de fato aparecem na lista atual — dropdown
@@ -138,7 +148,7 @@ def pagina_relatorios_robo(
 @router.get("/relatorios-robo/{job_id}/pdf")
 def ver_pdf_relatorio_robo_route(job_id: int):
     """Ver docstring equivalente em relatorios_manuais.py — mesma lógica."""
-    job = obter_job(job_id)
+    job = obter_job(job_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
 
     if not job or not job.destino_pdf:
         raise HTTPException(status_code=404, detail="PDF de origem não encontrado.")
@@ -169,7 +179,7 @@ def _redirecionar(erro=None, sucesso=None):
 def excluir_relatorio_robo_route(job_id: int, usuario: Usuario = Depends(exigir_admin)):
     """Mesma regra do equivalente manual (relatorios_manuais.py): só
     admin da plataforma exclui de verdade."""
-    if not excluir_job(job_id):
+    if not excluir_job(job_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO):
         return _redirecionar(erro="Esse relatório não existe mais.")
 
     return _redirecionar(sucesso="Relatório excluído permanentemente.")
@@ -191,7 +201,7 @@ def baixar_lote_relatorios_robo(ids: list[int] = Form(...)):
 
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zip_arquivo:
         for job_id in ids:
-            job = obter_job(job_id)
+            job = obter_job(job_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
 
             if not job or job.status == "erro" or not job.relatorio_path:
                 continue
@@ -228,7 +238,7 @@ def excluir_lote_relatorios_robo(ids: list[int] = Form(...), usuario: Usuario = 
     excluidos = 0
 
     for job_id in ids:
-        if excluir_job(job_id):
+        if excluir_job(job_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO):
             excluidos += 1
 
     if excluidos == 0:
@@ -253,7 +263,7 @@ def marcar_notificacao_resolvida_robo_route(
     2026-08-19). "Revisão" e "erro" do Robô não têm esse botão de
     propósito, mesma exigência de "não pode sumir sozinho" que erro já
     tinha."""
-    if not marcar_notificacao_resolvida_robo(job_id):
+    if not marcar_notificacao_resolvida_robo(job_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO):
         raise HTTPException(status_code=404, detail="Esse relatório não existe mais.")
 
     return {"ok": True}

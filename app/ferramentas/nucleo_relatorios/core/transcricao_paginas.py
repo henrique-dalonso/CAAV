@@ -2,8 +2,8 @@ import base64
 
 import fitz
 
-from app.ferramentas.extratus.core.app_logger import registrar_log
-from app.ferramentas.extratus.core.ia_cliente import MODELO_PEDACO, extrair_dados_e_uso
+from app.ferramentas.nucleo_relatorios.core.app_logger import registrar_log
+from app.ferramentas.nucleo_relatorios.core.ia_cliente import MODELO_PEDACO, extrair_dados_e_uso
 
 
 # Henrique, diretoria, 2026-08-26: processo real (321 páginas, 29.4MB)

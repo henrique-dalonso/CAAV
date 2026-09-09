@@ -1,9 +1,9 @@
 import pytest
 from sqlmodel import delete
 
-from app.ferramentas.extratus.db.checagem_fila import DUPLICADO_RELATORIO
-from app.ferramentas.extratus.db.conferencias import registrar_decisao
-from app.ferramentas.extratus.db.models import RegistroConferencia
+from app.ferramentas.nucleo_relatorios.db.checagem_fila import DUPLICADO_RELATORIO
+from app.ferramentas.nucleo_relatorios.db.conferencias import registrar_decisao
+from app.ferramentas.nucleo_relatorios.db.models import RegistroConferencia
 from app.plataforma.db.models import Usuario
 from app.plataforma.db.session import obter_sessao
 from app.plataforma.db.usuarios import criar_usuario

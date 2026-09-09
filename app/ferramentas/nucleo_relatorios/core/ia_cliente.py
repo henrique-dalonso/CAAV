@@ -3,8 +3,8 @@ import os
 import re
 from pathlib import Path
 
-from app.ferramentas.extratus.core.prompt_manager import carregar_instrucoes_relatorio
-from app.ferramentas.extratus.core.texto_manager import (
+from app.ferramentas.nucleo_relatorios.core.prompt_manager import carregar_instrucoes_relatorio
+from app.ferramentas.nucleo_relatorios.core.texto_manager import (
     diagnostico_a_partir_das_paginas,
     extrair_paginas_pdf,
     extrair_texto_pdf_com_diagnostico,
@@ -247,7 +247,7 @@ def montar_diagnostico_com_triagem(caminho_pdf, paginas=None, total_paginas=None
     custo_transcricao_usd = 0.0
 
     if problematicas and cliente is not None:
-        from app.ferramentas.extratus.core.transcricao_paginas import transcrever_paginas
+        from app.ferramentas.nucleo_relatorios.core.transcricao_paginas import transcrever_paginas
 
         texto_resgatado, usos_transcricao = transcrever_paginas(caminho_pdf, problematicas, cliente)
 
@@ -529,7 +529,22 @@ def _dividir_paginas_em_pedacos(paginas, limite_tokens_por_pedaco=TOKENS_POR_PED
     return ["\n\n".join(p["texto_marcado"] for p in pedaco) for pedaco in pedacos]
 
 
-def _montar_parametros_pedaco(texto_pedaco, indice, total, processo_detectado, instrucoes):
+def _resolver_tipo(tipo):
+    """`tipo` (ver nucleo_relatorios/tipos.py) é opcional em toda função
+    deste módulo que precisa dele — quando não informado (uso direto/
+    teste), cai no único tipo que existe hoje ("bancario"). Import
+    atrasado pra evitar ciclo: tipos.py importa os schemas deste módulo
+    como valor do tipo "bancario", então este módulo não pode importar
+    tipos.py no topo do arquivo."""
+    if tipo is not None:
+        return tipo
+
+    from app.ferramentas.nucleo_relatorios.tipos import REGISTRO_TIPOS
+
+    return REGISTRO_TIPOS["bancario"]
+
+
+def _montar_parametros_pedaco(texto_pedaco, indice, total, processo_detectado, instrucoes, tipo=None):
     pedido = (
         f"Este é o TRECHO {indice} de {total} de um processo judicial grande "
         "demais para ser lido de uma vez só (número detectado no nome do "
@@ -538,6 +553,8 @@ def _montar_parametros_pedaco(texto_pedaco, indice, total, processo_detectado, i
         "processo inteiro será feita depois, juntando o que cada trecho "
         "trouxer. Não tente adivinhar o que está nos outros trechos."
     )
+
+    schema_pedaco = _resolver_tipo(tipo).schema_pedaco
 
     return {
         "model": MODELO_PEDACO,
@@ -555,7 +572,7 @@ def _montar_parametros_pedaco(texto_pedaco, indice, total, processo_detectado, i
                 "cache_control": {"type": "ephemeral"},
             }
         ],
-        "tools": [FERRAMENTA_PEDACO],
+        "tools": [schema_pedaco],
         "tool_choice": {"type": "tool", "name": "registrar_trecho"},
         "messages": [
             {"role": "user", "content": [{"type": "text", "text": f"{pedido}\n\n{texto_pedaco}"}]}
@@ -621,7 +638,7 @@ def _formatar_resumo_para_reducao(cronologia_completa, documentos_por_pedaco, ca
     return "\n".join(linhas)
 
 
-def _montar_parametros_reducao(resumo_texto, processo_detectado, instrucoes):
+def _montar_parametros_reducao(resumo_texto, processo_detectado, instrucoes, tipo=None):
     pedido_analise = (
         "Este é o RESUMO CONSOLIDADO de um processo judicial grande, já "
         "dividido e pré-analisado em trechos (número detectado no nome do "
@@ -629,6 +646,8 @@ def _montar_parametros_reducao(resumo_texto, processo_detectado, instrucoes):
         "relatório final com base neste resumo — não é o PDF original, é "
         "a reunião do que cada trecho trouxe."
     )
+
+    schema_relatorio = _resolver_tipo(tipo).schema_relatorio
 
     return {
         "model": MODELO_PADRAO,
@@ -640,7 +659,7 @@ def _montar_parametros_reducao(resumo_texto, processo_detectado, instrucoes):
                 "cache_control": {"type": "ephemeral"},
             }
         ],
-        "tools": [FERRAMENTA_RELATORIO],
+        "tools": [schema_relatorio],
         "tool_choice": {"type": "tool", "name": "preencher_relatorio"},
         "messages": [
             {"role": "user", "content": [{"type": "text", "text": f"{pedido_analise}\n\n{resumo_texto}"}]}
@@ -648,7 +667,7 @@ def _montar_parametros_reducao(resumo_texto, processo_detectado, instrucoes):
     }
 
 
-def gerar_relatorio_claude_dividido(caminho_pdf, processo_detectado, cliente, instrucoes, paginas=None):
+def gerar_relatorio_claude_dividido(caminho_pdf, processo_detectado, cliente, instrucoes, paginas=None, tipo=None):
     """Processo grande demais pra uma chamada só: divide em pedaços por
     página, manda cada um pra IA extrair só o que está naquele trecho
     (mapa), depois junta tudo numa chamada final que monta o relatório
@@ -674,7 +693,7 @@ def gerar_relatorio_claude_dividido(caminho_pdf, processo_detectado, cliente, in
 
     for indice, texto_pedaco in enumerate(pedacos_texto, start=1):
         parametros = _montar_parametros_pedaco(
-            texto_pedaco, indice, total_pedacos, processo_detectado, instrucoes
+            texto_pedaco, indice, total_pedacos, processo_detectado, instrucoes, tipo=tipo
         )
         resposta = cliente.messages.create(**parametros)
         dados_pedaco, uso_pedaco = extrair_dados_e_uso(resposta)
@@ -686,7 +705,7 @@ def gerar_relatorio_claude_dividido(caminho_pdf, processo_detectado, cliente, in
         cronologia_completa, documentos_por_pedaco, campos_candidatos, total_pedacos
     )
 
-    parametros_reducao = _montar_parametros_reducao(resumo_texto, processo_detectado, instrucoes)
+    parametros_reducao = _montar_parametros_reducao(resumo_texto, processo_detectado, instrucoes, tipo=tipo)
     resposta_reducao = cliente.messages.create(**parametros_reducao)
     dados_finais, uso_reducao = extrair_dados_e_uso(resposta_reducao)
 
@@ -704,7 +723,7 @@ def gerar_relatorio_claude_dividido(caminho_pdf, processo_detectado, cliente, in
     return dados_finais, uso_total
 
 
-def montar_parametros_mensagem(caminho_pdf, processo_detectado, instrucoes, diagnostico=None):
+def montar_parametros_mensagem(caminho_pdf, processo_detectado, instrucoes, diagnostico=None, tipo=None):
     """Monta o dict de parâmetros pra uma chamada `messages.create` (sem
     disparar a chamada) — usado tanto pelo fluxo em tempo real (fila
     manual) quanto pelo Batch API (Robô), que só diferem em COMO essa
@@ -725,6 +744,8 @@ def montar_parametros_mensagem(caminho_pdf, processo_detectado, instrucoes, diag
     caminho_pdf = Path(caminho_pdf)
     if diagnostico is None:
         diagnostico = extrair_texto_pdf_com_diagnostico(caminho_pdf)
+
+    schema_relatorio = _resolver_tipo(tipo).schema_relatorio
 
     pedido_analise = (
         "Analise este processo (número detectado no nome do arquivo: "
@@ -807,13 +828,13 @@ def montar_parametros_mensagem(caminho_pdf, processo_detectado, instrucoes, diag
                 "cache_control": {"type": "ephemeral"},
             }
         ],
-        "tools": [FERRAMENTA_RELATORIO],
+        "tools": [schema_relatorio],
         "tool_choice": {"type": "tool", "name": "preencher_relatorio"},
         "messages": [{"role": "user", "content": conteudo_usuario}],
     }
 
 
-def gerar_relatorio_claude(caminho_pdf, processo_detectado):
+def gerar_relatorio_claude(caminho_pdf, processo_detectado, tipo=None):
     """Envia o processo pra Claude em tempo real (fluxo manual) e devolve
     os dados do relatório já estruturados nos mesmos campos que o template
     Word espera.
@@ -821,10 +842,15 @@ def gerar_relatorio_claude(caminho_pdf, processo_detectado):
     Usa "tool use" da API (não texto livre) — o modelo é obrigado a
     preencher exatamente os campos do schema, sem a gente precisar
     adivinhar onde cada informação começa/termina numa resposta solta.
+
+    `tipo` (ver nucleo_relatorios/tipos.py) diz qual prompt e qual schema
+    usar — produção (core/pipeline.py, core/pipeline_manual.py) sempre
+    passa `REGISTRO_TIPOS["bancario"]` explicitamente hoje; quando não
+    informado (uso direto/teste), cai no mesmo tipo por padrão.
     """
     import anthropic
 
-    instrucoes = carregar_instrucoes_relatorio()
+    instrucoes = carregar_instrucoes_relatorio(tipo=tipo)
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
 
@@ -848,10 +874,12 @@ def gerar_relatorio_claude(caminho_pdf, processo_detectado):
 
     if precisa_dividir:
         dados, uso = gerar_relatorio_claude_dividido(
-            caminho_pdf, processo_detectado, cliente, instrucoes, paginas=paginas_relevantes
+            caminho_pdf, processo_detectado, cliente, instrucoes, paginas=paginas_relevantes, tipo=tipo
         )
     else:
-        parametros = montar_parametros_mensagem(caminho_pdf, processo_detectado, instrucoes, diagnostico=diagnostico)
+        parametros = montar_parametros_mensagem(
+            caminho_pdf, processo_detectado, instrucoes, diagnostico=diagnostico, tipo=tipo
+        )
         resposta = cliente.messages.create(**parametros)
         dados, uso = extrair_dados_e_uso(resposta)
 

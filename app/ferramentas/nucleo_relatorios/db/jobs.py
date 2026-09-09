@@ -4,7 +4,7 @@ from pathlib import Path
 from sqlalchemy import or_
 from sqlmodel import func, select
 
-from app.ferramentas.extratus.db.models import Job
+from app.ferramentas.nucleo_relatorios.db.models import FERRAMENTA_SLUG_PADRAO, Job
 from app.plataforma.db.session import obter_sessao
 from app.plataforma.web.eventos_sse import avisar_mudanca
 
@@ -19,6 +19,8 @@ def registrar_processado(
     uso_ia=None,
     usuario_id=None,
     solicitante_id=None,
+    ferramenta_slug=FERRAMENTA_SLUG_PADRAO,
+    tipo_relatorio=None,
 ):
     """Registra um PDF que gerou relatório — status "sucesso" (confiança
     alta) ou "revisao" (confiança média/baixa, precisa de olho humano).
@@ -30,6 +32,10 @@ def registrar_processado(
     `solicitante_id` — ver docstring de Job.solicitante_id (db/models.py):
     quem PEDIU, distinto de usuario_id (dono/origem), só preenchido pelo
     Robô.
+    `ferramenta_slug`/`tipo_relatorio` identificam qual ferramenta (ver
+    nucleo_relatorios/tipos.py) e qual tipo de relatório dentro dela essa
+    linha pertence — default cobre o único caso que existe hoje
+    (Extratus-Relatórios, tipo "bancario").
     """
     status = "sucesso" if str(confianca).strip().lower() == "alta" else "revisao"
     uso_ia = uso_ia or {}
@@ -49,6 +55,8 @@ def registrar_processado(
             custo_estimado_usd=uso_ia.get("custo_estimado_usd"),
             usuario_id=usuario_id,
             solicitante_id=solicitante_id,
+            ferramenta_slug=ferramenta_slug,
+            **({"tipo_relatorio": tipo_relatorio} if tipo_relatorio else {}),
         )
 
         sessao.add(job)
@@ -61,7 +69,15 @@ def registrar_processado(
 
 
 def registrar_erro(
-    arquivo_pdf, processo, tipo_erro, erro_mensagem, destino_pdf=None, usuario_id=None, solicitante_id=None
+    arquivo_pdf,
+    processo,
+    tipo_erro,
+    erro_mensagem,
+    destino_pdf=None,
+    usuario_id=None,
+    solicitante_id=None,
+    ferramenta_slug=FERRAMENTA_SLUG_PADRAO,
+    tipo_relatorio=None,
 ):
     with obter_sessao() as sessao:
         job = Job(
@@ -73,6 +89,8 @@ def registrar_erro(
             destino_pdf=str(destino_pdf) if destino_pdf else None,
             usuario_id=usuario_id,
             solicitante_id=solicitante_id,
+            ferramenta_slug=ferramenta_slug,
+            **({"tipo_relatorio": tipo_relatorio} if tipo_relatorio else {}),
         )
 
         sessao.add(job)
@@ -84,10 +102,11 @@ def registrar_erro(
         return job
 
 
-def listar_jobs(limite=100):
+def listar_jobs(limite=100, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     with obter_sessao() as sessao:
         consulta = (
             select(Job)
+            .where(Job.ferramenta_slug == ferramenta_slug)
             .order_by(Job.criado_em.desc())
             .limit(limite)
         )
@@ -95,18 +114,18 @@ def listar_jobs(limite=100):
         return sessao.exec(consulta).all()
 
 
-def listar_jobs_manuais(limite=100):
+def listar_jobs_manuais(limite=100, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Só os relatórios gerados manualmente (usuario_id preenchido) —
     usado pela tela "Relatórios". Os do Robô (usuario_id None) têm sua
     própria tela, "Relatórios do Robô" (Henrique, 2026-08-08: "na
     aba manual só aparecerão os relatórios realizados manualmente...
     e na Relatórios do Robô será o repositório universal do robô").
-    `listar_jobs()` continua sem filtro nenhum — Custos (admin) precisa
-    ver tudo, Robô incluso."""
+    `listar_jobs()` continua sem filtro nenhum (além de ferramenta_slug) —
+    Custos (admin) precisa ver tudo, Robô incluso."""
     with obter_sessao() as sessao:
         consulta = (
             select(Job)
-            .where(Job.usuario_id.is_not(None))
+            .where(Job.ferramenta_slug == ferramenta_slug, Job.usuario_id.is_not(None))
             .order_by(Job.criado_em.desc())
             .limit(limite)
         )
@@ -114,13 +133,13 @@ def listar_jobs_manuais(limite=100):
         return sessao.exec(consulta).all()
 
 
-def listar_jobs_robo(limite=100):
+def listar_jobs_robo(limite=100, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Só os relatórios (prontos, em revisão ou com erro) gerados pelo
     Robô (usuario_id None) — alimenta "Relatórios do Robô"."""
     with obter_sessao() as sessao:
         consulta = (
             select(Job)
-            .where(Job.usuario_id.is_(None))
+            .where(Job.ferramenta_slug == ferramenta_slug, Job.usuario_id.is_(None))
             .order_by(Job.criado_em.desc())
             .limit(limite)
         )
@@ -128,7 +147,7 @@ def listar_jobs_robo(limite=100):
         return sessao.exec(consulta).all()
 
 
-def obter_relatorio_existente_para_processo(processo):
+def obter_relatorio_existente_para_processo(processo, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """O Job de verdade bem-sucedido (status "sucesso" ou "revisao" — as
     duas formas de "gerou relatório", só muda o nível de confiança) mais
     recente pra esse número de processo, ou None. Usado pela checagem
@@ -142,20 +161,24 @@ def obter_relatorio_existente_para_processo(processo):
     with obter_sessao() as sessao:
         consulta = (
             select(Job)
-            .where(Job.processo == processo, Job.status.in_(["sucesso", "revisao"]))
+            .where(
+                Job.ferramenta_slug == ferramenta_slug,
+                Job.processo == processo,
+                Job.status.in_(["sucesso", "revisao"]),
+            )
             .order_by(Job.criado_em.desc())
         )
         return sessao.exec(consulta).first()
 
 
-def existe_relatorio_gerado_para_processo(processo):
+def existe_relatorio_gerado_para_processo(processo, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Já existe um Job de verdade bem-sucedido pra esse número de
     processo? Usado pela checagem da Fila do Robô (db/checagem_fila.py),
     que só precisa saber se existe, não onde."""
-    return obter_relatorio_existente_para_processo(processo) is not None
+    return obter_relatorio_existente_para_processo(processo, ferramenta_slug=ferramenta_slug) is not None
 
 
-def listar_erros_nao_resolvidos_do_robo():
+def listar_erros_nao_resolvidos_do_robo(ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Erros de PDF do Robô (usuario_id None — ver tratar_erro/
     checagem_lote.py) que ainda não foram marcados como resolvidos —
     alimenta o sininho de notificações. Não tem janela de tempo de
@@ -165,6 +188,7 @@ def listar_erros_nao_resolvidos_do_robo():
     preenchido) não entram — a pessoa já viu o erro na hora, síncrono."""
     with obter_sessao() as sessao:
         consulta = select(Job).where(
+            Job.ferramenta_slug == ferramenta_slug,
             Job.status == "erro",
             Job.usuario_id.is_(None),
             Job.notificacao_resolvida == False,  # noqa: E712
@@ -172,7 +196,7 @@ def listar_erros_nao_resolvidos_do_robo():
         return sessao.exec(consulta).all()
 
 
-def listar_jobs_robo_nao_notificados_de_outros(usuario_id):
+def listar_jobs_robo_nao_notificados_de_outros(usuario_id, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Jobs do Robô (usuario_id None) de QUALQUER status (sucesso,
     revisão, erro) ainda não notificados, EXCETO os que o próprio
     usuário pediu — alimenta a aba "Ferramentas" do sininho (Henrique,
@@ -185,6 +209,7 @@ def listar_jobs_robo_nao_notificados_de_outros(usuario_id):
     acesso além do solicitante excluído."""
     with obter_sessao() as sessao:
         consulta = select(Job).where(
+            Job.ferramenta_slug == ferramenta_slug,
             Job.usuario_id.is_(None),
             Job.notificacao_resolvida == False,  # noqa: E712
             or_(Job.solicitante_id.is_(None), Job.solicitante_id != usuario_id),
@@ -192,7 +217,7 @@ def listar_jobs_robo_nao_notificados_de_outros(usuario_id):
         return sessao.exec(consulta).all()
 
 
-def listar_jobs_robo_nao_notificados_do_solicitante(usuario_id):
+def listar_jobs_robo_nao_notificados_do_solicitante(usuario_id, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Jobs do Robô que o PRÓPRIO usuário pediu (Job.solicitante_id) e
     ainda não foram notificados — alimenta a aba "Minhas" do sininho,
     par de listar_jobs_robo_nao_notificados_de_outros (Henrique,
@@ -201,6 +226,7 @@ def listar_jobs_robo_nao_notificados_do_solicitante(usuario_id):
     "Ferramentas", sem dono."""
     with obter_sessao() as sessao:
         consulta = select(Job).where(
+            Job.ferramenta_slug == ferramenta_slug,
             Job.usuario_id.is_(None),
             Job.solicitante_id == usuario_id,
             Job.notificacao_resolvida == False,  # noqa: E712
@@ -208,7 +234,7 @@ def listar_jobs_robo_nao_notificados_do_solicitante(usuario_id):
         return sessao.exec(consulta).all()
 
 
-def marcar_notificacao_resolvida_robo(job_id):
+def marcar_notificacao_resolvida_robo(job_id, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Dispensa a notificação de um Job do Robô — compartilhado, sem
     dono, então qualquer um com acesso à ferramenta pode dispensar (ao
     contrário de marcar_notificacao_resolvida, que só o dono do
@@ -219,7 +245,7 @@ def marcar_notificacao_resolvida_robo(job_id):
     with obter_sessao() as sessao:
         job = sessao.get(Job, job_id)
 
-        if not job or job.usuario_id is not None:
+        if not job or job.ferramenta_slug != ferramenta_slug or job.usuario_id is not None:
             return False
 
         job.notificacao_resolvida = True
@@ -231,7 +257,7 @@ def marcar_notificacao_resolvida_robo(job_id):
         return True
 
 
-def listar_relatorios_manuais_nao_notificados_do_usuario(usuario_id):
+def listar_relatorios_manuais_nao_notificados_do_usuario(usuario_id, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Relatórios manuais do PRÓPRIO usuário (sucesso ou revisão) que
     ainda não tiveram a notificação dispensada — alimenta a aba "Minhas"
     do sininho (Henrique, 2026-08-13). "Sucesso" some com um X na
@@ -242,6 +268,7 @@ def listar_relatorios_manuais_nao_notificados_do_usuario(usuario_id):
     resolvida por baixo."""
     with obter_sessao() as sessao:
         consulta = select(Job).where(
+            Job.ferramenta_slug == ferramenta_slug,
             Job.usuario_id == usuario_id,
             Job.status.in_(["sucesso", "revisao"]),
             Job.notificacao_resolvida == False,  # noqa: E712
@@ -249,7 +276,7 @@ def listar_relatorios_manuais_nao_notificados_do_usuario(usuario_id):
         return sessao.exec(consulta).all()
 
 
-def marcar_notificacao_resolvida(job_id, usuario_id):
+def marcar_notificacao_resolvida(job_id, usuario_id, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Dispensa a notificação de um relatório PRÓPRIO — X em "pronto" ou
     botão "Marcar como revisado" em "revisão", ambos chamam isso (mesmo
     campo por trás, `Job.notificacao_resolvida`). Só o dono do relatório
@@ -258,7 +285,7 @@ def marcar_notificacao_resolvida(job_id, usuario_id):
     with obter_sessao() as sessao:
         job = sessao.get(Job, job_id)
 
-        if not job or job.usuario_id != usuario_id:
+        if not job or job.ferramenta_slug != ferramenta_slug or job.usuario_id != usuario_id:
             return False
 
         job.notificacao_resolvida = True
@@ -270,16 +297,17 @@ def marcar_notificacao_resolvida(job_id, usuario_id):
         return True
 
 
-def obter_job(job_id):
+def obter_job(job_id, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Busca um job pelo id, sem exigir dono — usado pela rota de "ver
     PDF de origem" nas telas de Relatórios prontos (manual e Robô,
     Henrique 2026-08-21), que são acervo compartilhado do escritório,
     diferente da fila pessoal de Conferências."""
     with obter_sessao() as sessao:
-        return sessao.get(Job, job_id)
+        job = sessao.get(Job, job_id)
+        return job if job and job.ferramenta_slug == ferramenta_slug else None
 
 
-def excluir_job(job_id):
+def excluir_job(job_id, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Exclui um relatório permanentemente — Henrique, diretoria,
     2026-08-21: só admin da plataforma pode (ver exigir_admin na rota),
     independente de quem gerou ou do status. Remove o arquivo físico do
@@ -289,7 +317,7 @@ def excluir_job(job_id):
     with obter_sessao() as sessao:
         job = sessao.get(Job, job_id)
 
-        if not job:
+        if not job or job.ferramenta_slug != ferramenta_slug:
             return False
 
         for caminho in (job.relatorio_path, job.destino_pdf):
@@ -304,7 +332,7 @@ def excluir_job(job_id):
         return True
 
 
-def contar_relatorios_robo_concluidos():
+def contar_relatorios_robo_concluidos(ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Quantos relatórios do Robô (usuario_id None) já foram gerados de
     verdade — "sucesso" ou "revisão" contam (as duas formas de "saiu um
     documento", só muda o nível de confiança); "erro" não conta (não
@@ -316,6 +344,7 @@ def contar_relatorios_robo_concluidos():
         consulta = (
             select(Job.status, func.count())
             .where(
+                Job.ferramenta_slug == ferramenta_slug,
                 Job.usuario_id.is_(None),
                 Job.status.in_(["sucesso", "revisao"]),
             )
@@ -326,12 +355,14 @@ def contar_relatorios_robo_concluidos():
     return contagem.get("sucesso", 0) + contagem.get("revisao", 0)
 
 
-def contar_por_status():
+def contar_por_status(ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     contagem = {"sucesso": 0, "revisao": 0, "erro": 0}
 
     with obter_sessao() as sessao:
         linhas = sessao.exec(
-            select(Job.status, func.count()).group_by(Job.status)
+            select(Job.status, func.count())
+            .where(Job.ferramenta_slug == ferramenta_slug)
+            .group_by(Job.status)
         ).all()
 
     for status, total in linhas:
@@ -340,7 +371,7 @@ def contar_por_status():
     return contagem
 
 
-def contar_jobs_manuais_do_usuario(usuario_id):
+def contar_jobs_manuais_do_usuario(usuario_id, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Quantos relatórios manuais o PRÓPRIO usuário logado solicitou —
     alimenta a contagem da aba "Relatórios URGENTES" na navegação
     (rotulos.py). Henrique, 2026-08-12: "o número flutuante... exibe a
@@ -350,11 +381,11 @@ def contar_jobs_manuais_do_usuario(usuario_id):
     checkbox "Solicitados por mim" já vem marcado). Sem limite (diferente
     de listar_jobs_manuais, que pagina) — a aba precisa do número real."""
     with obter_sessao() as sessao:
-        consulta = select(Job).where(Job.usuario_id == usuario_id)
+        consulta = select(Job).where(Job.ferramenta_slug == ferramenta_slug, Job.usuario_id == usuario_id)
         return len(sessao.exec(consulta).all())
 
 
-def contar_relatorios_novos_do_usuario(usuario_id, desde):
+def contar_relatorios_novos_do_usuario(usuario_id, desde, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Quantos relatórios manuais do PRÓPRIO usuário terminaram (sucesso
     ou revisão), cada categoria separada, desde `desde` — alimenta o
     badge duplo "+N" da aba "Relatórios URGENTES" (rotulos.py): um número na
@@ -364,6 +395,7 @@ def contar_relatorios_novos_do_usuario(usuario_id, desde):
         consulta = (
             select(Job.status, func.count())
             .where(
+                Job.ferramenta_slug == ferramenta_slug,
                 Job.usuario_id == usuario_id,
                 Job.criado_em > desde,
                 Job.status.in_(["sucesso", "revisao"]),
@@ -375,7 +407,7 @@ def contar_relatorios_novos_do_usuario(usuario_id, desde):
     return {"sucesso": contagem.get("sucesso", 0), "revisao": contagem.get("revisao", 0)}
 
 
-def contar_relatorios_robo_novos(usuario_id, desde):
+def contar_relatorios_robo_novos(usuario_id, desde, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Mesma ideia de `contar_relatorios_novos_do_usuario`, pros
     relatórios do Robô (usuario_id None) — alimenta o badge duplo da aba
     "Relatórios do Robô". Henrique, 2026-09-02: só conta os que o
@@ -389,6 +421,7 @@ def contar_relatorios_robo_novos(usuario_id, desde):
         consulta = (
             select(Job.status, func.count())
             .where(
+                Job.ferramenta_slug == ferramenta_slug,
                 Job.usuario_id.is_(None),
                 Job.solicitante_id == usuario_id,
                 Job.criado_em > desde,
@@ -401,7 +434,7 @@ def contar_relatorios_robo_novos(usuario_id, desde):
     return {"sucesso": contagem.get("sucesso", 0), "revisao": contagem.get("revisao", 0)}
 
 
-def somar_custo_por_usuario():
+def somar_custo_por_usuario(ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Soma o custo estimado de IA por usuário — pra tela de custos do
     admin, ver quanto cada login gastou e o total do sistema. Só soma
     Job com custo > 0 (igual ao comportamento antigo, que pulava custo
@@ -409,7 +442,7 @@ def somar_custo_por_usuario():
     with obter_sessao() as sessao:
         linhas = sessao.exec(
             select(Job.usuario_id, func.sum(Job.custo_estimado_usd))
-            .where(Job.custo_estimado_usd > 0)
+            .where(Job.ferramenta_slug == ferramenta_slug, Job.custo_estimado_usd > 0)
             .group_by(Job.usuario_id)
         ).all()
 
@@ -424,7 +457,7 @@ def _mes_menos(ano, mes, quantidade):
     return indice // 12, indice % 12 + 1
 
 
-def resumo_mes_atual():
+def resumo_mes_atual(ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Custo, quantidade de casos e custo médio por caso do mês CORRENTE
     (reinicia sozinho todo dia 1º) + o mesmo do mês anterior, pra dar
     noção de subida/queda — dashboard de Custos (admin), Henrique,
@@ -439,12 +472,17 @@ def resumo_mes_atual():
     with obter_sessao() as sessao:
         quantidade_atual, custo_atual = sessao.exec(
             select(func.count(), func.sum(Job.custo_estimado_usd))
-            .where(Job.custo_estimado_usd > 0, Job.criado_em >= inicio_mes_atual)
+            .where(
+                Job.ferramenta_slug == ferramenta_slug,
+                Job.custo_estimado_usd > 0,
+                Job.criado_em >= inicio_mes_atual,
+            )
         ).first()
 
         quantidade_anterior, custo_anterior = sessao.exec(
             select(func.count(), func.sum(Job.custo_estimado_usd))
             .where(
+                Job.ferramenta_slug == ferramenta_slug,
                 Job.custo_estimado_usd > 0,
                 Job.criado_em >= inicio_mes_anterior,
                 Job.criado_em < inicio_mes_atual,
@@ -472,7 +510,7 @@ def resumo_mes_atual():
 PERIODOS_SERIE_TEMPORAL = {"7d": 7, "15d": 15, "30d": 30, "1a": 365}
 
 
-def serie_temporal_custo(periodo):
+def serie_temporal_custo(periodo, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Gasto agregado por dia (períodos "7d"/"15d"/"30d") ou por mês
     ("1a", últimos 12 meses) — alimenta o gráfico da tela de Custos.
     Sempre devolve um ponto por dia/mês do intervalo inteiro, mesmo sem
@@ -495,7 +533,11 @@ def serie_temporal_custo(periodo):
     with obter_sessao() as sessao:
         linhas = sessao.exec(
             select(Job.criado_em, Job.custo_estimado_usd)
-            .where(Job.custo_estimado_usd > 0, Job.criado_em >= corte)
+            .where(
+                Job.ferramenta_slug == ferramenta_slug,
+                Job.custo_estimado_usd > 0,
+                Job.criado_em >= corte,
+            )
         ).all()
 
     agregados = {}
@@ -518,7 +560,7 @@ def serie_temporal_custo(periodo):
     return pontos
 
 
-def detalhar_custo_e_quantidade_por_usuario():
+def detalhar_custo_e_quantidade_por_usuario(ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Igual `somar_custo_por_usuario`, mas também traz a QUANTIDADE de
     relatórios solicitados e o custo médio por relatório de cada
     usuário — Henrique, diretoria, 2026-08-26: "custo por usuário
@@ -527,7 +569,7 @@ def detalhar_custo_e_quantidade_por_usuario():
     with obter_sessao() as sessao:
         linhas = sessao.exec(
             select(Job.usuario_id, func.count(), func.sum(Job.custo_estimado_usd))
-            .where(Job.custo_estimado_usd > 0)
+            .where(Job.ferramenta_slug == ferramenta_slug, Job.custo_estimado_usd > 0)
             .group_by(Job.usuario_id)
         ).all()
 
@@ -541,7 +583,7 @@ def detalhar_custo_e_quantidade_por_usuario():
     }
 
 
-def resumo_por_status_com_custo():
+def resumo_por_status_com_custo(ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Quantidade E custo agregados por status (sucesso/revisão/erro) —
     "erro" quase sempre fica com custo 0 (a chamada que teria custo real
     não chegou a terminar com sucesso), mas a quantidade ainda importa
@@ -550,7 +592,9 @@ def resumo_por_status_com_custo():
 
     with obter_sessao() as sessao:
         linhas = sessao.exec(
-            select(Job.status, func.count(), func.sum(Job.custo_estimado_usd)).group_by(Job.status)
+            select(Job.status, func.count(), func.sum(Job.custo_estimado_usd))
+            .where(Job.ferramenta_slug == ferramenta_slug)
+            .group_by(Job.status)
         ).all()
 
     for status, quantidade, custo in linhas:
@@ -560,14 +604,14 @@ def resumo_por_status_com_custo():
     return resultado
 
 
-def resumo_por_modelo():
+def resumo_por_modelo(ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Quantidade e custo agregados por modelo de IA que respondeu de
     verdade (Sonnet padrão vs Haiku, ver MODELO_PEDACO em ia_cliente.py)
     — só conta Job com custo > 0."""
     with obter_sessao() as sessao:
         linhas = sessao.exec(
             select(Job.modelo_ia, func.count(), func.sum(Job.custo_estimado_usd))
-            .where(Job.custo_estimado_usd > 0)
+            .where(Job.ferramenta_slug == ferramenta_slug, Job.custo_estimado_usd > 0)
             .group_by(Job.modelo_ia)
         ).all()
 

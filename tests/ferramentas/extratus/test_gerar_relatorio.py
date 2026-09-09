@@ -6,8 +6,8 @@ from sqlmodel import delete
 
 from sqlmodel import select
 
-from app.ferramentas.extratus.db import triagem_manual as db_triagem
-from app.ferramentas.extratus.db.models import RegistroConferencia, TriagemManual
+from app.ferramentas.nucleo_relatorios.db import triagem_manual as db_triagem
+from app.ferramentas.nucleo_relatorios.db.models import RegistroConferencia, TriagemManual
 from app.ferramentas.extratus.web.routes import gerar_relatorio
 from app.plataforma.db.models import Ferramenta, Usuario, UsuarioFerramenta
 from app.plataforma.db.session import obter_sessao

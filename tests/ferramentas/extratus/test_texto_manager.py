@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from app.ferramentas.extratus.core.texto_manager import (
+from app.ferramentas.nucleo_relatorios.core.texto_manager import (
     MINIMO_CARACTERES_PAGINA_COM_TEXTO,
     _parece_texto_embaralhado,
     _texto_real_da_pagina,
@@ -53,7 +53,7 @@ def test_diagnostico_conta_pagina_so_com_carimbo_como_sem_texto():
     ]
 
     with patch(
-        "app.ferramentas.extratus.core.texto_manager.extrair_paginas_pdf",
+        "app.ferramentas.nucleo_relatorios.core.texto_manager.extrair_paginas_pdf",
         return_value=(paginas_fake, 3),
     ):
         diagnostico = extrair_texto_pdf_com_diagnostico("qualquer.pdf")
@@ -114,7 +114,7 @@ def test_diagnostico_conta_pagina_embaralhada_como_sem_texto_e_reporta_separado(
     ]
 
     with patch(
-        "app.ferramentas.extratus.core.texto_manager.extrair_paginas_pdf",
+        "app.ferramentas.nucleo_relatorios.core.texto_manager.extrair_paginas_pdf",
         return_value=(paginas_fake, 3),
     ):
         diagnostico = extrair_texto_pdf_com_diagnostico("qualquer.pdf")

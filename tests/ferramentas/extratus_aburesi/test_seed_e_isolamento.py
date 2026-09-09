@@ -1,7 +1,7 @@
 from sqlmodel import delete, select
 
-from app.ferramentas.extratus.db.jobs import listar_jobs as listar_jobs_relatorios
-from app.ferramentas.extratus.db.models import Job as JobRelatorios
+from app.ferramentas.nucleo_relatorios.db.jobs import listar_jobs as listar_jobs_relatorios
+from app.ferramentas.nucleo_relatorios.db.models import Job as JobRelatorios
 from app.ferramentas.extratus_aburesi.db.jobs import (
     listar_jobs as listar_jobs_aburesi,
     registrar_processado,

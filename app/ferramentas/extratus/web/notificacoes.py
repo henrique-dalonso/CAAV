@@ -1,19 +1,24 @@
 from urllib.parse import quote
 
-from app.ferramentas.extratus.db.checagem_fila import (
+from app.ferramentas.nucleo_relatorios.db.checagem_fila import (
     MENSAGENS_INCONSISTENCIA,
     listar_inconsistencias,
 )
-from app.ferramentas.extratus.db.jobs import (
+from app.ferramentas.nucleo_relatorios.db.jobs import (
     listar_jobs_robo_nao_notificados_de_outros,
     listar_jobs_robo_nao_notificados_do_solicitante,
     listar_relatorios_manuais_nao_notificados_do_usuario,
 )
-from app.ferramentas.extratus.db.triagem_manual import (
+from app.ferramentas.nucleo_relatorios.db.triagem_manual import (
     MENSAGENS_INCONSISTENCIA as MENSAGENS_INCONSISTENCIA_MANUAL,
     listar_erros_do_usuario,
     listar_inconsistencias_do_usuario,
 )
+
+
+# ferramenta_slug das tabelas de nucleo_relatorios — ver mesmo comentário
+# em web/rotulos.py.
+_FERRAMENTA_SLUG_NUCLEO = "extratus-relatorios"
 
 
 def listar_notificacoes(usuario_id):
@@ -48,7 +53,7 @@ def listar_notificacoes(usuario_id):
     """
     notificacoes = []
 
-    for registro in listar_inconsistencias():
+    for registro in listar_inconsistencias(ferramenta_slug=_FERRAMENTA_SLUG_NUCLEO):
         motivo = MENSAGENS_INCONSISTENCIA.get(registro.status, "pendência na triagem")
         notificacoes.append({
             "mensagem": f'"{registro.nome_arquivo}": {motivo}',
@@ -57,7 +62,7 @@ def listar_notificacoes(usuario_id):
             "criado_em": registro.atualizado_em.isoformat(),
         })
 
-    for job in listar_jobs_robo_nao_notificados_de_outros(usuario_id):
+    for job in listar_jobs_robo_nao_notificados_de_outros(usuario_id, ferramenta_slug=_FERRAMENTA_SLUG_NUCLEO):
         # Achado 2026-08-13: apontava pra "/extratus/erros", uma tela
         # dedicada que nunca chegou a ser construída (404 sempre) — manda
         # pra "Relatórios do Robô" (já mostra tudo isso, com abas
@@ -126,7 +131,7 @@ def listar_notificacoes_pessoais(usuario_id):
     """
     notificacoes = []
 
-    for registro in listar_inconsistencias_do_usuario(usuario_id):
+    for registro in listar_inconsistencias_do_usuario(usuario_id, ferramenta_slug=_FERRAMENTA_SLUG_NUCLEO):
         motivo = MENSAGENS_INCONSISTENCIA_MANUAL.get(registro.status, "pendência na triagem")
         notificacoes.append({
             "mensagem": f'"{registro.nome_arquivo}": {motivo}',
@@ -137,7 +142,7 @@ def listar_notificacoes_pessoais(usuario_id):
             "criado_em": registro.atualizado_em.isoformat(),
         })
 
-    for registro in listar_erros_do_usuario(usuario_id):
+    for registro in listar_erros_do_usuario(usuario_id, ferramenta_slug=_FERRAMENTA_SLUG_NUCLEO):
         notificacoes.append({
             "mensagem": f'"{registro.nome_arquivo}": falha ao gerar o relatório',
             "tipo": "erro_manual",
@@ -147,7 +152,7 @@ def listar_notificacoes_pessoais(usuario_id):
             "criado_em": registro.atualizado_em.isoformat(),
         })
 
-    for job in listar_relatorios_manuais_nao_notificados_do_usuario(usuario_id):
+    for job in listar_relatorios_manuais_nao_notificados_do_usuario(usuario_id, ferramenta_slug=_FERRAMENTA_SLUG_NUCLEO):
         if job.status == "sucesso":
             notificacoes.append({
                 "mensagem": f'"{job.arquivo_pdf}": relatório pronto',
@@ -168,7 +173,7 @@ def listar_notificacoes_pessoais(usuario_id):
                 "criado_em": job.criado_em.isoformat(),
             })
 
-    for job in listar_jobs_robo_nao_notificados_do_solicitante(usuario_id):
+    for job in listar_jobs_robo_nao_notificados_do_solicitante(usuario_id, ferramenta_slug=_FERRAMENTA_SLUG_NUCLEO):
         link = "/extratus/relatorios-robo"
         if job.processo:
             link += "?processo=" + quote(job.processo)

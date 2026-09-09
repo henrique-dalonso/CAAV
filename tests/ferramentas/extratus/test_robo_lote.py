@@ -2,7 +2,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from app.ferramentas.extratus.core import robo_lote
+from app.ferramentas.nucleo_relatorios.core import robo_lote
 
 
 CONFIG_EXEMPLO = {
@@ -132,9 +132,9 @@ def test_coletar_lotes_pendentes_finaliza_sucesso_e_erro_sem_derrubar_o_outro():
     # o resultado de um lote sempre tem que aplicar o desconto do Batch API
     assert extrair_mock.call_args.kwargs.get("via_batch") is True
     assert marcar_item_mock.call_count == 2
-    marcar_item_mock.assert_any_call(10, "sucesso")
-    marcar_item_mock.assert_any_call(11, "erro")
-    marcar_lote_mock.assert_called_once_with(1)
+    marcar_item_mock.assert_any_call(10, "sucesso", ferramenta_slug="extratus-relatorios")
+    marcar_item_mock.assert_any_call(11, "erro", ferramenta_slug="extratus-relatorios")
+    marcar_lote_mock.assert_called_once_with(1, ferramenta_slug="extratus-relatorios")
 
 
 def test_coletar_lotes_pendentes_soma_custo_de_transcricao_ao_custo_final():

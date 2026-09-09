@@ -10,7 +10,7 @@ from app.plataforma.paths import PROJECT_ROOT
 # antes do create_all — sempre que uma ferramenta nova ganhar tabelas
 # próprias, o models dela precisa ser importado aqui também.
 from app.plataforma.db import models as _modelos_plataforma  # noqa: F401
-from app.ferramentas.extratus.db import models as _modelos_extratus  # noqa: F401
+from app.ferramentas.nucleo_relatorios.db import models as _modelos_nucleo_relatorios  # noqa: F401
 from app.ferramentas.extratus_aburesi.db import models as _modelos_extratus_aburesi  # noqa: F401
 from app.ferramentas.crivus.db import models as _modelos_crivus  # noqa: F401
 
@@ -56,6 +56,13 @@ COLUNAS_PENDENTES = {
         # Henrique, diretoria, 2026-08-27 — quem PEDIU esse processo, ver
         # docstring de Job.solicitante_id em db/models.py.
         "solicitante_id": "INTEGER",
+        # Stage 1 do motor compartilhado (nucleo_relatorios) — ver docstring
+        # de FERRAMENTA_SLUG_PADRAO/TIPO_RELATORIO_PADRAO em
+        # nucleo_relatorios/db/models.py. Toda linha existente até aqui é
+        # de Extratus-Relatórios/tipo "bancario", então o default cobre o
+        # histórico inteiro sem precisar de um UPDATE manual.
+        "ferramenta_slug": "VARCHAR DEFAULT 'extratus-relatorios'",
+        "tipo_relatorio": "VARCHAR DEFAULT 'bancario'",
     },
     "job_aburesi": {
         "notificacao_resolvida": "BOOLEAN DEFAULT 0",
@@ -63,6 +70,7 @@ COLUNAS_PENDENTES = {
     },
     "triagemmanual": {
         "origem_duplicado": "VARCHAR",
+        "ferramenta_slug": "VARCHAR DEFAULT 'extratus-relatorios'",
     },
     "triagemmanual_aburesi": {
         "origem_duplicado": "VARCHAR",
@@ -83,16 +91,27 @@ COLUNAS_PENDENTES = {
         # Henrique, diretoria, 2026-08-27 — quem pediu esse processo pro
         # Robô, ver docstring de Job.solicitante_id em db/models.py.
         "solicitante_id": "INTEGER",
+        "ferramenta_slug": "VARCHAR DEFAULT 'extratus-relatorios'",
     },
     "itemloterobo_aburesi": {
         "custo_transcricao_usd": "REAL DEFAULT 0",
         "solicitante_id": "INTEGER",
     },
+    "loterobo": {
+        "ferramenta_slug": "VARCHAR DEFAULT 'extratus-relatorios'",
+    },
     "checagemfila": {
         "solicitante_id": "INTEGER",
+        "ferramenta_slug": "VARCHAR DEFAULT 'extratus-relatorios'",
     },
     "checagemfila_aburesi": {
         "solicitante_id": "INTEGER",
+    },
+    "registroconferencia": {
+        "ferramenta_slug": "VARCHAR DEFAULT 'extratus-relatorios'",
+    },
+    "uploadfilarobo": {
+        "ferramenta_slug": "VARCHAR DEFAULT 'extratus-relatorios'",
     },
     "analisepublicacao": {
         # Henrique, 2026-09-04: campo "Número NPJUR" adicionado ao

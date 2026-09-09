@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import pytest
 from sqlmodel import delete
 
-from app.ferramentas.extratus.db.checagem_fila import (
+from app.ferramentas.nucleo_relatorios.db.checagem_fila import (
     APROVADO,
     DUPLICADO_EM_ANDAMENTO,
     DUPLICADO_RELATORIO,
@@ -24,8 +24,8 @@ from app.ferramentas.extratus.db.checagem_fila import (
     resolver_solicitantes,
     sincronizar_registros,
 )
-from app.ferramentas.extratus.db.lotes import criar_lote, marcar_lote_concluido
-from app.ferramentas.extratus.db.models import ChecagemFila, ItemLoteRobo, LoteRobo, UploadFilaRobo
+from app.ferramentas.nucleo_relatorios.db.lotes import criar_lote, marcar_lote_concluido
+from app.ferramentas.nucleo_relatorios.db.models import ChecagemFila, ItemLoteRobo, LoteRobo, UploadFilaRobo
 from app.plataforma.db.session import obter_sessao
 
 

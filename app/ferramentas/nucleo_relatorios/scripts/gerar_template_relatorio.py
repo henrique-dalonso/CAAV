@@ -29,7 +29,7 @@ from app.plataforma.paths import PROJECT_ROOT
 
 
 CAMINHO_SAIDA = str(
-    PROJECT_ROOT / "app" / "ferramentas" / "extratus" / "config" / "relatorio_template.docx"
+    PROJECT_ROOT / "app" / "ferramentas" / "nucleo_relatorios" / "config" / "relatorio_template.docx"
 )
 
 CINZA = RGBColor(0x80, 0x80, 0x80)

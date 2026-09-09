@@ -5,11 +5,11 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Uplo
 from fastapi.responses import RedirectResponse
 
 from app.ferramentas.extratus.core import config_manager as _config_extratus
-from app.ferramentas.extratus.core import prompt_manager as _prompt_extratus
-from app.ferramentas.extratus.db.jobs import (
+from app.ferramentas.nucleo_relatorios.core import prompt_manager as _prompt_extratus
+from app.ferramentas.nucleo_relatorios.db.jobs import (
     contar_relatorios_robo_concluidos as _contar_relatorios_robo_concluidos_extratus,
 )
-from app.ferramentas.extratus.db.lotes import (
+from app.ferramentas.nucleo_relatorios.db.lotes import (
     listar_itens_do_lote as _listar_itens_do_lote_extratus,
     listar_lotes_em_andamento as _listar_lotes_em_andamento_extratus,
     obter_estatisticas_lotes as _obter_estatisticas_lotes_extratus,

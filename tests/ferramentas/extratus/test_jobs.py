@@ -3,7 +3,7 @@ from sqlmodel import delete
 
 from datetime import datetime, timedelta
 
-from app.ferramentas.extratus.db.jobs import (
+from app.ferramentas.nucleo_relatorios.db.jobs import (
     contar_jobs_manuais_do_usuario,
     contar_relatorios_robo_concluidos,
     contar_relatorios_robo_novos,
@@ -25,7 +25,7 @@ from app.ferramentas.extratus.db.jobs import (
     serie_temporal_custo,
     somar_custo_por_usuario,
 )
-from app.ferramentas.extratus.db.models import Job
+from app.ferramentas.nucleo_relatorios.db.models import Job
 from app.plataforma.db.session import obter_sessao
 
 

@@ -1,8 +1,15 @@
-from app.ferramentas.extratus.db.models import RegistroConferencia
+from app.ferramentas.nucleo_relatorios.db.models import FERRAMENTA_SLUG_PADRAO, RegistroConferencia
 from app.plataforma.db.session import obter_sessao
 
 
-def registrar_decisao(nome_arquivo, tipo_inconsistencia, decisao, usuario_id, processo_informado=None):
+def registrar_decisao(
+    nome_arquivo,
+    tipo_inconsistencia,
+    decisao,
+    usuario_id,
+    processo_informado=None,
+    ferramenta_slug=FERRAMENTA_SLUG_PADRAO,
+):
     """Grava PRA SEMPRE quem decidiu o quê no painel de Conferências —
     ver docstring de RegistroConferencia (db/models.py) pra entender por
     que isso é uma tabela própria, não um campo a mais em ChecagemFila
@@ -16,6 +23,7 @@ def registrar_decisao(nome_arquivo, tipo_inconsistencia, decisao, usuario_id, pr
             decisao=decisao,
             usuario_id=usuario_id,
             processo_informado=processo_informado,
+            ferramenta_slug=ferramenta_slug,
         )
 
         sessao.add(registro)

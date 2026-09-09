@@ -1,4 +1,4 @@
-from app.ferramentas.extratus.core.processo_detector import analisar_pdf
+from app.ferramentas.nucleo_relatorios.core.processo_detector import analisar_pdf
 
 
 def normalizar_processo(processo):

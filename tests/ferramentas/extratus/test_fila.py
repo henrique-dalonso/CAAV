@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import delete, select
 
-from app.ferramentas.extratus.db.checagem_fila import (
+from app.ferramentas.nucleo_relatorios.db.checagem_fila import (
     APROVADO,
     DUPLICADO_RELATORIO,
     NAO_ENCONTRADO,
@@ -15,7 +15,7 @@ from app.ferramentas.extratus.db.checagem_fila import (
     obter_registro_por_nome,
     sincronizar_registros,
 )
-from app.ferramentas.extratus.db.models import ChecagemFila, RegistroConferencia
+from app.ferramentas.nucleo_relatorios.db.models import ChecagemFila, RegistroConferencia
 from app.ferramentas.extratus.web.routes import fila
 from app.plataforma.db.models import Ferramenta, Usuario, UsuarioFerramenta
 from app.plataforma.db.session import obter_sessao

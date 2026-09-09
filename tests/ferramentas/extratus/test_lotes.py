@@ -1,7 +1,7 @@
 import pytest
 from sqlmodel import delete
 
-from app.ferramentas.extratus.db.lotes import (
+from app.ferramentas.nucleo_relatorios.db.lotes import (
     criar_lote,
     listar_arquivos_ja_reivindicados,
     listar_itens_do_lote,
@@ -10,7 +10,7 @@ from app.ferramentas.extratus.db.lotes import (
     marcar_lote_concluido,
     obter_estatisticas_lotes,
 )
-from app.ferramentas.extratus.db.models import ItemLoteRobo, LoteRobo
+from app.ferramentas.nucleo_relatorios.db.models import ItemLoteRobo, LoteRobo
 from app.plataforma.db.session import obter_sessao
 
 

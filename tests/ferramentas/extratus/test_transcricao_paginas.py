@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 import fitz
 import pytest
 
-from app.ferramentas.extratus.core.transcricao_paginas import (
+from app.ferramentas.nucleo_relatorios.core.transcricao_paginas import (
     PAGINAS_POR_LOTE_TRANSCRICAO,
     transcrever_paginas,
 )
@@ -130,7 +130,7 @@ def test_transcrever_paginas_loga_quando_lote_corta_no_limite_de_tokens(pdf_de_5
     válida — precisa ficar visível no log, não silencioso."""
     mensagens_logadas = []
     monkeypatch.setattr(
-        "app.ferramentas.extratus.core.transcricao_paginas.registrar_log",
+        "app.ferramentas.nucleo_relatorios.core.transcricao_paginas.registrar_log",
         mensagens_logadas.append,
     )
 

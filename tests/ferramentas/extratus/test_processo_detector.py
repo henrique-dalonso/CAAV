@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from app.ferramentas.extratus.core.processo_detector import (
+from app.ferramentas.nucleo_relatorios.core.processo_detector import (
     ajustar_confianca_por_digitalizacao,
     analisar_texto_pdf,
     calcular_confianca,

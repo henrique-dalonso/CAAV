@@ -2,7 +2,13 @@ from datetime import datetime
 
 from sqlmodel import func, select, update
 
-from app.ferramentas.extratus.db.models import ChecagemFila, ItemLoteRobo, LoteRobo, UploadFilaRobo
+from app.ferramentas.nucleo_relatorios.db.models import (
+    FERRAMENTA_SLUG_PADRAO,
+    ChecagemFila,
+    ItemLoteRobo,
+    LoteRobo,
+    UploadFilaRobo,
+)
 from app.plataforma.db.session import obter_sessao
 from app.plataforma.web.eventos_sse import avisar_mudanca
 
@@ -31,7 +37,7 @@ MENSAGENS_INCONSISTENCIA = {
 }
 
 
-def registrar_upload(nome_arquivo, usuario_id):
+def registrar_upload(nome_arquivo, usuario_id, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Grava PRA SEMPRE quem enviou esse arquivo pela tela da Fila do
     Robô — ver docstring de UploadFilaRobo (db/models.py) pro porquê
     de ser uma tabela própria, não um campo em ChecagemFila. Auditoria
@@ -40,11 +46,13 @@ def registrar_upload(nome_arquivo, usuario_id):
     `registrar_pendente`/`ChecagemFila.solicitante_id` abaixo, que só
     sobrevive enquanto o arquivo estiver na fila."""
     with obter_sessao() as sessao:
-        sessao.add(UploadFilaRobo(nome_arquivo=nome_arquivo, usuario_id=usuario_id))
+        sessao.add(
+            UploadFilaRobo(nome_arquivo=nome_arquivo, usuario_id=usuario_id, ferramenta_slug=ferramenta_slug)
+        )
         sessao.commit()
 
 
-def registrar_pendente(nome_arquivo, solicitante_id):
+def registrar_pendente(nome_arquivo, solicitante_id, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Cria a linha da Fila do Robô (`ChecagemFila`) pra esse arquivo JÁ
     com quem enviou — direto na hora do upload (`web/routes/fila.py`),
     antes até do próximo ciclo do watcher (`sincronizar_registros`)
@@ -62,7 +70,10 @@ def registrar_pendente(nome_arquivo, solicitante_id):
     vazio — nunca sobrescreve um valor já presente."""
     with obter_sessao() as sessao:
         existente = sessao.exec(
-            select(ChecagemFila).where(ChecagemFila.nome_arquivo == nome_arquivo)
+            select(ChecagemFila).where(
+                ChecagemFila.ferramenta_slug == ferramenta_slug,
+                ChecagemFila.nome_arquivo == nome_arquivo,
+            )
         ).first()
 
         if existente:
@@ -77,7 +88,12 @@ def registrar_pendente(nome_arquivo, solicitante_id):
                 sessao.refresh(existente)
             return existente
 
-        registro = ChecagemFila(nome_arquivo=nome_arquivo, status=PENDENTE, solicitante_id=solicitante_id)
+        registro = ChecagemFila(
+            nome_arquivo=nome_arquivo,
+            status=PENDENTE,
+            solicitante_id=solicitante_id,
+            ferramenta_slug=ferramenta_slug,
+        )
         sessao.add(registro)
         sessao.commit()
         sessao.refresh(registro)
@@ -85,7 +101,7 @@ def registrar_pendente(nome_arquivo, solicitante_id):
         return registro
 
 
-def mapear_solicitantes_por_arquivo(itens):
+def mapear_solicitantes_por_arquivo(itens, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Achar quem enviou um arquivo por DEDUÇÃO — casa por NOME do
     arquivo + o envio (`UploadFilaRobo`) mais recente que aconteceu ANTES
     (ou junto) da criação do item. Nunca só pelo nome sozinho, porque um
@@ -112,7 +128,10 @@ def mapear_solicitantes_por_arquivo(itens):
 
     with obter_sessao() as sessao:
         uploads = sessao.exec(
-            select(UploadFilaRobo).where(UploadFilaRobo.nome_arquivo.in_(nomes))
+            select(UploadFilaRobo).where(
+                UploadFilaRobo.ferramenta_slug == ferramenta_slug,
+                UploadFilaRobo.nome_arquivo.in_(nomes),
+            )
         ).all()
 
     uploads_por_nome = {}
@@ -147,7 +166,7 @@ def mapear_solicitantes_por_arquivo(itens):
     return solicitantes
 
 
-def resolver_solicitantes(itens):
+def resolver_solicitantes(itens, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Pra cada item (`Job`, hoje): usa o `solicitante_id` DIRETO quando
     já vem preenchido (todo relatório novo, gerado a partir de
     2026-08-27, tem isso confiável). Só cai pra dedução por nome+horário
@@ -164,13 +183,13 @@ def resolver_solicitantes(itens):
 
     sem_solicitante = [item for item in itens if item.solicitante_id is None]
     if sem_solicitante:
-        deduzidos = mapear_solicitantes_por_arquivo(sem_solicitante)
+        deduzidos = mapear_solicitantes_por_arquivo(sem_solicitante, ferramenta_slug=ferramenta_slug)
         resolvidos.update(deduzidos)
 
     return resolvidos
 
 
-def sincronizar_registros(nomes_no_disco):
+def sincronizar_registros(nomes_no_disco, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Garante uma linha "pendente" pra todo nome novo em
     robo_pasta_entrada (upload pelo site OU qualquer outro jeito do
     arquivo aparecer ali) e apaga a linha de quem já saiu da pasta
@@ -178,11 +197,16 @@ def sincronizar_registros(nomes_no_disco):
     a checagem já cumpriu seu papel). Devolve as linhas com status
     "pendente" de verdade, prontas pra checar."""
     with obter_sessao() as sessao:
-        existentes = {c.nome_arquivo: c for c in sessao.exec(select(ChecagemFila)).all()}
+        existentes = {
+            c.nome_arquivo: c
+            for c in sessao.exec(
+                select(ChecagemFila).where(ChecagemFila.ferramenta_slug == ferramenta_slug)
+            ).all()
+        }
 
         for nome in nomes_no_disco:
             if nome not in existentes:
-                sessao.add(ChecagemFila(nome_arquivo=nome, status=PENDENTE))
+                sessao.add(ChecagemFila(nome_arquivo=nome, status=PENDENTE, ferramenta_slug=ferramenta_slug))
 
         # Só importa pro sininho quando quem sai era uma inconsistência
         # de verdade (uma Conferência ficando órfã, ex: alguém apagou o
@@ -203,15 +227,19 @@ def sincronizar_registros(nomes_no_disco):
         if sumiu_inconsistencia:
             avisar_mudanca()
 
-        consulta = select(ChecagemFila).where(ChecagemFila.status == PENDENTE)
+        consulta = select(ChecagemFila).where(
+            ChecagemFila.ferramenta_slug == ferramenta_slug, ChecagemFila.status == PENDENTE
+        )
         return sessao.exec(consulta).all()
 
 
-def atualizar_apos_checagem(registro_id, status, processo_detectado, confianca_nivel, confianca_motivo):
+def atualizar_apos_checagem(
+    registro_id, status, processo_detectado, confianca_nivel, confianca_motivo, ferramenta_slug=FERRAMENTA_SLUG_PADRAO
+):
     with obter_sessao() as sessao:
         registro = sessao.get(ChecagemFila, registro_id)
 
-        if not registro:
+        if not registro or registro.ferramenta_slug != ferramenta_slug:
             return
 
         registro.status = status
@@ -229,7 +257,7 @@ def atualizar_apos_checagem(registro_id, status, processo_detectado, confianca_n
         avisar_mudanca()
 
 
-def existe_conflito_de_processo(processo, exceto_nome_arquivo):
+def existe_conflito_de_processo(processo, exceto_nome_arquivo, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Esse número de processo já está "em andamento" em outro arquivo
     (qualquer um exceto o próprio, sob checagem agora) — seja porque já
     foi aprovado na checagem (esperando o robô pegar) ou porque já foi
@@ -239,6 +267,7 @@ def existe_conflito_de_processo(processo, exceto_nome_arquivo):
     with obter_sessao() as sessao:
         aprovado_em_outro_arquivo = sessao.exec(
             select(ChecagemFila).where(
+                ChecagemFila.ferramenta_slug == ferramenta_slug,
                 ChecagemFila.processo_detectado == processo,
                 ChecagemFila.status == APROVADO,
                 ChecagemFila.nome_arquivo != exceto_nome_arquivo,
@@ -252,6 +281,7 @@ def existe_conflito_de_processo(processo, exceto_nome_arquivo):
             select(ItemLoteRobo)
             .join(LoteRobo, LoteRobo.id == ItemLoteRobo.lote_id)
             .where(
+                LoteRobo.ferramenta_slug == ferramenta_slug,
                 ItemLoteRobo.processo_detectado == processo,
                 LoteRobo.status == "enviado",
             )
@@ -260,7 +290,7 @@ def existe_conflito_de_processo(processo, exceto_nome_arquivo):
         return em_lote_ativo is not None
 
 
-def estado_por_nome():
+def estado_por_nome(ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """{nome_arquivo: status} pra tela/polling saberem qual bolinha
     mostrar. Um nome sem linha nenhuma (checagem ainda nem rodou o
     primeiro ciclo pra ele) é tratado como "pendente" por quem chama
@@ -268,45 +298,56 @@ def estado_por_nome():
     with obter_sessao() as sessao:
         return {
             registro.nome_arquivo: registro.status
-            for registro in sessao.exec(select(ChecagemFila)).all()
+            for registro in sessao.exec(
+                select(ChecagemFila).where(ChecagemFila.ferramenta_slug == ferramenta_slug)
+            ).all()
         }
 
 
-def listar_aprovados_por_nome():
+def listar_aprovados_por_nome(ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """{nome_arquivo: ChecagemFila} só dos aprovados — usado pelo Robô
     (robo_lote.py) pra saber quem pode entrar num lote novo, reaproveitando
     o processo/confiança já detectados aqui (não detecta de novo)."""
     with obter_sessao() as sessao:
-        consulta = select(ChecagemFila).where(ChecagemFila.status == APROVADO)
+        consulta = select(ChecagemFila).where(
+            ChecagemFila.ferramenta_slug == ferramenta_slug, ChecagemFila.status == APROVADO
+        )
         return {registro.nome_arquivo: registro for registro in sessao.exec(consulta).all()}
 
 
-def obter_registro(registro_id):
+def obter_registro(registro_id, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     with obter_sessao() as sessao:
-        return sessao.get(ChecagemFila, registro_id)
+        registro = sessao.get(ChecagemFila, registro_id)
+        return registro if registro and registro.ferramenta_slug == ferramenta_slug else None
 
 
-def obter_registro_por_nome(nome_arquivo):
+def obter_registro_por_nome(nome_arquivo, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Usado por /fila/remover-varios pra limpar a linha de checagem na
     hora, sem esperar o próximo ciclo do watcher (Henrique, 2026-08-08:
     "quero que seja instantâneo") — remover um pendente que tinha uma
     conferência aberta é, na prática, um descarte, só que feito por um
     caminho diferente do painel de Conferências."""
     with obter_sessao() as sessao:
-        return sessao.exec(select(ChecagemFila).where(ChecagemFila.nome_arquivo == nome_arquivo)).first()
+        return sessao.exec(
+            select(ChecagemFila).where(
+                ChecagemFila.ferramenta_slug == ferramenta_slug, ChecagemFila.nome_arquivo == nome_arquivo
+            )
+        ).first()
 
 
-def listar_inconsistencias():
+def listar_inconsistencias(ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Toda linha esperando decisão humana no painel de Conferências —
     usado tanto pela própria tela (web/routes/fila.py) quanto pelo
     sininho de notificações (web/notificacoes.py), única fonte pra não
     duplicar a consulta em dois lugares."""
     with obter_sessao() as sessao:
-        consulta = select(ChecagemFila).where(ChecagemFila.status.in_(STATUS_INCONSISTENCIA))
+        consulta = select(ChecagemFila).where(
+            ChecagemFila.ferramenta_slug == ferramenta_slug, ChecagemFila.status.in_(STATUS_INCONSISTENCIA)
+        )
         return sessao.exec(consulta).all()
 
 
-def contar_inconsistencias_ativas():
+def contar_inconsistencias_ativas(ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Quantas Conferências da Fila do Robô estão pendentes AGORA, sem
     filtro de tempo — alimenta o badge "+N" da aba. Henrique, 2026-08-13:
     "não pode sumir só de entrar [na aba], permanece até alguém aprovar
@@ -316,12 +357,13 @@ def contar_inconsistencias_ativas():
     verdade, igual já vale pro sininho de notificações)."""
     with obter_sessao() as sessao:
         consulta = select(func.count()).select_from(ChecagemFila).where(
-            ChecagemFila.status.in_(STATUS_INCONSISTENCIA)
+            ChecagemFila.ferramenta_slug == ferramenta_slug,
+            ChecagemFila.status.in_(STATUS_INCONSISTENCIA),
         )
         return sessao.exec(consulta).one()
 
 
-def contar_inconsistencias_novas(desde):
+def contar_inconsistencias_novas(desde, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Quantas Conferências da Fila do Robô (compartilhada, não é por
     usuário) surgiram desde `desde` — alimenta o badge "+N" (cor de
     revisão, único número dessa aba) em rotulos.py. `atualizado_em`, não
@@ -331,13 +373,14 @@ def contar_inconsistencias_novas(desde):
     aberta."""
     with obter_sessao() as sessao:
         consulta = select(func.count()).select_from(ChecagemFila).where(
+            ChecagemFila.ferramenta_slug == ferramenta_slug,
             ChecagemFila.status.in_(STATUS_INCONSISTENCIA),
             ChecagemFila.atualizado_em > desde,
         )
         return sessao.exec(consulta).one()
 
 
-def aprovar_manualmente(registro_id, processo_manual=None):
+def aprovar_manualmente(registro_id, processo_manual=None, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Ação "Prosseguir" do painel de Conferências — pula as travas
     automáticas e libera o arquivo pro Robô pegar no próximo ciclo,
     exatamente como um "aprovado" comum (robo_lote.py não precisa saber
@@ -374,7 +417,11 @@ def aprovar_manualmente(registro_id, processo_manual=None):
 
         resultado = sessao.exec(
             update(ChecagemFila)
-            .where(ChecagemFila.id == registro_id, ChecagemFila.status.in_(STATUS_INCONSISTENCIA))
+            .where(
+                ChecagemFila.id == registro_id,
+                ChecagemFila.ferramenta_slug == ferramenta_slug,
+                ChecagemFila.status.in_(STATUS_INCONSISTENCIA),
+            )
             .values(**valores)
         )
         sessao.commit()
@@ -388,7 +435,7 @@ def aprovar_manualmente(registro_id, processo_manual=None):
         return registro
 
 
-def descartar(registro_id):
+def descartar(registro_id, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Ação "Descartar" do painel de Conferências — só apaga a linha da
     checagem. Quem chama (web/routes/fila.py) cuida de apagar o PDF de
     verdade da pasta antes disso, mesmo padrão já usado em
@@ -396,7 +443,7 @@ def descartar(registro_id):
     with obter_sessao() as sessao:
         registro = sessao.get(ChecagemFila, registro_id)
 
-        if not registro:
+        if not registro or registro.ferramenta_slug != ferramenta_slug:
             return
 
         era_inconsistencia = registro.status in STATUS_INCONSISTENCIA
