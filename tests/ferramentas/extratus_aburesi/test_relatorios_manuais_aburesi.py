@@ -2,8 +2,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import delete, select
 
-from app.ferramentas.extratus_aburesi.db.jobs import registrar_processado
-from app.ferramentas.extratus_aburesi.db.models import Job
+from app.ferramentas.nucleo_relatorios.db.jobs import registrar_processado
+from app.ferramentas.nucleo_relatorios.db.models import Job
 from app.plataforma.db.models import Ferramenta, Usuario, UsuarioFerramenta
 from app.plataforma.db.session import obter_sessao
 from app.plataforma.db.usuarios import buscar_usuario_por_nome_usuario, criar_usuario
@@ -15,8 +15,11 @@ NOME_COLABORADOR_TESTE = "teste_relprontos_colaborador_aburesi"
 SENHA = "senhaTeste123"
 
 # ID negativo de propósito — não colide com usuário real, mesmo padrão de
-# tests/ferramentas/extratus_aburesi/test_jobs_aburesi.py.
+# tests/ferramentas/extratus/test_relatorios_manuais.py.
 USUARIO_TESTE = -9304
+# ferramenta_slug das tabelas de nucleo_relatorios — ver mesmo comentário
+# em app/ferramentas/extratus_aburesi/web/rotulos.py.
+FERRAMENTA_SLUG = "extratus-aburesi"
 
 
 @pytest.fixture
@@ -81,6 +84,7 @@ def job_manual_de_teste():
         destino_pdf=None,
         confianca="alta",
         usuario_id=USUARIO_TESTE,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
 
     yield job
@@ -112,12 +116,14 @@ def test_botao_marcar_revisado_aparece_so_pro_dono_em_revisao(cliente_logado):
         processo="0000000-00.2026.8.00.0903",
         relatorio_path=None, destino_pdf=None, confianca="media",
         usuario_id=usuario.id,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
     job_outro_revisao = registrar_processado(
         arquivo_pdf="teste_relatorios_prontos_botao_revisado_outro_aburesi.pdf",
         processo="0000000-00.2026.8.00.0904",
         relatorio_path=None, destino_pdf=None, confianca="media",
         usuario_id=USUARIO_TESTE,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
 
     resp = cliente_logado.get("/extratus-aburesi/relatorios-urgentes")
@@ -138,6 +144,7 @@ def test_marcar_notificacao_resolvida_route_funciona_pro_dono(cliente_logado):
         processo="0000000-00.2026.8.00.0905",
         relatorio_path=None, destino_pdf=None, confianca="alta",
         usuario_id=usuario.id,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
 
     resp = cliente_logado.post(f"/extratus-aburesi/relatorios-urgentes/{job.id}/marcar-notificacao-resolvida")
@@ -158,6 +165,7 @@ def test_marcar_notificacao_resolvida_route_404_pra_job_de_outro_usuario(cliente
         processo="0000000-00.2026.8.00.0906",
         relatorio_path=None, destino_pdf=None, confianca="alta",
         usuario_id=USUARIO_TESTE,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
 
     resp = cliente_logado.post(f"/extratus-aburesi/relatorios-urgentes/{job.id}/marcar-notificacao-resolvida")
@@ -175,6 +183,7 @@ def test_excluir_relatorio_admin_apaga_de_verdade(cliente_logado):
         processo="0000000-00.2026.8.00.0912",
         relatorio_path=None, destino_pdf=None, confianca="alta",
         usuario_id=USUARIO_TESTE,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
 
     resp = cliente_logado.post(f"/extratus-aburesi/relatorios-urgentes/{job.id}/excluir", follow_redirects=False)
@@ -199,6 +208,7 @@ def test_excluir_relatorio_recusa_nao_admin(cliente_colaborador_nao_admin):
         processo="0000000-00.2026.8.00.0913",
         relatorio_path=None, destino_pdf=None, confianca="alta",
         usuario_id=USUARIO_TESTE,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
 
     resp = cliente_colaborador_nao_admin.post(f"/extratus-aburesi/relatorios-urgentes/{job.id}/excluir")
@@ -227,6 +237,7 @@ def test_ver_pdf_relatorio_abre_o_arquivo_de_origem(cliente_logado, tmp_path):
         processo="0000000-00.2026.8.00.0916",
         relatorio_path=None, destino_pdf=str(pdf_origem), confianca="alta",
         usuario_id=USUARIO_TESTE,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
 
     resp = cliente_logado.get(f"/extratus-aburesi/relatorios-urgentes/{job.id}/pdf")
@@ -246,6 +257,7 @@ def test_ver_pdf_relatorio_sem_destino_pdf_da_404(cliente_logado):
         processo="0000000-00.2026.8.00.0917",
         relatorio_path=None, destino_pdf=None, confianca="alta",
         usuario_id=USUARIO_TESTE,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
 
     resp = cliente_logado.get(f"/extratus-aburesi/relatorios-urgentes/{job.id}/pdf")

@@ -8,10 +8,10 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPExcepti
 from fastapi.responses import FileResponse, RedirectResponse
 
 from app.ferramentas.extratus_aburesi.core.config_manager import carregar_config
-from app.ferramentas.extratus_aburesi.core.pipeline_manual import processar_upload_manual, retomar_apos_conferencia
-from app.ferramentas.extratus_aburesi.core.processo_detector import PADRAO_CNJ as PADRAO_CNJ_TEXTO
-from app.ferramentas.extratus_aburesi.db.conferencias import registrar_decisao
-from app.ferramentas.extratus_aburesi.db.triagem_manual import (
+from app.ferramentas.nucleo_relatorios.core.pipeline_manual import processar_upload_manual, retomar_apos_conferencia
+from app.ferramentas.nucleo_relatorios.core.processo_detector import PADRAO_CNJ as PADRAO_CNJ_TEXTO
+from app.ferramentas.nucleo_relatorios.db.conferencias import registrar_decisao
+from app.ferramentas.nucleo_relatorios.db.triagem_manual import (
     DUPLICADO_RELATORIO,
     MENSAGENS_INCONSISTENCIA,
     STATUS_EXIGE_PROCESSO_MANUAL,
@@ -23,6 +23,7 @@ from app.ferramentas.extratus_aburesi.db.triagem_manual import (
     listar_inconsistencias_do_usuario,
     obter_registro,
 )
+from app.ferramentas.nucleo_relatorios.tipos import REGISTRO_TIPOS
 from app.ferramentas.extratus_aburesi.web.rotulos import (
     ABA_GERAR_RELATORIO,
     FERRAMENTA_SLUG,
@@ -35,6 +36,12 @@ from app.plataforma.db.models import Usuario
 from app.plataforma.db.usuarios import marcar_aba_vista, usuario_tem_acesso_manual
 from app.plataforma.web.auth import exigir_acesso_ferramenta, exigir_acesso_manual
 from app.plataforma.web.templates_util import criar_templates
+
+
+# ferramenta_slug/tipo das tabelas e do motor de nucleo_relatorios — ver
+# mesmo comentário em web/rotulos.py.
+FERRAMENTA_SLUG_NUCLEO = "extratus-aburesi"
+TIPO_RELATORIO = REGISTRO_TIPOS["bancario"]
 
 
 # Mesmo padrão de número de processo (CNJ) que core/processo_detector.py
@@ -73,7 +80,7 @@ templates.env.globals["contagem_nav_relatorios_robo"] = contagem_nav_relatorios_
 
 
 def _estado_atual(usuario_id):
-    estado = listar_estado_do_usuario(usuario_id)
+    estado = listar_estado_do_usuario(usuario_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
 
     pendentes = [
         {
@@ -131,7 +138,7 @@ def _conferencias_pendentes(usuario_id):
             "processo_detectado": registro.processo_detectado,
             "link_relatorio": _link_relatorio_existente(registro) if registro.status == DUPLICADO_RELATORIO else None,
         }
-        for registro in listar_inconsistencias_do_usuario(usuario_id)
+        for registro in listar_inconsistencias_do_usuario(usuario_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
     ]
 
 
@@ -197,7 +204,7 @@ async def enviar_pdfs(
         )
 
     desde = datetime.now() - timedelta(minutes=JANELA_MINUTOS_LIMITE_UPLOAD)
-    if contar_registros_recentes_do_usuario(usuario.id, desde) >= LIMITE_ARQUIVOS_POR_JANELA:
+    if contar_registros_recentes_do_usuario(usuario.id, desde, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO) >= LIMITE_ARQUIVOS_POR_JANELA:
         return _redirecionar(
             erro=f"Muitos arquivos enviados em pouco tempo — aguarde alguns minutos antes de enviar mais PDFs "
             f"(limite de {LIMITE_ARQUIVOS_POR_JANELA} a cada {JANELA_MINUTOS_LIMITE_UPLOAD} minutos)."
@@ -237,8 +244,10 @@ async def enviar_pdfs(
         caminho_destino = pasta_entrada / nome_no_disco
         caminho_destino.write_bytes(conteudo)
 
-        registro = criar_registro(nome_seguro, caminho_destino, usuario.id)
-        background_tasks.add_task(processar_upload_manual, registro.id)
+        registro = criar_registro(nome_seguro, caminho_destino, usuario.id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
+        background_tasks.add_task(
+            processar_upload_manual, registro.id, tipo=TIPO_RELATORIO, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO,
+        )
         enviados.append(nome_seguro)
 
     if rejeitados:
@@ -256,7 +265,7 @@ async def aprovar_conferencia(
     processo: str | None = Form(None),
     usuario: Usuario = Depends(exigir_acesso_manual("extratus-aburesi")),
 ):
-    registro = obter_registro(registro_id)
+    registro = obter_registro(registro_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
 
     if not registro or registro.usuario_id != usuario.id or registro.status not in STATUS_INCONSISTENCIA:
         return _redirecionar(erro="Essa pendência de conferência não existe mais.")
@@ -271,8 +280,10 @@ async def aprovar_conferencia(
     tipo_original = registro.status
     nome_arquivo = registro.nome_arquivo
 
-    registrar_decisao(nome_arquivo, tipo_original, "aprovado", usuario.id, processo_informado=processo_informado)
-    background_tasks.add_task(retomar_apos_conferencia, registro_id, processo_informado)
+    registrar_decisao(nome_arquivo, tipo_original, "aprovado", usuario.id, processo_informado=processo_informado, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
+    background_tasks.add_task(
+        retomar_apos_conferencia, registro_id, processo_informado, TIPO_RELATORIO, FERRAMENTA_SLUG_NUCLEO,
+    )
 
     return _redirecionar(sucesso=f'"{nome_arquivo}" liberado — gerando o relatório agora.')
 
@@ -282,7 +293,7 @@ def descartar_conferencia(
     registro_id: int,
     usuario: Usuario = Depends(exigir_acesso_manual("extratus-aburesi")),
 ):
-    registro = obter_registro(registro_id)
+    registro = obter_registro(registro_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
 
     if not registro or registro.usuario_id != usuario.id or registro.status not in STATUS_INCONSISTENCIA:
         return _redirecionar(erro="Essa pendência de conferência não existe mais.")
@@ -294,8 +305,8 @@ def descartar_conferencia(
     if caminho.exists():
         caminho.unlink()
 
-    descartar(registro_id)
-    registrar_decisao(nome_arquivo, tipo_original, "descartado", usuario.id)
+    descartar(registro_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
+    registrar_decisao(nome_arquivo, tipo_original, "descartado", usuario.id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
 
     return _redirecionar(sucesso=f'"{nome_arquivo}" descartado.')
 
@@ -305,7 +316,7 @@ def ver_pdf_conferencia(
     registro_id: int,
     usuario: Usuario = Depends(exigir_acesso_manual("extratus-aburesi")),
 ):
-    registro = obter_registro(registro_id)
+    registro = obter_registro(registro_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
 
     if not registro or registro.usuario_id != usuario.id:
         raise HTTPException(status_code=404, detail="Arquivo não encontrado.")
@@ -325,12 +336,12 @@ def dispensar_processamento_finalizado(
 ):
     """Dispensa um card "Concluído"/"Erro" já finalizado — só some da
     tela, o Job/relatório já está seguro em outro lugar (Job/.docx)."""
-    registro = obter_registro(registro_id)
+    registro = obter_registro(registro_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
 
     if not registro or registro.usuario_id != usuario.id or registro.status not in ("concluido", "erro"):
         raise HTTPException(status_code=404, detail="Esse item não existe mais.")
 
-    descartar(registro_id)
+    descartar(registro_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
 
     return {"ok": True}
 

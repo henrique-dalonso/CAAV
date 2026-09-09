@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import delete, select
 
-from app.ferramentas.extratus_aburesi.db.checagem_fila import (
+from app.ferramentas.nucleo_relatorios.db.checagem_fila import (
     APROVADO,
     DUPLICADO_RELATORIO,
     NAO_ENCONTRADO,
@@ -13,7 +13,7 @@ from app.ferramentas.extratus_aburesi.db.checagem_fila import (
     obter_registro,
     obter_registro_por_nome,
 )
-from app.ferramentas.extratus_aburesi.db.models import ChecagemFila, RegistroConferencia
+from app.ferramentas.nucleo_relatorios.db.models import ChecagemFila, RegistroConferencia
 from app.ferramentas.extratus_aburesi.web.routes import fila
 from app.plataforma.db.models import Ferramenta, Usuario, UsuarioFerramenta
 from app.plataforma.db.session import obter_sessao
@@ -24,6 +24,9 @@ from app.plataforma.web.main import app
 NOME_USUARIO_TESTE = "teste_fila_upload_aburesi"
 SENHA = "senhaTeste123"
 PREFIXO_TESTE = "teste_fila_conferencia_aburesi_"
+# ferramenta_slug das tabelas de nucleo_relatorios — ver mesmo comentário
+# em app/ferramentas/extratus_aburesi/web/rotulos.py.
+FERRAMENTA_SLUG = "extratus-aburesi"
 
 
 @pytest.fixture
@@ -65,7 +68,10 @@ def limpar_conferencia_teste():
 
 def _criar_checagem(nome, status, processo=None):
     with obter_sessao() as sessao:
-        registro = ChecagemFila(nome_arquivo=nome, status=status, processo_detectado=processo)
+        registro = ChecagemFila(
+            nome_arquivo=nome, status=status, processo_detectado=processo,
+            ferramenta_slug=FERRAMENTA_SLUG,
+        )
         sessao.add(registro)
         sessao.commit()
         sessao.refresh(registro)
@@ -73,10 +79,16 @@ def _criar_checagem(nome, status, processo=None):
 
 
 def test_upload_com_nome_repetido_nao_sobrescreve(cliente_logado, tmp_path):
+    # Nome do arquivo com sufixo "_aburesi": ChecagemFila.nome_arquivo é
+    # único GLOBALMENTE (não escopado por ferramenta_slug, ver
+    # nucleo_relatorios/db/models.py) — desde que Aburesi passou a
+    # compartilhar essa tabela com Relatórios (2026-09-09), um nome de
+    # arquivo de teste igual ao usado em tests/ferramentas/extratus/
+    # test_fila.py colide na mesma sessão de testes.
     with patch.object(fila, "carregar_config", return_value=_config_para(tmp_path)):
         resp1 = cliente_logado.post(
             "/extratus-aburesi/fila-robo/upload",
-            files={"arquivos": ("processo.pdf", b"%PDF-1.4 conteudo original", "application/pdf")},
+            files={"arquivos": ("processo_aburesi.pdf", b"%PDF-1.4 conteudo original", "application/pdf")},
             follow_redirects=False,
         )
         assert resp1.status_code == 303
@@ -84,28 +96,30 @@ def test_upload_com_nome_repetido_nao_sobrescreve(cliente_logado, tmp_path):
 
         resp2 = cliente_logado.post(
             "/extratus-aburesi/fila-robo/upload",
-            files={"arquivos": ("processo.pdf", b"%PDF-1.4 conteudo NOVO, nao deveria entrar", "application/pdf")},
+            files={"arquivos": ("processo_aburesi.pdf", b"%PDF-1.4 conteudo NOVO, nao deveria entrar", "application/pdf")},
             follow_redirects=False,
         )
         assert resp2.status_code == 303
         assert "erro=" in resp2.headers["location"]
         assert "existe" in resp2.headers["location"]
 
-    conteudo_final = (tmp_path / "processo.pdf").read_bytes()
+    conteudo_final = (tmp_path / "processo_aburesi.pdf").read_bytes()
     assert conteudo_final == b"%PDF-1.4 conteudo original"
 
 
 def test_upload_normal_ainda_funciona(cliente_logado, tmp_path):
+    # Ver comentário equivalente em test_upload_com_nome_repetido_nao_sobrescreve
+    # acima sobre o sufixo "_aburesi" no nome do arquivo.
     with patch.object(fila, "carregar_config", return_value=_config_para(tmp_path)):
         resp = cliente_logado.post(
             "/extratus-aburesi/fila-robo/upload",
-            files={"arquivos": ("novo.pdf", b"%PDF-1.4 arquivo novo", "application/pdf")},
+            files={"arquivos": ("novo_aburesi.pdf", b"%PDF-1.4 arquivo novo", "application/pdf")},
             follow_redirects=False,
         )
         assert resp.status_code == 303
         assert "sucesso=" in resp.headers["location"]
 
-    assert (tmp_path / "novo.pdf").read_bytes() == b"%PDF-1.4 arquivo novo"
+    assert (tmp_path / "novo_aburesi.pdf").read_bytes() == b"%PDF-1.4 arquivo novo"
 
 
 def test_upload_atrela_solicitante_direto_na_hora(cliente_logado, tmp_path):
@@ -127,7 +141,7 @@ def test_upload_atrela_solicitante_direto_na_hora(cliente_logado, tmp_path):
             )
         assert resp.status_code == 303
 
-        registro = obter_registro_por_nome(nome_arquivo)
+        registro = obter_registro_por_nome(nome_arquivo, ferramenta_slug=FERRAMENTA_SLUG)
         assert registro is not None
         assert registro.solicitante_id == usuario_id_logado
     finally:
@@ -150,7 +164,7 @@ def test_remover_varios_limpa_conferencia_aberta_na_hora(cliente_logado, limpar_
 
     assert "sucesso=" in resp.headers["location"]
     assert not (tmp_path / nome).exists()
-    assert obter_registro(registro.id) is None
+    assert obter_registro(registro.id, ferramenta_slug=FERRAMENTA_SLUG) is None
 
     with obter_sessao() as sessao:
         decisao = sessao.exec(
@@ -175,7 +189,7 @@ def test_remover_varios_sem_conferencia_nao_cria_registro(cliente_logado, limpar
 
     assert "sucesso=" in resp.headers["location"]
     assert not (tmp_path / nome).exists()
-    assert obter_registro(registro.id) is None
+    assert obter_registro(registro.id, ferramenta_slug=FERRAMENTA_SLUG) is None
 
     with obter_sessao() as sessao:
         decisao = sessao.exec(
@@ -192,7 +206,7 @@ def test_aprovar_conferencia_duplicado_libera_direto(cliente_logado, limpar_conf
     assert resp.status_code == 303
     assert "sucesso=" in resp.headers["location"]
 
-    atualizado = obter_registro(registro.id)
+    atualizado = obter_registro(registro.id, ferramenta_slug=FERRAMENTA_SLUG)
     assert atualizado.status == APROVADO
     assert atualizado.processo_detectado == "123"
 
@@ -211,7 +225,7 @@ def test_aprovar_conferencia_sem_processo_quando_nao_encontrado_falha(cliente_lo
     resp = cliente_logado.post(f"/extratus-aburesi/fila-robo/conferencia/{registro.id}/aprovar", follow_redirects=False)
 
     assert "erro=" in resp.headers["location"]
-    assert obter_registro(registro.id).status == NAO_ENCONTRADO
+    assert obter_registro(registro.id, ferramenta_slug=FERRAMENTA_SLUG).status == NAO_ENCONTRADO
 
 
 def test_aprovar_conferencia_com_processo_invalido_falha(cliente_logado, limpar_conferencia_teste):
@@ -224,7 +238,7 @@ def test_aprovar_conferencia_com_processo_invalido_falha(cliente_logado, limpar_
     )
 
     assert "erro=" in resp.headers["location"]
-    assert obter_registro(registro.id).status == NAO_ENCONTRADO
+    assert obter_registro(registro.id, ferramenta_slug=FERRAMENTA_SLUG).status == NAO_ENCONTRADO
 
 
 def test_aprovar_conferencia_com_processo_valido_libera(cliente_logado, limpar_conferencia_teste):
@@ -237,7 +251,7 @@ def test_aprovar_conferencia_com_processo_valido_libera(cliente_logado, limpar_c
     )
 
     assert "sucesso=" in resp.headers["location"]
-    atualizado = obter_registro(registro.id)
+    atualizado = obter_registro(registro.id, ferramenta_slug=FERRAMENTA_SLUG)
     assert atualizado.status == APROVADO
     assert atualizado.processo_detectado == "1234567-11.2026.8.00.1234"
 
@@ -252,7 +266,7 @@ def test_descartar_conferencia_apaga_arquivo_e_registra(cliente_logado, limpar_c
 
     assert "sucesso=" in resp.headers["location"]
     assert not (tmp_path / nome).exists()
-    assert obter_registro(registro.id) is None
+    assert obter_registro(registro.id, ferramenta_slug=FERRAMENTA_SLUG) is None
 
     with obter_sessao() as sessao:
         decisao = sessao.exec(
@@ -281,8 +295,8 @@ def test_descartar_todas_conferencias_remove_tudo(cliente_logado, limpar_confere
     assert "sucesso=" in resp.headers["location"]
     assert not (tmp_path / nome1).exists()
     assert not (tmp_path / nome2).exists()
-    assert obter_registro(registro1.id) is None
-    assert obter_registro(registro2.id) is None
+    assert obter_registro(registro1.id, ferramenta_slug=FERRAMENTA_SLUG) is None
+    assert obter_registro(registro2.id, ferramenta_slug=FERRAMENTA_SLUG) is None
 
     with obter_sessao() as sessao:
         decisoes = sessao.exec(
@@ -349,7 +363,7 @@ def test_pagina_fila_mostra_badge_ambar_ate_resolver(cliente_logado, limpar_conf
     assert segunda_visita.status_code == 200
     assert badge_fila_robo in segunda_visita.text
 
-    descartar(registro.id)
+    descartar(registro.id, ferramenta_slug=FERRAMENTA_SLUG)
 
     depois_de_resolver = cliente_logado.get("/extratus-aburesi/fila-robo")
     assert depois_de_resolver.status_code == 200

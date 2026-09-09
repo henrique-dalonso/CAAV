@@ -3,19 +3,19 @@ from datetime import datetime
 import pytest
 from sqlmodel import delete
 
-from app.ferramentas.extratus_aburesi.db.checagem_fila import (
+from app.ferramentas.nucleo_relatorios.db.checagem_fila import (
     APROVADO,
     DUPLICADO_RELATORIO,
     PENDENTE,
 )
-from app.ferramentas.extratus_aburesi.db.jobs import (
+from app.ferramentas.nucleo_relatorios.db.jobs import (
     marcar_notificacao_resolvida,
     marcar_notificacao_resolvida_robo,
     registrar_erro,
     registrar_processado,
 )
-from app.ferramentas.extratus_aburesi.db.models import ChecagemFila, Job, TriagemManual
-from app.ferramentas.extratus_aburesi.db.triagem_manual import NAO_ENCONTRADO, atualizar_apos_triagem, criar_registro, marcar_erro
+from app.ferramentas.nucleo_relatorios.db.models import ChecagemFila, Job, TriagemManual
+from app.ferramentas.nucleo_relatorios.db.triagem_manual import NAO_ENCONTRADO, atualizar_apos_triagem, criar_registro, marcar_erro
 from app.ferramentas.extratus_aburesi.web.notificacoes import listar_notificacoes, listar_notificacoes_pessoais
 from app.plataforma.db.session import obter_sessao
 
@@ -24,6 +24,9 @@ PREFIXO_TESTE = "teste_notif_aburesi_"
 
 # Ver comentário equivalente em tests/ferramentas/extratus/test_notificacoes.py
 USUARIO_TESTE = -9004
+# ferramenta_slug das tabelas de nucleo_relatorios — ver mesmo comentário
+# em app/ferramentas/extratus_aburesi/web/rotulos.py.
+FERRAMENTA_SLUG = "extratus-aburesi"
 
 
 @pytest.fixture
@@ -38,7 +41,7 @@ def limpar_notificacoes_teste():
 
 def _criar_checagem(nome, status):
     with obter_sessao() as sessao:
-        sessao.add(ChecagemFila(nome_arquivo=nome, status=status))
+        sessao.add(ChecagemFila(nome_arquivo=nome, status=status, ferramenta_slug=FERRAMENTA_SLUG))
         sessao.commit()
 
 
@@ -69,7 +72,7 @@ def test_status_aprovado_e_pendente_nao_viram_notificacao(limpar_notificacoes_te
 
 def test_erro_do_robo_vira_notificacao(limpar_notificacoes_teste):
     nome = f"{PREFIXO_TESTE}erro_robo.pdf"
-    registrar_erro(nome, None, "erro_pdf", "PDF corrompido", usuario_id=None)
+    registrar_erro(nome, None, "erro_pdf", "PDF corrompido", usuario_id=None, ferramenta_slug=FERRAMENTA_SLUG)
 
     itens = listar_notificacoes(USUARIO_TESTE)
     achado = next((i for i in itens if nome in i["mensagem"]), None)
@@ -83,7 +86,7 @@ def test_erro_do_robo_com_processo_vira_notificacao_com_deep_link(limpar_notific
     # Ver comentário equivalente em tests/ferramentas/extratus/test_notificacoes.py
     # — mesma lógica.
     nome = f"{PREFIXO_TESTE}erro_robo_com_processo.pdf"
-    registrar_erro(nome, "0000000-00.2026.8.00.9999", "erro_ia", "processo grande demais", usuario_id=None)
+    registrar_erro(nome, "0000000-00.2026.8.00.9999", "erro_ia", "processo grande demais", usuario_id=None, ferramenta_slug=FERRAMENTA_SLUG)
 
     itens = listar_notificacoes(USUARIO_TESTE)
     achado = next((i for i in itens if nome in i["mensagem"]), None)
@@ -106,7 +109,7 @@ def test_notificacao_de_triagem_carrega_criado_em_valido(limpar_notificacoes_tes
 
 def test_notificacao_de_erro_do_robo_carrega_criado_em_valido(limpar_notificacoes_teste):
     nome = f"{PREFIXO_TESTE}erro_com_timestamp.pdf"
-    registrar_erro(nome, None, "erro_pdf", "PDF corrompido", usuario_id=None)
+    registrar_erro(nome, None, "erro_pdf", "PDF corrompido", usuario_id=None, ferramenta_slug=FERRAMENTA_SLUG)
 
     itens = listar_notificacoes(USUARIO_TESTE)
     achado = next((i for i in itens if nome in i["mensagem"]), None)
@@ -117,7 +120,7 @@ def test_notificacao_de_erro_do_robo_carrega_criado_em_valido(limpar_notificacoe
 
 def test_erro_do_fluxo_manual_nao_vira_notificacao(limpar_notificacoes_teste):
     nome = f"{PREFIXO_TESTE}erro_manual.pdf"
-    registrar_erro(nome, None, "erro_pdf", "PDF corrompido", usuario_id=1)
+    registrar_erro(nome, None, "erro_pdf", "PDF corrompido", usuario_id=1, ferramenta_slug=FERRAMENTA_SLUG)
 
     itens = listar_notificacoes(USUARIO_TESTE)
 
@@ -126,8 +129,8 @@ def test_erro_do_fluxo_manual_nao_vira_notificacao(limpar_notificacoes_teste):
 
 def test_conferencia_pendente_do_usuario_vira_notificacao_pessoal(limpar_notificacoes_teste):
     nome = f"{PREFIXO_TESTE}minhas_conferencia.pdf"
-    registro = criar_registro(nome, f"/tmp/{nome}", USUARIO_TESTE)
-    atualizar_apos_triagem(registro.id, NAO_ENCONTRADO, None, "revisao", "não achou nada")
+    registro = criar_registro(nome, f"/tmp/{nome}", USUARIO_TESTE, ferramenta_slug=FERRAMENTA_SLUG)
+    atualizar_apos_triagem(registro.id, NAO_ENCONTRADO, None, "revisao", "não achou nada", ferramenta_slug=FERRAMENTA_SLUG)
 
     itens = listar_notificacoes_pessoais(USUARIO_TESTE)
     achado = next((i for i in itens if nome in i["mensagem"]), None)
@@ -140,8 +143,8 @@ def test_conferencia_pendente_do_usuario_vira_notificacao_pessoal(limpar_notific
 
 def test_erro_manual_do_usuario_vira_notificacao_pessoal(limpar_notificacoes_teste):
     nome = f"{PREFIXO_TESTE}minhas_erro.pdf"
-    registro = criar_registro(nome, f"/tmp/{nome}", USUARIO_TESTE)
-    marcar_erro(registro.id, "Falha ao gerar o relatório.")
+    registro = criar_registro(nome, f"/tmp/{nome}", USUARIO_TESTE, ferramenta_slug=FERRAMENTA_SLUG)
+    marcar_erro(registro.id, "Falha ao gerar o relatório.", ferramenta_slug=FERRAMENTA_SLUG)
 
     itens = listar_notificacoes_pessoais(USUARIO_TESTE)
     achado = next((i for i in itens if nome in i["mensagem"]), None)
@@ -159,6 +162,7 @@ def test_relatorio_pronto_do_usuario_vira_notificacao_descartavel(limpar_notific
         destino_pdf=None,
         confianca="alta",
         usuario_id=USUARIO_TESTE,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
 
     itens = listar_notificacoes_pessoais(USUARIO_TESTE)
@@ -178,6 +182,7 @@ def test_relatorio_em_revisao_do_usuario_vira_notificacao_nao_descartavel(limpar
         destino_pdf=None,
         confianca="media",
         usuario_id=USUARIO_TESTE,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
 
     itens = listar_notificacoes_pessoais(USUARIO_TESTE)
@@ -197,8 +202,9 @@ def test_relatorio_ja_notificado_nao_aparece_de_novo(limpar_notificacoes_teste):
         destino_pdf=None,
         confianca="alta",
         usuario_id=USUARIO_TESTE,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
-    marcar_notificacao_resolvida(job.id, USUARIO_TESTE)
+    marcar_notificacao_resolvida(job.id, USUARIO_TESTE, ferramenta_slug=FERRAMENTA_SLUG)
 
     itens = listar_notificacoes_pessoais(USUARIO_TESTE)
 
@@ -213,6 +219,7 @@ def test_sucesso_do_robo_vira_notificacao_nao_descartavel_em_ferramentas(limpar_
         destino_pdf=None,
         confianca="alta",
         usuario_id=None,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
 
     itens = listar_notificacoes(USUARIO_TESTE)
@@ -233,6 +240,7 @@ def test_sucesso_do_robo_do_solicitante_vai_pra_minhas_e_e_descartavel(limpar_no
         confianca="alta",
         usuario_id=None,
         solicitante_id=USUARIO_TESTE,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
 
     itens_pessoais = listar_notificacoes_pessoais(USUARIO_TESTE)
@@ -264,6 +272,7 @@ def test_revisao_do_robo_vira_notificacao_nao_descartavel(limpar_notificacoes_te
         destino_pdf=None,
         confianca="media",
         usuario_id=None,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
 
     itens = listar_notificacoes(USUARIO_TESTE)
@@ -283,9 +292,10 @@ def test_sucesso_do_robo_resolvido_nao_vira_notificacao(limpar_notificacoes_test
         destino_pdf=None,
         confianca="alta",
         usuario_id=None,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
 
-    assert marcar_notificacao_resolvida_robo(job.id) is True
+    assert marcar_notificacao_resolvida_robo(job.id, ferramenta_slug=FERRAMENTA_SLUG) is True
 
     itens = listar_notificacoes(USUARIO_TESTE)
     assert not any(job.arquivo_pdf in i["mensagem"] for i in itens)
@@ -293,7 +303,7 @@ def test_sucesso_do_robo_resolvido_nao_vira_notificacao(limpar_notificacoes_test
 
 def test_erro_marcado_resolvido_nao_vira_notificacao(limpar_notificacoes_teste):
     nome = f"{PREFIXO_TESTE}erro_resolvido.pdf"
-    job = registrar_erro(nome, None, "erro_pdf", "PDF corrompido", usuario_id=None)
+    job = registrar_erro(nome, None, "erro_pdf", "PDF corrompido", usuario_id=None, ferramenta_slug=FERRAMENTA_SLUG)
 
     with obter_sessao() as sessao:
         registro = sessao.get(Job, job.id)

@@ -6,8 +6,8 @@ from sqlmodel import delete
 
 from sqlmodel import select
 
-from app.ferramentas.extratus_aburesi.db import triagem_manual as db_triagem
-from app.ferramentas.extratus_aburesi.db.models import RegistroConferencia, TriagemManual
+from app.ferramentas.nucleo_relatorios.db import triagem_manual as db_triagem
+from app.ferramentas.nucleo_relatorios.db.models import RegistroConferencia, TriagemManual
 from app.ferramentas.extratus_aburesi.web.routes import gerar_relatorio
 from app.plataforma.db.models import Ferramenta, Usuario, UsuarioFerramenta
 from app.plataforma.db.session import obter_sessao
@@ -19,6 +19,9 @@ NOME_USUARIO_A = "teste_inbox_usuario_a_aburesi"
 NOME_USUARIO_B = "teste_inbox_usuario_b_aburesi"
 SENHA = "senhaTeste123"
 PREFIXO_TESTE = "teste_inbox_aburesi_"
+# ferramenta_slug das tabelas de nucleo_relatorios — ver mesmo comentário
+# em app/ferramentas/extratus_aburesi/web/rotulos.py.
+FERRAMENTA_SLUG = "extratus-aburesi"
 
 CONTEUDO_PDF_FALSO = b"%PDF-1.4\n%teste\n"
 
@@ -64,6 +67,7 @@ def _criar_registro(nome, usuario_id, status="processo_nao_encontrado"):
     with obter_sessao() as sessao:
         registro = TriagemManual(
             nome_arquivo=nome, caminho_pdf=f"/tmp/{nome}", usuario_id=usuario_id, status=status,
+            ferramenta_slug=FERRAMENTA_SLUG,
         )
         sessao.add(registro)
         sessao.commit()
@@ -212,7 +216,7 @@ def test_conferencia_descartar_apaga_registro(clientes_logados, tmp_path, limpar
     with obter_sessao() as sessao:
         registro = TriagemManual(
             nome_arquivo=caminho.name, caminho_pdf=str(caminho), usuario_id=usuario_a_id,
-            status="processo_nao_encontrado",
+            status="processo_nao_encontrado", ferramenta_slug=FERRAMENTA_SLUG,
         )
         sessao.add(registro)
         sessao.commit()
@@ -222,7 +226,7 @@ def test_conferencia_descartar_apaga_registro(clientes_logados, tmp_path, limpar
 
     assert resp.status_code == 303
     assert "sucesso=" in resp.headers["location"]
-    assert db_triagem.obter_registro(registro.id) is None
+    assert db_triagem.obter_registro(registro.id, ferramenta_slug=FERRAMENTA_SLUG) is None
     assert not caminho.exists()
 
 
@@ -236,7 +240,7 @@ def test_usuario_nao_ve_conferencia_de_outro(clientes_logados, limpar_triagem_te
 
     assert resp.status_code == 303
     assert "erro=" in resp.headers["location"]
-    assert db_triagem.obter_registro(registro_b.id) is not None
+    assert db_triagem.obter_registro(registro_b.id, ferramenta_slug=FERRAMENTA_SLUG) is not None
 
 
 def _usuario_id(nome_usuario):
@@ -264,7 +268,7 @@ def test_pagina_inicial_mostra_badge_ambar_ate_resolver(clientes_logados, limpar
     assert segunda_visita.status_code == 200
     assert badge_gerar_relatorio in segunda_visita.text
 
-    db_triagem.descartar(registro.id)
+    db_triagem.descartar(registro.id, ferramenta_slug=FERRAMENTA_SLUG)
 
     depois_de_resolver = cliente_a.get("/extratus-aburesi/fila-urgentes")
     assert depois_de_resolver.status_code == 200

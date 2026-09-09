@@ -1,3 +1,4 @@
+from functools import partial
 from pathlib import Path
 from urllib.parse import quote
 
@@ -5,25 +6,16 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Uplo
 from fastapi.responses import RedirectResponse
 
 from app.ferramentas.extratus.core import config_manager as _config_extratus
-from app.ferramentas.nucleo_relatorios.core import prompt_manager as _prompt_extratus
+from app.ferramentas.nucleo_relatorios.core import prompt_manager as _prompt_nucleo
 from app.ferramentas.nucleo_relatorios.db.jobs import (
-    contar_relatorios_robo_concluidos as _contar_relatorios_robo_concluidos_extratus,
+    contar_relatorios_robo_concluidos as _contar_relatorios_robo_concluidos_nucleo,
 )
 from app.ferramentas.nucleo_relatorios.db.lotes import (
-    listar_itens_do_lote as _listar_itens_do_lote_extratus,
-    listar_lotes_em_andamento as _listar_lotes_em_andamento_extratus,
-    obter_estatisticas_lotes as _obter_estatisticas_lotes_extratus,
+    listar_itens_do_lote as _listar_itens_do_lote_nucleo,
+    listar_lotes_em_andamento as _listar_lotes_em_andamento_nucleo,
+    obter_estatisticas_lotes as _obter_estatisticas_lotes_nucleo,
 )
 from app.ferramentas.extratus_aburesi.core import config_manager as _config_aburesi
-from app.ferramentas.extratus_aburesi.core import prompt_manager as _prompt_aburesi
-from app.ferramentas.extratus_aburesi.db.jobs import (
-    contar_relatorios_robo_concluidos as _contar_relatorios_robo_concluidos_aburesi,
-)
-from app.ferramentas.extratus_aburesi.db.lotes import (
-    listar_itens_do_lote as _listar_itens_do_lote_aburesi,
-    listar_lotes_em_andamento as _listar_lotes_em_andamento_aburesi,
-    obter_estatisticas_lotes as _obter_estatisticas_lotes_aburesi,
-)
 from app.plataforma.db.models import Usuario
 from app.plataforma.db.usuarios import listar_todas_ferramentas, listar_todos_usuarios
 from app.plataforma.paths import PROJECT_ROOT
@@ -39,24 +31,34 @@ from app.plataforma.web.templates_util import criar_templates
 # sensível"). admin_ferramenta foi removido por completo (ver docstring
 # de UsuarioFerramenta, db/models.py). Registro manual de qual ferramenta
 # tem essa tela — mesmo padrão de CUSTOS_POR_CHAVE em admin_custos.py.
+_SLUG_ABURESI = "extratus-aburesi"
+
 CONFIGURACOES_POR_CHAVE = {
     "extratus-relatorios": {
         "nome": "Extratus - Relatórios",
         "config_manager": _config_extratus,
-        "prompt_manager": _prompt_extratus,
-        "listar_lotes_em_andamento": _listar_lotes_em_andamento_extratus,
-        "listar_itens_do_lote": _listar_itens_do_lote_extratus,
-        "obter_estatisticas_lotes": _obter_estatisticas_lotes_extratus,
-        "contar_relatorios_robo_concluidos": _contar_relatorios_robo_concluidos_extratus,
+        "prompt_manager": _prompt_nucleo,
+        "listar_lotes_em_andamento": _listar_lotes_em_andamento_nucleo,
+        "listar_itens_do_lote": _listar_itens_do_lote_nucleo,
+        "obter_estatisticas_lotes": _obter_estatisticas_lotes_nucleo,
+        "contar_relatorios_robo_concluidos": _contar_relatorios_robo_concluidos_nucleo,
     },
     "extratus-aburesi": {
         "nome": "Extratus - Aburesi",
         "config_manager": _config_aburesi,
-        "prompt_manager": _prompt_aburesi,
-        "listar_lotes_em_andamento": _listar_lotes_em_andamento_aburesi,
-        "listar_itens_do_lote": _listar_itens_do_lote_aburesi,
-        "obter_estatisticas_lotes": _obter_estatisticas_lotes_aburesi,
-        "contar_relatorios_robo_concluidos": _contar_relatorios_robo_concluidos_aburesi,
+        # Mesmo motor compartilhado (nucleo_relatorios) do Extratus -
+        # Relatórios acima, só amarrado ao ferramenta_slug desta
+        # ferramenta via partial — as funções abaixo são chamadas sem
+        # esse argumento nos call sites deste arquivo (ver
+        # pagina_ferramenta_detalhe), então o default do próprio módulo
+        # (FERRAMENTA_SLUG_PADRAO = "extratus-relatorios") teria que ser
+        # sobrescrito de algum jeito pra não misturar lotes/estatísticas
+        # das duas ferramentas.
+        "prompt_manager": _prompt_nucleo,
+        "listar_lotes_em_andamento": partial(_listar_lotes_em_andamento_nucleo, ferramenta_slug=_SLUG_ABURESI),
+        "listar_itens_do_lote": partial(_listar_itens_do_lote_nucleo, ferramenta_slug=_SLUG_ABURESI),
+        "obter_estatisticas_lotes": partial(_obter_estatisticas_lotes_nucleo, ferramenta_slug=_SLUG_ABURESI),
+        "contar_relatorios_robo_concluidos": partial(_contar_relatorios_robo_concluidos_nucleo, ferramenta_slug=_SLUG_ABURESI),
     },
 }
 

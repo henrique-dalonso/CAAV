@@ -3,7 +3,7 @@ from datetime import datetime
 from app.plataforma.paths import PROJECT_ROOT
 
 
-LOG_PATH = PROJECT_ROOT / "app" / "ferramentas" / "extratus" / "logs" / "extratus.log"
+LOG_PATH = PROJECT_ROOT / "app" / "ferramentas" / "nucleo_relatorios" / "logs" / "motor.log"
 
 
 def registrar_log(mensagem):

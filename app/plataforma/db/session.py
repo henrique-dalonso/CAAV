@@ -11,7 +11,6 @@ from app.plataforma.paths import PROJECT_ROOT
 # próprias, o models dela precisa ser importado aqui também.
 from app.plataforma.db import models as _modelos_plataforma  # noqa: F401
 from app.ferramentas.nucleo_relatorios.db import models as _modelos_nucleo_relatorios  # noqa: F401
-from app.ferramentas.extratus_aburesi.db import models as _modelos_extratus_aburesi  # noqa: F401
 from app.ferramentas.crivus.db import models as _modelos_crivus  # noqa: F401
 
 
@@ -64,16 +63,9 @@ COLUNAS_PENDENTES = {
         "ferramenta_slug": "VARCHAR DEFAULT 'extratus-relatorios'",
         "tipo_relatorio": "VARCHAR DEFAULT 'bancario'",
     },
-    "job_aburesi": {
-        "notificacao_resolvida": "BOOLEAN DEFAULT 0",
-        "solicitante_id": "INTEGER",
-    },
     "triagemmanual": {
         "origem_duplicado": "VARCHAR",
         "ferramenta_slug": "VARCHAR DEFAULT 'extratus-relatorios'",
-    },
-    "triagemmanual_aburesi": {
-        "origem_duplicado": "VARCHAR",
     },
     "usuarioferramenta": {
         # Mesma retroatividade do usuario.tema/cor_perfil acima.
@@ -93,19 +85,12 @@ COLUNAS_PENDENTES = {
         "solicitante_id": "INTEGER",
         "ferramenta_slug": "VARCHAR DEFAULT 'extratus-relatorios'",
     },
-    "itemloterobo_aburesi": {
-        "custo_transcricao_usd": "REAL DEFAULT 0",
-        "solicitante_id": "INTEGER",
-    },
     "loterobo": {
         "ferramenta_slug": "VARCHAR DEFAULT 'extratus-relatorios'",
     },
     "checagemfila": {
         "solicitante_id": "INTEGER",
         "ferramenta_slug": "VARCHAR DEFAULT 'extratus-relatorios'",
-    },
-    "checagemfila_aburesi": {
-        "solicitante_id": "INTEGER",
     },
     "registroconferencia": {
         "ferramenta_slug": "VARCHAR DEFAULT 'extratus-relatorios'",
@@ -208,9 +193,16 @@ INDICES_UNICOS_PARCIAIS = [
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_triagemmanual_processo_ativo "
     "ON triagemmanual (processo_detectado) "
     "WHERE processo_detectado IS NOT NULL AND status = 'processando'",
-    "CREATE UNIQUE INDEX IF NOT EXISTS idx_triagemmanual_aburesi_processo_ativo "
-    "ON triagemmanual_aburesi (processo_detectado) "
-    "WHERE processo_detectado IS NOT NULL AND status = 'processando'",
+    # O índice em `triagemmanual_aburesi` (tabela própria do Aburesi de
+    # antes da migração pro motor compartilhado) foi removido daqui
+    # (2026-09-09, migração Aburesi -> nucleo_relatorios): aquela tabela
+    # não tem mais model nenhum registrado (db/models.py do Aburesi foi
+    # deletado), então create_all() nunca mais cria/recria ela — rodar
+    # CREATE INDEX incondicional contra uma tabela que pode não existir
+    # (instalação nova) OU que vai ser dropada manualmente (instalação
+    # antiga, ver Stage 2 do motor único) quebra a subida do servidor com
+    # "no such table". Aburesi agora usa a tabela `triagemmanual`
+    # compartilhada, já coberta pelo índice acima.
 ]
 
 

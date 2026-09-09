@@ -6,9 +6,9 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Uplo
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 
 from app.ferramentas.extratus_aburesi.core.config_manager import carregar_config
-from app.ferramentas.extratus_aburesi.core.pdf_manager import listar_pdfs
-from app.ferramentas.extratus_aburesi.core.processo_detector import PADRAO_CNJ as PADRAO_CNJ_TEXTO
-from app.ferramentas.extratus_aburesi.db.checagem_fila import (
+from app.ferramentas.nucleo_relatorios.core.pdf_manager import listar_pdfs
+from app.ferramentas.nucleo_relatorios.core.processo_detector import PADRAO_CNJ as PADRAO_CNJ_TEXTO
+from app.ferramentas.nucleo_relatorios.db.checagem_fila import (
     APROVADO,
     MENSAGENS_INCONSISTENCIA,
     NAO_ENCONTRADO,
@@ -23,8 +23,8 @@ from app.ferramentas.extratus_aburesi.db.checagem_fila import (
     registrar_pendente,
     registrar_upload,
 )
-from app.ferramentas.extratus_aburesi.db.conferencias import registrar_decisao
-from app.ferramentas.extratus_aburesi.db.lotes import listar_arquivos_ja_reivindicados
+from app.ferramentas.nucleo_relatorios.db.conferencias import registrar_decisao
+from app.ferramentas.nucleo_relatorios.db.lotes import listar_arquivos_ja_reivindicados
 from app.ferramentas.extratus_aburesi.web.rotulos import (
     ABA_FILA,
     FERRAMENTA_SLUG,
@@ -37,6 +37,11 @@ from app.plataforma.db.models import Usuario
 from app.plataforma.db.usuarios import marcar_aba_vista
 from app.plataforma.web.auth import exigir_acesso_ferramenta
 from app.plataforma.web.templates_util import criar_templates
+
+
+# ferramenta_slug das tabelas de nucleo_relatorios (Job/ChecagemFila/etc)
+# — ver mesmo comentário em web/rotulos.py.
+FERRAMENTA_SLUG_NUCLEO = "extratus-aburesi"
 
 
 # Mesmo padrão de número de processo (CNJ) que core/processo_detector.py
@@ -100,8 +105,8 @@ def _estado_atual_fila():
     padrão, nunca some da lista por causa disso."""
     config = carregar_config()
     pdfs_na_pasta = [pdf.name for pdf in listar_pdfs(config.get("robo_pasta_entrada", "robo_entrada_pdfs"))]
-    em_processamento = listar_arquivos_ja_reivindicados()
-    status_checagem = estado_por_nome()
+    em_processamento = listar_arquivos_ja_reivindicados(ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
+    status_checagem = estado_por_nome(ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
 
     # Separados fisicamente em duas colunas na tela (não só uma etiqueta):
     # quem ainda espera o robô notar o arquivo vs. quem já foi
@@ -150,7 +155,7 @@ def _conferencias_pendentes():
             "mensagem": MENSAGENS_INCONSISTENCIA.get(registro.status, "pendência na triagem"),
             "processo_detectado": registro.processo_detectado,
         }
-        for registro in listar_inconsistencias()
+        for registro in listar_inconsistencias(ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
     ]
 
 
@@ -239,10 +244,10 @@ async def enviar_pdfs(
             continue
 
         caminho_destino.write_bytes(conteudo)
-        registrar_upload(nome_seguro, usuario.id)
+        registrar_upload(nome_seguro, usuario.id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
         # Ver comentário equivalente em app/ferramentas/extratus/web/
         # routes/fila.py.
-        registrar_pendente(nome_seguro, usuario.id)
+        registrar_pendente(nome_seguro, usuario.id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
         enviados += 1
 
     # A Fila do robô envia um arquivo por requisição (fila.js), pra um
@@ -270,7 +275,7 @@ def remover_varios_da_fila(
 ):
     config = carregar_config()
     pasta_entrada = Path(config.get("robo_pasta_entrada", "robo_entrada_pdfs"))
-    em_processamento = listar_arquivos_ja_reivindicados()
+    em_processamento = listar_arquivos_ja_reivindicados(ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
 
     removidos = 0
     ignorados = 0
@@ -294,11 +299,11 @@ def remover_varios_da_fila(
 
         # Ver comentário equivalente em app/ferramentas/extratus/web/
         # routes/fila.py (Extratus - Relatórios) — mesma lógica.
-        registro = obter_registro_por_nome(nome_seguro)
+        registro = obter_registro_por_nome(nome_seguro, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
         if registro:
             if registro.status in STATUS_INCONSISTENCIA:
-                registrar_decisao(nome_seguro, registro.status, "descartado", usuario.id)
-            descartar_checagem(registro.id)
+                registrar_decisao(nome_seguro, registro.status, "descartado", usuario.id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
+            descartar_checagem(registro.id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
 
     mensagem = f"{removidos} PDF(s) removido(s) da fila."
 
@@ -318,7 +323,7 @@ def aprovar_conferencia(
     automática e libera o arquivo pro Robô pegar no próximo ciclo. Quem
     decidiu fica registrado pra sempre (RegistroConferencia), mesmo a
     Fila do Robô sendo compartilhada por todo mundo com acesso."""
-    registro = obter_registro(registro_id)
+    registro = obter_registro(registro_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
 
     if not registro or registro.status not in STATUS_INCONSISTENCIA:
         return _redirecionar(erro="Essa pendência de conferência não existe mais (o arquivo já saiu da fila).")
@@ -334,11 +339,11 @@ def aprovar_conferencia(
     tipo_original = registro.status
     nome_arquivo = registro.nome_arquivo
 
-    aprovado = aprovar_manualmente(registro_id, processo_manual=processo_informado)
+    aprovado = aprovar_manualmente(registro_id, processo_manual=processo_informado, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
     if not aprovado:
         return _redirecionar(erro="Essa pendência de conferência não existe mais (o arquivo já saiu da fila).")
 
-    registrar_decisao(nome_arquivo, tipo_original, "aprovado", usuario.id, processo_informado=processo_informado)
+    registrar_decisao(nome_arquivo, tipo_original, "aprovado", usuario.id, processo_informado=processo_informado, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
 
     return _redirecionar(sucesso=f'"{nome_arquivo}" liberado pra fila do Robô.')
 
@@ -351,7 +356,7 @@ def descartar_conferencia(
     """"Descartar" do painel de Conferências — remove o PDF de vez da
     fila (mesmo mecanismo de /fila-robo/remover-varios) e registra quem
     decidiu."""
-    registro = obter_registro(registro_id)
+    registro = obter_registro(registro_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
 
     if not registro or registro.status not in STATUS_INCONSISTENCIA:
         return _redirecionar(erro="Essa pendência de conferência não existe mais (o arquivo já saiu da fila).")
@@ -365,8 +370,8 @@ def descartar_conferencia(
     if caminho.exists():
         caminho.unlink()
 
-    descartar_checagem(registro_id)
-    registrar_decisao(nome_arquivo, tipo_original, "descartado", usuario.id)
+    descartar_checagem(registro_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
+    registrar_decisao(nome_arquivo, tipo_original, "descartado", usuario.id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
 
     return _redirecionar(sucesso=f'"{nome_arquivo}" descartado da fila.')
 
@@ -382,14 +387,14 @@ def descartar_todas_conferencias(
 
     descartados = 0
 
-    for registro in listar_inconsistencias():
+    for registro in listar_inconsistencias(ferramenta_slug=FERRAMENTA_SLUG_NUCLEO):
         caminho = pasta_entrada / registro.nome_arquivo
 
         if caminho.exists():
             caminho.unlink()
 
-        descartar_checagem(registro.id)
-        registrar_decisao(registro.nome_arquivo, registro.status, "descartado", usuario.id)
+        descartar_checagem(registro.id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
+        registrar_decisao(registro.nome_arquivo, registro.status, "descartado", usuario.id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
         descartados += 1
 
     if descartados == 0:
@@ -405,7 +410,7 @@ def ver_pdf_conferencia(
 ):
     """Ver docstring equivalente em app/ferramentas/extratus/web/routes/
     fila.py (Extratus - Relatórios) — mesma lógica."""
-    registro = obter_registro(registro_id)
+    registro = obter_registro(registro_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
 
     if not registro:
         raise HTTPException(status_code=404, detail="Arquivo não encontrado.")

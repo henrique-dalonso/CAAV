@@ -1,14 +1,22 @@
 import asyncio
 import traceback
 
-from app.ferramentas.extratus_aburesi.core.app_logger import registrar_log
-from app.ferramentas.extratus_aburesi.core.robo_lote import rodar_ciclo_robo
+from app.ferramentas.nucleo_relatorios.core.app_logger import registrar_log
+from app.ferramentas.nucleo_relatorios.core.robo_lote import rodar_ciclo_robo
+from app.ferramentas.nucleo_relatorios.tipos import REGISTRO_TIPOS
 
 
-# 5 minutos: dá folga (lotes do Batch API raramente terminam em menos que
-# isso) sem ficar pesado no servidor — fácil de ajustar depois se
-# necessário, não é um valor crítico.
-INTERVALO_SEGUNDOS = 300
+# 2 minutos (era 5 até 2026-09-09) — mesmo ajuste do Extratus-Relatórios,
+# espelhado aqui (ver docstring de rodar_ciclo_robo em core/robo_lote.py
+# pro porquê). Não é um valor crítico, fácil de ajustar de novo se
+# precisar.
+INTERVALO_SEGUNDOS = 120
+
+# Extratus-Aburesi, tipo "bancario" — mesmo motor compartilhado
+# (nucleo_relatorios) que Extratus-Relatórios usa, ver
+# nucleo_relatorios/tipos.py.
+FERRAMENTA_SLUG = "extratus-aburesi"
+TIPO_RELATORIO = REGISTRO_TIPOS["bancario"]
 
 
 async def loop_robo():
@@ -20,7 +28,7 @@ async def loop_robo():
     próximo tick."""
     while True:
         try:
-            await asyncio.to_thread(rodar_ciclo_robo)
+            await asyncio.to_thread(rodar_ciclo_robo, TIPO_RELATORIO, FERRAMENTA_SLUG)
         except Exception as erro:
             registrar_log(f"Erro no ciclo do robô: {erro}\n{traceback.format_exc()}")
 

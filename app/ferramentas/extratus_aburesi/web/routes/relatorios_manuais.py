@@ -4,7 +4,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, RedirectResponse
 
-from app.ferramentas.extratus_aburesi.db.jobs import excluir_job, listar_jobs_manuais, marcar_notificacao_resolvida, obter_job
+from app.ferramentas.nucleo_relatorios.db.jobs import excluir_job, listar_jobs_manuais, marcar_notificacao_resolvida, obter_job
 from app.ferramentas.extratus_aburesi.web.rotulos import (
     ABA_RELATORIOS,
     FERRAMENTA_SLUG,
@@ -20,6 +20,10 @@ from app.plataforma.db.usuarios import listar_todos_usuarios, marcar_aba_vista
 from app.plataforma.web.auth import exigir_acesso_manual, exigir_admin
 from app.plataforma.web.templates_util import criar_templates
 
+
+# ferramenta_slug das tabelas de nucleo_relatorios — ver mesmo comentário
+# em web/rotulos.py.
+FERRAMENTA_SLUG_NUCLEO = "extratus-aburesi"
 
 router = APIRouter(dependencies=[Depends(exigir_acesso_manual("extratus-aburesi"))])
 
@@ -45,7 +49,7 @@ def pagina_relatorios_manuais(
     erro: str | None = None,
     sucesso: str | None = None,
 ):
-    jobs = listar_jobs_manuais()
+    jobs = listar_jobs_manuais(ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
     nomes_por_id = {u.id: u.nome for u in listar_todos_usuarios()}
 
     # Renderiza PRIMEIRO, marca como visto DEPOIS — ver comentário
@@ -71,7 +75,7 @@ def pagina_relatorios_manuais(
 def ver_pdf_relatorio_route(job_id: int):
     """Ver docstring equivalente em app/ferramentas/extratus/web/routes/
     relatorios_manuais.py (Extratus - Relatórios) — mesma lógica."""
-    job = obter_job(job_id)
+    job = obter_job(job_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
 
     if not job or not job.destino_pdf:
         raise HTTPException(status_code=404, detail="PDF de origem não encontrado.")
@@ -102,7 +106,7 @@ def _redirecionar(erro=None, sucesso=None):
 def excluir_relatorio_route(job_id: int, usuario: Usuario = Depends(exigir_admin)):
     """Ver docstring equivalente em app/ferramentas/extratus/web/routes/
     relatorios_manuais.py (Extratus - Relatórios) — mesma lógica."""
-    if not excluir_job(job_id):
+    if not excluir_job(job_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO):
         return _redirecionar(erro="Esse relatório não existe mais.")
 
     return _redirecionar(sucesso="Relatório excluído permanentemente.")
@@ -115,7 +119,7 @@ def marcar_notificacao_resolvida_route(
 ):
     """Ver docstring equivalente em app/ferramentas/extratus/web/routes/
     relatorios_manuais.py (Extratus - Relatórios) — mesma lógica."""
-    if not marcar_notificacao_resolvida(job_id, usuario.id):
+    if not marcar_notificacao_resolvida(job_id, usuario.id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO):
         raise HTTPException(status_code=404, detail="Esse relatório não existe mais.")
 
     return {"ok": True}

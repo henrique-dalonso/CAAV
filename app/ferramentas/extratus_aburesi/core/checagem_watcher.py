@@ -1,8 +1,8 @@
 import asyncio
 import traceback
 
-from app.ferramentas.extratus_aburesi.core.app_logger import registrar_log
-from app.ferramentas.extratus_aburesi.core.checagem_lote import rodar_ciclo_checagem
+from app.ferramentas.nucleo_relatorios.core.app_logger import registrar_log
+from app.ferramentas.nucleo_relatorios.core.checagem_lote import rodar_ciclo_checagem
 
 
 # Bem mais rápido que o Robô (300s) de propósito — a checagem é só
@@ -12,6 +12,11 @@ from app.ferramentas.extratus_aburesi.core.checagem_lote import rodar_ciclo_chec
 # responsivo".
 INTERVALO_SEGUNDOS = 5
 
+# Extratus-Aburesi, tipo "bancario" — mesmo motor compartilhado
+# (nucleo_relatorios) que Extratus-Relatórios usa, ver
+# nucleo_relatorios/tipos.py.
+FERRAMENTA_SLUG = "extratus-aburesi"
+
 
 async def loop_checagem():
     """Mesmo padrão do loop_robo() (robo_watcher.py) — roda pra sempre
@@ -19,7 +24,7 @@ async def loop_checagem():
     loga e tenta de novo no próximo tick."""
     while True:
         try:
-            await asyncio.to_thread(rodar_ciclo_checagem)
+            await asyncio.to_thread(rodar_ciclo_checagem, FERRAMENTA_SLUG)
         except Exception as erro:
             registrar_log(f"Erro no ciclo de checagem da fila: {erro}\n{traceback.format_exc()}")
 

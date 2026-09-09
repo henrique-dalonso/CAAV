@@ -7,8 +7,13 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import FileResponse, RedirectResponse, Response
 
-from app.ferramentas.extratus_aburesi.db.checagem_fila import resolver_solicitantes
-from app.ferramentas.extratus_aburesi.db.jobs import excluir_job, listar_jobs_robo, marcar_notificacao_resolvida_robo, obter_job
+from app.ferramentas.nucleo_relatorios.db.checagem_fila import resolver_solicitantes
+from app.ferramentas.nucleo_relatorios.db.jobs import (
+    excluir_job,
+    listar_jobs_robo,
+    marcar_notificacao_resolvida_robo,
+    obter_job,
+)
 from app.ferramentas.extratus_aburesi.web.rotulos import (
     ABA_RELATORIOS_ROBO,
     FERRAMENTA_SLUG,
@@ -23,6 +28,11 @@ from app.plataforma.db.models import Usuario
 from app.plataforma.db.usuarios import listar_todos_usuarios, marcar_aba_vista
 from app.plataforma.web.auth import exigir_acesso_ferramenta, exigir_admin
 from app.plataforma.web.templates_util import criar_templates
+
+
+# ferramenta_slug das tabelas de nucleo_relatorios — ver mesmo comentário
+# em web/rotulos.py.
+FERRAMENTA_SLUG_NUCLEO = "extratus-aburesi"
 
 
 # Ver docstring equivalente em app/ferramentas/extratus/web/routes/
@@ -50,12 +60,12 @@ def pagina_relatorios_robo(
     erro: str | None = None,
     sucesso: str | None = None,
 ):
-    jobs = listar_jobs_robo()
+    jobs = listar_jobs_robo(ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
 
     # Ver comentário equivalente em app/ferramentas/extratus/web/routes/
     # relatorios_robo.py.
     nomes_por_id = {u.id: u.nome for u in listar_todos_usuarios()}
-    solicitante_por_job_id = resolver_solicitantes(jobs)
+    solicitante_por_job_id = resolver_solicitantes(jobs, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
     ids_solicitantes_reais = {sid for sid in solicitante_por_job_id.values() if sid}
 
     # Ver comentário equivalente em app/ferramentas/extratus/web/routes/
@@ -103,7 +113,7 @@ def pagina_relatorios_robo(
 def ver_pdf_relatorio_robo_route(job_id: int):
     """Ver docstring equivalente em app/ferramentas/extratus/web/routes/
     relatorios_robo.py (Extratus - Relatórios) — mesma lógica."""
-    job = obter_job(job_id)
+    job = obter_job(job_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
 
     if not job or not job.destino_pdf:
         raise HTTPException(status_code=404, detail="PDF de origem não encontrado.")
@@ -134,7 +144,7 @@ def _redirecionar(erro=None, sucesso=None):
 def excluir_relatorio_robo_route(job_id: int, usuario: Usuario = Depends(exigir_admin)):
     """Ver docstring equivalente em app/ferramentas/extratus/web/routes/
     relatorios_robo.py (Extratus - Relatórios) — mesma lógica."""
-    if not excluir_job(job_id):
+    if not excluir_job(job_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO):
         return _redirecionar(erro="Esse relatório não existe mais.")
 
     return _redirecionar(sucesso="Relatório excluído permanentemente.")
@@ -149,7 +159,7 @@ def baixar_lote_relatorios_robo(ids: list[int] = Form(...)):
 
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zip_arquivo:
         for job_id in ids:
-            job = obter_job(job_id)
+            job = obter_job(job_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
 
             if not job or job.status == "erro" or not job.relatorio_path:
                 continue
@@ -185,7 +195,7 @@ def excluir_lote_relatorios_robo(ids: list[int] = Form(...), usuario: Usuario = 
     excluidos = 0
 
     for job_id in ids:
-        if excluir_job(job_id):
+        if excluir_job(job_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO):
             excluidos += 1
 
     if excluidos == 0:
@@ -206,7 +216,7 @@ def marcar_notificacao_resolvida_robo_route(
 ):
     """Ver docstring equivalente em app/ferramentas/extratus/web/routes/
     relatorios_robo.py (Extratus - Relatórios) — mesma lógica."""
-    if not marcar_notificacao_resolvida_robo(job_id):
+    if not marcar_notificacao_resolvida_robo(job_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO):
         raise HTTPException(status_code=404, detail="Esse relatório não existe mais.")
 
     return {"ok": True}

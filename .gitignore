@@ -55,6 +55,8 @@ app/ferramentas/extratus/logs/*
 !app/ferramentas/extratus/logs/.gitkeep
 app/ferramentas/extratus_aburesi/logs/*
 !app/ferramentas/extratus_aburesi/logs/.gitkeep
+app/ferramentas/nucleo_relatorios/logs/*
+!app/ferramentas/nucleo_relatorios/logs/.gitkeep
 app/plataforma/logs/*
 !app/plataforma/logs/.gitkeep
 

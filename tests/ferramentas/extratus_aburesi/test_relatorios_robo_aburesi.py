@@ -5,9 +5,9 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import delete, select
 
-from app.ferramentas.extratus_aburesi.db.checagem_fila import registrar_upload
-from app.ferramentas.extratus_aburesi.db.jobs import registrar_erro, registrar_processado
-from app.ferramentas.extratus_aburesi.db.models import Job, UploadFilaRobo
+from app.ferramentas.nucleo_relatorios.db.checagem_fila import registrar_upload
+from app.ferramentas.nucleo_relatorios.db.jobs import registrar_erro, registrar_processado
+from app.ferramentas.nucleo_relatorios.db.models import Job, UploadFilaRobo
 from app.plataforma.db.models import Ferramenta, Usuario, UsuarioFerramenta
 from app.plataforma.db.session import obter_sessao
 from app.plataforma.db.usuarios import criar_usuario
@@ -21,6 +21,9 @@ SENHA = "senhaTeste123"
 # Ver comentário equivalente em tests/ferramentas/extratus/
 # test_relatorios_robo.py (Extratus - Relatórios) — mesma lógica.
 USUARIO_TESTE = -9010
+# ferramenta_slug das tabelas de nucleo_relatorios — ver mesmo comentário
+# em app/ferramentas/extratus_aburesi/web/rotulos.py.
+FERRAMENTA_SLUG = "extratus-aburesi"
 
 
 @pytest.fixture
@@ -107,6 +110,7 @@ def test_pagina_relatorios_robo_so_lista_jobs_do_robo(cliente_logado, limpar_job
         destino_pdf=None,
         confianca="alta",
         usuario_id=None,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
     job_manual = registrar_processado(
         arquivo_pdf="teste_pagina_relatorios_robo_manual_aburesi.pdf",
@@ -115,6 +119,7 @@ def test_pagina_relatorios_robo_so_lista_jobs_do_robo(cliente_logado, limpar_job
         destino_pdf=None,
         confianca="alta",
         usuario_id=USUARIO_TESTE,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
     limpar_jobs_criados.extend([job_robo.id, job_manual.id])
 
@@ -141,6 +146,7 @@ def test_pagina_relatorios_robo_mostra_quem_solicitou(cliente_logado, limpar_job
         confianca="alta",
         usuario_id=None,
         solicitante_id=usuario_id_logado,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
     limpar_jobs_criados.append(job_robo.id)
 
@@ -159,7 +165,7 @@ def test_pagina_relatorios_robo_mostra_quem_solicitou_por_fallback(cliente_logad
             select(Usuario.id).where(Usuario.nome_usuario == NOME_USUARIO_TESTE)
         ).first()
 
-    registrar_upload("teste_relrobo_solicitante_fallback_aburesi.pdf", usuario_id_logado)
+    registrar_upload("teste_relrobo_solicitante_fallback_aburesi.pdf", usuario_id_logado, ferramenta_slug=FERRAMENTA_SLUG)
 
     job_robo = registrar_processado(
         arquivo_pdf="teste_relrobo_solicitante_fallback_aburesi.pdf",
@@ -169,6 +175,7 @@ def test_pagina_relatorios_robo_mostra_quem_solicitou_por_fallback(cliente_logad
         confianca="alta",
         usuario_id=None,
         solicitante_id=None,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
     limpar_jobs_criados.append(job_robo.id)
 
@@ -225,6 +232,7 @@ def test_pagina_relatorios_manual_nao_lista_jobs_do_robo(cliente_logado, limpar_
         destino_pdf=None,
         confianca="alta",
         usuario_id=None,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
     limpar_jobs_criados.append(job_robo.id)
 
@@ -242,6 +250,7 @@ def test_marcar_notificacao_resolvida_robo_route_funciona_sem_dono(cliente_logad
         destino_pdf=None,
         confianca="alta",
         usuario_id=None,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
     limpar_jobs_criados.append(job.id)
 
@@ -267,6 +276,7 @@ def test_excluir_relatorio_robo_admin_apaga_de_verdade(cliente_logado):
         processo="0000000-00.2026.8.00.0914",
         relatorio_path=None, destino_pdf=None, confianca="alta",
         usuario_id=None,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
 
     resp = cliente_logado.post(f"/extratus-aburesi/relatorios-robo/{job.id}/excluir", follow_redirects=False)
@@ -312,6 +322,7 @@ def test_excluir_relatorio_robo_recusa_nao_admin():
         processo="0000000-00.2026.8.00.0915",
         relatorio_path=None, destino_pdf=None, confianca="alta",
         usuario_id=None,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
 
     resp = cliente.post(f"/extratus-aburesi/relatorios-robo/{job.id}/excluir")
@@ -337,6 +348,7 @@ def test_ver_pdf_relatorio_robo_abre_o_arquivo_de_origem(cliente_logado, tmp_pat
         processo="0000000-00.2026.8.00.0921",
         relatorio_path=None, destino_pdf=str(pdf_origem), confianca="alta",
         usuario_id=None,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
 
     resp = cliente_logado.get(f"/extratus-aburesi/relatorios-robo/{job.id}/pdf")
@@ -356,6 +368,7 @@ def test_ver_pdf_relatorio_robo_sem_destino_pdf_da_404(cliente_logado):
         processo="0000000-00.2026.8.00.0922",
         relatorio_path=None, destino_pdf=None, confianca="alta",
         usuario_id=None,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
 
     resp = cliente_logado.get(f"/extratus-aburesi/relatorios-robo/{job.id}/pdf")
@@ -385,6 +398,7 @@ def test_nao_admin_com_solicitacao_ve_filtro_padrao_preenchido(cliente_nao_admin
         processo="0000000-00.2026.8.00.0951",
         relatorio_path=None, destino_pdf=None, confianca="alta",
         usuario_id=None, solicitante_id=usuario_id,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
     limpar_jobs_criados.append(job.id)
 
@@ -403,6 +417,7 @@ def test_nao_admin_sem_nenhuma_solicitacao_ve_aviso_dedicado(cliente_nao_admin_l
         processo="0000000-00.2026.8.00.0952",
         relatorio_path=None, destino_pdf=None, confianca="alta",
         usuario_id=None, solicitante_id=USUARIO_TESTE,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
     limpar_jobs_criados.append(job_de_outro.id)
 
@@ -421,6 +436,7 @@ def test_admin_nunca_recebe_filtro_padrao(cliente_logado, limpar_jobs_criados):
         processo="0000000-00.2026.8.00.0953",
         relatorio_path=None, destino_pdf=None, confianca="alta",
         usuario_id=None, solicitante_id=USUARIO_TESTE,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
     limpar_jobs_criados.append(job_de_outro.id)
 
@@ -442,14 +458,17 @@ def test_baixar_lote_inclui_sucesso_e_revisao_exclui_erro(cliente_logado, limpar
     job_sucesso = registrar_processado(
         arquivo_pdf="teste_lote_sucesso_aburesi.pdf", processo="0000000-00.2026.8.00.0960",
         relatorio_path=str(caminho_sucesso), destino_pdf=None, confianca="alta", usuario_id=None,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
     job_revisao = registrar_processado(
         arquivo_pdf="teste_lote_revisao_aburesi.pdf", processo="0000000-00.2026.8.00.0961",
         relatorio_path=str(caminho_revisao), destino_pdf=None, confianca="media", usuario_id=None,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
     job_erro = registrar_erro(
         arquivo_pdf="teste_lote_erro_aburesi.pdf", processo=None, tipo_erro="erro_ia",
         erro_mensagem="falha simulada", usuario_id=None,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
     limpar_jobs_criados.extend([job_sucesso.id, job_revisao.id, job_erro.id])
 
@@ -472,6 +491,7 @@ def test_baixar_lote_sem_nenhum_arquivo_redireciona_com_erro(cliente_logado, lim
     job_erro = registrar_erro(
         arquivo_pdf="teste_lote_so_erro_aburesi.pdf", processo=None, tipo_erro="erro_ia",
         erro_mensagem="falha simulada", usuario_id=None,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
     limpar_jobs_criados.append(job_erro.id)
 
@@ -489,10 +509,12 @@ def test_excluir_lote_admin_apaga_varios_de_uma_vez(cliente_logado):
     job1 = registrar_processado(
         arquivo_pdf="teste_lote_excluir_1_aburesi.pdf", processo="0000000-00.2026.8.00.0970",
         relatorio_path=None, destino_pdf=None, confianca="alta", usuario_id=None,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
     job2 = registrar_processado(
         arquivo_pdf="teste_lote_excluir_2_aburesi.pdf", processo="0000000-00.2026.8.00.0971",
         relatorio_path=None, destino_pdf=None, confianca="alta", usuario_id=None,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
 
     resp = cliente_logado.post(
@@ -515,6 +537,7 @@ def test_excluir_lote_recusa_nao_admin(cliente_nao_admin_logado, limpar_jobs_cri
     job = registrar_processado(
         arquivo_pdf="teste_lote_excluir_nao_admin_aburesi.pdf", processo="0000000-00.2026.8.00.0972",
         relatorio_path=None, destino_pdf=None, confianca="alta", usuario_id=None,
+        ferramenta_slug=FERRAMENTA_SLUG,
     )
     limpar_jobs_criados.append(job.id)
 
