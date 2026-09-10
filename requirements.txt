@@ -12,3 +12,4 @@ itsdangerous
 python-dotenv
 pytest
 anthropic
+httpx
