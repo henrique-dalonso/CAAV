@@ -74,4 +74,27 @@ document.addEventListener("DOMContentLoaded", function () {
             posicionar();
         }
     });
+
+    // Trava o scroll do fundo só no modo central (ele cobre a tela,
+    // igual a um modal — sem isso dava pra rolar a página por baixo do
+    // painel). Observer em vez de travar/destravar em cada caminho que
+    // fecha o painel (Esc, clique fora, clique no fundo, reabrir outro
+    // painel) — todos eles chamam o `fechar` genérico compartilhado por
+    // TODOS os painéis do site (configurarAlternador/alternadores em
+    // base.js), então travar ali afetaria bandeja de apps/perfil/
+    // notificações também; observar o estado real do painel evita isso
+    // sem duplicar a lista de "todo caminho que fecha".
+    var travandoScroll = false;
+    function sincronizarScrollLock() {
+        var deveTravar = !painel.hidden && painel.classList.contains("lista-grupo-extratus-central");
+        if (deveTravar === travandoScroll) {
+            return;
+        }
+        travandoScroll = deveTravar;
+        document.body.style.overflow = deveTravar ? "hidden" : "";
+    }
+    new MutationObserver(sincronizarScrollLock).observe(painel, {
+        attributes: true,
+        attributeFilter: ["hidden", "class"],
+    });
 });

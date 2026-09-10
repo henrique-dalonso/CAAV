@@ -258,8 +258,17 @@ html[data-theme="escuro"] .leque-fan-item {
 
 /* Modo de contorno: sem espaço suficiente embaixo do card (perto do
    fim da janela) — vira camada centralizada com fundo escurecido,
-   mesma linguagem visual do .modal-confirmacao (admin/Usuários). */
-.lista-grupo-extratus.lista-grupo-extratus-central {
+   mesma linguagem visual do .modal-confirmacao (admin/Usuários).
+
+   ":not([hidden])" aqui não é estético — sem ele, esta regra e
+   ".lista-grupo-extratus[hidden]" acima têm a MESMA especificidade (2
+   "classes" cada, contando o atributo), e como esta vem depois no
+   arquivo ela vencia o "display: none" mesmo com hidden=true, então o
+   painel nunca fechava de verdade no modo central (fechar() só seta
+   hidden, não tira a classe -central). Mesmo padrão de empate de
+   especificidade já visto em .cartao-ferramenta-compacto — resolvido
+   com seletor que não depende de ordem no arquivo, não com reordenar. */
+.lista-grupo-extratus.lista-grupo-extratus-central:not([hidden]) {
     inset: 0;
     display: flex;
     align-items: center;
