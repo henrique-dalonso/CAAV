@@ -270,7 +270,10 @@ def construir_template():
     documento.add_paragraph("{% endfor %}")
 
     titulo_secao(documento, "PARECER DO ESCRITÓRIO")
-    paragrafo_parecer = documento.add_paragraph("{{ parecer }}")
+    # "{{r ... }}" ativa o RichText do docxtpl - ver comentário
+    # equivalente em gerar_template_relatorio.py (mesmo campo "parecer",
+    # mesma regra de negrito na recomendação).
+    paragrafo_parecer = documento.add_paragraph("{{r parecer }}")
     paragrafo_parecer.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     paragrafo_parecer.paragraph_format.space_after = Pt(8)
 

@@ -5,7 +5,7 @@ de campo faltando no molde. Usa um `dados` sintético, sem IA nenhuma."""
 
 from docx import Document
 
-from app.ferramentas.nucleo_relatorios.core.relatorio_manager import salvar_relatorio_docx
+from app.ferramentas.nucleo_relatorios.core.relatorio_manager import salvar_relatorio_docx, texto_para_richtext
 
 
 def _dados_sinteticos():
@@ -93,3 +93,70 @@ def test_rotulo_embutido_no_valor_e_pego_pelo_teste_acima(tmp_path):
 
     texto = _texto_completo(caminho_saida)
     assert texto.count("Prazo Fatal:") == 2
+
+
+def test_parecer_com_negrito_markdown_vira_negrito_de_verdade_no_word(tmp_path):
+    """Achado real (2026-09-10): o prompt pede a recomendação do parecer
+    em negrito, mas o campo só aceita texto puro — a IA usava markdown
+    ("**assim**"), que aparecia com os asteriscos literais no Word, sem
+    negrito nenhum. Agora o código interpreta essa marcação de verdade."""
+    caminho_saida = tmp_path / "relatorio_negrito.docx"
+    dados = _dados_sinteticos()
+    dados["parecer"] = "Texto normal. **Recomenda-se dispensa de recurso.** Mais texto normal."
+
+    salvar_relatorio_docx(dados, caminho_saida)
+
+    documento = Document(str(caminho_saida))
+    texto = "\n".join(p.text for p in documento.paragraphs)
+    assert "**" not in texto  # nenhum asterisco literal deve sobrar
+
+    runs_negrito = [
+        run.text for p in documento.paragraphs for run in p.runs if run.bold
+    ]
+    assert "Recomenda-se dispensa de recurso." in runs_negrito
+
+
+def test_parecer_sem_negrito_continua_igual_a_antes(tmp_path):
+    """Texto sem nenhum "**" precisa renderizar exatamente igual a antes
+    da mudança pra RichText — não pode virar um regressão silenciosa
+    pro caso comum (sem negrito nenhum)."""
+    caminho_saida = tmp_path / "relatorio_sem_negrito.docx"
+    dados = _dados_sinteticos()
+
+    salvar_relatorio_docx(dados, caminho_saida)
+
+    texto = _texto_completo(caminho_saida)
+    assert dados["parecer"] in texto
+
+
+def test_texto_para_richtext_com_multiplos_trechos_em_negrito():
+    """A função em si, isolada — mais de um trecho em negrito no mesmo
+    texto, intercalado com texto normal."""
+    rt = texto_para_richtext("A **B** C **D** E")
+    assert "<w:b/>" in rt.xml  # confirma que pelo menos 1 run saiu com negrito
+
+    from docx import Document as _Document
+    documento = _Document()
+    documento.add_paragraph("{{r x }}")
+    from docxtpl import DocxTemplate
+    import io
+    buffer = io.BytesIO()
+    documento.save(buffer)
+    buffer.seek(0)
+    tpl = DocxTemplate(buffer)
+    tpl.render({"x": rt})
+    buffer_saida = io.BytesIO()
+    tpl.save(buffer_saida)
+    buffer_saida.seek(0)
+    resultado = _Document(buffer_saida)
+    runs = [
+        (run.text, bool(run.bold))
+        for p in resultado.paragraphs for run in p.runs
+        if run.text  # docxtpl pode deixar runs vazios nas bordas, sem relevância aqui
+    ]
+    assert runs == [("A ", False), ("B", True), (" C ", False), ("D", True), (" E", False)]
+
+
+def test_texto_para_richtext_com_texto_vazio_nao_quebra():
+    assert texto_para_richtext("").xml == ""
+    assert texto_para_richtext(None).xml == ""

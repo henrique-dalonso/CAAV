@@ -132,7 +132,11 @@ def construir_template():
     # Parecer do escritorio
     titulo_secao(documento, "PARECER DO ESCRITÓRIO")
 
-    paragrafo_parecer = documento.add_paragraph("{{ parecer }}")
+    # "{{r ... }}" (nao "{{ ... }}") ativa o RichText do docxtpl - o
+    # prompt pede a recomendacao em negrito, e relatorio_manager.py
+    # converte o "**assim**" que a IA escreve em negrito de verdade
+    # antes de chegar aqui (ver texto_para_richtext).
+    paragrafo_parecer = documento.add_paragraph("{{r parecer }}")
     paragrafo_parecer.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     paragrafo_parecer.paragraph_format.space_after = Pt(8)
 
