@@ -179,7 +179,16 @@ class ChecagemFila(SQLModel, table=True):
 
     ferramenta_slug: str = Field(default=FERRAMENTA_SLUG_PADRAO, index=True)
 
-    nome_arquivo: str = Field(unique=True, index=True)
+    # NÃO usar `unique=True` aqui sozinho — achado real em produção
+    # (2026-09-10): já colidiu 2x (Relatórios×Aburesi, Aburesi×Emenda)
+    # quando duas ferramentas diferentes recebiam um arquivo com o MESMO
+    # nome por coincidência. A unicidade de verdade que importa é por
+    # ferramenta, não global — ver o índice composto
+    # `idx_checagemfila_ferramenta_arquivo` em
+    # app/plataforma/db/session.py::INDICES_UNICOS_PARCIAIS (e a migração
+    # que reconstrói a tabela existente sem a constraint antiga,
+    # `_garantir_checagemfila_sem_unique_global`, no mesmo arquivo).
+    nome_arquivo: str = Field(index=True)
     status: str = Field(default="pendente")
 
     # Ver docstring de Job.solicitante_id — preenchido direto no upload

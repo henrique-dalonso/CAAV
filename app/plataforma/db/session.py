@@ -230,6 +230,13 @@ INDICES_UNICOS_PARCIAIS = [
     # antiga, ver Stage 2 do motor único) quebra a subida do servidor com
     # "no such table". Aburesi agora usa a tabela `triagemmanual`
     # compartilhada, já coberta pelo índice acima.
+    #
+    # Composto, não parcial (sem WHERE) — mas o mesmo mecanismo genérico
+    # de aplicação abaixo serve igual. Ver docstring de
+    # _garantir_checagemfila_sem_unique_global (roda antes, tira a
+    # constraint antiga de coluna única pra este índice poder existir).
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_checagemfila_ferramenta_arquivo "
+    "ON checagemfila (ferramenta_slug, nome_arquivo)",
 ]
 
 
@@ -292,6 +299,70 @@ def _garantir_tabelas_renomeadas(engine):
         conexao.commit()
 
 
+def _garantir_checagemfila_sem_unique_global(engine):
+    """`ChecagemFila.nome_arquivo` tinha `unique=True` GLOBAL (uma linha
+    por nome de arquivo em QUALQUER ferramenta) — achado real em
+    produção (2026-09-10): já colidiu 2x (Relatórios×Aburesi,
+    Aburesi×Emenda) quando ferramentas diferentes recebiam um arquivo
+    com o mesmo nome por coincidência. A unicidade que interessa de
+    verdade é só DENTRO da mesma ferramenta — vira um índice composto
+    (ferramenta_slug, nome_arquivo), ver INDICES_UNICOS_PARCIAIS abaixo.
+
+    `Field(unique=True, index=True)` do SQLModel materializa como um
+    índice NOMEADO comum (`ix_checagemfila_nome_arquivo`), não uma
+    constraint de coluna inline — confirmado testando localmente antes
+    de escrever isso (índice nomeado pode ser removido com `DROP INDEX`
+    direto, bem mais simples e seguro que reconstruir a tabela inteira,
+    que era o plano original antes de checar isso na prática). Depois de
+    remover, recria um índice comum (não único) na mesma coluna, pra não
+    perder a performance de busca por nome_arquivo sozinho.
+
+    Idempotente (roda toda subida do servidor, só faz algo na primeira
+    vez): se a tabela ainda não existir (instalação nova) ou já não
+    tiver mais o índice único antigo (essa migração já rodou antes, ou o
+    banco já nasceu com o model atual), não faz nada. Roda ANTES de
+    `create_all()`/`_garantir_indices`, mesmo raciocínio de
+    `_garantir_tabelas_renomeadas` acima.
+    """
+    with engine.connect() as conexao:
+        existentes = {
+            linha[0]
+            for linha in conexao.exec_driver_sql(
+                "SELECT name FROM sqlite_master WHERE type = 'table'"
+            )
+        }
+
+        if "checagemfila" not in existentes:
+            return  # instalação nova — create_all() já cria do jeito certo
+
+        nome_indice_antigo = None
+        for indice in conexao.exec_driver_sql("PRAGMA index_list(checagemfila)").fetchall():
+            nome, eh_unico = indice[1], indice[2]
+            if not eh_unico:
+                continue
+            colunas_indice = [
+                linha[2]
+                for linha in conexao.exec_driver_sql(f"PRAGMA index_info('{nome}')").fetchall()
+            ]
+            if colunas_indice == ["nome_arquivo"]:
+                nome_indice_antigo = nome
+                break
+
+        if nome_indice_antigo is None:
+            return  # migração já rodou antes, ou o banco já nasceu sem o índice antigo
+
+        registrar_log(
+            f"Migração: removendo índice único global '{nome_indice_antigo}' de "
+            "checagemfila.nome_arquivo (vira composto com ferramenta_slug)."
+        )
+
+        conexao.exec_driver_sql(f"DROP INDEX {nome_indice_antigo}")
+        conexao.exec_driver_sql(
+            "CREATE INDEX IF NOT EXISTS ix_checagemfila_nome_arquivo ON checagemfila (nome_arquivo)"
+        )
+        conexao.commit()
+
+
 def _configurar_conexao_sqlite(conexao_dbapi, _):
     """Roda em toda conexão nova (SQLAlchemy usa um pool, várias conexões
     reais por trás do mesmo `engine`) — sem isso, escritas concorrentes de
@@ -315,6 +386,7 @@ def _criar_engine():
     event.listen(engine, "connect", _configurar_conexao_sqlite)
 
     _garantir_tabelas_renomeadas(engine)
+    _garantir_checagemfila_sem_unique_global(engine)
     _remover_colunas_obsoletas(engine)
     SQLModel.metadata.create_all(engine)
     _garantir_colunas(engine)
