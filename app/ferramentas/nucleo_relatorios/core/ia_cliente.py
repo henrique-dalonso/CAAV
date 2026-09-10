@@ -638,12 +638,12 @@ def cabe_no_limite_pdf_nativo(caminho_pdf):
 def _instrucao_formato():
     return (
         "\n\nIMPORTANTE SOBRE O FORMATO DE RESPOSTA: você não vai gerar um "
-        "arquivo Word diretamente nem responder em texto livre — preencha a "
-        "ferramenta \"preencher_relatorio\" com o conteúdo do relatório, "
-        "seguindo a PARTE 1 do prompt acima. A formatação visual do "
-        "documento final (fonte, margens, negrito) é responsabilidade de "
-        "outro sistema, não sua — ignore a PARTE 2. A PARTE 3 (controle de "
-        "qualidade) continua valendo integralmente."
+        "arquivo Word nem responder em texto livre — preencha a ferramenta "
+        "\"preencher_relatorio\" com o conteúdo do relatório, um valor puro "
+        "por campo, seguindo a PARTE 1 do prompt acima. A formatação visual "
+        "do documento final (fonte, margens, negrito, rótulos) é "
+        "responsabilidade de outro sistema, não sua — não inclua nenhum "
+        "rótulo de campo dentro do valor que você escrever."
     )
 
 
