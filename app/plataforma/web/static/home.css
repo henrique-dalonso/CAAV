@@ -50,21 +50,28 @@
     margin-bottom: 2.25rem;
 }
 
-.cartao-ferramenta-compacto {
+/* ".cartao-ferramenta.cartao-ferramenta-compacto" (2 classes, não só 1)
+   de propósito — mesma especificidade que ".cartao-ferramenta" sozinho
+   perdia a briga de cascata pra regra base (que vem depois no arquivo,
+   flex-direction/tamanho de emblema diferentes), então o card compacto
+   nunca ficava compacto de verdade na prática. Achado real, 2026-09-09,
+   Henrique comparando print lado a lado — mesma classe de bug em 3
+   lugares (contêiner, emblema, texto), corrigido nos 3. */
+.cartao-ferramenta.cartao-ferramenta-compacto {
     flex-direction: row;
     align-items: center;
     gap: 0.7rem;
     padding: 0.8rem 0.9rem;
 }
 
-.cartao-ferramenta-compacto .emblema {
+.cartao-ferramenta.cartao-ferramenta-compacto .emblema {
     width: 32px;
     height: 32px;
     font-size: 0.78rem;
     flex-shrink: 0;
 }
 
-.cartao-ferramenta-compacto strong {
+.cartao-ferramenta.cartao-ferramenta-compacto strong {
     font-size: 0.87rem;
     overflow: hidden;
     text-overflow: ellipsis;
