@@ -2,6 +2,7 @@
 
 {% block titulo %}Hub - CAAV{% endblock %}
 {% block css_pagina %}<link rel="stylesheet" href="/static/home.css?v={{ v }}">{% endblock %}
+{% block js_pagina %}<script src="/static/home.js?v={{ v }}" defer></script>{% endblock %}
 
 {% block conteudo %}
 <section class="saudacao">
@@ -24,6 +25,33 @@
 <h2 class="secao-titulo">Ferramentas</h2>
 <div class="grade-ferramentas">
     {% for ferramenta in ferramentas %}
+    {% if ferramenta.agrupado %}
+    <div class="cartao-ferramenta cartao-grupo-extratus">
+        <span class="badge-modulos">{{ ferramenta.itens|length }} módulos</span>
+        <button type="button" id="botao-grupo-extratus" class="cartao-grupo-gatilho" aria-haspopup="true" aria-expanded="false" aria-controls="lista-grupo-extratus">
+            <div class="leque-fan">
+                {% for item in ferramenta.itens %}
+                <div class="leque-fan-item"{% if item.cor_acento %} style="--emblema-cor:{{ item.cor_acento }};--emblema-cor-hover:{{ item.cor_acento_hover }};--emblema-cor-escuro:{{ item.cor_acento_escuro }};--emblema-cor-hover-escuro:{{ item.cor_acento_hover_escuro }};"{% endif %}>{{ item.nome|emblema_ferramenta }}</div>
+                {% endfor %}
+            </div>
+            <div>
+                <strong>{{ ferramenta.nome }}</strong><br>
+                <span>{{ ferramenta.descricao }}</span>
+            </div>
+        </button>
+        <div id="lista-grupo-extratus" class="lista-grupo-extratus" hidden>
+            {% for item in ferramenta.itens %}
+            <a class="lista-grupo-linha" href="{{ item.url }}">
+                <div class="emblema"{% if item.cor_acento %} style="--emblema-cor:{{ item.cor_acento }};--emblema-cor-hover:{{ item.cor_acento_hover }};--emblema-cor-escuro:{{ item.cor_acento_escuro }};--emblema-cor-hover-escuro:{{ item.cor_acento_hover_escuro }};"{% endif %}>{{ item.nome|emblema_ferramenta }}</div>
+                <span>
+                    <strong>{{ item.nome }}</strong>
+                    <small>{{ item.descricao }}</small>
+                </span>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
     <a class="cartao-ferramenta" href="{{ ferramenta.url }}" data-slug="{{ ferramenta.slug }}">
         <div class="emblema"{% if ferramenta.cor_acento %} style="--emblema-cor:{{ ferramenta.cor_acento }};--emblema-cor-hover:{{ ferramenta.cor_acento_hover }};--emblema-cor-escuro:{{ ferramenta.cor_acento_escuro }};--emblema-cor-hover-escuro:{{ ferramenta.cor_acento_hover_escuro }};"{% endif %}>{{ ferramenta.nome|emblema_ferramenta }}</div>
         <div>
@@ -32,6 +60,7 @@
         </div>
         <span class="seta">&rarr;</span>
     </a>
+    {% endif %}
     {% else %}
     <p class="vazio">Nenhuma ferramenta liberada pra você ainda. Fale com um administrador.</p>
     {% endfor %}

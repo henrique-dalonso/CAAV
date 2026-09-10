@@ -46,26 +46,26 @@
 .grade-ferramentas-compacta {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-    gap: 0.75rem;
-    margin-bottom: 2.5rem;
+    gap: 0.7rem;
+    margin-bottom: 2.25rem;
 }
 
 .cartao-ferramenta-compacto {
     flex-direction: row;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.85rem 1rem;
+    gap: 0.7rem;
+    padding: 0.8rem 0.9rem;
 }
 
 .cartao-ferramenta-compacto .emblema {
-    width: 34px;
-    height: 34px;
-    font-size: 0.85rem;
+    width: 32px;
+    height: 32px;
+    font-size: 0.78rem;
     flex-shrink: 0;
 }
 
 .cartao-ferramenta-compacto strong {
-    font-size: 0.9rem;
+    font-size: 0.87rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -131,4 +131,145 @@
     border-style: dashed;
     opacity: 0.55;
     pointer-events: none;
+}
+
+/* "Mais ferramentas em breve" não tem cor própria (não é uma ferramenta
+   de verdade) — cair no azul padrão de --cor-acento chamava atenção
+   demais pra um card que é só um aviso ("em breve"), Henrique
+   2026-09-09. Cinza neutro via --cor-texto-suave (já correto em
+   qualquer tema, sem precisar de um segundo valor pro escuro). */
+.cartao-ferramenta.desabilitada .emblema {
+    --emblema-cor: var(--cor-texto-suave);
+    --emblema-cor-hover: var(--cor-borda);
+}
+
+/* --- card agrupado "Extratus" (Hub, 2026-09-09) ---
+   Reaproveita a caixa/hover de .cartao-ferramenta; só o conteúdo de
+   dentro (botão-gatilho + leque + dropdown) é novo. */
+.cartao-grupo-extratus {
+    padding: 0;
+}
+
+.cartao-grupo-gatilho {
+    all: unset;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    padding: 1.5rem;
+    width: 100%;
+    cursor: pointer;
+}
+
+.badge-modulos {
+    position: absolute;
+    top: 1.4rem;
+    right: 1.4rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--cor-texto-suave);
+    background: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    pointer-events: none;
+}
+
+.leque-fan {
+    position: relative;
+    width: 38px;
+    height: 38px;
+}
+
+.leque-fan-item {
+    position: absolute;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: white;
+    letter-spacing: 0.02em;
+    background: linear-gradient(135deg, var(--emblema-cor, var(--cor-acento)), var(--emblema-cor-hover, var(--cor-acento-hover)));
+    box-shadow: 0 2px 6px rgb(0 0 0 / 0.25);
+    border: 2px solid var(--cor-cartao);
+    transition: transform 0.3s cubic-bezier(.34, 1.56, .64, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme="claro"]) .leque-fan-item {
+        background: linear-gradient(135deg, var(--emblema-cor-escuro, var(--emblema-cor, var(--cor-acento))), var(--emblema-cor-hover-escuro, var(--emblema-cor-hover, var(--cor-acento-hover))));
+    }
+}
+
+html[data-theme="escuro"] .leque-fan-item {
+    background: linear-gradient(135deg, var(--emblema-cor-escuro, var(--emblema-cor, var(--cor-acento))), var(--emblema-cor-hover-escuro, var(--emblema-cor-hover, var(--cor-acento-hover))));
+}
+
+.leque-fan-item:nth-child(1) { top: 6px; left: 0; z-index: 3; }
+.leque-fan-item:nth-child(2) { top: 0; left: 10px; z-index: 2; }
+.leque-fan-item:nth-child(3) { top: 6px; left: 20px; z-index: 1; }
+
+/* Leque abre ao passar o mouse pelo card inteiro (não só pelo ícone) —
+   mesmo espírito do lift/sombra que .cartao-ferramenta:hover já faz. */
+.cartao-grupo-extratus:hover .leque-fan-item:nth-child(1) { transform: translate(-5px, 3px) rotate(-10deg); }
+.cartao-grupo-extratus:hover .leque-fan-item:nth-child(2) { transform: translate(0, -5px); }
+.cartao-grupo-extratus:hover .leque-fan-item:nth-child(3) { transform: translate(5px, 3px) rotate(10deg); }
+
+.lista-grupo-extratus {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    background: var(--cor-cartao);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio);
+    box-shadow: var(--sombra-suave);
+    padding: 0.5rem;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+/* "display: flex" acima é regra de autor e vence a regra padrão do
+   navegador pra [hidden] (mesma pegadinha de .bandeja-apps[hidden] em
+   base.css) — sem isso, o dropdown nunca fecha de verdade. */
+.lista-grupo-extratus[hidden] {
+    display: none;
+}
+
+.lista-grupo-linha {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.55rem 0.6rem;
+    border-radius: var(--raio-pequeno);
+    text-decoration: none;
+    color: inherit;
+}
+
+.lista-grupo-linha:hover {
+    background: var(--cor-fundo);
+}
+
+.lista-grupo-linha .emblema {
+    width: 30px;
+    height: 30px;
+    font-size: 0.72rem;
+}
+
+.lista-grupo-linha strong {
+    display: block;
+    font-size: 0.87rem;
+}
+
+.lista-grupo-linha small {
+    display: block;
+    color: var(--cor-texto-suave);
+    font-size: 0.76rem;
+    margin-top: 0.1rem;
 }
