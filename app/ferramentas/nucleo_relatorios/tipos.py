@@ -65,10 +65,12 @@ def _construir_registro():
     # REGISTRO_TIPOS deste módulo como valor padrão, então este módulo não
     # pode importar ia_cliente.py no topo do arquivo.
     from app.ferramentas.nucleo_relatorios.core.ia_cliente import (
+        FERRAMENTA_CONDENACAO,
         FERRAMENTA_EMENDA,
         FERRAMENTA_PEDACO,
         FERRAMENTA_RELATORIO,
     )
+    from app.ferramentas.nucleo_relatorios.core.pos_processamento_condenacao import processar_condenacao
     from app.ferramentas.nucleo_relatorios.core.pos_processamento_emenda import processar_emenda
 
     bancario = TipoRelatorio(
@@ -110,7 +112,31 @@ def _construir_registro():
         pos_processar=processar_emenda,
     )
 
-    return {"bancario": bancario, "emenda": emenda}
+    # CONDENAÇÃO — 2º tipo novo no motor compartilhado (2026-09-10). Mesma
+    # estrutura de identificação/cronologia/parecer/prazo de "bancario"
+    # (ver FERRAMENTA_CONDENACAO em ia_cliente.py), mais a seção de cálculo
+    # da condenação. `pos_processar` roda a aritmética determinística de
+    # agregação e, quando possível, substitui a estimativa da IA pelo
+    # valor calculado de verdade com índice oficial buscado ao vivo (ver
+    # pos_processamento_condenacao.py e calculadores/correcao_monetaria.py)
+    # — mesmo princípio de "a IA extrai fatos, o código faz a conta" já
+    # usado em emenda pro prazo fatal.
+    #
+    # `schema_pedaco` reaproveita FERRAMENTA_PEDACO — mesma decisão e
+    # mesmo motivo já registrados acima pra emenda (documento tipicamente
+    # curto o bastante pra raramente precisar dividir; revisitar com um
+    # schema de pedaço dedicado se isso mudar na prática).
+    condenacao = TipoRelatorio(
+        chave="condenacao",
+        nome_exibicao="Cálculo de Condenação",
+        prompt_path=CONFIG_DIR / "prompts" / "condenacao.txt",
+        template_docx_path=CONFIG_DIR / "templates" / "condenacao.docx",
+        schema_relatorio=FERRAMENTA_CONDENACAO,
+        schema_pedaco=FERRAMENTA_PEDACO,
+        pos_processar=processar_condenacao,
+    )
+
+    return {"bancario": bancario, "emenda": emenda, "condenacao": condenacao}
 
 
 REGISTRO_TIPOS: dict[str, TipoRelatorio] = _construir_registro()

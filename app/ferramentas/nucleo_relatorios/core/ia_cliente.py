@@ -525,6 +525,138 @@ FERRAMENTA_EMENDA = {
 }
 
 
+# Schema do tipo "condenacao" (ver nucleo_relatorios/tipos.py). Reaproveita
+# os campos de identificação/cronologia/parecer/prazo idênticos a
+# FERRAMENTA_RELATORIO (mesmo processo bancário, mesma estrutura) — só
+# adiciona os campos da seção CÁLCULO DA CONDENAÇÃO.
+#
+# Mesmo princípio já seguido em FERRAMENTA_RELATORIO/FERRAMENTA_EMENDA
+# (ver comentários acima, acham o incidente real de 09/09): descriptions
+# aqui só dizem O QUE vai em cada campo, nunca COMO escrever — regra de
+# estilo/tamanho mora só no texto livre do prompt.
+#
+# Decisão de arquitetura importante (ver calculadores/correcao_monetaria.py
+# e pos_processamento_condenacao.py): "valor_atualizado"/"juros_moratorios"
+# de cada item NÃO são pedidos como resposta final — a IA só entrega uma
+# ESTIMATIVA de fallback (usada só quando o índice não é um dos nacionais
+# automatizáveis via API do Banco Central). Quando o índice É automatizável,
+# o pós-processamento SUBSTITUI a estimativa da IA pelo valor calculado de
+# verdade, com a taxa oficial buscada ao vivo — nunca confia em conta de
+# juros composto feita "de cabeça" pelo modelo. "juros_compensatorios" fica
+# de fora dessa automação de propósito: não tem índice/taxa padrão
+# publicado (é mais raro em contencioso bancário, tipicamente 0), então
+# continua sendo sempre a estimativa direta da IA, sem caminho automático.
+FERRAMENTA_CONDENACAO = {
+    "name": "preencher_calculo_condenacao",
+    "description": (
+        "Preenche o relatório processual e, quando houver condenação líquida "
+        "ou liquidável, o cálculo atualizado do valor devido, com base no "
+        "processo judicial anexado."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            # --- Identificação do processo (idêntico a FERRAMENTA_RELATORIO) ---
+            "tipo_acao": {"type": "string", "description": "Ex: Busca e Apreensão, Execução, Cumprimento de Sentença"},
+            "numero_processo": {"type": "string"},
+            "incidente": {"type": "string", "description": "Número do incidente, se houver. Vazio se não houver."},
+            "valor_causa": {"type": "string"},
+            "valor_divida": {"type": "string"},
+            "autor": {"type": "string"},
+            "reu": {"type": "string"},
+            "bem": {"type": "string", "description": "Descrição do bem (marca, modelo, ano, placa, chassi), se houver."},
+            "contrato": {"type": "string", "description": "Número do contrato, parcelas, taxa."},
+            "comarca": {"type": "string", "description": "Vara, comarca, estado/tribunal."},
+            "cronologia": {
+                "type": "array",
+                "description": "Eventos jurídicos relevantes, em ordem cronológica.",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "data": {"type": "string", "description": "Formato DD/MM/AAAA"},
+                        "ator": {"type": "string", "description": "Quem praticou o ato"},
+                        "descricao": {"type": "string", "description": "O que aconteceu neste evento."},
+                    },
+                    "required": ["data", "ator", "descricao"],
+                },
+            },
+            "parecer": {"type": "string", "description": "Parecer do escritório sobre o processo."},
+            "data_publicacao": {"type": "string"},
+            "prazo_fatal_ed": {"type": "string"},
+            "prazo_fatal": {"type": "string"},
+            "status_atual": {"type": "string", "description": "Situação atual do processo."},
+
+            # --- Cálculo da condenação ---
+            "tem_condenacao_liquida": {
+                "type": "boolean",
+                "description": "True se houver condenação líquida ou liquidável (sentença, acórdão ou decisão de liquidação) já constante dos autos, exigindo cálculo atualizado.",
+            },
+            "indice_correcao": {
+                "type": "string",
+                "description": (
+                    "O índice de correção monetária aplicável identificado na decisão, exatamente um destes valores: "
+                    "\"SELIC\", \"IPCA\", \"INPC\", \"IGP-M\", \"IPCA-E\" (quando a decisão especificar um desses índices nacionais), "
+                    "ou \"tabela_tribunal_local\" (quando a decisão remeter à tabela de correção do próprio tribunal, não a um índice nacional)."
+                ),
+            },
+            "taxa_juros_moratorios": {
+                "type": "string",
+                "description": "Taxa de juros de mora identificada na decisão (ex: \"1% ao mês\") ou \"SELIC\" quando a decisão determinar a taxa legal do art. 406 do Código Civil (Lei 14.905/2024), que substitui juros e correção por uma taxa única.",
+            },
+            "parametro_supletivo_aplicado": {
+                "type": "boolean",
+                "description": "True se algum parâmetro (índice, taxa, termo inicial) não constava expressamente da decisão e foi aplicado o padrão legal supletivo.",
+            },
+            "itens_calculo": {
+                "type": "array",
+                "description": "Uma linha por rubrica da dívida identificada nos autos ou na planilha de débitos anexada (ex: capital, IPVA, multa contratual, custas).",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "descricao": {"type": "string", "description": "Nome da verba conforme identificado nos autos (ex: DM, IPVA, Multa, LC)."},
+                        "data": {"type": "string", "description": "Data-base da rubrica (vencimento, fato gerador ou data fixada na decisão). Formato DD/MM/AAAA."},
+                        "valor_singelo": {"type": "number", "description": "Valor nominal da rubrica, sem correção nem juros."},
+                        "juros_compensatorios": {"type": "number", "description": "Valor de juros compensatórios dessa rubrica, se identificado na decisão. 0 quando não aplicável (caso mais comum em contencioso bancário)."},
+                        "valor_atualizado_estimado_ia": {"type": "number", "description": "Sua estimativa do valor atualizado dessa rubrica. Só é usada no relatório final se o índice informado não for automatizável — quando for, o sistema recalcula com a taxa oficial de verdade."},
+                        "juros_moratorios_estimados_ia": {"type": "number", "description": "Sua estimativa dos juros moratórios dessa rubrica. Mesma regra do campo anterior: só usada como último recurso."},
+                    },
+                    "required": ["descricao", "data", "valor_singelo", "juros_compensatorios", "valor_atualizado_estimado_ia", "juros_moratorios_estimados_ia"],
+                },
+            },
+            "em_cumprimento_sentenca": {
+                "type": "boolean",
+                "description": "True se o processo já estiver em fase de cumprimento de sentença.",
+            },
+            "prazo_523_transcorrido": {
+                "type": "boolean",
+                "description": "True se o prazo de pagamento voluntário do art. 523, §1º, CPC já tiver transcorrido sem quitação. Só relevante quando em_cumprimento_sentenca for True.",
+            },
+            "honorarios_percentual": {
+                "type": "string",
+                "description": "Percentual de honorários advocatícios sucumbenciais identificado nos autos (ex: \"10%\"). Vazio se não identificado.",
+            },
+            "honorarios_incide_sobre_multa": {
+                "type": "boolean",
+                "description": "True se os honorários advocatícios incidirem também sobre eventual multa do art. 523, §1º, CPC.",
+            },
+            "recomendacao_impugnar": {
+                "type": "boolean",
+                "description": "True se a recomendação for IMPUGNAR o cálculo apresentado nos autos; False se for NÃO IMPUGNAR.",
+            },
+            "recomendacao_justificativa": {
+                "type": "string",
+                "description": "Justificativa objetiva, em 1 frase, da recomendação de impugnar ou não (ex: divergência de índice encontrada, valor correto, risco de preclusão).",
+            },
+        },
+        "required": [
+            "tipo_acao", "numero_processo", "valor_causa", "valor_divida",
+            "autor", "reu", "comarca", "cronologia", "parecer", "status_atual",
+            "tem_condenacao_liquida",
+        ],
+    },
+}
+
+
 # Schema "mapa" — usado só nos pedaços de um processo dividido, nunca no
 # relatório final. Deliberadamente menor que FERRAMENTA_RELATORIO: um
 # trecho não tem visão do processo inteiro, então não faz sentido pedir

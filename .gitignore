@@ -26,6 +26,8 @@ app/ferramentas/extratus_aburesi/config/historico_prompts/
 # tipos.py), então o histórico de versões também fica dentro dela.
 app/ferramentas/nucleo_relatorios/config/prompts/emenda.txt
 app/ferramentas/nucleo_relatorios/config/prompts/historico_prompts/
+# CONDENAÇÃO (2026-09-10): mesmo motivo/padrão acima.
+app/ferramentas/nucleo_relatorios/config/prompts/condenacao.txt
 
 # Dados reais de clientes / processos - nunca versionar
 app/ferramentas/extratus/dados/entrada_pdfs/*
