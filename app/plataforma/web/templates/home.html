@@ -39,19 +39,25 @@
                 <span>{{ ferramenta.descricao }}</span>
             </div>
         </button>
-        <div id="lista-grupo-extratus" class="lista-grupo-extratus" hidden>
-            <div class="lista-grupo-caixa" role="menu" aria-label="Módulos do Extratus">
-                <p class="lista-grupo-titulo">Extratus</p>
-                {% for item in ferramenta.itens %}
-                <a class="lista-grupo-linha" href="{{ item.url }}" role="menuitem">
-                    <div class="emblema"{% if item.cor_acento %} style="--emblema-cor:{{ item.cor_acento }};--emblema-cor-hover:{{ item.cor_acento_hover }};--emblema-cor-escuro:{{ item.cor_acento_escuro }};--emblema-cor-hover-escuro:{{ item.cor_acento_hover_escuro }};"{% endif %}>{{ item.nome|emblema_ferramenta }}</div>
-                    <span>
-                        <strong>{{ item.nome }}</strong>
-                        <small>{{ item.descricao }}</small>
-                    </span>
-                </a>
-                {% endfor %}
-            </div>
+    </div>
+    <!-- Fora do card de propósito: um "position:fixed" dentro de um
+         ancestral com "transform" (.cartao-ferramenta:hover tem
+         translateY) deixa de ser fixo em relação à JANELA e passa a ser
+         fixo em relação a ESSE ancestral — o painel "pulava" seguindo o
+         hover do card. Mesma lição já registrada pra .painel-
+         notificacoes em base.html, não conectada aqui da primeira vez. -->
+    <div id="lista-grupo-extratus" class="lista-grupo-extratus" hidden>
+        <div class="lista-grupo-caixa" role="menu" aria-label="Módulos do Extratus">
+            <p class="lista-grupo-titulo">Extratus</p>
+            {% for item in ferramenta.itens %}
+            <a class="lista-grupo-linha" href="{{ item.url }}" role="menuitem">
+                <div class="emblema"{% if item.cor_acento %} style="--emblema-cor:{{ item.cor_acento }};--emblema-cor-hover:{{ item.cor_acento_hover }};--emblema-cor-escuro:{{ item.cor_acento_escuro }};--emblema-cor-hover-escuro:{{ item.cor_acento_hover_escuro }};"{% endif %}>{{ item.nome|emblema_ferramenta }}</div>
+                <span>
+                    <strong>{{ item.nome }}</strong>
+                    <small>{{ item.descricao }}</small>
+                </span>
+            </a>
+            {% endfor %}
         </div>
     </div>
     {% else %}

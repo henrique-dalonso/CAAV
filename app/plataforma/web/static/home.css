@@ -232,27 +232,40 @@ html[data-theme="escuro"] .leque-fan-item {
 .cartao-grupo-extratus:hover .leque-fan-item:nth-child(3) { transform: translate(5px, 3px) rotate(10deg); }
 
 /* Henrique, 2026-09-09: não pode depender de rolagem pra aparecer —
-   "dando brecha pra achar que nada ocorreu ao clicar". Mesma linguagem
-   visual do .modal-confirmacao (fixed + inset:0 + fundo escurecido,
-   sempre centralizado na janela, nunca no fluxo do documento) em vez do
-   dropdown ancorado no card de antes — reaproveita o padrão já usado em
-   admin/Usuários, não inventa um novo. */
+   "dando brecha pra achar que nada ocorreu ao clicar", mas também não
+   pode SEMPRE cobrir a tela inteira — o normal é abrir ancorado embaixo
+   do card, igual qualquer dropdown; só cai pro modo de tela cheia
+   quando não courber (perto do fim da janela). top/left do modo
+   ancorado vêm de JS (home.js:posicionar), calculados no clique.
+
+   position:fixed (não absolute) mesmo no modo ancorado — o elemento
+   fica FORA de .cartao-grupo-extratus no HTML de propósito (ver
+   comentário em home.html) porque um fixed dentro de ancestral com
+   transform (.cartao-ferramenta:hover) vira fixo em relação a esse
+   ancestral, não à janela — o painel "pulava" seguindo o hover. */
 .lista-grupo-extratus {
     position: fixed;
-    inset: 0;
     z-index: 100;
+}
+
+/* "display: block" acima (implícito) é regra de autor e vence a regra
+   padrão do navegador pra [hidden] (mesma pegadinha de
+   .bandeja-apps[hidden] em base.css) — sem isso, o painel nunca fecha
+   de verdade. */
+.lista-grupo-extratus[hidden] {
+    display: none;
+}
+
+/* Modo de contorno: sem espaço suficiente embaixo do card (perto do
+   fim da janela) — vira camada centralizada com fundo escurecido,
+   mesma linguagem visual do .modal-confirmacao (admin/Usuários). */
+.lista-grupo-extratus.lista-grupo-extratus-central {
+    inset: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     background: rgba(0, 0, 0, 0.45);
     padding: 1rem;
-}
-
-/* "display: flex" acima é regra de autor e vence a regra padrão do
-   navegador pra [hidden] (mesma pegadinha de .bandeja-apps[hidden] em
-   base.css) — sem isso, o painel nunca fecha de verdade. */
-.lista-grupo-extratus[hidden] {
-    display: none;
 }
 
 .lista-grupo-caixa {
