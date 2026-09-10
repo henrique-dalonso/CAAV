@@ -136,11 +136,16 @@
 /* "Mais ferramentas em breve" não tem cor própria (não é uma ferramenta
    de verdade) — cair no azul padrão de --cor-acento chamava atenção
    demais pra um card que é só um aviso ("em breve"), Henrique
-   2026-09-09. Cinza neutro via --cor-texto-suave (já correto em
-   qualquer tema, sem precisar de um segundo valor pro escuro). */
+   2026-09-09. Precisa dos 4 nomes de variável (não só --emblema-cor):
+   .emblema no tema escuro lê --emblema-cor-ESCURO, uma var diferente
+   (ver regra dela em base.css) — setar só a de claro deixava o "+"
+   ainda azul de verdade no escuro, achado testando o pixel renderizado,
+   não só lendo o CSS. */
 .cartao-ferramenta.desabilitada .emblema {
-    --emblema-cor: var(--cor-texto-suave);
-    --emblema-cor-hover: var(--cor-borda);
+    --emblema-cor: #9ca3af;
+    --emblema-cor-hover: #6b7280;
+    --emblema-cor-escuro: #9ca3af;
+    --emblema-cor-hover-escuro: #6b7280;
 }
 
 /* --- card agrupado "Extratus" (Hub, 2026-09-09) ---
