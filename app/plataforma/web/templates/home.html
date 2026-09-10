@@ -40,15 +40,18 @@
             </div>
         </button>
         <div id="lista-grupo-extratus" class="lista-grupo-extratus" hidden>
-            {% for item in ferramenta.itens %}
-            <a class="lista-grupo-linha" href="{{ item.url }}">
-                <div class="emblema"{% if item.cor_acento %} style="--emblema-cor:{{ item.cor_acento }};--emblema-cor-hover:{{ item.cor_acento_hover }};--emblema-cor-escuro:{{ item.cor_acento_escuro }};--emblema-cor-hover-escuro:{{ item.cor_acento_hover_escuro }};"{% endif %}>{{ item.nome|emblema_ferramenta }}</div>
-                <span>
-                    <strong>{{ item.nome }}</strong>
-                    <small>{{ item.descricao }}</small>
-                </span>
-            </a>
-            {% endfor %}
+            <div class="lista-grupo-caixa" role="menu" aria-label="Módulos do Extratus">
+                <p class="lista-grupo-titulo">Extratus</p>
+                {% for item in ferramenta.itens %}
+                <a class="lista-grupo-linha" href="{{ item.url }}" role="menuitem">
+                    <div class="emblema"{% if item.cor_acento %} style="--emblema-cor:{{ item.cor_acento }};--emblema-cor-hover:{{ item.cor_acento_hover }};--emblema-cor-escuro:{{ item.cor_acento_escuro }};--emblema-cor-hover-escuro:{{ item.cor_acento_hover_escuro }};"{% endif %}>{{ item.nome|emblema_ferramenta }}</div>
+                    <span>
+                        <strong>{{ item.nome }}</strong>
+                        <small>{{ item.descricao }}</small>
+                    </span>
+                </a>
+                {% endfor %}
+            </div>
         </div>
     </div>
     {% else %}

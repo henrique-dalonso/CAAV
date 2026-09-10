@@ -231,27 +231,51 @@ html[data-theme="escuro"] .leque-fan-item {
 .cartao-grupo-extratus:hover .leque-fan-item:nth-child(2) { transform: translate(0, -5px); }
 .cartao-grupo-extratus:hover .leque-fan-item:nth-child(3) { transform: translate(5px, 3px) rotate(10deg); }
 
+/* Henrique, 2026-09-09: não pode depender de rolagem pra aparecer —
+   "dando brecha pra achar que nada ocorreu ao clicar". Mesma linguagem
+   visual do .modal-confirmacao (fixed + inset:0 + fundo escurecido,
+   sempre centralizado na janela, nunca no fluxo do documento) em vez do
+   dropdown ancorado no card de antes — reaproveita o padrão já usado em
+   admin/Usuários, não inventa um novo. */
 .lista-grupo-extratus {
-    position: absolute;
-    top: calc(100% + 8px);
-    left: 0;
-    right: 0;
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.45);
+    padding: 1rem;
+}
+
+/* "display: flex" acima é regra de autor e vence a regra padrão do
+   navegador pra [hidden] (mesma pegadinha de .bandeja-apps[hidden] em
+   base.css) — sem isso, o painel nunca fecha de verdade. */
+.lista-grupo-extratus[hidden] {
+    display: none;
+}
+
+.lista-grupo-caixa {
+    width: min(360px, 100%);
+    max-height: min(70vh, 480px);
+    overflow-y: auto;
+    padding: 0.75rem;
     background: var(--cor-cartao);
     border: 1px solid var(--cor-borda);
     border-radius: var(--raio);
     box-shadow: var(--sombra-suave);
-    padding: 0.5rem;
-    z-index: 20;
     display: flex;
     flex-direction: column;
     gap: 0.15rem;
 }
 
-/* "display: flex" acima é regra de autor e vence a regra padrão do
-   navegador pra [hidden] (mesma pegadinha de .bandeja-apps[hidden] em
-   base.css) — sem isso, o dropdown nunca fecha de verdade. */
-.lista-grupo-extratus[hidden] {
-    display: none;
+.lista-grupo-titulo {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--cor-texto-suave);
+    margin: 0.2rem 0.6rem 0.6rem;
 }
 
 .lista-grupo-linha {
