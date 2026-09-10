@@ -1,0 +1,419 @@
+import re
+from pathlib import Path
+from urllib.parse import quote
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+
+from app.ferramentas.condenacao.core.config_manager import carregar_config
+from app.ferramentas.nucleo_relatorios.core.pdf_manager import listar_pdfs
+from app.ferramentas.nucleo_relatorios.core.processo_detector import PADRAO_CNJ as PADRAO_CNJ_TEXTO
+from app.ferramentas.nucleo_relatorios.db.checagem_fila import (
+    APROVADO,
+    MENSAGENS_INCONSISTENCIA,
+    NAO_ENCONTRADO,
+    PENDENTE,
+    STATUS_INCONSISTENCIA,
+    aprovar_manualmente,
+    descartar as descartar_checagem,
+    estado_por_nome,
+    listar_inconsistencias,
+    obter_registro,
+    obter_registro_por_nome,
+    registrar_pendente,
+    registrar_upload,
+)
+from app.ferramentas.nucleo_relatorios.db.conferencias import registrar_decisao
+from app.ferramentas.nucleo_relatorios.db.lotes import listar_arquivos_ja_reivindicados
+from app.ferramentas.condenacao.web.rotulos import (
+    ABA_FILA,
+    FERRAMENTA_SLUG,
+    contagem_nav_conferencias_fila,
+    contagem_nav_conferencias_manual,
+    contagem_nav_relatorios,
+    contagem_nav_relatorios_robo,
+)
+from app.plataforma.db.models import Usuario
+from app.plataforma.db.usuarios import marcar_aba_vista
+from app.plataforma.web.auth import exigir_acesso_ferramenta
+from app.plataforma.web.templates_util import criar_templates
+
+
+# ferramenta_slug das tabelas de nucleo_relatorios (Job/ChecagemFila/etc)
+# — ver mesmo comentário em web/rotulos.py.
+FERRAMENTA_SLUG_NUCLEO = "condenacao"
+
+
+# Mesmo padrão de número de processo (CNJ) que core/processo_detector.py
+# já define — importado de lá (não retipado), só ancorado com ^...$ e
+# compilado aqui porque esse uso é diferente (validar que o texto INTEIRO
+# digitado à mão no painel de Conferências é um número CNJ válido, não
+# procurar ocorrências soltas dentro de um texto maior).
+PADRAO_CNJ = re.compile(f"^{PADRAO_CNJ_TEXTO}$")
+
+
+router = APIRouter(dependencies=[Depends(exigir_acesso_ferramenta("condenacao"))])
+
+TAMANHO_MAXIMO_UPLOAD = 350 * 1024 * 1024  # 350 MB — a fila do robô aceita PDF bem maior que o manual
+
+TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
+PLATAFORMA_TEMPLATES_DIR = (
+    Path(__file__).resolve().parents[4] / "plataforma" / "web" / "templates"
+)
+templates = criar_templates([TEMPLATES_DIR, PLATAFORMA_TEMPLATES_DIR])
+# Badges "+N" da navegação — ver mesmo comentário em gerar_relatorio.py. Cuidado:
+# essa página TAMBÉM tem seu próprio "total_pendentes" no contexto (a
+# fila do ROBÔ, sem relação nenhuma com isso) — por isso as funções
+# globais têm nome bem diferente (contagem_nav_*), pra nunca colidir com
+# esse outro.
+templates.env.globals["contagem_nav_conferencias_manual"] = contagem_nav_conferencias_manual
+templates.env.globals["contagem_nav_conferencias_fila"] = contagem_nav_conferencias_fila
+templates.env.globals["contagem_nav_relatorios"] = contagem_nav_relatorios
+templates.env.globals["contagem_nav_relatorios_robo"] = contagem_nav_relatorios_robo
+
+
+def _redirecionar(erro=None, sucesso=None):
+    partes = []
+
+    if erro:
+        partes.append(f"erro={quote(erro)}")
+
+    if sucesso:
+        partes.append(f"sucesso={quote(sucesso)}")
+
+    query = f"?{'&'.join(partes)}" if partes else ""
+
+    return RedirectResponse(url=f"/condenacao/fila-robo{query}", status_code=303)
+
+
+def _estado_atual_fila():
+    """Quem está pendente vs. já reivindicado pelo robô agora mesmo —
+    usado tanto pra renderizar a página quanto pelo endpoint de polling
+    (/fila-robo/estado), sempre a mesma fonte de verdade.
+
+    Pendentes vem como [{"nome": ..., "status": ..., "aguardando_conferencia": ...}],
+    não só o nome — status é o da checagem (checagem_lote.py): "pendente"
+    (bolinha laranja, ainda checando de verdade) ou "aprovado" (bolinha
+    amarela, elegível pro robô). "aguardando_conferencia" é True quando
+    o status é uma das 3 inconsistências (bolinha VERMELHA, distinta da
+    laranja de propósito). Um arquivo sem linha na checagem ainda (acabou
+    de chegar, o próximo ciclo — poucos segundos — ainda não rodou pra
+    ele) conta como "pendente" por padrão, nunca some da lista por causa
+    disso."""
+    config = carregar_config()
+    pdfs_na_pasta = [pdf.name for pdf in listar_pdfs(config.get("robo_pasta_entrada", "robo_entrada_pdfs"))]
+    em_processamento = listar_arquivos_ja_reivindicados(ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
+    status_checagem = estado_por_nome(ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
+
+    # Separados fisicamente em duas colunas na tela (não só uma etiqueta):
+    # quem ainda espera o robô notar o arquivo vs. quem já foi
+    # reivindicado por um lote enviado à Anthropic.
+    apenas_pendentes = [
+        {
+            "nome": nome,
+            "status": status_checagem.get(nome, PENDENTE),
+            "aguardando_conferencia": status_checagem.get(nome, PENDENTE) in STATUS_INCONSISTENCIA,
+        }
+        for nome in pdfs_na_pasta
+        if nome not in em_processamento
+    ]
+    apenas_processando = [nome for nome in pdfs_na_pasta if nome in em_processamento]
+
+    # Vermelho (aguardando conferência) sobe pro topo — é o que precisa de
+    # uma decisão humana agora; amarelo (aprovado, só esperando o Robô
+    # pegar) desce pro fim, já que não precisa de ação nenhuma; laranja
+    # (ainda checando) fica no meio. sort() é estável — dentro do mesmo
+    # grupo, mantém a ordem original (a mesma de pdfs_na_pasta).
+    def _prioridade_pendente(item):
+        if item["aguardando_conferencia"]:
+            return 0
+        if item["status"] == APROVADO:
+            return 2
+        return 1
+
+    apenas_pendentes.sort(key=_prioridade_pendente)
+
+    return apenas_pendentes, apenas_processando
+
+
+def _conferencias_pendentes():
+    """Inconsistências da triagem esperando decisão humana no painel de
+    Conferências — só as DESTA ferramenta (cada Fila do Robô mostra
+    exclusivamente as suas próprias, nunca mistura com outra ferramenta;
+    isso é diferente do sininho de notificações, que é multi-ferramenta
+    de propósito). Mesma fonte (`listar_inconsistencias`) usada pelo
+    sininho, pra nunca ter duas consultas divergentes."""
+    return [
+        {
+            "id": registro.id,
+            "nome": registro.nome_arquivo,
+            "tipo": registro.status,
+            "mensagem": MENSAGENS_INCONSISTENCIA.get(registro.status, "pendência na triagem"),
+            "processo_detectado": registro.processo_detectado,
+        }
+        for registro in listar_inconsistencias(ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
+    ]
+
+
+@router.get("/fila-robo")
+def pagina_fila(
+    request: Request,
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("condenacao")),
+    erro: str | None = None,
+    sucesso: str | None = None,
+):
+    apenas_pendentes, apenas_processando = _estado_atual_fila()
+
+    # Renderiza PRIMEIRO, marca como visto DEPOIS — ver comentário
+    # equivalente em app/ferramentas/extratus/web/routes/fila.py.
+    resposta = templates.TemplateResponse(
+        request,
+        "fila.html",
+        {
+            "usuario": usuario,
+            "apenas_pendentes": apenas_pendentes,
+            "total_pendentes": len(apenas_pendentes),
+            "apenas_processando": apenas_processando,
+            "total_processando": len(apenas_processando),
+            "conferencias": _conferencias_pendentes(),
+            "erro": erro,
+            "sucesso": sucesso,
+        },
+    )
+    marcar_aba_vista(usuario.id, FERRAMENTA_SLUG, ABA_FILA)
+
+    return resposta
+
+
+@router.get("/fila-robo/estado")
+def estado_fila():
+    """Endpoint enxuto pro polling (fila.js) — só os nomes, sem
+    renderizar HTML nenhum. Chamado a cada poucos segundos pela tela da
+    Fila, pra Pendentes/Processando (e agora Conferências) se
+    atualizarem sozinhos sem F5."""
+    apenas_pendentes, apenas_processando = _estado_atual_fila()
+
+    return {
+        "pendentes": apenas_pendentes,
+        "processando": apenas_processando,
+        "conferencias": _conferencias_pendentes(),
+    }
+
+
+@router.post("/fila-robo/upload")
+async def enviar_pdfs(
+    request: Request,
+    arquivos: list[UploadFile] = File(...),
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("condenacao")),
+):
+    config = carregar_config()
+    pasta_entrada = Path(config.get("robo_pasta_entrada", "robo_entrada_pdfs"))
+    pasta_entrada.mkdir(parents=True, exist_ok=True)
+
+    enviados = 0
+    rejeitados = []
+
+    for arquivo in arquivos:
+        nome_seguro = Path(arquivo.filename).name
+
+        if not nome_seguro.lower().endswith(".pdf"):
+            rejeitados.append(f'"{nome_seguro}" não é .pdf')
+            continue
+
+        conteudo = await arquivo.read()
+
+        if len(conteudo) > TAMANHO_MAXIMO_UPLOAD:
+            rejeitados.append(f'"{nome_seguro}" passou de {TAMANHO_MAXIMO_UPLOAD // (1024 * 1024)} MB')
+            continue
+
+        if not conteudo.startswith(b"%PDF"):
+            rejeitados.append(f'"{nome_seguro}" não parece PDF válido')
+            continue
+
+        caminho_destino = pasta_entrada / nome_seguro
+
+        # Nunca sobrescreve silenciosamente um arquivo já presente na fila
+        # (pendente ou em processamento) — antes disso, um upload com nome
+        # repetido apagava o arquivo anterior sem aviso nenhum.
+        if caminho_destino.exists():
+            rejeitados.append(f'"{nome_seguro}" já existe na fila do Robô (não foi enviado de novo)')
+            continue
+
+        caminho_destino.write_bytes(conteudo)
+        registrar_upload(nome_seguro, usuario.id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
+        # Ver comentário equivalente em app/ferramentas/extratus/web/
+        # routes/fila.py.
+        registrar_pendente(nome_seguro, usuario.id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
+        enviados += 1
+
+    # A Fila do robô envia um arquivo por requisição (fila.js), pra um
+    # PDF ruim/duplicado não travar o lote inteiro nem perder o que já
+    # deu certo se a conexão cair no meio. Nesse caso o JS só precisa de
+    # um retrato objetivo do que aconteceu — devolver a página inteira
+    # renderizada de novo (o que o redirect clássico faz) seria
+    # trabalho puro descartado, refeito uma vez por arquivo do lote.
+    # O fallback de formulário puro (sem JS) continua no redirect normal.
+    if request.headers.get("x-requested-with") == "XMLHttpRequest":
+        return JSONResponse({"enviados": enviados, "rejeitados": rejeitados})
+
+    if rejeitados:
+        return _redirecionar(
+            erro=f"{enviados} enviado(s). Recusado(s): " + "; ".join(rejeitados)
+        )
+
+    return _redirecionar(sucesso=f"{enviados} PDF(s) enviado(s) pra fila do Robô.")
+
+
+@router.post("/fila-robo/remover-varios")
+def remover_varios_da_fila(
+    nomes: list[str] = Form(...),
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("condenacao")),
+):
+    config = carregar_config()
+    pasta_entrada = Path(config.get("robo_pasta_entrada", "robo_entrada_pdfs"))
+    em_processamento = listar_arquivos_ja_reivindicados(ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
+
+    removidos = 0
+    ignorados = 0
+
+    for nome in nomes:
+        nome_seguro = Path(nome).name
+
+        # Já reivindicado por um lote do robô (aguardando ou sendo
+        # processado) — não dá pra "desenviar" o lote, então remover o
+        # arquivo local aqui só criaria um erro confuso quando o
+        # resultado chegasse. Ignora, silenciosamente contado à parte.
+        if nome_seguro in em_processamento:
+            ignorados += 1
+            continue
+
+        caminho = pasta_entrada / nome_seguro
+
+        if caminho.exists():
+            caminho.unlink()
+            removidos += 1
+
+        # Ver comentário equivalente em app/ferramentas/extratus/web/
+        # routes/fila.py (Extratus - Relatórios) — mesma lógica.
+        registro = obter_registro_por_nome(nome_seguro, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
+        if registro:
+            if registro.status in STATUS_INCONSISTENCIA:
+                registrar_decisao(nome_seguro, registro.status, "descartado", usuario.id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
+            descartar_checagem(registro.id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
+
+    mensagem = f"{removidos} PDF(s) removido(s) da fila."
+
+    if ignorados:
+        mensagem += f" {ignorados} já estava(m) em processamento pelo Robô e não foi(ram) removido(s)."
+
+    return _redirecionar(sucesso=mensagem)
+
+
+@router.post("/fila-robo/conferencia/{registro_id}/aprovar")
+def aprovar_conferencia(
+    registro_id: int,
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("condenacao")),
+    processo: str | None = Form(None),
+):
+    """"Prosseguir" do painel de Conferências — pula a trava da checagem
+    automática e libera o arquivo pro Robô pegar no próximo ciclo. Quem
+    decidiu fica registrado pra sempre (RegistroConferencia), mesmo a
+    Fila do Robô sendo compartilhada por todo mundo com acesso."""
+    registro = obter_registro(registro_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
+
+    if not registro or registro.status not in STATUS_INCONSISTENCIA:
+        return _redirecionar(erro="Essa pendência de conferência não existe mais (o arquivo já saiu da fila).")
+
+    processo_informado = (processo or "").strip() or None
+
+    # "Processo não encontrado" é o único tipo onde ninguém sabe o
+    # número ainda — sem digitar um válido, não libera.
+    if registro.status == NAO_ENCONTRADO and (not processo_informado or not PADRAO_CNJ.match(processo_informado)):
+        return _redirecionar(erro="Informe um número de processo válido (formato 0000000-00.0000.0.00.0000) pra liberar esse arquivo.")
+
+    tipo_original = registro.status
+    nome_arquivo = registro.nome_arquivo
+
+    aprovado = aprovar_manualmente(registro_id, processo_manual=processo_informado, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
+    if not aprovado:
+        return _redirecionar(erro="Essa pendência de conferência não existe mais (o arquivo já saiu da fila).")
+
+    registrar_decisao(nome_arquivo, tipo_original, "aprovado", usuario.id, processo_informado=processo_informado, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
+
+    return _redirecionar(sucesso=f'"{nome_arquivo}" liberado pra fila do Robô.')
+
+
+@router.post("/fila-robo/conferencia/{registro_id}/descartar")
+def descartar_conferencia(
+    registro_id: int,
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("condenacao")),
+):
+    """"Descartar" do painel de Conferências — remove o PDF de vez da
+    fila (mesmo mecanismo de /fila-robo/remover-varios) e registra quem
+    decidiu."""
+    registro = obter_registro(registro_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
+
+    if not registro or registro.status not in STATUS_INCONSISTENCIA:
+        return _redirecionar(erro="Essa pendência de conferência não existe mais (o arquivo já saiu da fila).")
+
+    tipo_original = registro.status
+    nome_arquivo = registro.nome_arquivo
+
+    config = carregar_config()
+    caminho = Path(config.get("robo_pasta_entrada", "robo_entrada_pdfs")) / nome_arquivo
+
+    if caminho.exists():
+        caminho.unlink()
+
+    descartar_checagem(registro_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
+    registrar_decisao(nome_arquivo, tipo_original, "descartado", usuario.id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
+
+    return _redirecionar(sucesso=f'"{nome_arquivo}" descartado da fila.')
+
+
+@router.post("/fila-robo/conferencia/descartar-todas")
+def descartar_todas_conferencias(
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("condenacao")),
+):
+    """Ver docstring equivalente em app/ferramentas/extratus/web/routes/
+    fila.py (Extratus - Relatórios) — mesma lógica."""
+    config = carregar_config()
+    pasta_entrada = Path(config.get("robo_pasta_entrada", "robo_entrada_pdfs"))
+
+    descartados = 0
+
+    for registro in listar_inconsistencias(ferramenta_slug=FERRAMENTA_SLUG_NUCLEO):
+        caminho = pasta_entrada / registro.nome_arquivo
+
+        if caminho.exists():
+            caminho.unlink()
+
+        descartar_checagem(registro.id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
+        registrar_decisao(registro.nome_arquivo, registro.status, "descartado", usuario.id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
+        descartados += 1
+
+    if descartados == 0:
+        return _redirecionar(erro="Não havia nada aguardando conferência pra descartar.")
+
+    return _redirecionar(sucesso=f"{descartados} arquivo(s) descartado(s) da fila.")
+
+
+@router.get("/fila-robo/conferencia/{registro_id}/ver")
+def ver_pdf_conferencia(
+    registro_id: int,
+    usuario: Usuario = Depends(exigir_acesso_ferramenta("condenacao")),
+):
+    """Ver docstring equivalente em app/ferramentas/extratus/web/routes/
+    fila.py (Extratus - Relatórios) — mesma lógica."""
+    registro = obter_registro(registro_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
+
+    if not registro:
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado.")
+
+    config = carregar_config()
+    caminho = Path(config.get("robo_pasta_entrada", "robo_entrada_pdfs")) / registro.nome_arquivo
+
+    if not caminho.exists():
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado.")
+
+    return FileResponse(caminho, media_type="application/pdf")

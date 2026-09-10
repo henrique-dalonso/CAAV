@@ -86,6 +86,18 @@ class Job(SQLModel, table=True):
     emenda_prazo_ja_expirado: Optional[bool] = None
     emenda_veiculo_terceiro: Optional[bool] = None
 
+    # --- Campos específicos do tipo "condenacao" (ver nucleo_relatorios/
+    # tipos.py e core/pos_processamento_condenacao.py) — mesmo raciocínio
+    # dos campos emenda_* acima: só preenchidos quando
+    # tipo_relatorio == "condenacao", NULL em qualquer outra linha. As
+    # linhas de cálculo em si (`itens_calculo_processados`) não têm
+    # coluna própria — ficam só dentro do .docx gerado (decisão
+    # consciente: sem tabela nova no banco por enquanto, ver plano de
+    # implementação); aqui só o suficiente pra listar/filtrar por
+    # resultado sem reabrir o arquivo.
+    condenacao_recomendacao: Optional[str] = None  # "impugnar" ou "nao_impugnar"
+    condenacao_valor_total_geral: Optional[float] = None
+
     criado_em: datetime = Field(default_factory=datetime.now)
 
 

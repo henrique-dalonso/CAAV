@@ -9,6 +9,7 @@ __pycache__/
 app/ferramentas/extratus/config/config.json
 app/ferramentas/extratus_aburesi/config/config.json
 app/ferramentas/emenda/config/config.json
+app/ferramentas/condenacao/config/config.json
 
 # Prompt de instruções: definido e sobrescrito pela tela de Configurações
 # (upload/edição ao vivo pelo admin), não pelo código - nunca deve ser

@@ -72,6 +72,25 @@ FERRAMENTAS_PADRAO = [
         "cor_acento_fraco_escuro": "#4c1d95",
     },
     {
+        # 5ª ferramenta no motor compartilhado (nucleo_relatorios,
+        # 2026-09-10) — 2º tipo de relatório novo além de "bancario" (ver
+        # nucleo_relatorios/tipos.py). slug "condenacao" é novo de
+        # fábrica, sem histórico de permissão/favorito pra preservar.
+        "nome": "Extratus - Condenação",
+        "slug": "condenacao",
+        "descricao": "Relatório processual com cálculo atualizado da condenação (correção monetária e juros) e recomendação de impugnação.",
+        "url": "/condenacao/fila-robo",
+        "suporta_fila_robo": True,
+        # Âmbar — distinto do azul padrão (Relatórios), teal (Aburesi),
+        # roxo (Emenda) e verde (Crivus), mesma estrutura clara/escura.
+        "cor_acento": "#d97706",
+        "cor_acento_hover": "#b45309",
+        "cor_acento_fraco": "#fffbeb",
+        "cor_acento_escuro": "#fbbf24",
+        "cor_acento_hover_escuro": "#fcd34d",
+        "cor_acento_fraco_escuro": "#78350f",
+    },
+    {
         "nome": "Crivus",
         # slug NUNCA muda (mesma regra do "extratus" acima) — mesmo com o
         # nome comercial batizado como "Crivus" (2026-09-02), o

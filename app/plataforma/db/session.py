@@ -73,6 +73,11 @@ COLUNAS_PENDENTES = {
         "emenda_prazo_calculado": "VARCHAR",
         "emenda_prazo_ja_expirado": "BOOLEAN",
         "emenda_veiculo_terceiro": "BOOLEAN",
+        # Condenação (2026-09-10) — mesmo raciocínio acima, ver docstring
+        # dos campos `condenacao_*` em Job (db/models.py). Sem DEFAULT
+        # não-NULL, mesmo motivo.
+        "condenacao_recomendacao": "VARCHAR",
+        "condenacao_valor_total_geral": "REAL",
     },
     "triagemmanual": {
         "origem_duplicado": "VARCHAR",

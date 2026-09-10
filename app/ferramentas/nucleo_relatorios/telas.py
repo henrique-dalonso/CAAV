@@ -40,6 +40,15 @@ from dataclasses import dataclass
 from functools import partial
 from typing import Callable
 
+from app.ferramentas.condenacao.core import config_manager as _config_manager_condenacao
+from app.ferramentas.condenacao.web.notificacoes import (
+    listar_notificacoes as _listar_notificacoes_condenacao,
+    listar_notificacoes_pessoais as _listar_notificacoes_pessoais_condenacao,
+)
+from app.ferramentas.condenacao.web.rotulos import (
+    rotulo_erro as _rotulo_erro_condenacao,
+    rotulo_status as _rotulo_status_condenacao,
+)
 from app.ferramentas.emenda.core import config_manager as _config_manager_emenda
 from app.ferramentas.emenda.web.notificacoes import (
     listar_notificacoes as _listar_notificacoes_emenda,
@@ -139,6 +148,19 @@ REGISTRO_TELAS: dict[str, TelaConfig] = {
         listar_notificacoes_pessoais=_listar_notificacoes_pessoais_emenda,
         rotulo_status=_rotulo_status_emenda,
         rotulo_erro=_rotulo_erro_emenda,
+    ),
+    "condenacao": TelaConfig(
+        chave_admin="condenacao",
+        slug_plataforma="condenacao",
+        ferramenta_slug="condenacao",
+        nome_exibicao="Extratus - Condenação",
+        url_base="/condenacao",
+        tipo=REGISTRO_TIPOS["condenacao"],
+        config_manager=_config_manager_condenacao,
+        listar_notificacoes=_listar_notificacoes_condenacao,
+        listar_notificacoes_pessoais=_listar_notificacoes_pessoais_condenacao,
+        rotulo_status=_rotulo_status_condenacao,
+        rotulo_erro=_rotulo_erro_condenacao,
     ),
 }
 

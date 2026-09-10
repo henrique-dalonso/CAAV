@@ -41,6 +41,14 @@ from app.ferramentas.emenda.web.routes import (
     relatorios_manuais as relatorios_manuais_emenda,
     relatorios_robo as relatorios_robo_emenda,
 )
+from app.ferramentas.condenacao.core.checagem_watcher import loop_checagem as loop_checagem_condenacao
+from app.ferramentas.condenacao.core.robo_watcher import loop_robo as loop_robo_condenacao
+from app.ferramentas.condenacao.web.routes import (
+    fila as fila_condenacao,
+    gerar_relatorio as gerar_relatorio_condenacao,
+    relatorios_manuais as relatorios_manuais_condenacao,
+    relatorios_robo as relatorios_robo_condenacao,
+)
 from app.ferramentas.crivus.web.routes import leitor_individual as crivus_leitor_individual
 
 
@@ -78,6 +86,10 @@ async def lifespan(app: FastAPI):
     # padrão de vigia próprio das duas ferramentas acima.
     tarefa_robo_emenda = asyncio.create_task(loop_robo_emenda())
     tarefa_checagem_emenda = asyncio.create_task(loop_checagem_emenda())
+    # Condenação (2026-09-10) — 2º tipo novo no motor compartilhado, mesmo
+    # padrão de vigia próprio das ferramentas acima.
+    tarefa_robo_condenacao = asyncio.create_task(loop_robo_condenacao())
+    tarefa_checagem_condenacao = asyncio.create_task(loop_checagem_condenacao())
 
     yield
 
@@ -87,6 +99,8 @@ async def lifespan(app: FastAPI):
     tarefa_checagem_aburesi.cancel()
     tarefa_robo_emenda.cancel()
     tarefa_checagem_emenda.cancel()
+    tarefa_robo_condenacao.cancel()
+    tarefa_checagem_condenacao.cancel()
 
 
 app = FastAPI(
@@ -229,6 +243,15 @@ app.mount(
     name="emenda-static",
 )
 
+CONDENACAO_STATIC_DIR = (
+    BASE_DIR.parent.parent / "ferramentas" / "condenacao" / "web" / "static"
+)
+app.mount(
+    "/condenacao/static",
+    StaticFiles(directory=CONDENACAO_STATIC_DIR),
+    name="condenacao-static",
+)
+
 CRIVUS_STATIC_DIR = (
     BASE_DIR.parent.parent / "ferramentas" / "crivus" / "web" / "static"
 )
@@ -257,6 +280,10 @@ app.include_router(gerar_relatorio_emenda.router, prefix="/emenda")
 app.include_router(relatorios_manuais_emenda.router, prefix="/emenda")
 app.include_router(fila_emenda.router, prefix="/emenda")
 app.include_router(relatorios_robo_emenda.router, prefix="/emenda")
+app.include_router(gerar_relatorio_condenacao.router, prefix="/condenacao")
+app.include_router(relatorios_manuais_condenacao.router, prefix="/condenacao")
+app.include_router(fila_condenacao.router, prefix="/condenacao")
+app.include_router(relatorios_robo_condenacao.router, prefix="/condenacao")
 app.include_router(crivus_leitor_individual.router, prefix="/crivus")
 
 
