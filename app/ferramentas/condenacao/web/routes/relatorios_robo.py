@@ -145,9 +145,9 @@ def excluir_relatorio_robo_route(job_id: int, usuario: Usuario = Depends(exigir_
     """Ver docstring equivalente em app/ferramentas/extratus/web/routes/
     relatorios_robo.py (Extratus - Relatórios) — mesma lógica."""
     if not excluir_job(job_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO):
-        return _redirecionar(erro="Esse relatório não existe mais.")
+        return _redirecionar(erro="Essa condenação não existe mais.")
 
-    return _redirecionar(sucesso="Relatório excluído permanentemente.")
+    return _redirecionar(sucesso="Condenação excluída permanentemente.")
 
 
 @router.post("/relatorios-robo/baixar-lote")

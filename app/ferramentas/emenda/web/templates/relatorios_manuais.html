@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block titulo %}Relatórios URGENTES — Extratus - Emendas{% endblock %}
+{% block titulo %}Emendas URGENTES — Extratus - Emendas{% endblock %}
 {% block css_pagina %}<link rel="stylesheet" href="/emenda/static/extratus.css?v={{ v }}">{% endblock %}
 
 {% from "_macros_extratus.html" import nav_abas_extratus %}
@@ -8,12 +8,12 @@
 {% block conteudo %}
 <div class="cabecalho-ferramenta">
     <div>
-        <h1>Relatórios URGENTES</h1>
+        <h1>Emendas URGENTES</h1>
         <p>Veja os relatórios URGENTES já prontos. Clique em um relatório para baixar e abrir.</p>
     </div>
 </div>
 
-{{ nav_abas_extratus(usuario, "emenda", "/emenda", "relatorios") }}
+{{ nav_abas_extratus(usuario, "emenda", "/emenda", "relatorios", "Emenda", "Emendas") }}
 
 {% if erro %}
 <p class="banner-erro">⚠ {{ erro }}</p>

@@ -107,9 +107,9 @@ def excluir_relatorio_route(job_id: int, usuario: Usuario = Depends(exigir_admin
     """Ver docstring equivalente em app/ferramentas/extratus/web/routes/
     relatorios_manuais.py (Extratus - Relatórios) — mesma lógica."""
     if not excluir_job(job_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO):
-        return _redirecionar(erro="Esse relatório não existe mais.")
+        return _redirecionar(erro="Essa emenda não existe mais.")
 
-    return _redirecionar(sucesso="Relatório excluído permanentemente.")
+    return _redirecionar(sucesso="Emenda excluída permanentemente.")
 
 
 @router.post("/relatorios-urgentes/{job_id}/marcar-notificacao-resolvida")

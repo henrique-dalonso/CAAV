@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block titulo %}Gerar Relatório URGENTE — Extratus - Condenação{% endblock %}
+{% block titulo %}Gerar Condenação URGENTE — Extratus - Condenação{% endblock %}
 {% block css_pagina %}<link rel="stylesheet" href="/condenacao/static/extratus.css?v={{ v }}">{% endblock %}
 
 {% from "_macros_extratus.html" import nav_abas_extratus %}
@@ -8,12 +8,12 @@
 {% block conteudo %}
 <div class="cabecalho-ferramenta">
     <div>
-        <h1>Gerar Relatório URGENTE</h1>
+        <h1>Gerar Condenação URGENTE</h1>
         <p>Relatório processual com cálculo atualizado da condenação (correção monetária e juros) e recomendação de impugnação.</p>
     </div>
 </div>
 
-{{ nav_abas_extratus(usuario, "condenacao", "/condenacao", "gerar") }}
+{{ nav_abas_extratus(usuario, "condenacao", "/condenacao", "gerar", "Condenação", "Condenações") }}
 
 {% if erro %}
 <p class="banner-erro">⚠ {{ erro }}</p>

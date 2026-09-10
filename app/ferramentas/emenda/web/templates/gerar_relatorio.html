@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block titulo %}Gerar Relatório URGENTE — Extratus - Emendas{% endblock %}
+{% block titulo %}Gerar Emenda URGENTE — Extratus - Emendas{% endblock %}
 {% block css_pagina %}<link rel="stylesheet" href="/emenda/static/extratus.css?v={{ v }}">{% endblock %}
 
 {% from "_macros_extratus.html" import nav_abas_extratus %}
@@ -8,12 +8,12 @@
 {% block conteudo %}
 <div class="cabecalho-ferramenta">
     <div>
-        <h1>Gerar Relatório URGENTE</h1>
+        <h1>Gerar Emenda URGENTE</h1>
         <p>Análise de emenda/despacho, cálculo do prazo fatal e e-mail pronto pra carteira.</p>
     </div>
 </div>
 
-{{ nav_abas_extratus(usuario, "emenda", "/emenda", "gerar") }}
+{{ nav_abas_extratus(usuario, "emenda", "/emenda", "gerar", "Emenda", "Emendas") }}
 
 {% if erro %}
 <p class="banner-erro">⚠ {{ erro }}</p>
