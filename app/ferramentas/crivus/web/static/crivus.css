@@ -1476,9 +1476,13 @@ html[data-theme="escuro"] .interruptor-texto-on {
 .linha-producao-processo {
     display: flex;
     align-items: center;
+    align-self: flex-start;
+    max-width: 100%;
     gap: 0.65rem;
     font-size: 1.05rem;
     font-weight: 700;
+    padding: 0.2rem 0.4rem;
+    margin: -0.2rem -0.4rem;
 }
 
 /* Selo circular do ícone de Processo — Henrique, 2026-09-12: "destacou
@@ -1539,6 +1543,15 @@ html[data-theme="escuro"] .interruptor-texto-on {
     cursor: pointer;
     border-radius: 4px;
     transition: background 0.15s ease;
+}
+
+.linha-producao-meta .copiavel {
+    /* mesmo truque de área de clique maior sem empurrar o layout ao
+       redor (padding compensado por margem negativa igual) — alvo
+       pequeno demais era fácil de errar e cair no <a> da linha inteira
+       (Henrique: "às vezes abre o caso"). */
+    padding: 0.15rem 0.35rem;
+    margin: -0.15rem -0.35rem;
 }
 
 .copiavel:hover {

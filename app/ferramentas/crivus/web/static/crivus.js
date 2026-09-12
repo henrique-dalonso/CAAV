@@ -547,15 +547,45 @@
         enviarFormularioCrivus(form, evento.submitter);
     });
 
-    // Henrique, 2026-09-12: NPJUR e o número do Processo, na tela
-    // Produção, são clicáveis pra copiar rápido (ver .copiavel em
-    // crivus.css) — mas ficam DENTRO do <a> que abre o caso (a linha
-    // inteira navega ao clicar em qualquer lugar). Esse listener
-    // precisa estar registrado ANTES do de navegação logo abaixo e usar
-    // stopImmediatePropagation (não só stopPropagation) — os dois estão
-    // no MESMO elemento (document), então só parar a propagação normal
-    // não impede o listener seguinte de rodar; stopImmediatePropagation
-    // impede.
+    // Henrique, 2026-09-12: a VM roda em HTTP simples (sem HTTPS) — a
+    // API moderna de clipboard (navigator.clipboard) é restrita a
+    // "contextos seguros" e pode falhar/nem existir aqui, silenciosamente
+    // (achado real: "às vezes não faz nada"). Fallback via
+    // document.execCommand("copy") (técnica antiga, mas funciona em
+    // qualquer contexto) — tenta o jeito moderno primeiro, cai pro
+    // antigo se não tiver disponível ou se rejeitar.
+    function copiarTexto(valor) {
+        if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
+            return navigator.clipboard.writeText(valor);
+        }
+
+        return new Promise(function (resolve, reject) {
+            var area = document.createElement("textarea");
+            area.value = valor;
+            area.style.position = "fixed";
+            area.style.opacity = "0";
+            document.body.appendChild(area);
+            area.focus();
+            area.select();
+            try {
+                var sucesso = document.execCommand("copy");
+                document.body.removeChild(area);
+                if (sucesso) { resolve(); } else { reject(new Error("execCommand copy falhou")); }
+            } catch (erro) {
+                document.body.removeChild(area);
+                reject(erro);
+            }
+        });
+    }
+
+    // NPJUR e o número do Processo, na tela Produção, são clicáveis pra
+    // copiar rápido (ver .copiavel em crivus.css) — mas ficam DENTRO do
+    // <a> que abre o caso (a linha inteira navega ao clicar em qualquer
+    // lugar). Esse listener precisa estar registrado ANTES do de
+    // navegação logo abaixo e usar stopImmediatePropagation (não só
+    // stopPropagation) — os dois estão no MESMO elemento (document),
+    // então só parar a propagação normal não impede o listener seguinte
+    // de rodar; stopImmediatePropagation impede.
     document.addEventListener("click", function (evento) {
         var alvo = evento.target.closest("[data-copiar]");
         if (!alvo) { return; }
@@ -564,9 +594,13 @@
         evento.stopImmediatePropagation();
 
         var valor = alvo.dataset.copiar;
-        navigator.clipboard.writeText(valor).then(function () {
+        copiarTexto(valor).then(function () {
             if (window.mostrarBanner) {
                 window.mostrarBanner(alvo.dataset.copiarMensagem || "Copiado.", "sucesso");
+            }
+        }).catch(function () {
+            if (window.mostrarBanner) {
+                window.mostrarBanner("Não foi possível copiar automaticamente: " + valor, "erro");
             }
         });
     });
