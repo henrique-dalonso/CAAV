@@ -1,0 +1,14 @@
+{# Barra de navegação do Crivus (Leitor Individual / Produção). Henrique,
+   2026-09-12: só o Crivus usa — diferente de _macros_extratus.html (em
+   app/plataforma/web/templates/), compartilhada por toda a família
+   Extratus, essa fica aqui dentro porque nenhuma outra ferramenta precisa
+   dela. Reaproveita as classes visuais .abas-extratus/.aba/.aba-ativa
+   (copiadas pro crivus.css, ver comentário lá).
+
+   aba_ativa: "leitor-individual" | "producao" #}
+{% macro nav_crivus(aba_ativa) %}
+<nav class="abas-extratus">
+    <a href="/crivus/leitor-individual" class="aba{% if aba_ativa == "leitor-individual" %} aba-ativa{% endif %}">Leitor Individual</a>
+    <a href="/crivus/producao" class="aba{% if aba_ativa == "producao" %} aba-ativa{% endif %}">Produção</a>
+</nav>
+{% endmacro %}

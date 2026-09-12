@@ -548,7 +548,7 @@
     });
 
     document.addEventListener("click", function (evento) {
-        var link = evento.target.closest('a[href^="/crivus/leitor-individual"]');
+        var link = evento.target.closest('a[href^="/crivus/leitor-individual"], a[href^="/crivus/producao"]');
         if (!link) { return; }
 
         evento.preventDefault();

@@ -3,6 +3,8 @@
 {% block titulo %}Crivus{% endblock %}
 {% block css_pagina %}<link rel="stylesheet" href="/crivus/static/crivus.css?v={{ v }}">{% endblock %}
 
+{% from "_macros_crivus.html" import nav_crivus %}
+
 {% block conteudo %}
 <div id="crivus-conteudo">
 <div class="cabecalho-ferramenta">
@@ -11,6 +13,8 @@
         <p>Cole o teor da publicação copiada do NPJUR, a IA sugere o acompanhamento e o(s) agendamento(s), você confere antes de lançar.</p>
     </div>
 </div>
+
+{{ nav_crivus("leitor-individual") }}
 
 {% if erro %}
 <p class="banner-erro">⚠ {{ erro }}</p>

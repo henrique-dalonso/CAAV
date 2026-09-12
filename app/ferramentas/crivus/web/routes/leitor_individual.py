@@ -78,9 +78,14 @@ def _erro_home(mensagem):
     return RedirectResponse(url=f"/crivus/leitor-individual?erro={quote(mensagem)}", status_code=303)
 
 
-def _exigir_dono(analise_id, usuario):
+def _exigir_analise_existente(analise_id):
+    """Henrique, 2026-09-12: o acervo do Crivus é do escritório inteiro,
+    não do criador — qualquer pessoa com acesso à ferramenta pode ver e
+    retomar o caso de um colega (ver tela Produção). A única trava que
+    continua valendo é por STATUS (analises.py bloqueia edição de caso
+    já concluído), não por dono."""
     analise = obter_analise(analise_id)
-    if not analise or analise.usuario_id != usuario.id:
+    if not analise:
         raise HTTPException(status_code=404, detail="Análise não encontrada.")
     return analise
 
@@ -175,7 +180,7 @@ def pagina_detalhe(
     erro: str | None = None,
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
-    analise = _exigir_dono(analise_id, usuario)
+    analise = _exigir_analise_existente(analise_id)
     acompanhamentos, agendamentos = listar_itens(analise_id)
 
     todos_os_itens = list(acompanhamentos) + list(agendamentos)
@@ -235,7 +240,7 @@ async def salvar_acompanhamento(
     tipo: str = Form(""),
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
-    _exigir_dono(analise_id, usuario)
+    _exigir_analise_existente(analise_id)
     try:
         marcar_item_pronto(analise_id, "acompanhamento", item_id, novo_tipo=tipo)
     except ValueError as exc:
@@ -250,7 +255,7 @@ async def salvar_edicao_acompanhamento(
     tipo: str = Form(""),
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
-    _exigir_dono(analise_id, usuario)
+    _exigir_analise_existente(analise_id)
     try:
         salvar_edicao_item(analise_id, "acompanhamento", item_id, tipo)
     except ValueError as exc:
@@ -264,7 +269,7 @@ async def marcar_acompanhamento_desnecessario(
     item_id: int,
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
-    _exigir_dono(analise_id, usuario)
+    _exigir_analise_existente(analise_id)
     try:
         marcar_item_desnecessario(analise_id, "acompanhamento", item_id, desnecessario=True)
     except ValueError as exc:
@@ -278,7 +283,7 @@ async def reverter_acompanhamento(
     item_id: int,
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
-    _exigir_dono(analise_id, usuario)
+    _exigir_analise_existente(analise_id)
     marcar_item_desnecessario(analise_id, "acompanhamento", item_id, desnecessario=False)
     return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)
 
@@ -292,7 +297,7 @@ async def salvar_agendamento(
     data_fim: date = Form(...),
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
-    _exigir_dono(analise_id, usuario)
+    _exigir_analise_existente(analise_id)
     try:
         marcar_item_pronto(
             analise_id, "agendamento", item_id,
@@ -312,7 +317,7 @@ async def salvar_edicao_agendamento(
     data_fim: date = Form(...),
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
-    _exigir_dono(analise_id, usuario)
+    _exigir_analise_existente(analise_id)
     try:
         salvar_edicao_item(analise_id, "agendamento", item_id, tipo, nova_data_inicio=data_inicio, nova_data_fim=data_fim)
     except ValueError as exc:
@@ -325,7 +330,7 @@ async def adicionar_agendamento(
     analise_id: int,
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
-    _exigir_dono(analise_id, usuario)
+    _exigir_analise_existente(analise_id)
     try:
         criar_agendamento_manual(analise_id)
     except ValueError as exc:
@@ -339,7 +344,7 @@ async def excluir_agendamento(
     item_id: int,
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
-    _exigir_dono(analise_id, usuario)
+    _exigir_analise_existente(analise_id)
     try:
         excluir_agendamento_manual(analise_id, item_id)
     except ValueError as exc:
@@ -353,7 +358,7 @@ async def marcar_agendamento_desnecessario(
     item_id: int,
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
-    _exigir_dono(analise_id, usuario)
+    _exigir_analise_existente(analise_id)
     marcar_item_desnecessario(analise_id, "agendamento", item_id, desnecessario=True)
     return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)
 
@@ -364,7 +369,7 @@ async def reverter_agendamento(
     item_id: int,
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
-    _exigir_dono(analise_id, usuario)
+    _exigir_analise_existente(analise_id)
     marcar_item_desnecessario(analise_id, "agendamento", item_id, desnecessario=False)
     return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)
 
@@ -374,8 +379,11 @@ async def ciente_alerta(
     analise_id: int,
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
-    _exigir_dono(analise_id, usuario)
-    marcar_ciente_alerta_critico(analise_id)
+    _exigir_analise_existente(analise_id)
+    try:
+        marcar_ciente_alerta_critico(analise_id)
+    except ValueError as exc:
+        return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}?erro={quote(str(exc))}", status_code=303)
     return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)
 
 
@@ -384,7 +392,7 @@ async def descartar(
     analise_id: int,
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
-    _exigir_dono(analise_id, usuario)
+    _exigir_analise_existente(analise_id)
     try:
         descartar_alteracoes(analise_id)
     except ValueError as exc:
@@ -397,7 +405,7 @@ async def concluir(
     analise_id: int,
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
-    _exigir_dono(analise_id, usuario)
+    _exigir_analise_existente(analise_id)
     try:
         concluir_analise(analise_id)
     except ValueError as exc:

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block titulo %}Produção — Crivus{% endblock %}
+{% block css_pagina %}<link rel="stylesheet" href="/crivus/static/crivus.css?v={{ v }}">{% endblock %}
+
+{% from "_macros_crivus.html" import nav_crivus %}
+
+{% block conteudo %}
+<div id="crivus-conteudo">
+<div class="cabecalho-ferramenta">
+    <div>
+        <h1>Produção</h1>
+        <p>Acervo de casos analisados e pendentes de revisão — de todo o escritório.</p>
+    </div>
+</div>
+
+{{ nav_crivus("producao") }}
+
+<nav class="abas-relatorios-robo">
+    <a href="/crivus/producao?aba=individuais&filtro={{ filtro }}"
+       class="aba-relatorios-robo{% if aba == "individuais" %} aba-relatorios-robo-ativa{% endif %}">Individuais</a>
+    <a href="/crivus/producao?aba=lotes&filtro={{ filtro }}"
+       class="aba-relatorios-robo{% if aba == "lotes" %} aba-relatorios-robo-ativa{% endif %}">Lotes</a>
+</nav>
+
+<nav class="abas-relatorios-robo">
+    <a href="/crivus/producao?aba={{ aba }}&filtro=pendentes"
+       class="aba-relatorios-robo{% if filtro == "pendentes" %} aba-relatorios-robo-ativa{% endif %}">Pendentes</a>
+    <a href="/crivus/producao?aba={{ aba }}&filtro=concluidos"
+       class="aba-relatorios-robo{% if filtro == "concluidos" %} aba-relatorios-robo-ativa{% endif %}">Concluídos</a>
+</nav>
+
+{% if eh_lotes %}
+<p class="aviso-discreto">Nenhum lote encontrado — o Processamento em Lote ainda não existe. Quando entrar no ar, os lotes enviados vão aparecer aqui, agrupados pelo número do lote.</p>
+{% elif not analises %}
+<p class="aviso-discreto">Nenhum caso {{ "pendente" if filtro == "pendentes" else "concluído" }}.</p>
+{% else %}
+<div class="linha-producao-cabecalho">
+    <span>NPJUR</span>
+    <span>Processo</span>
+    <span>Carteira</span>
+    <span>Criado por</span>
+    <span>{{ "Concluído em" if filtro == "concluidos" else "Criado em" }}</span>
+    <span>Confiança</span>
+</div>
+<div class="tabela-producao-crivus">
+{% for analise in analises %}
+    <a href="/crivus/leitor-individual/{{ analise.id }}" class="linha-producao">
+        <span class="linha-producao-celula-truncada">{{ analise.npjur or "—" }}</span>
+        <span class="linha-producao-celula-truncada">{{ analise.processo or "—" }}</span>
+        <span class="linha-producao-celula-truncada">{{ analise.carteira or "—" }}</span>
+        <span class="linha-producao-celula-truncada">{{ nomes_por_usuario_id.get(analise.usuario_id, "—") }}</span>
+        <span>{{ (analise.concluido_em if filtro == "concluidos" else analise.criado_em).strftime("%d/%m/%Y %H:%M") }}</span>
+        <span class="selo-confianca confianca-{{ (analise.nivel_confianca or "")|lower }}">
+            <span class="bolinha-confianca"></span>{{ analise.nivel_confianca or "?" }}
+        </span>
+    </a>
+{% endfor %}
+</div>
+{% if total > 50 %}
+<div class="paginacao-crivus">
+    {% if pagina > 1 %}
+    <a href="/crivus/producao?aba={{ aba }}&filtro={{ filtro }}&pagina={{ pagina - 1 }}">← Anterior</a>
+    {% else %}
+    <span></span>
+    {% endif %}
+    {% if tem_proxima_pagina %}
+    <a href="/crivus/producao?aba={{ aba }}&filtro={{ filtro }}&pagina={{ pagina + 1 }}">Próxima →</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endif %}
+</div>
+{% endblock %}

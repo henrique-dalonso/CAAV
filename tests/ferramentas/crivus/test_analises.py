@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 import pytest
 from sqlmodel import delete, select
@@ -6,10 +6,12 @@ from sqlmodel import delete, select
 from app.ferramentas.crivus.config.taxonomia import NAO_IDENTIFICADO
 from app.ferramentas.crivus.db.analises import (
     concluir_analise,
+    contar_analises,
     criar_agendamento_manual,
     criar_analise_a_partir_da_ia,
     descartar_alteracoes,
     excluir_agendamento_manual,
+    listar_analises,
     listar_itens,
     marcar_ciente_alerta_critico,
     marcar_item_desnecessario,
@@ -338,3 +340,139 @@ def test_nao_permite_descartar_apos_concluido(usuario_teste):
 
     with pytest.raises(ValueError):
         descartar_alteracoes(analise.id)
+
+
+def _concluir_caso_completo(usuario_id):
+    analise = criar_analise_a_partir_da_ia(usuario_id, "teor", _dados_ia_simples(), _uso_fake())
+    acompanhamentos, agendamentos = listar_itens(analise.id)
+    marcar_item_pronto(analise.id, "acompanhamento", acompanhamentos[0].id)
+    marcar_item_pronto(analise.id, "agendamento", agendamentos[0].id)
+    return concluir_analise(analise.id)
+
+
+def test_concluir_duas_vezes_nao_reprocessa(usuario_teste):
+    """Henrique, 2026-09-12: como a tela Produção abre acesso a qualquer
+    pessoa (não só o dono), não dá mais pra contar só com o botão sumindo
+    da tela — o servidor precisa recusar concluir um caso já concluído."""
+    concluida = _concluir_caso_completo(usuario_teste.id)
+    concluido_em_original = concluida.concluido_em
+
+    with pytest.raises(ValueError):
+        concluir_analise(concluida.id)
+
+    inalterada = obter_analise(concluida.id)
+    assert inalterada.concluido_em == concluido_em_original
+
+
+def test_ciente_alerta_apos_concluido_e_bloqueado(usuario_teste):
+    """Mesma razão do teste acima — `marcar_ciente_alerta_critico` não
+    tinha nenhuma trava de status antes desta mudança."""
+    dados = _dados_ia_simples(tem_alerta_critico=True)
+    analise = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", dados, _uso_fake())
+    acompanhamentos, agendamentos = listar_itens(analise.id)
+    marcar_item_pronto(analise.id, "acompanhamento", acompanhamentos[0].id)
+    marcar_item_pronto(analise.id, "agendamento", agendamentos[0].id)
+    marcar_ciente_alerta_critico(analise.id)
+    concluir_analise(analise.id)
+
+    with pytest.raises(ValueError):
+        marcar_ciente_alerta_critico(analise.id)
+
+
+def _forcar_datas(analise_id, criado_em=None, concluido_em=None):
+    with obter_sessao() as sessao:
+        analise = sessao.get(AnalisePublicacao, analise_id)
+        if criado_em is not None:
+            analise.criado_em = criado_em
+        if concluido_em is not None:
+            analise.concluido_em = concluido_em
+        sessao.add(analise)
+        sessao.commit()
+
+
+def test_listar_analises_filtra_por_origem_e_status(usuario_teste):
+    """listar_analises() não filtra por usuário de propósito (é o acervo
+    do escritório inteiro, ver Produção) — então, rodando contra o banco
+    de desenvolvimento compartilhado (não um banco isolado por teste),
+    outras linhas antigas podem existir. As asserções checam MEMBRO/NÃO-
+    MEMBRO do que este teste criou, não a lista inteira."""
+    pendente = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
+    concluida = _concluir_caso_completo(usuario_teste.id)
+    lote = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake(), origem="lote")
+
+    ids_pendentes_individual = {a.id for a in listar_analises("individual", "aguardando_revisao")}
+    ids_concluidos_individual = {a.id for a in listar_analises("individual", "concluido")}
+    ids_pendentes_lote = {a.id for a in listar_analises("lote", "aguardando_revisao")}
+
+    assert pendente.id in ids_pendentes_individual
+    assert pendente.id not in ids_concluidos_individual
+    assert pendente.id not in ids_pendentes_lote
+
+    assert concluida.id in ids_concluidos_individual
+    assert concluida.id not in ids_pendentes_individual
+
+    assert lote.id in ids_pendentes_lote
+    assert lote.id not in ids_pendentes_individual
+
+
+def test_listar_analises_lote_vazio_hoje(usuario_teste):
+    """Documenta o contrato do estado vazio: sem nenhuma linha origem="lote"
+    no banco, a aba Lotes da tela Produção não tem nada de especial pra
+    tratar — a query já devolve vazio sozinha."""
+    assert listar_analises("lote", "aguardando_revisao") == []
+    assert listar_analises("lote", "concluido") == []
+    assert contar_analises("lote", "aguardando_revisao") == 0
+
+
+def test_listar_analises_pendentes_ordenado_do_mais_antigo(usuario_teste):
+    """Mesma ressalva do teste acima sobre banco compartilhado: filtra o
+    resultado geral só pelos 2 ids deste teste, preservando a ordem
+    relativa entre eles — não assume que a lista inteira é só isso."""
+    primeira = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
+    segunda = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
+    _forcar_datas(primeira.id, criado_em=datetime(2026, 1, 1))
+    _forcar_datas(segunda.id, criado_em=datetime(2026, 6, 1))
+
+    ids_relevantes = {primeira.id, segunda.id}
+    resultado = [a.id for a in listar_analises("individual", "aguardando_revisao") if a.id in ids_relevantes]
+    assert resultado == [primeira.id, segunda.id]
+
+
+def test_listar_analises_concluidos_ordenado_do_mais_recente(usuario_teste):
+    primeira = _concluir_caso_completo(usuario_teste.id)
+    segunda = _concluir_caso_completo(usuario_teste.id)
+    _forcar_datas(primeira.id, concluido_em=datetime(2026, 1, 1))
+    _forcar_datas(segunda.id, concluido_em=datetime(2026, 6, 1))
+
+    ids_relevantes = {primeira.id, segunda.id}
+    resultado = [a.id for a in listar_analises("individual", "concluido") if a.id in ids_relevantes]
+    assert resultado == [segunda.id, primeira.id]
+
+
+def test_listar_analises_paginacao(usuario_teste):
+    """Banco de desenvolvimento é compartilhado entre execuções de teste
+    (não isolado por teste), então o total global pode já ter linhas de
+    antes — compara ANTES/DEPOIS (delta), em vez de assumir total == 5."""
+    total_antes = contar_analises("individual", "aguardando_revisao")
+
+    ids_criados = []
+    for _ in range(5):
+        analise = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
+        ids_criados.append(analise.id)
+
+    assert contar_analises("individual", "aguardando_revisao") == total_antes + 5
+
+    todas_as_paginas = []
+    offset = 0
+    while True:
+        pagina = listar_analises("individual", "aguardando_revisao", limite=2, offset=offset)
+        if not pagina:
+            break
+        todas_as_paginas.extend(a.id for a in pagina)
+        offset += 2
+
+    # cada id criado aparece exatamente 1 vez, em algum lugar da paginação
+    # completa, na ordem certa relativa entre si (mais antigo primeiro)
+    posicoes = [todas_as_paginas.index(id_) for id_ in ids_criados]
+    assert posicoes == sorted(posicoes)
+    assert all(todas_as_paginas.count(id_) == 1 for id_ in ids_criados)

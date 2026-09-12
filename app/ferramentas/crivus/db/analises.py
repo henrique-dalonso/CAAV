@@ -84,6 +84,39 @@ def obter_analise(analise_id):
         return sessao.get(AnalisePublicacao, analise_id)
 
 
+def listar_analises(origem, status, limite=50, offset=0):
+    """Lista AnalisePublicacao pra tela Produção — sem checagem de dono,
+    de propósito (Henrique, 2026-09-12: o acervo é do escritório inteiro,
+    não do criador). Pendentes vem do mais antigo pro mais novo (fila que
+    não deixa nada apodrecer no fundo); Concluídos vem do mais novo pro
+    mais antigo (auditoria/histórico recente primeiro). `origem="lote"`
+    hoje sempre devolve vazio — não existe nenhuma linha ainda, o
+    Processamento em Lote é uma etapa futura."""
+    with obter_sessao() as sessao:
+        consulta = select(AnalisePublicacao).where(
+            AnalisePublicacao.origem == origem,
+            AnalisePublicacao.status == status,
+        )
+        if status == "concluido":
+            consulta = consulta.order_by(AnalisePublicacao.concluido_em.desc())
+        else:
+            consulta = consulta.order_by(AnalisePublicacao.criado_em.asc())
+
+        return sessao.exec(consulta.limit(limite).offset(offset)).all()
+
+
+def contar_analises(origem, status):
+    with obter_sessao() as sessao:
+        return len(
+            sessao.exec(
+                select(AnalisePublicacao.id).where(
+                    AnalisePublicacao.origem == origem,
+                    AnalisePublicacao.status == status,
+                )
+            ).all()
+        )
+
+
 def listar_itens(analise_id):
     with obter_sessao() as sessao:
         acompanhamentos = sessao.exec(
@@ -293,6 +326,9 @@ def marcar_item_desnecessario(analise_id, tipo_item, item_id, desnecessario=True
 def marcar_ciente_alerta_critico(analise_id):
     with obter_sessao() as sessao:
         analise = sessao.get(AnalisePublicacao, analise_id)
+        if analise.status == "concluido":
+            raise ValueError("Caso já concluído — não é mais possível alterar.")
+
         analise.ciente_alerta_critico = True
         sessao.add(analise)
         sessao.commit()
@@ -307,6 +343,9 @@ def concluir_analise(analise_id):
     trava obrigatória, sem exceção."""
     with obter_sessao() as sessao:
         analise = sessao.get(AnalisePublicacao, analise_id)
+
+        if analise.status == "concluido":
+            raise ValueError("Caso já concluído.")
 
         if analise.tem_alerta_critico and not analise.ciente_alerta_critico:
             raise ValueError("Confirme a ciência do alerta crítico antes de concluir o caso.")

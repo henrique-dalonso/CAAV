@@ -197,7 +197,13 @@ def test_alerta_critico_bloqueia_conclusao_sem_ciencia(monkeypatch):
         excluir_usuario(usuario.id)
 
 
-def test_usuario_nao_dono_recebe_404(cliente_logado):
+def test_usuario_nao_dono_pode_visualizar_e_agir_no_caso(cliente_logado):
+    """Henrique, 2026-09-12: o acervo do Crivus é do escritório inteiro, não
+    do criador — qualquer colega com acesso à ferramenta pode abrir e
+    retomar um caso ainda aberto de outra pessoa (ver tela Produção). Essa
+    trava por dono existia antes e foi removida de propósito; o único
+    bloqueio que continua valendo é por STATUS (caso concluído), não por
+    quem criou."""
     cliente, usuario = cliente_logado
     resposta = cliente.post("/crivus/leitor-individual/analisar", data={"npjur": "0119225", "processo": "0000000-00.0000.0.00.0000", "teor_publicacao": "teor de teste"})
     analise_id = int(str(resposta.url).rstrip("/").split("/")[-1])
@@ -206,8 +212,25 @@ def test_usuario_nao_dono_recebe_404(cliente_logado):
     try:
         cliente_outro = TestClient(app, follow_redirects=True)
         cliente_outro.post("/login", data={"usuario_login": "teste_crivus_outro", "senha": SENHA_TESTE})
+
         resposta = cliente_outro.get(f"/crivus/leitor-individual/{analise_id}")
-        assert resposta.status_code == 404
+        assert resposta.status_code == 200
+        assert "0119225" in resposta.text
+
+        with obter_sessao() as sessao:
+            item = sessao.exec(
+                select(ItemAcompanhamento).where(ItemAcompanhamento.analise_id == analise_id)
+            ).first()
+
+        resposta = cliente_outro.post(
+            f"/crivus/leitor-individual/{analise_id}/acompanhamento/{item.id}/salvar",
+            data={"tipo": "PUBLICAÇÃO"},
+        )
+        assert resposta.status_code == 200
+
+        with obter_sessao() as sessao:
+            item_atualizado = sessao.get(ItemAcompanhamento, item.id)
+            assert item_atualizado.status == "pronto"
     finally:
         excluir_usuario(outro.id)
 

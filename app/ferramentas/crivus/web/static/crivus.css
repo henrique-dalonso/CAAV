@@ -1317,3 +1317,144 @@ html[data-theme="escuro"] .interruptor-texto-on {
     gap: 0.5rem;
     font-weight: 600;
 }
+
+/* --- Navegação do Crivus (Leitor Individual / Produção) e tela Produção ---
+   Henrique, 2026-09-12: mesma linguagem visual das abas do Extratus
+   (.abas-extratus/.aba/.aba-ativa, ver app/ferramentas/extratus/web/static/
+   extratus.css) e do filtro de status de "Relatórios do Robô"
+   (.abas-relatorios-robo/.aba-relatorios-robo/.aba-relatorios-robo-ativa) —
+   copiadas aqui (não importadas) porque o Crivus nunca compartilhou CSS
+   com a família Extratus. Diferença deliberada: lá o filtro de status
+   troca client-side (JS mostra/esconde linhas já renderizadas); aqui cada
+   clique é uma navegação de verdade (nova busca no servidor, com
+   paginação), por causa do volume que "Lotes" pode alcançar um dia. */
+.abas-extratus {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: 0.25rem;
+    border-bottom: 1px solid var(--cor-borda);
+    margin-bottom: 1.5rem;
+}
+
+.aba {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 0.4rem;
+    min-height: 2.75rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--cor-texto-suave);
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.aba:hover {
+    color: var(--cor-texto);
+}
+
+.aba-ativa,
+.aba-ativa:hover {
+    color: var(--cor-acento);
+    border-bottom-color: var(--cor-acento);
+}
+
+.abas-relatorios-robo {
+    display: flex;
+    gap: 1.2rem;
+    border-bottom: 1px solid var(--cor-borda);
+    margin-bottom: 1.1rem;
+}
+
+.aba-relatorios-robo {
+    padding: 0.5rem 0.1rem 0.7rem;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--cor-texto-suave);
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.aba-relatorios-robo:hover {
+    color: var(--cor-texto);
+}
+
+.aba-relatorios-robo-ativa,
+.aba-relatorios-robo-ativa:hover {
+    color: var(--cor-acento);
+    border-bottom-color: var(--cor-acento);
+}
+
+/* Lista de casos da tela Produção — cada linha é um <a> de verdade (não
+   <tr onclick>: não existe precedente de linha-de-tabela clicável no
+   projeto, e um <a> real deixa o interceptador de clique do crivus.js
+   funcionar sem JS novo nenhum). Colunas via grid, não <table>. */
+.tabela-producao-crivus {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.linha-producao {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr 1fr 1.2fr 1.3fr auto;
+    gap: 0.75rem;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--cor-borda);
+    border-radius: 0.5rem;
+    background: var(--cor-cartao);
+    color: var(--cor-texto);
+    text-decoration: none;
+    font-size: 0.88rem;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.linha-producao:hover {
+    border-color: var(--cor-acento);
+}
+
+.linha-producao-cabecalho {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr 1fr 1.2fr 1.3fr auto;
+    gap: 0.75rem;
+    padding: 0 1rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--cor-texto-suave);
+}
+
+.linha-producao-celula-truncada {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.paginacao-crivus {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 1.25rem;
+}
+
+.paginacao-crivus a {
+    color: var(--cor-acento);
+    font-weight: 600;
+    text-decoration: none;
+    font-size: 0.85rem;
+}
+
+.paginacao-crivus a:hover {
+    text-decoration: underline;
+}
