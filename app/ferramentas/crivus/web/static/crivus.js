@@ -547,6 +547,30 @@
         enviarFormularioCrivus(form, evento.submitter);
     });
 
+    // Henrique, 2026-09-12: NPJUR e o número do Processo, na tela
+    // Produção, são clicáveis pra copiar rápido (ver .copiavel em
+    // crivus.css) — mas ficam DENTRO do <a> que abre o caso (a linha
+    // inteira navega ao clicar em qualquer lugar). Esse listener
+    // precisa estar registrado ANTES do de navegação logo abaixo e usar
+    // stopImmediatePropagation (não só stopPropagation) — os dois estão
+    // no MESMO elemento (document), então só parar a propagação normal
+    // não impede o listener seguinte de rodar; stopImmediatePropagation
+    // impede.
+    document.addEventListener("click", function (evento) {
+        var alvo = evento.target.closest("[data-copiar]");
+        if (!alvo) { return; }
+
+        evento.preventDefault();
+        evento.stopImmediatePropagation();
+
+        var valor = alvo.dataset.copiar;
+        navigator.clipboard.writeText(valor).then(function () {
+            if (window.mostrarBanner) {
+                window.mostrarBanner(alvo.dataset.copiarMensagem || "Copiado.", "sucesso");
+            }
+        });
+    });
+
     document.addEventListener("click", function (evento) {
         var link = evento.target.closest('a[href^="/crivus/leitor-individual"], a[href^="/crivus/producao"]');
         if (!link) { return; }

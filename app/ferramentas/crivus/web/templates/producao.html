@@ -41,12 +41,12 @@
 {% for analise in analises %}
     <a href="/crivus/leitor-individual/{{ analise.id }}" class="linha-producao">
         <div class="linha-producao-conteudo">
-            <div class="linha-producao-processo">
+            <div class="linha-producao-processo{% if analise.processo %} copiavel{% endif %}"{% if analise.processo %} data-dica="Clique pra copiar" data-copiar="{{ analise.processo }}" data-copiar-mensagem="Número do processo copiado."{% endif %}>
                 <span class="icone-titulo">{{ icone_processo() }}</span>
                 <span class="linha-producao-celula-truncada">{{ analise.processo or "Processo não informado" }}</span>
             </div>
             <div class="linha-producao-meta">
-                <span class="linha-producao-item" data-dica="NPJUR">{{ icone_identificador() }}{{ analise.npjur or "—" }}</span>
+                <span class="linha-producao-item{% if analise.npjur %} copiavel{% endif %}"{% if analise.npjur %} data-dica="Clique pra copiar o NPJUR" data-copiar="{{ analise.npjur }}" data-copiar-mensagem="Número NPJUR copiado."{% else %} data-dica="NPJUR"{% endif %}>{{ icone_identificador() }}{{ analise.npjur or "—" }}</span>
                 <span class="linha-producao-item" data-dica="Carteira">{{ icone_carteira() }}{{ analise.carteira or "—" }}</span>
                 <span class="linha-producao-item" data-dica="Solicitado por">{{ icone_usuario() }}{{ nomes_por_usuario_id.get(analise.usuario_id, "—") }}</span>
                 <span class="linha-producao-item" data-dica="{{ "Concluído em" if filtro == "concluidos" else "Criado em" }}">{{ icone_relogio() }}{{ (analise.concluido_em if filtro == "concluidos" else analise.criado_em).strftime("%d/%m/%Y %H:%M") }}</span>

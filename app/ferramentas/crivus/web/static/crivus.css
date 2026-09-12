@@ -1528,6 +1528,25 @@ html[data-theme="escuro"] .interruptor-texto-on {
     opacity: 0.7;
 }
 
+/* Henrique, 2026-09-12: NPJUR e Processo precisam avisar visualmente que
+   dão pra clicar e copiar (ver crivus.js) — cursor de mão + sublinhado
+   pontilhado (não sólido, pra não parecer link de navegação de verdade,
+   já que aqui o clique NÃO sai da tela) só aparecem no hover, discreto o
+   resto do tempo. `pointer-events` na linha inteira continua normal (o
+   resto do card ainda navega pro detalhe), só este elemento intercepta
+   o clique antes de chegar lá — ver stopImmediatePropagation em crivus.js. */
+.copiavel {
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.15s ease;
+}
+
+.copiavel:hover {
+    background: var(--cor-fundo);
+    text-decoration: underline dotted;
+    text-underline-offset: 3px;
+}
+
 .linha-producao-celula-truncada {
     overflow: hidden;
     text-overflow: ellipsis;
