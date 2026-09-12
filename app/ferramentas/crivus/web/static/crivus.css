@@ -1419,41 +1419,64 @@ html[data-theme="escuro"] .interruptor-texto-on {
 /* Lista de casos da tela Produção — cada linha é um <a> de verdade (não
    <tr onclick>: não existe precedente de linha-de-tabela clicável no
    projeto, e um <a> real deixa o interceptador de clique do crivus.js
-   funcionar sem JS novo nenhum). Colunas via grid, não <table>. */
+   funcionar sem JS novo nenhum). Colunas via grid, não <table>.
+
+   Henrique, 2026-09-12, 3ª rodada de ajuste: 1ª versão "ficou muito
+   apertado... parece vários blocos de texto aglomerado, sem distinção
+   clara". Duas causas reais: (1) linha sem sombra nenhuma — no tema
+   escuro, --cor-cartao (#151a27) é próximo demais de --cor-fundo
+   (#0b0f19), só a borda de 1px não bastava pra "descolar" o cartão do
+   fundo (mesmo problema que .cartao-secao já resolve em todo canto do
+   site com --sombra-suave, só que aqui ainda não tinha sido aplicado);
+   (2) grid com frações genéricas (1fr/1.4fr/...) não respeitava o
+   tamanho real de cada coluna (NPJUR é sempre curto, Data tem largura
+   fixa) — sobrava espaço morto em algumas colunas e faltava nas outras,
+   lendo como "textos largados" soltos no meio do card. Agora cabeçalho
+   e linha compartilham a MESMA variável de colunas (--grid-producao),
+   com minmax nas colunas de tamanho fixo, pra nunca dessincronizar. */
+:root {
+    --grid-producao: minmax(85px, 100px) minmax(160px, 1.6fr) minmax(90px, 0.9fr) minmax(110px, 1.1fr) minmax(128px, 145px) minmax(96px, 112px);
+}
+
 .tabela-producao-crivus {
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
+    gap: 0.75rem;
 }
 
 .linha-producao {
     display: grid;
-    grid-template-columns: 1fr 1.4fr 1fr 1.2fr 1.3fr auto;
-    gap: 0.75rem;
+    grid-template-columns: var(--grid-producao);
+    gap: 1rem;
     align-items: center;
-    padding: 0.75rem 1rem;
+    padding: 1rem 1.25rem;
     border: 1px solid var(--cor-borda);
-    border-radius: 0.5rem;
+    border-radius: var(--raio);
     background: var(--cor-cartao);
+    box-shadow: var(--sombra-suave);
     color: var(--cor-texto);
     text-decoration: none;
     font-size: 0.88rem;
-    transition: border-color 0.15s ease, background 0.15s ease;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
 }
 
 .linha-producao:hover {
     border-color: var(--cor-acento);
+    box-shadow: var(--sombra);
+    transform: translateY(-1px);
 }
 
 .linha-producao-cabecalho {
     display: grid;
-    grid-template-columns: 1fr 1.4fr 1fr 1.2fr 1.3fr auto;
-    gap: 0.75rem;
-    padding: 0 1rem;
-    font-size: 0.76rem;
-    font-weight: 600;
+    grid-template-columns: var(--grid-producao);
+    gap: 1rem;
+    padding: 0 1.25rem 0.6rem;
+    margin-bottom: 0.25rem;
+    border-bottom: 1px solid var(--cor-borda);
+    font-size: 0.74rem;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.03em;
+    letter-spacing: 0.04em;
     color: var(--cor-texto-suave);
 }
 
