@@ -1321,13 +1321,8 @@ html[data-theme="escuro"] .interruptor-texto-on {
 /* --- Navegação do Crivus (Leitor Individual / Produção) e tela Produção ---
    Henrique, 2026-09-12: mesma linguagem visual das abas do Extratus
    (.abas-extratus/.aba/.aba-ativa, ver app/ferramentas/extratus/web/static/
-   extratus.css) e do filtro de status de "Relatórios do Robô"
-   (.abas-relatorios-robo/.aba-relatorios-robo/.aba-relatorios-robo-ativa) —
-   copiadas aqui (não importadas) porque o Crivus nunca compartilhou CSS
-   com a família Extratus. Diferença deliberada: lá o filtro de status
-   troca client-side (JS mostra/esconde linhas já renderizadas); aqui cada
-   clique é uma navegação de verdade (nova busca no servidor, com
-   paginação), por causa do volume que "Lotes" pode alcançar um dia. */
+   extratus.css) — copiada aqui (não importada) porque o Crivus nunca
+   compartilhou CSS com a família Extratus. */
 .abas-extratus {
     display: grid;
     grid-auto-flow: column;
@@ -1364,73 +1359,37 @@ html[data-theme="escuro"] .interruptor-texto-on {
     border-bottom-color: var(--cor-acento);
 }
 
-.abas-relatorios-robo {
-    display: flex;
-    gap: 1.2rem;
-    border-bottom: 1px solid var(--cor-borda);
-    margin-bottom: 1.1rem;
-}
-
-.aba-relatorios-robo {
-    padding: 0.5rem 0.1rem 0.7rem;
-    background: none;
-    border: none;
-    border-bottom: 2px solid transparent;
-    color: var(--cor-texto-suave);
-    font-family: inherit;
-    font-size: 0.85rem;
-    font-weight: 600;
-    text-decoration: none;
-    cursor: pointer;
-    transition: color 0.15s ease, border-color 0.15s ease;
-}
-
-.aba-relatorios-robo:hover {
-    color: var(--cor-texto);
-}
-
-.aba-relatorios-robo-ativa,
-.aba-relatorios-robo-ativa:hover {
-    color: var(--cor-acento);
-    border-bottom-color: var(--cor-acento);
-}
-
-/* Henrique, 2026-09-12: a 1ª versão empilhava 2 barras de aba idênticas
+/* Henrique, 2026-09-12, 2 rodadas de ajuste na tela Produção:
+   1ª tentativa empilhava 2 barras de aba sublinhada idênticas
    (Individuais/Lotes em cima, Pendentes/Concluídos embaixo) — "ficou
-   horrível, muito ruim de visualizar e navegar", lia como 4 abinhas
-   soltas sem hierarquia nenhuma entre elas. Correção: as duas famílias
-   de controle dividem UMA linha só (.crivus-producao-controles, com o
-   único divisor da faixa toda) — sub-abas (Individuais/Lotes) à
-   esquerda, e o filtro Pendentes/Concluídos vira um alternador tipo
-   pílula à direita, deliberadamente com uma linguagem visual diferente
-   (preenchido/arredondado, não sublinhado) pra ficar claro que é outro
-   TIPO de controle, não uma 3ª e 4ª aba. */
+   horrível". 2ª tentativa: virou 1 linha só, mas Individuais/Lotes
+   ainda copiava o MESMO estilo sublinhado da barra de cima
+   (Leitor Individual/Produção), lendo como o mesmo nível de navegação
+   duas vezes ("ainda está ruim"). Solução final: os dois filtros da
+   tela Produção usam a MESMA peça de UI (alternador em pílula, que ele
+   gostou), mas com cores diferentes pra marcar que são EIXOS diferentes
+   — Individuais/Lotes é neutro (é só "qual conjunto de dados"),
+   Pendentes/Concluídos usa a cor de destaque (é o filtro de verdade,
+   o que muda o que aparece na lista). Nenhum dos dois repete o
+   sublinhado da navegação principal do Crivus. */
 .crivus-producao-controles {
     display: flex;
     flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
     gap: 0.75rem;
-    border-bottom: 1px solid var(--cor-borda);
     margin-bottom: 1.5rem;
-    padding-bottom: 0.1rem;
 }
 
-.abas-relatorios-robo-sem-borda {
-    border-bottom: none;
-    margin-bottom: 0;
-}
-
-.alternador-status {
+.alternador {
     display: inline-flex;
     background: var(--cor-fundo);
     border: 1px solid var(--cor-borda);
     border-radius: 999px;
     padding: 0.2rem;
-    margin-bottom: 0.5rem;
 }
 
-.alternador-status-opcao {
+.alternador-opcao {
     padding: 0.35rem 1rem;
     border-radius: 999px;
     font-size: 0.8rem;
@@ -1441,14 +1400,20 @@ html[data-theme="escuro"] .interruptor-texto-on {
     transition: background 0.15s ease, color 0.15s ease;
 }
 
-.alternador-status-opcao:hover {
+.alternador-opcao:hover {
     color: var(--cor-texto);
 }
 
-.alternador-status-ativa,
-.alternador-status-ativa:hover {
+.alternador-ativa,
+.alternador-ativa:hover {
     background: var(--cor-acento);
     color: white;
+}
+
+.alternador-neutro .alternador-ativa,
+.alternador-neutro .alternador-ativa:hover {
+    background: var(--cor-cartao);
+    color: var(--cor-texto);
 }
 
 /* Lista de casos da tela Produção — cada linha é um <a> de verdade (não

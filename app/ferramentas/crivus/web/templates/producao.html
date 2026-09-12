@@ -17,18 +17,18 @@
 {{ nav_crivus("producao") }}
 
 <div class="crivus-producao-controles">
-    <nav class="abas-relatorios-robo abas-relatorios-robo-sem-borda">
+    <div class="alternador alternador-neutro">
         <a href="/crivus/producao?aba=individuais&filtro={{ filtro }}"
-           class="aba-relatorios-robo{% if aba == "individuais" %} aba-relatorios-robo-ativa{% endif %}">Individuais</a>
+           class="alternador-opcao{% if aba == "individuais" %} alternador-ativa{% endif %}">Individuais</a>
         <a href="/crivus/producao?aba=lotes&filtro={{ filtro }}"
-           class="aba-relatorios-robo{% if aba == "lotes" %} aba-relatorios-robo-ativa{% endif %}">Lotes</a>
-    </nav>
+           class="alternador-opcao{% if aba == "lotes" %} alternador-ativa{% endif %}">Lotes</a>
+    </div>
 
-    <div class="alternador-status">
+    <div class="alternador">
         <a href="/crivus/producao?aba={{ aba }}&filtro=pendentes"
-           class="alternador-status-opcao{% if filtro == "pendentes" %} alternador-status-ativa{% endif %}">Pendentes</a>
+           class="alternador-opcao{% if filtro == "pendentes" %} alternador-ativa{% endif %}">Pendentes</a>
         <a href="/crivus/producao?aba={{ aba }}&filtro=concluidos"
-           class="alternador-status-opcao{% if filtro == "concluidos" %} alternador-status-ativa{% endif %}">Concluídos</a>
+           class="alternador-opcao{% if filtro == "concluidos" %} alternador-ativa{% endif %}">Concluídos</a>
     </div>
 </div>
 
