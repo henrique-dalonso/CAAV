@@ -1395,6 +1395,62 @@ html[data-theme="escuro"] .interruptor-texto-on {
     border-bottom-color: var(--cor-acento);
 }
 
+/* Henrique, 2026-09-12: a 1ª versão empilhava 2 barras de aba idênticas
+   (Individuais/Lotes em cima, Pendentes/Concluídos embaixo) — "ficou
+   horrível, muito ruim de visualizar e navegar", lia como 4 abinhas
+   soltas sem hierarquia nenhuma entre elas. Correção: as duas famílias
+   de controle dividem UMA linha só (.crivus-producao-controles, com o
+   único divisor da faixa toda) — sub-abas (Individuais/Lotes) à
+   esquerda, e o filtro Pendentes/Concluídos vira um alternador tipo
+   pílula à direita, deliberadamente com uma linguagem visual diferente
+   (preenchido/arredondado, não sublinhado) pra ficar claro que é outro
+   TIPO de controle, não uma 3ª e 4ª aba. */
+.crivus-producao-controles {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    border-bottom: 1px solid var(--cor-borda);
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.1rem;
+}
+
+.abas-relatorios-robo-sem-borda {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.alternador-status {
+    display: inline-flex;
+    background: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+    border-radius: 999px;
+    padding: 0.2rem;
+    margin-bottom: 0.5rem;
+}
+
+.alternador-status-opcao {
+    padding: 0.35rem 1rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--cor-texto-suave);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.alternador-status-opcao:hover {
+    color: var(--cor-texto);
+}
+
+.alternador-status-ativa,
+.alternador-status-ativa:hover {
+    background: var(--cor-acento);
+    color: white;
+}
+
 /* Lista de casos da tela Produção — cada linha é um <a> de verdade (não
    <tr onclick>: não existe precedente de linha-de-tabela clicável no
    projeto, e um <a> real deixa o interceptador de clique do crivus.js

@@ -16,19 +16,21 @@
 
 {{ nav_crivus("producao") }}
 
-<nav class="abas-relatorios-robo">
-    <a href="/crivus/producao?aba=individuais&filtro={{ filtro }}"
-       class="aba-relatorios-robo{% if aba == "individuais" %} aba-relatorios-robo-ativa{% endif %}">Individuais</a>
-    <a href="/crivus/producao?aba=lotes&filtro={{ filtro }}"
-       class="aba-relatorios-robo{% if aba == "lotes" %} aba-relatorios-robo-ativa{% endif %}">Lotes</a>
-</nav>
+<div class="crivus-producao-controles">
+    <nav class="abas-relatorios-robo abas-relatorios-robo-sem-borda">
+        <a href="/crivus/producao?aba=individuais&filtro={{ filtro }}"
+           class="aba-relatorios-robo{% if aba == "individuais" %} aba-relatorios-robo-ativa{% endif %}">Individuais</a>
+        <a href="/crivus/producao?aba=lotes&filtro={{ filtro }}"
+           class="aba-relatorios-robo{% if aba == "lotes" %} aba-relatorios-robo-ativa{% endif %}">Lotes</a>
+    </nav>
 
-<nav class="abas-relatorios-robo">
-    <a href="/crivus/producao?aba={{ aba }}&filtro=pendentes"
-       class="aba-relatorios-robo{% if filtro == "pendentes" %} aba-relatorios-robo-ativa{% endif %}">Pendentes</a>
-    <a href="/crivus/producao?aba={{ aba }}&filtro=concluidos"
-       class="aba-relatorios-robo{% if filtro == "concluidos" %} aba-relatorios-robo-ativa{% endif %}">Concluídos</a>
-</nav>
+    <div class="alternador-status">
+        <a href="/crivus/producao?aba={{ aba }}&filtro=pendentes"
+           class="alternador-status-opcao{% if filtro == "pendentes" %} alternador-status-ativa{% endif %}">Pendentes</a>
+        <a href="/crivus/producao?aba={{ aba }}&filtro=concluidos"
+           class="alternador-status-opcao{% if filtro == "concluidos" %} alternador-status-ativa{% endif %}">Concluídos</a>
+    </div>
+</div>
 
 {% if eh_lotes %}
 <p class="aviso-discreto">Nenhum lote encontrado — o Processamento em Lote ainda não existe. Quando entrar no ar, os lotes enviados vão aparecer aqui, agrupados pelo número do lote.</p>
