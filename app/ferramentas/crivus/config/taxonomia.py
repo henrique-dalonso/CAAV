@@ -146,6 +146,26 @@ SEM_AGENDAMENTO = "SEM AGENDAMENTO"
 # nas listas acima, sinaliza em vez de forçar um tipo errado.
 NAO_IDENTIFICADO = "NÃO IDENTIFICADO - SELECIONE MANUALMENTE"
 
+# Henrique, 2026-09-12: "ALTO/MÉDIO/BAIXO" (masculino) está gramaticalmente
+# errado — concorda com CONFIANÇA, que é substantivo feminino ("confiança
+# alta", não "confiança alto"). O valor internamente guardado no banco e
+# usado pra escolher a classe CSS do selo (`.confianca-alto` etc., ver
+# crivus.css) continua exatamente como está — mudar isso tocaria o schema
+# da IA (`ia_cliente.py`) e exigiria migrar dado histórico só por causa de
+# um texto de tela. Este dicionário é só a tradução de EXIBIÇÃO, usada via
+# o filtro Jinja `confianca_feminino` (ver templates_util nas rotas do
+# Crivus) nos 2 lugares que mostram esse texto pra pessoa (detalhe.html,
+# producao.html).
+RÓTULO_CONFIANÇA_FEMININO = {
+    "ALTO": "ALTA",
+    "MÉDIO": "MÉDIA",
+    "BAIXO": "BAIXA",
+}
+
+
+def confianca_feminino(nivel):
+    return RÓTULO_CONFIANÇA_FEMININO.get(nivel, nivel)
+
 # SLA interno (Manual, seção 8) — "primeira data" / "segunda data" =
 # quantos dias corridos após a leitura somar pra calcular a DATA INÍCIO e
 # a DATA FIM que o NPJUR exige por agendamento. É controle interno, não o

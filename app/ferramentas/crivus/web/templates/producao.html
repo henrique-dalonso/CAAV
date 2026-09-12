@@ -3,7 +3,7 @@
 {% block titulo %}Produção — Crivus{% endblock %}
 {% block css_pagina %}<link rel="stylesheet" href="/crivus/static/crivus.css?v={{ v }}">{% endblock %}
 
-{% from "_macros_crivus.html" import nav_crivus %}
+{% from "_macros_crivus.html" import nav_crivus, icone_processo, icone_identificador, icone_carteira, icone_usuario, icone_relogio %}
 
 {% block conteudo %}
 <div id="crivus-conteudo">
@@ -37,24 +37,23 @@
 {% elif not analises %}
 <p class="aviso-discreto">Nenhum caso {{ "pendente" if filtro == "pendentes" else "concluído" }}.</p>
 {% else %}
-<div class="linha-producao-cabecalho">
-    <span>NPJUR</span>
-    <span>Processo</span>
-    <span>Carteira</span>
-    <span>Criado por</span>
-    <span>{{ "Concluído em" if filtro == "concluidos" else "Criado em" }}</span>
-    <span>Confiança</span>
-</div>
 <div class="tabela-producao-crivus">
 {% for analise in analises %}
     <a href="/crivus/leitor-individual/{{ analise.id }}" class="linha-producao">
-        <span class="linha-producao-celula-truncada">{{ analise.npjur or "—" }}</span>
-        <span class="linha-producao-celula-truncada">{{ analise.processo or "—" }}</span>
-        <span class="linha-producao-celula-truncada">{{ analise.carteira or "—" }}</span>
-        <span class="linha-producao-celula-truncada">{{ nomes_por_usuario_id.get(analise.usuario_id, "—") }}</span>
-        <span>{{ (analise.concluido_em if filtro == "concluidos" else analise.criado_em).strftime("%d/%m/%Y %H:%M") }}</span>
+        <div class="linha-producao-conteudo">
+            <div class="linha-producao-processo">
+                {{ icone_processo() }}
+                <span class="linha-producao-celula-truncada">{{ analise.processo or "Processo não informado" }}</span>
+            </div>
+            <div class="linha-producao-meta">
+                <span class="linha-producao-item" data-dica="NPJUR">{{ icone_identificador() }}{{ analise.npjur or "—" }}</span>
+                <span class="linha-producao-item" data-dica="Carteira">{{ icone_carteira() }}{{ analise.carteira or "—" }}</span>
+                <span class="linha-producao-item" data-dica="Criado por">{{ icone_usuario() }}{{ nomes_por_usuario_id.get(analise.usuario_id, "—") }}</span>
+                <span class="linha-producao-item" data-dica="{{ "Concluído em" if filtro == "concluidos" else "Criado em" }}">{{ icone_relogio() }}{{ (analise.concluido_em if filtro == "concluidos" else analise.criado_em).strftime("%d/%m/%Y %H:%M") }}</span>
+            </div>
+        </div>
         <span class="selo-confianca confianca-{{ (analise.nivel_confianca or "")|lower }}">
-            <span class="bolinha-confianca"></span>{{ analise.nivel_confianca or "?" }}
+            <span class="bolinha-confianca"></span>{{ (analise.nivel_confianca | confianca_feminino) if analise.nivel_confianca else "?" }}
         </span>
     </a>
 {% endfor %}

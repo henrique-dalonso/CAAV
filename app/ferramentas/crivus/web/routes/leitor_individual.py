@@ -6,7 +6,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import RedirectResponse
 
-from app.ferramentas.crivus.config.taxonomia import NAO_IDENTIFICADO, TIPOS_ACOMPANHAMENTO, TIPOS_AGENDAMENTO
+from app.ferramentas.crivus.config.taxonomia import NAO_IDENTIFICADO, TIPOS_ACOMPANHAMENTO, TIPOS_AGENDAMENTO, confianca_feminino
 from app.ferramentas.crivus.core.ia_cliente import analisar_publicacao
 from app.ferramentas.crivus.db.analises import (
     adicionar_anexo,
@@ -34,6 +34,7 @@ PLATAFORMA_TEMPLATES_DIR = (
     Path(__file__).resolve().parents[4] / "plataforma" / "web" / "templates"
 )
 templates = criar_templates([TEMPLATES_DIR, PLATAFORMA_TEMPLATES_DIR])
+templates.env.filters["confianca_feminino"] = confianca_feminino
 
 PASTA_ANEXOS = Path(__file__).resolve().parents[2] / "dados" / "anexos"
 

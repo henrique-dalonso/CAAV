@@ -2,6 +2,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
 
+from app.ferramentas.crivus.config.taxonomia import confianca_feminino
 from app.ferramentas.crivus.db.analises import contar_analises, listar_analises
 from app.plataforma.db.models import Usuario
 from app.plataforma.db.usuarios import listar_todos_usuarios
@@ -16,6 +17,7 @@ PLATAFORMA_TEMPLATES_DIR = (
     Path(__file__).resolve().parents[4] / "plataforma" / "web" / "templates"
 )
 templates = criar_templates([TEMPLATES_DIR, PLATAFORMA_TEMPLATES_DIR])
+templates.env.filters["confianca_feminino"] = confianca_feminino
 
 ABAS_VALIDAS = {"individuais", "lotes"}
 FILTROS_VALIDOS = {"pendentes", "concluidos"}

@@ -1419,25 +1419,21 @@ html[data-theme="escuro"] .interruptor-texto-on {
 /* Lista de casos da tela Produção — cada linha é um <a> de verdade (não
    <tr onclick>: não existe precedente de linha-de-tabela clicável no
    projeto, e um <a> real deixa o interceptador de clique do crivus.js
-   funcionar sem JS novo nenhum). Colunas via grid, não <table>.
+   funcionar sem JS novo nenhum).
 
-   Henrique, 2026-09-12, 3ª rodada de ajuste: 1ª versão "ficou muito
-   apertado... parece vários blocos de texto aglomerado, sem distinção
-   clara". Duas causas reais: (1) linha sem sombra nenhuma — no tema
-   escuro, --cor-cartao (#151a27) é próximo demais de --cor-fundo
-   (#0b0f19), só a borda de 1px não bastava pra "descolar" o cartão do
-   fundo (mesmo problema que .cartao-secao já resolve em todo canto do
-   site com --sombra-suave, só que aqui ainda não tinha sido aplicado);
-   (2) grid com frações genéricas (1fr/1.4fr/...) não respeitava o
-   tamanho real de cada coluna (NPJUR é sempre curto, Data tem largura
-   fixa) — sobrava espaço morto em algumas colunas e faltava nas outras,
-   lendo como "textos largados" soltos no meio do card. Agora cabeçalho
-   e linha compartilham a MESMA variável de colunas (--grid-producao),
-   com minmax nas colunas de tamanho fixo, pra nunca dessincronizar. */
-:root {
-    --grid-producao: minmax(85px, 100px) minmax(160px, 1.6fr) minmax(90px, 0.9fr) minmax(110px, 1.1fr) minmax(128px, 145px) minmax(96px, 112px);
-}
-
+   Henrique, 2026-09-12, rodadas de ajuste sucessivas:
+   1ª — linhas empilhadas sem sombra, "aglomerado" (corrigido: sombra +
+   elevação no hover, mesmo recurso que .cartao-secao já usa em todo o
+   site pra descolar do fundo escuro).
+   2ª/3ª — "um textasso branco, fonte bucha" e "confiança" no masculino:
+   o problema não era mais o cartão, era o CONTEÚDO — texto corrido em
+   colunas de grid genéricas, todas com o mesmo peso visual, sem
+   hierarquia nem apoio nenhum pra escanear rápido. Trocado por
+   HIERARQUIA (Processo em destaque, negrito, no topo — é o dado que
+   mais importa) + METADADOS agrupados embaixo (NPJUR/Carteira/Criado
+   por/Data), cada um com um ícone (ver _macros_crivus.html) fazendo o
+   papel que a coluna de cabeçalho fazia antes — não precisa mais de
+   cabeçalho de tabela nenhum, o ícone já entrega o que é aquele dado. */
 .tabela-producao-crivus {
     display: flex;
     flex-direction: column;
@@ -1445,18 +1441,17 @@ html[data-theme="escuro"] .interruptor-texto-on {
 }
 
 .linha-producao {
-    display: grid;
-    grid-template-columns: var(--grid-producao);
-    gap: 1rem;
+    display: flex;
     align-items: center;
-    padding: 1rem 1.25rem;
+    justify-content: space-between;
+    gap: 1.25rem;
+    padding: 1.1rem 1.4rem;
     border: 1px solid var(--cor-borda);
     border-radius: var(--raio);
     background: var(--cor-cartao);
     box-shadow: var(--sombra-suave);
     color: var(--cor-texto);
     text-decoration: none;
-    font-size: 0.88rem;
     transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
 }
 
@@ -1466,18 +1461,47 @@ html[data-theme="escuro"] .interruptor-texto-on {
     transform: translateY(-1px);
 }
 
-.linha-producao-cabecalho {
-    display: grid;
-    grid-template-columns: var(--grid-producao);
-    gap: 1rem;
-    padding: 0 1.25rem 0.6rem;
-    margin-bottom: 0.25rem;
-    border-bottom: 1px solid var(--cor-borda);
-    font-size: 0.74rem;
+.linha-producao > .selo-confianca {
+    flex-shrink: 0;
+}
+
+.linha-producao-conteudo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 0;
+    flex: 1;
+}
+
+.linha-producao-processo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+}
+
+.linha-producao-meta {
+    display: flex;
+    flex-wrap: wrap;
+    row-gap: 0.35rem;
+    column-gap: 1.4rem;
+    font-size: 0.8rem;
     color: var(--cor-texto-suave);
+}
+
+.linha-producao-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    white-space: nowrap;
+}
+
+.icone-campo {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    opacity: 0.7;
 }
 
 .linha-producao-celula-truncada {

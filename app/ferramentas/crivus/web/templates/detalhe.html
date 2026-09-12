@@ -29,7 +29,7 @@
     <div class="crivus-cabecalho-acoes">
         <span class="selo-confianca confianca-{{ analise.nivel_confianca | lower }}">
             <span class="bolinha-confianca"></span>
-            Grau de Confiança: {{ analise.nivel_confianca or "?" }}
+            Grau de Confiança: {{ (analise.nivel_confianca | confianca_feminino) if analise.nivel_confianca else "?" }}
         </span>
         {% if analise.status != "concluido" %}
         <div class="crivus-detalhe-concluir">
@@ -71,7 +71,7 @@
             <h2>Conclusão Operacional</h2>
             <p class="conclusao-operacional-texto">{{ analise.resumo_ia }}</p>
             {% if analise.motivo_confianca %}
-            <p class="aviso-discreto">Motivo da confiança {{ analise.nivel_confianca }}: {{ analise.motivo_confianca }}</p>
+            <p class="aviso-discreto">Motivo da confiança {{ analise.nivel_confianca | confianca_feminino }}: {{ analise.motivo_confianca }}</p>
             {% endif %}
         </section>
 
