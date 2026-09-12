@@ -19,8 +19,17 @@
    traço/estilo já usado em detalhe.html (viewBox 24, stroke=currentColor,
    stroke-width 2, linecap/linejoin round) — não é uma linguagem visual
    nova, só estendida pra cá. Macro por ícone (não uma função JS) porque
-   são só SVGs estáticos, sem interação nenhuma. #}
-{% macro icone_processo() %}<svg class="icone-campo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>{% endmacro %}
+   são só SVGs estáticos, sem interação nenhuma.
+
+   icone_processo() é o único SEM class="icone-campo" de propósito — é o
+   ícone de "título" da linha (envolvido em .icone-titulo no template,
+   não no meta-row junto dos outros), pensado pra ficar maior/com mais
+   destaque (fundo circular na cor de acento) do que os ícones de
+   metadado, deixando claro que Processo é o dado principal daquele
+   card, não mais um campo igual aos outros. Balança da justiça, mais
+   temático pra um caso jurídico do que o ícone de documento genérico
+   usado antes ("ficou esquisito" — Henrique). #}
+{% macro icone_processo() %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"></path><path d="M5 7h14"></path><path d="M5 7 3 12a3 3 0 0 0 6 0z"></path><path d="M19 7l-2 5a3 3 0 0 0 6 0z"></path></svg>{% endmacro %}
 
 {% macro icone_identificador() %}<svg class="icone-campo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>{% endmacro %}
 
