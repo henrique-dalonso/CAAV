@@ -956,10 +956,43 @@ html[data-theme="escuro"] .banner-revisao {
 }
 
 .cabecalho-ferramenta h1 {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
     font-size: 1.5rem;
     font-weight: 700;
     letter-spacing: -0.02em;
     margin: 0 0 0.3rem;
+}
+
+/* Botão "Voltar", 3ª geração (Henrique, 2026-09-13) — ver comentário
+   completo em templates_util.py (botao_voltar). Vive dentro do <h1> de
+   cada tela (ícone só, sem texto — a dica já explica), não mais no
+   cabeçalho global: assim ele não compete por espaço com a logo (2ª
+   geração, descartada) nem flutua solto na viewport (1ª geração,
+   também descartada) — sempre no mesmo lugar relativo ao título,
+   não importa a largura de .pagina naquela tela (ex: Custos é mais
+   largo que o normal). */
+.botao-voltar-titulo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    padding: 0;
+    color: var(--cor-texto-suave);
+    background: none;
+    border: 1px solid var(--cor-borda);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.botao-voltar-titulo:hover {
+    color: var(--cor-acento);
+    border-color: var(--cor-acento);
+    background: var(--cor-acento-fraco);
 }
 
 .cabecalho-ferramenta p {
@@ -1277,51 +1310,6 @@ html[data-theme="escuro"] .selo-roxo {
 .marca-sistema-logo {
     width: 72px;
     height: 38px;
-}
-
-/* Botão "Voltar" — Henrique, 2026-09-13, 3ª geração (as 2 anteriores
-   foram descartadas, achadas ruins na prática):
-   1ª: nome dinâmico da última tela ("Voltar para X") — texto às vezes
-   gigante, sem elipse legível. Descartado: agora é sempre só "Voltar".
-   2ª: position:fixed, ancorado solto na viewport (ver histórico no git)
-   — parecia "tapa-buraco", isolado no canto, nada a ver com a logo.
-   Descartado: agora é filho de verdade de .marca-sistema, no fluxo
-   normal do cabeçalho, sempre ancorado do lado da marca — nunca mais
-   flutua sozinho nem empurra nada (a barra já tem folga sobrando entre
-   .marca-sistema e .menu-usuario).
-   Também mudou o DESTINO: em vez de uma "última página" calculada no
-   servidor (que não sabia de navegações via JavaScript dentro da
-   própria ferramenta, ex: trocar de aba no Crivus sem recarregar a
-   página — sempre voltava longe demais), usa history.back() do próprio
-   navegador, que já reflete cada tela visitada de verdade (inclusive
-   essas trocas via JS, que também dão push no histórico). Ver
-   comentário sobre bfcache em base.js (pageshow) — garante que voltar
-   busca conteúdo fresco, não uma versão velha guardada em cache. */
-.botao-voltar-topo {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.45rem 0.85rem;
-    font-family: inherit;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--cor-texto);
-    background: none;
-    border: 1px solid var(--cor-borda);
-    border-radius: 999px;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
-}
-
-.botao-voltar-topo:hover {
-    color: var(--cor-acento);
-    border-color: var(--cor-acento);
-    background: var(--cor-acento-fraco);
-}
-
-.botao-voltar-topo svg {
-    flex-shrink: 0;
 }
 
 .marca-sistema strong {

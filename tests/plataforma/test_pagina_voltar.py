@@ -15,9 +15,10 @@ SENHA = "senhaTeste123"
 
 
 def _botao_voltar(html):
-    """Extrai a tag <button ...>...</button> inteira do botão "Voltar" no
-    cabeçalho, ou None se não estiver presente."""
-    match = re.search(r'<button[^>]*class="botao-voltar-topo"[^>]*>.*?</button>', html, re.DOTALL)
+    """Extrai a tag <button ...>...</button> inteira do botão "Voltar"
+    (4ª geração: vive dentro do <h1> de cada tela, ver botao_voltar em
+    templates_util.py), ou None se não estiver presente."""
+    match = re.search(r'<button[^>]*class="botao-voltar-titulo"[^>]*>.*?</button>', html, re.DOTALL)
     return match.group(0) if match else None
 
 
@@ -47,7 +48,10 @@ def cliente_logado():
 
 def test_home_nunca_mostra_botao_voltar(cliente_logado):
     """Henrique, 2026-08-25: "nunca no Login/Home" — Início é a raiz,
-    nada "antes" dela faz sentido mostrar."""
+    nada "antes" dela faz sentido mostrar. Na 4ª geração isso acontece
+    naturalmente: home.html não tem .cabecalho-ferramenta/<h1> nenhum,
+    então nunca chama `botao_voltar()` — sem precisar de checagem de
+    rota nenhuma."""
     resp = cliente_logado.get("/")
 
     assert resp.status_code == 200
@@ -62,17 +66,17 @@ def test_login_nunca_mostra_botao_voltar():
     assert _botao_voltar(resp.text) is None
 
 
-def test_outras_paginas_mostram_botao_voltar_sempre_com_texto_fixo(cliente_logado):
-    """Henrique, 2026-09-13, 3ª geração do botão: descartou 100% o nome
-    dinâmico da tela anterior ("ficou horrível, texto às vezes imenso")
-    — agora é sempre só "Voltar", em qualquer tela fora de Início/Login,
-    não importa de onde a pessoa veio."""
+def test_outras_paginas_mostram_botao_voltar(cliente_logado):
+    """Henrique, 2026-09-13, 4ª geração: o botão saiu do cabeçalho global
+    e passou a viver dentro do <h1> de cada tela (3ª geração, ao lado da
+    logo, também foi rejeitada: "não gostei da posição"). Ícone só, sem
+    texto "Voltar" — a dica (tooltip) já explica, e o botão agora está
+    claramente junto do título, contexto suficiente."""
     resp = cliente_logado.get("/admin/ferramentas")
 
     botao = _botao_voltar(resp.text)
     assert botao is not None
-    assert ">Voltar<" in botao
-    assert "Voltar para" not in botao
+    assert 'data-dica="Voltar"' in botao
 
 
 def test_botao_usa_history_back_do_navegador(cliente_logado):
@@ -87,13 +91,25 @@ def test_botao_usa_history_back_do_navegador(cliente_logado):
     assert 'onclick="history.back()"' in botao
 
 
-def test_botao_fica_dentro_do_cabecalho_ao_lado_da_marca(cliente_logado):
-    """Henrique, 2026-09-13: o botão antigo era position:fixed, solto na
-    viewport, "parecia tapa-buraco isolado no canto". Agora precisa
-    estar de verdade dentro de .marca-sistema, no fluxo normal do
-    cabeçalho — não mais fora de .pagina/.barra-superior."""
+def test_botao_fica_dentro_do_h1_da_tela(cliente_logado):
+    """Henrique, 2026-09-13: 2ª geração (position:fixed) "parecia tapa-
+    buraco"; 3ª geração (dentro de .marca-sistema, ao lado da logo)
+    "não gostei da posição". 4ª geração: o botão precisa estar de
+    verdade dentro do <h1> de .cabecalho-ferramenta — sempre alinhado
+    com o título da tela, não mais com o cabeçalho global/logo."""
     resp = cliente_logado.get("/admin/ferramentas")
 
-    marca = re.search(r'<div class="marca-sistema">.*?</div>\s*</div>', resp.text, re.DOTALL)
-    assert marca is not None
-    assert "botao-voltar-topo" in marca.group(0)
+    h1 = re.search(r"<h1>.*?</h1>", resp.text, re.DOTALL)
+    assert h1 is not None
+    assert "botao-voltar-titulo" in h1.group(0)
+
+
+def test_botao_aparece_em_varias_ferramentas_diferentes(cliente_logado):
+    """Não é um caso isolado de uma tela só — confirma em telas de
+    módulos diferentes (Administração e Crivus) que o botão realmente
+    aparece em qualquer .cabecalho-ferramenta, não só numa exceção."""
+    resp_admin = cliente_logado.get("/admin/ferramentas")
+    assert _botao_voltar(resp_admin.text) is not None
+
+    resp_crivus = cliente_logado.get("/crivus/leitor-individual")
+    assert _botao_voltar(resp_crivus.text) is not None
