@@ -98,14 +98,27 @@ def test_producao_exige_login():
     assert resposta.status_code in (302, 303)
 
 
-def test_producao_renderiza_individuais_pendentes_default(cliente_logado):
+def test_producao_renderiza_individuais_pendentes(cliente_logado):
     cliente, _ = cliente_logado
     analise_id = _criar_caso(cliente, npjur="0119225")
 
-    resposta = cliente.get("/crivus/producao")
+    resposta = cliente.get("/crivus/producao?aba=individuais&filtro=pendentes")
     assert resposta.status_code == 200
     assert "0119225" in resposta.text
     assert f"/crivus/leitor-individual/{analise_id}" in resposta.text
+
+
+def test_producao_default_e_lotes_pendentes(cliente_logado):
+    """Henrique, 2026-09-13: Lotes vira a aba padrão de Produção (antes
+    era Individuais) — acessar /crivus/producao sem parâmetro nenhum já
+    cai direto no estado vazio de Lotes, não mostra casos individuais."""
+    cliente, _ = cliente_logado
+    _criar_caso(cliente, npjur="0119225")
+
+    resposta = cliente.get("/crivus/producao")
+    assert resposta.status_code == 200
+    assert "Processamento em Lote" in resposta.text
+    assert "0119225" not in resposta.text
 
 
 def test_producao_filtra_por_query_params(cliente_logado):

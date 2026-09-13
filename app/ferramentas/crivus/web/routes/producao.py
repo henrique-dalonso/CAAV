@@ -34,13 +34,13 @@ POR_PAGINA = 50
 @router.get("/producao")
 def pagina_producao(
     request: Request,
-    aba: str = "individuais",
+    aba: str = "lotes",
     filtro: str = "pendentes",
     pagina: int = 1,
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
     if aba not in ABAS_VALIDAS:
-        aba = "individuais"
+        aba = "lotes"
     if filtro not in FILTROS_VALIDOS:
         filtro = "pendentes"
     if pagina < 1:
