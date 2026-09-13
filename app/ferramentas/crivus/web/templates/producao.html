@@ -39,7 +39,7 @@
 {% else %}
 <div class="tabela-producao-crivus">
 {% for analise in analises %}
-    <a href="/crivus/leitor-individual/{{ analise.id }}" class="linha-producao">
+    <a href="/crivus/leitor-individual/{{ analise.id }}?origem=producao" class="linha-producao">
         <div class="linha-producao-conteudo">
             <div class="linha-producao-processo{% if analise.processo %} copiavel{% endif %}"{% if analise.processo %} data-dica="Clique pra copiar" data-copiar="{{ analise.processo }}" data-copiar-mensagem="Número do processo copiado."{% endif %}>
                 <span class="icone-titulo">{{ icone_processo() }}</span>

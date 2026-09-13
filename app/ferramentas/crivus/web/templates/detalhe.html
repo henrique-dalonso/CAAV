@@ -34,9 +34,11 @@
         {% if analise.status != "concluido" %}
         <div class="crivus-detalhe-concluir">
             <form method="post" action="/crivus/leitor-individual/{{ analise.id }}/descartar" class="form-descartar-crivus">
+                {% if origem %}<input type="hidden" name="origem" value="{{ origem }}">{% endif %}
                 <button type="submit" class="link-descartar-voltar">Descartar alterações e Voltar</button>
             </form>
             <form method="post" action="/crivus/leitor-individual/{{ analise.id }}/concluir">
+                {% if origem %}<input type="hidden" name="origem" value="{{ origem }}">{% endif %}
                 <button type="submit" class="botao-concluir-caso" {{ "disabled" if not pode_concluir }}>
                     <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <polyline points="20 6 9 17 4 12"></polyline>
@@ -92,7 +94,7 @@
 
     <div class="crivus-detalhe-itens">
         <section class="cartao-secao cartao-acompanhamentos{{ ' cartao-secao-completa' if todos_acompanhamentos_prontos }}">
-            <h2>Acompanhamento{{ "s" if acompanhamentos|length != 1 else "" }}</h2>
+            <h2>{{ "Acompanhamentos sugeridos" if acompanhamentos|length != 1 else "Acompanhamento sugerido" }}</h2>
             {% if not acompanhamentos %}
             <p class="vazio">Nenhum acompanhamento sugerido.</p>
             {% endif %}
@@ -101,6 +103,7 @@
                 {% if item.status == "desnecessario" %}
                     <p class="item-riscado">{{ item.tipo }}</p>
                     <form method="post" action="/crivus/leitor-individual/{{ analise.id }}/acompanhamento/{{ item.id }}/reverter">
+                        {% if origem %}<input type="hidden" name="origem" value="{{ origem }}">{% endif %}
                         <button type="submit" class="botao-secundario" {{ "disabled" if analise.status == "concluido" }}>Reverter</button>
                     </form>
                 {% else %}
@@ -127,6 +130,7 @@
                     </div>
 
                     <form method="post" action="/crivus/leitor-individual/{{ analise.id }}/acompanhamento/{{ item.id }}/salvar" class="form-item" novalidate>
+                        {% if origem %}<input type="hidden" name="origem" value="{{ origem }}">{% endif %}
                         <div class="campo-edicao">
                             <select name="tipo" required {{ "disabled" if analise.status == "concluido" }}>
                                 <option value="" disabled {{ "selected" if not item.tipo }}>(Selecione um tipo de acompanhamento)</option>
@@ -168,7 +172,7 @@
         </section>
 
         <section class="cartao-secao cartao-agendamentos{{ ' cartao-secao-completa' if todos_agendamentos_prontos }}">
-            <h2>Agendamentos</h2>
+            <h2>Agendamentos sugeridos</h2>
             {% if not agendamentos %}
             <p class="vazio">Nenhum agendamento necessário.</p>
             {% endif %}
@@ -177,6 +181,7 @@
                 {% if item.status == "desnecessario" %}
                     <p class="item-riscado">{{ item.tipo }} · Data: {{ item.data_inicio.strftime("%d/%m") }} a {{ item.data_fim.strftime("%d/%m") }}</p>
                     <form method="post" action="/crivus/leitor-individual/{{ analise.id }}/agendamento/{{ item.id }}/reverter">
+                        {% if origem %}<input type="hidden" name="origem" value="{{ origem }}">{% endif %}
                         <button type="submit" class="botao-secundario" {{ "disabled" if analise.status == "concluido" }}>Reverter</button>
                     </form>
                 {% else %}
@@ -204,6 +209,7 @@
                     </div>
 
                     <form method="post" action="/crivus/leitor-individual/{{ analise.id }}/agendamento/{{ item.id }}/salvar" class="form-item-agendamento" novalidate>
+                        {% if origem %}<input type="hidden" name="origem" value="{{ origem }}">{% endif %}
                         <div class="campo-edicao">
                             <select name="tipo" required {{ "disabled" if analise.status == "concluido" }}>
                                 <option value="" disabled {{ "selected" if not item.tipo }}>(Selecione um tipo de agendamento)</option>
@@ -273,6 +279,7 @@
 
             {% if analise.status != "concluido" %}
             <form method="post" action="/crivus/leitor-individual/{{ analise.id }}/agendamento/novo">
+                {% if origem %}<input type="hidden" name="origem" value="{{ origem }}">{% endif %}
                 <button type="submit" class="botao-adicionar-agendamento">+ Adicionar agendamento</button>
             </form>
             {% endif %}
@@ -283,6 +290,7 @@
 {% if analise.tem_alerta_critico and not analise.ciente_alerta_critico and analise.status != "concluido" %}
 <footer class="rodape-conclusao">
     <form method="post" action="/crivus/leitor-individual/{{ analise.id }}/ciente-alerta">
+        {% if origem %}<input type="hidden" name="origem" value="{{ origem }}">{% endif %}
         <label class="checkbox-ciencia">
             <input type="checkbox" onchange="this.form.requestSubmit()">
             Confirmo que estou ciente do alerta crítico acima e da providência necessária.

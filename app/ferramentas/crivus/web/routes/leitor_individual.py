@@ -79,6 +79,28 @@ def _erro_home(mensagem):
     return RedirectResponse(url=f"/crivus/leitor-individual?erro={quote(mensagem)}", status_code=303)
 
 
+def _pagina_inicial_por_origem(origem):
+    """Henrique, 2026-09-13: "Descartar"/"Concluir Caso" precisam voltar
+    pra Produção quando o caso foi aberto de lá, não sempre pro Leitor
+    Individual (regra geral) — ver `origem` em `pagina_detalhe`."""
+    return "/crivus/producao" if origem == "producao" else "/crivus/leitor-individual"
+
+
+def _url_detalhe(analise_id, origem=None, erro=None):
+    """Toda ação da tela de devolutiva (marcar pronto, editar, desnecessário
+    etc.) redireciona de volta pro MESMO caso — precisa carregar `origem`
+    adiante a cada volta, senão ele se perde assim que a pessoa revisa o
+    1º item (sempre acontece antes de conseguir concluir), e "Descartar"/
+    "Concluir Caso" deixam de saber que devem voltar pra Produção."""
+    partes = []
+    if erro:
+        partes.append(f"erro={quote(erro)}")
+    if origem == "producao":
+        partes.append("origem=producao")
+    query = f"?{'&'.join(partes)}" if partes else ""
+    return f"/crivus/leitor-individual/{analise_id}{query}"
+
+
 def _exigir_analise_existente(analise_id):
     """Henrique, 2026-09-12: o acervo do Crivus é do escritório inteiro,
     não do criador — qualquer pessoa com acesso à ferramenta pode ver e
@@ -179,8 +201,16 @@ def pagina_detalhe(
     analise_id: int,
     request: Request,
     erro: str | None = None,
+    origem: str | None = None,
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
+    # Henrique, 2026-09-13: só a Produção usa isso hoje (link da linha do
+    # caso leva "?origem=producao") — controla pra onde "Descartar"/
+    # "Concluir Caso" voltam depois. Qualquer valor que não seja esse cai
+    # em None (comportamento de sempre: volta pro Leitor Individual).
+    if origem != "producao":
+        origem = None
+
     analise = _exigir_analise_existente(analise_id)
     acompanhamentos, agendamentos = listar_itens(analise_id)
 
@@ -222,6 +252,7 @@ def pagina_detalhe(
             "pode_concluir": todos_prontos and (not analise.tem_alerta_critico or analise.ciente_alerta_critico),
             "aviso_concluir": aviso_concluir,
             "erro": erro,
+            "origem": origem,
         },
     )
 
@@ -239,14 +270,15 @@ async def salvar_acompanhamento(
     # negócio (marcar_item_pronto/salvar_edicao_item), que já mostra a
     # mensagem certa pra pessoa em vez de uma tela de erro genérica.
     tipo: str = Form(""),
+    origem: str | None = Form(None),
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
     _exigir_analise_existente(analise_id)
     try:
         marcar_item_pronto(analise_id, "acompanhamento", item_id, novo_tipo=tipo)
     except ValueError as exc:
-        return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}?erro={quote(str(exc))}", status_code=303)
-    return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)
+        return RedirectResponse(url=_url_detalhe(analise_id, origem=origem, erro=str(exc)), status_code=303)
+    return RedirectResponse(url=_url_detalhe(analise_id, origem=origem), status_code=303)
 
 
 @router.post("/leitor-individual/{analise_id}/acompanhamento/{item_id}/salvar-edicao")
@@ -254,39 +286,42 @@ async def salvar_edicao_acompanhamento(
     analise_id: int,
     item_id: int,
     tipo: str = Form(""),
+    origem: str | None = Form(None),
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
     _exigir_analise_existente(analise_id)
     try:
         salvar_edicao_item(analise_id, "acompanhamento", item_id, tipo)
     except ValueError as exc:
-        return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}?erro={quote(str(exc))}", status_code=303)
-    return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)
+        return RedirectResponse(url=_url_detalhe(analise_id, origem=origem, erro=str(exc)), status_code=303)
+    return RedirectResponse(url=_url_detalhe(analise_id, origem=origem), status_code=303)
 
 
 @router.post("/leitor-individual/{analise_id}/acompanhamento/{item_id}/desnecessario")
 async def marcar_acompanhamento_desnecessario(
     analise_id: int,
     item_id: int,
+    origem: str | None = Form(None),
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
     _exigir_analise_existente(analise_id)
     try:
         marcar_item_desnecessario(analise_id, "acompanhamento", item_id, desnecessario=True)
     except ValueError as exc:
-        return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}?erro={quote(str(exc))}", status_code=303)
-    return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)
+        return RedirectResponse(url=_url_detalhe(analise_id, origem=origem, erro=str(exc)), status_code=303)
+    return RedirectResponse(url=_url_detalhe(analise_id, origem=origem), status_code=303)
 
 
 @router.post("/leitor-individual/{analise_id}/acompanhamento/{item_id}/reverter")
 async def reverter_acompanhamento(
     analise_id: int,
     item_id: int,
+    origem: str | None = Form(None),
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
     _exigir_analise_existente(analise_id)
     marcar_item_desnecessario(analise_id, "acompanhamento", item_id, desnecessario=False)
-    return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)
+    return RedirectResponse(url=_url_detalhe(analise_id, origem=origem), status_code=303)
 
 
 @router.post("/leitor-individual/{analise_id}/agendamento/{item_id}/salvar")
@@ -296,6 +331,7 @@ async def salvar_agendamento(
     tipo: str = Form(""),
     data_inicio: date = Form(...),
     data_fim: date = Form(...),
+    origem: str | None = Form(None),
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
     _exigir_analise_existente(analise_id)
@@ -305,8 +341,8 @@ async def salvar_agendamento(
             novo_tipo=tipo, nova_data_inicio=data_inicio, nova_data_fim=data_fim,
         )
     except ValueError as exc:
-        return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}?erro={quote(str(exc))}", status_code=303)
-    return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)
+        return RedirectResponse(url=_url_detalhe(analise_id, origem=origem, erro=str(exc)), status_code=303)
+    return RedirectResponse(url=_url_detalhe(analise_id, origem=origem), status_code=303)
 
 
 @router.post("/leitor-individual/{analise_id}/agendamento/{item_id}/salvar-edicao")
@@ -316,99 +352,109 @@ async def salvar_edicao_agendamento(
     tipo: str = Form(""),
     data_inicio: date = Form(...),
     data_fim: date = Form(...),
+    origem: str | None = Form(None),
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
     _exigir_analise_existente(analise_id)
     try:
         salvar_edicao_item(analise_id, "agendamento", item_id, tipo, nova_data_inicio=data_inicio, nova_data_fim=data_fim)
     except ValueError as exc:
-        return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}?erro={quote(str(exc))}", status_code=303)
-    return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)
+        return RedirectResponse(url=_url_detalhe(analise_id, origem=origem, erro=str(exc)), status_code=303)
+    return RedirectResponse(url=_url_detalhe(analise_id, origem=origem), status_code=303)
 
 
 @router.post("/leitor-individual/{analise_id}/agendamento/novo")
 async def adicionar_agendamento(
     analise_id: int,
+    origem: str | None = Form(None),
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
     _exigir_analise_existente(analise_id)
     try:
         criar_agendamento_manual(analise_id)
     except ValueError as exc:
-        return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}?erro={quote(str(exc))}", status_code=303)
-    return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)
+        return RedirectResponse(url=_url_detalhe(analise_id, origem=origem, erro=str(exc)), status_code=303)
+    return RedirectResponse(url=_url_detalhe(analise_id, origem=origem), status_code=303)
 
 
 @router.post("/leitor-individual/{analise_id}/agendamento/{item_id}/excluir")
 async def excluir_agendamento(
     analise_id: int,
     item_id: int,
+    origem: str | None = Form(None),
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
     _exigir_analise_existente(analise_id)
     try:
         excluir_agendamento_manual(analise_id, item_id)
     except ValueError as exc:
-        return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}?erro={quote(str(exc))}", status_code=303)
-    return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)
+        return RedirectResponse(url=_url_detalhe(analise_id, origem=origem, erro=str(exc)), status_code=303)
+    return RedirectResponse(url=_url_detalhe(analise_id, origem=origem), status_code=303)
 
 
 @router.post("/leitor-individual/{analise_id}/agendamento/{item_id}/desnecessario")
 async def marcar_agendamento_desnecessario(
     analise_id: int,
     item_id: int,
+    origem: str | None = Form(None),
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
     _exigir_analise_existente(analise_id)
     marcar_item_desnecessario(analise_id, "agendamento", item_id, desnecessario=True)
-    return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)
+    return RedirectResponse(url=_url_detalhe(analise_id, origem=origem), status_code=303)
 
 
 @router.post("/leitor-individual/{analise_id}/agendamento/{item_id}/reverter")
 async def reverter_agendamento(
     analise_id: int,
     item_id: int,
+    origem: str | None = Form(None),
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
     _exigir_analise_existente(analise_id)
     marcar_item_desnecessario(analise_id, "agendamento", item_id, desnecessario=False)
-    return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)
+    return RedirectResponse(url=_url_detalhe(analise_id, origem=origem), status_code=303)
 
 
 @router.post("/leitor-individual/{analise_id}/ciente-alerta")
 async def ciente_alerta(
     analise_id: int,
+    origem: str | None = Form(None),
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
     _exigir_analise_existente(analise_id)
     try:
         marcar_ciente_alerta_critico(analise_id)
     except ValueError as exc:
-        return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}?erro={quote(str(exc))}", status_code=303)
-    return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}", status_code=303)
+        return RedirectResponse(url=_url_detalhe(analise_id, origem=origem, erro=str(exc)), status_code=303)
+    return RedirectResponse(url=_url_detalhe(analise_id, origem=origem), status_code=303)
 
 
 @router.post("/leitor-individual/{analise_id}/descartar")
 async def descartar(
     analise_id: int,
+    origem: str | None = Form(None),
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
     _exigir_analise_existente(analise_id)
     try:
         descartar_alteracoes(analise_id)
     except ValueError as exc:
-        return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}?erro={quote(str(exc))}", status_code=303)
-    return RedirectResponse(url="/crivus/leitor-individual", status_code=303)
+        return RedirectResponse(url=_url_detalhe(analise_id, origem=origem, erro=str(exc)), status_code=303)
+    return RedirectResponse(url=_pagina_inicial_por_origem(origem), status_code=303)
 
 
 @router.post("/leitor-individual/{analise_id}/concluir")
 async def concluir(
     analise_id: int,
+    origem: str | None = Form(None),
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
     _exigir_analise_existente(analise_id)
     try:
         concluir_analise(analise_id)
     except ValueError as exc:
-        return RedirectResponse(url=f"/crivus/leitor-individual/{analise_id}?erro={quote(str(exc))}", status_code=303)
-    return RedirectResponse(url=f"/crivus/leitor-individual?sucesso={quote('Caso concluído.')}", status_code=303)
+        return RedirectResponse(url=_url_detalhe(analise_id, origem=origem, erro=str(exc)), status_code=303)
+    return RedirectResponse(
+        url=f"{_pagina_inicial_por_origem(origem)}?sucesso={quote('Caso concluído.')}", status_code=303
+    )

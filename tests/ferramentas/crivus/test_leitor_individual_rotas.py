@@ -2,6 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import delete, select
 
+from app.ferramentas.crivus.db.analises import listar_itens
 from app.ferramentas.crivus.db.models import AnalisePublicacao, AnexoAnalise, ItemAcompanhamento, ItemAgendamento
 from app.plataforma.db.models import CARGO_COLABORADOR, CARGO_COORDENADOR
 from app.plataforma.db.session import obter_sessao
@@ -308,3 +309,86 @@ def test_colaborador_nao_pode_passar_do_limite_de_anexos(cliente_logado):
         files=arquivos,
     )
     assert "Máximo de 3 anexos" in resposta.text
+
+
+def test_titulos_de_secao_deixam_claro_que_e_sugestao(cliente_logado):
+    """Henrique, 2026-09-13: "Acompanhamento"/"Agendamentos" viraram
+    "Acompanhamento sugerido"/"Agendamentos sugeridos" — deixa claro que
+    é sugestão da IA, ainda não confirmado."""
+    cliente, _ = cliente_logado
+    resposta = cliente.post(
+        "/crivus/leitor-individual/analisar",
+        data={"npjur": "0119225", "processo": "0000000-00.0000.0.00.0000", "teor_publicacao": "teor de teste"},
+    )
+    assert "Acompanhamento sugerido" in resposta.text
+    assert "Agendamentos sugeridos" in resposta.text
+
+
+def test_descartar_sem_origem_volta_pro_leitor_individual(cliente_logado):
+    cliente, _ = cliente_logado
+    resposta = cliente.post(
+        "/crivus/leitor-individual/analisar",
+        data={"npjur": "0119225", "processo": "0000000-00.0000.0.00.0000", "teor_publicacao": "teor de teste"},
+    )
+    analise_id = int(str(resposta.url).rstrip("/").split("/")[-1])
+
+    resposta = cliente.post(f"/crivus/leitor-individual/{analise_id}/descartar")
+    assert str(resposta.url).endswith("/crivus/leitor-individual")
+
+
+def test_descartar_com_origem_producao_volta_pra_producao(cliente_logado):
+    """Henrique, 2026-09-13: caso aberto pela tela Produção (link leva
+    "?origem=producao") precisa voltar pra lá ao descartar, não pro
+    Leitor Individual — regra geral antes disso."""
+    cliente, _ = cliente_logado
+    resposta = cliente.post(
+        "/crivus/leitor-individual/analisar",
+        data={"npjur": "0119225", "processo": "0000000-00.0000.0.00.0000", "teor_publicacao": "teor de teste"},
+    )
+    analise_id = int(str(resposta.url).rstrip("/").split("/")[-1])
+
+    resposta = cliente.post(f"/crivus/leitor-individual/{analise_id}/descartar", data={"origem": "producao"})
+    assert str(resposta.url).endswith("/crivus/producao")
+
+
+def test_concluir_com_origem_producao_volta_pra_producao(cliente_logado):
+    cliente, _ = cliente_logado
+    resposta = cliente.post(
+        "/crivus/leitor-individual/analisar",
+        data={"npjur": "0119225", "processo": "0000000-00.0000.0.00.0000", "teor_publicacao": "teor de teste"},
+    )
+    analise_id = int(str(resposta.url).rstrip("/").split("/")[-1])
+    acompanhamentos, agendamentos = listar_itens(analise_id)
+
+    cliente.post(
+        f"/crivus/leitor-individual/{analise_id}/acompanhamento/{acompanhamentos[0].id}/salvar",
+        data={"tipo": "PUBLICAÇÃO", "origem": "producao"},
+    )
+    cliente.post(
+        f"/crivus/leitor-individual/{analise_id}/agendamento/{agendamentos[0].id}/salvar",
+        data={"tipo": "MANIFESTAÇÃO", "data_inicio": "2026-01-01", "data_fim": "2026-01-10", "origem": "producao"},
+    )
+
+    resposta = cliente.post(f"/crivus/leitor-individual/{analise_id}/concluir", data={"origem": "producao"})
+    assert "/crivus/producao" in str(resposta.url)
+
+
+def test_origem_producao_propaga_apos_acao_intermediaria(cliente_logado):
+    """A parte que importa de verdade: "origem" precisa sobreviver a uma
+    ação no meio do caminho (marcar item pronto), não só nos botões
+    finais — senão some assim que a pessoa revisa o 1º item, antes de
+    conseguir concluir."""
+    cliente, _ = cliente_logado
+    resposta = cliente.post(
+        "/crivus/leitor-individual/analisar",
+        data={"npjur": "0119225", "processo": "0000000-00.0000.0.00.0000", "teor_publicacao": "teor de teste"},
+    )
+    analise_id = int(str(resposta.url).rstrip("/").split("/")[-1])
+    acompanhamentos, _ = listar_itens(analise_id)
+
+    resposta = cliente.post(
+        f"/crivus/leitor-individual/{analise_id}/acompanhamento/{acompanhamentos[0].id}/salvar",
+        data={"tipo": "PUBLICAÇÃO", "origem": "producao"},
+    )
+    assert "origem=producao" in str(resposta.url)
+    assert 'name="origem" value="producao"' in resposta.text
