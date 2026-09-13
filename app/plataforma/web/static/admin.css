@@ -1444,6 +1444,33 @@ html[data-theme="escuro"] .cartao-config:hover {
     flex-shrink: 0;
 }
 
+/* Henrique, 2026-09-13: o botão "Ativar" usava a classe .botao-minimal,
+   que só existe no extratus.css de cada ferramenta — essa tela carrega
+   só admin.css, então o botão saía sem estilo nenhum ("cru"). Pílula do
+   mesmo porte visual do selo "Ativo" ao lado (mesma linha, mesma altura
+   de leitura), pra ficar claro que os dois ocupam o mesmo "slot" da
+   linha — um mostra o estado, o outro é a ação pra chegar nele. */
+.botao-ativar-prompt {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.3rem 0.75rem;
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--cor-texto-suave);
+    background: none;
+    border: 1px solid var(--cor-borda);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.botao-ativar-prompt:hover {
+    color: var(--cor-acento);
+    border-color: var(--cor-acento);
+    background: var(--cor-acento-fraco);
+}
+
 /* .zona-soltar (arrastar-e-soltar arquivo) é definida em extratus.css,
    não em admin.css — mesmo motivo de .motivo/.aviso-discreto acima:
    reaproveitada aqui (prompt do Robô) sem carregar extratus.css. */

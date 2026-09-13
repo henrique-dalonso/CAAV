@@ -163,7 +163,7 @@
                 <span class="prompt-versao-nome">Versão de {{ versao.salvo_em.strftime("%d/%m/%Y %H:%M") }}</span>
                 <form action="/admin/ferramentas/{{ chave }}/prompt/ativar" method="post" data-confirm="Ativar esta versão do prompt? A versão atual fica guardada no lugar dela.">
                     <input type="hidden" name="arquivo" value="{{ versao.nome_arquivo }}">
-                    <button type="submit" class="botao-minimal">Ativar</button>
+                    <button type="submit" class="botao-ativar-prompt">Ativar</button>
                 </form>
             </li>
             {% endfor %}
