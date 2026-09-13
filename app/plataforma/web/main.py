@@ -18,7 +18,6 @@ from app.plataforma.db.models import Ferramenta
 from app.plataforma.db.seed import garantir_ferramentas_padrao
 from app.plataforma.db.session import obter_sessao
 from app.plataforma.db.usuarios import registrar_acesso_ferramenta
-from app.plataforma.nomes_paginas import nome_pagina
 from app.plataforma.web.auth import NaoAutenticado
 from app.plataforma.web.routes import admin, admin_custos, admin_ferramentas, auth, home, notificacoes, perfil
 from app.plataforma.web.templates_util import criar_templates
@@ -160,67 +159,16 @@ async def middleware_registrar_acesso_ferramenta(request: Request, call_next):
     return resposta
 
 
-@app.middleware("http")
-async def middleware_rastrear_pagina_anterior(request: Request, call_next):
-    """Guarda em sessão a última página (GET, autenticada) visitada,
-    ANTES de processar a atual — alimenta o botão "Voltar pra X" no
-    cabeçalho (base.html, templates_util.pagina_voltar). A ordem
-    importa: `call_next` (que renderiza o template, chamando
-    pagina_voltar) roda ANTES da linha que atualiza `ultima_pagina`
-    aqui embaixo — então o template sempre lê o valor da visita
-    ANTERIOR, nunca o da atual.
-
-    Só GET conta como "página visitada" (POST de formulário — Salvar
-    configurações, etc. — não deveria virar destino de "Voltar"); só
-    pra usuário logado; nunca pra /login (nem como destino faz sentido,
-    ver _PAGINAS_SEM_BOTAO_VOLTAR em templates_util.py); e só se a
-    resposta for HTML de verdade — achado real, 2026-08-25: sem esse
-    filtro, /notificacoes/eventos (o SSE do sininho, aberto sozinho em
-    segundo plano pelo navegador, nunca por navegação de verdade) virava
-    "ultima_pagina" e o botão "Voltar" mandava pra um stream de eventos
-    cru em vez de pra tela anterior de verdade. content-type descarta
-    isso (e qualquer outro endpoint de API/JSON) sem precisar listar
-    rota por rota."""
-    if "/static/" in request.url.path:
-        return await call_next(request)
-
-    resposta = await call_next(request)
-
-    if (
-        request.method == "GET"
-        and request.session.get("usuario_id")
-        and request.url.path != "/login"
-        and resposta.headers.get("content-type", "").startswith("text/html")
-    ):
-        # Henrique, 2026-09-13: só o path (sem query string) fazia o botão
-        # "Voltar pra X" (e qualquer tela que reaproveite esse mesmo
-        # rastreamento pra "voltar de verdade", ver Crivus/Produção) largar
-        # aba/filtro/página ativos — sempre voltava pro estado padrão da
-        # tela, nunca pro que a pessoa realmente estava vendo. `nome_pagina`
-        # continua recebendo só o path puro (as entradas de nomes_paginas.py
-        # são por prefixo de caminho, não fazem sentido com query junto).
-        url_completa = request.url.path
-        if request.url.query:
-            url_completa += f"?{request.url.query}"
-
-        request.session["ultima_pagina"] = {
-            "url": url_completa,
-            "nome": nome_pagina(request.url.path),
-        }
-
-    return resposta
-
-
-# SessionMiddleware precisa ser registrada DEPOIS dos dois middlewares
-# acima (não antes, como já foi por um tempo) — achado real, 2026-08-25:
+# SessionMiddleware precisa ser registrada DEPOIS do middleware acima
+# (não antes, como já foi por um tempo) — achado real, 2026-08-25:
 # middleware registrada por último vira a mais EXTERNA da pilha (roda
 # primeiro na ida, por último na volta). Com SessionMiddleware registrada
-# antes, ela ficava mais INTERNA — sua escrita do cookie (na volta)
-# acontecia ANTES de middleware_rastrear_pagina_anterior mexer em
-# request.session["ultima_pagina"], então essa mudança nunca chegava a
-# ir pro cookie de verdade (sumia silenciosamente, sem erro nenhum).
-# Registrando aqui embaixo, SessionMiddleware fica por fora dos dois
-# outros e escreve o cookie por último, já vendo a sessão atualizada.
+# antes, ela ficava mais INTERNA — qualquer escrita em request.session
+# feita por um middleware acima (na volta) acontecia ANTES do
+# SessionMiddleware gravar o cookie, então a mudança nunca chegava a ir
+# pro cookie de verdade (sumia silenciosamente, sem erro nenhum).
+# Registrando aqui embaixo, SessionMiddleware fica por fora e escreve o
+# cookie por último, já vendo qualquer sessão atualizada por cima dela.
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, max_age=SESSAO_MAX_IDADE_SEGUNDOS)
 
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")

@@ -1279,38 +1279,37 @@ html[data-theme="escuro"] .selo-roxo {
     height: 38px;
 }
 
-/* Botão "Voltar pra X" (2026-08-25, Henrique: site inteiro, dinâmico,
-   com o nome da última tela) — nome vem de nomes_paginas.py; sem nome
-   cadastrado mostra só "Voltar" (ver pagina_voltar, templates_util.py).
-   max-width com ellipsis pra não estourar com um nome de ferramenta
-   comprido ("Fila do Robô — Extratus - Relatórios").
-
-   Henrique, 2026-08-26 (2ª rodada): nem .marca-sistema pode "saber"
-   que o botão existe — position:fixed tira o elemento de QUALQUER
-   fluxo/contêiner da página (não é filho de .pagina no HTML, é
-   irmão dela, direto em <body>) e ancora direto na viewport. Mesmos
-   valores de top/left do padding de .pagina (2.5rem/1.5rem, base.css)
-   — em qualquer janela mais larga que o max-width do conteúdo (o caso
-   normal, .pagina fica centralizada), sobra espaço vazio à ESQUERDA da
-   logo, e é exatamente aí que o botão cai — nunca empurra nem se
-   sobrepõe a nada da logo/cabeçalho, os dois nem sabem um do outro. */
+/* Botão "Voltar" — Henrique, 2026-09-13, 3ª geração (as 2 anteriores
+   foram descartadas, achadas ruins na prática):
+   1ª: nome dinâmico da última tela ("Voltar para X") — texto às vezes
+   gigante, sem elipse legível. Descartado: agora é sempre só "Voltar".
+   2ª: position:fixed, ancorado solto na viewport (ver histórico no git)
+   — parecia "tapa-buraco", isolado no canto, nada a ver com a logo.
+   Descartado: agora é filho de verdade de .marca-sistema, no fluxo
+   normal do cabeçalho, sempre ancorado do lado da marca — nunca mais
+   flutua sozinho nem empurra nada (a barra já tem folga sobrando entre
+   .marca-sistema e .menu-usuario).
+   Também mudou o DESTINO: em vez de uma "última página" calculada no
+   servidor (que não sabia de navegações via JavaScript dentro da
+   própria ferramenta, ex: trocar de aba no Crivus sem recarregar a
+   página — sempre voltava longe demais), usa history.back() do próprio
+   navegador, que já reflete cada tela visitada de verdade (inclusive
+   essas trocas via JS, que também dão push no histórico). Ver
+   comentário sobre bfcache em base.js (pageshow) — garante que voltar
+   busca conteúdo fresco, não uma versão velha guardada em cache. */
 .botao-voltar-topo {
-    position: fixed;
-    top: 2.5rem;
-    left: 1.5rem;
-    z-index: 5;
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
     padding: 0.45rem 0.85rem;
-    max-width: 240px;
+    font-family: inherit;
     font-size: 0.85rem;
     font-weight: 600;
-    color: var(--cor-texto-suave);
-    background: var(--cor-fundo);
+    color: var(--cor-texto);
+    background: none;
     border: 1px solid var(--cor-borda);
     border-radius: 999px;
-    text-decoration: none;
+    cursor: pointer;
     white-space: nowrap;
     transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
 }
@@ -1323,12 +1322,6 @@ html[data-theme="escuro"] .selo-roxo {
 
 .botao-voltar-topo svg {
     flex-shrink: 0;
-}
-
-.botao-voltar-topo span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
 .marca-sistema strong {

@@ -15,9 +15,9 @@ SENHA = "senhaTeste123"
 
 
 def _botao_voltar(html):
-    """Extrai a tag <a ...>...</a> inteira do botão "Voltar" no
+    """Extrai a tag <button ...>...</button> inteira do botão "Voltar" no
     cabeçalho, ou None se não estiver presente."""
-    match = re.search(r'<a href="[^"]*" class="botao-voltar-topo"[^>]*>.*?</a>', html, re.DOTALL)
+    match = re.search(r'<button[^>]*class="botao-voltar-topo"[^>]*>.*?</button>', html, re.DOTALL)
     return match.group(0) if match else None
 
 
@@ -45,75 +45,55 @@ def cliente_logado():
         sessao.commit()
 
 
-def test_login_redireciona_pra_home_que_nunca_mostra_botao_voltar(cliente_logado):
-    """O login (fixture) já seguiu o redirect e pousou em "/" — Home
-    nunca mostra o botão, mesmo sendo a primeira parada real da sessão
-    (regra explícita de Henrique: nunca em Login/Home)."""
+def test_home_nunca_mostra_botao_voltar(cliente_logado):
+    """Henrique, 2026-08-25: "nunca no Login/Home" — Início é a raiz,
+    nada "antes" dela faz sentido mostrar."""
     resp = cliente_logado.get("/")
 
     assert resp.status_code == 200
     assert _botao_voltar(resp.text) is None
 
 
-def test_segunda_pagina_mostra_botao_voltar_com_nome_da_primeira(cliente_logado):
-    """Regressão do bug real de 2026-08-25: SessionMiddleware registrada
-    ANTES dos middlewares que escrevem em request.session virava a
-    camada mais INTERNA da pilha — sua escrita do cookie acontecia antes
-    de middleware_rastrear_pagina_anterior atualizar "ultima_pagina",
-    então a mudança nunca ia pro cookie de verdade (o botão nunca
-    aparecia, em nenhuma página, nunca)."""
-    cliente_logado.get("/admin/ferramentas")
-    resp = cliente_logado.get("/admin/ferramentas/extratus-relatorios")
+def test_login_nunca_mostra_botao_voltar():
+    cliente = TestClient(app)
+    resp = cliente.get("/login")
 
     assert resp.status_code == 200
-    botao = _botao_voltar(resp.text)
-    assert botao is not None
-    assert 'href="/admin/ferramentas"' in botao
-    assert "Voltar para Ferramentas" in botao
+    assert _botao_voltar(resp.text) is None
 
 
-def test_pagina_sem_nome_cadastrado_mostra_botao_generico(cliente_logado):
-    cliente_logado.get("/rota-sem-nome-cadastrado")  # sem entrada em nomes_paginas.py, 404
+def test_outras_paginas_mostram_botao_voltar_sempre_com_texto_fixo(cliente_logado):
+    """Henrique, 2026-09-13, 3ª geração do botão: descartou 100% o nome
+    dinâmico da tela anterior ("ficou horrível, texto às vezes imenso")
+    — agora é sempre só "Voltar", em qualquer tela fora de Início/Login,
+    não importa de onde a pessoa veio."""
     resp = cliente_logado.get("/admin/ferramentas")
 
     botao = _botao_voltar(resp.text)
     assert botao is not None
-    assert 'href="/rota-sem-nome-cadastrado"' in botao
     assert ">Voltar<" in botao
     assert "Voltar para" not in botao
 
 
-def test_pagina_com_query_string_preserva_filtro_no_botao_voltar(cliente_logado):
-    """Achado real, 2026-09-13: só o path (sem query string) fazia o
-    botão "Voltar" (e qualquer "voltar" que reaproveite esse mesmo
-    rastreamento, como Crivus/Produção) largar filtro/aba/página ativos —
-    sempre voltava pro estado padrão da tela, nunca pro que a pessoa
-    realmente estava vendo."""
-    cliente_logado.get("/crivus/producao?aba=individuais&filtro=concluidos")
-    resp = cliente_logado.get("/crivus/leitor-individual")
+def test_botao_usa_history_back_do_navegador(cliente_logado):
+    """A troca de mecanismo é o ponto central desta rodada: em vez de uma
+    "última página" calculada no servidor (que não enxergava navegação
+    via JavaScript dentro de uma ferramenta, sempre voltando longe
+    demais), o botão usa o histórico real do próprio navegador."""
+    resp = cliente_logado.get("/admin/ferramentas")
 
     botao = _botao_voltar(resp.text)
     assert botao is not None
-    assert 'href="/crivus/producao?aba=individuais&amp;filtro=concluidos"' in botao
+    assert 'onclick="history.back()"' in botao
 
 
-def test_endpoint_json_nao_vira_pagina_de_voltar(cliente_logado):
-    """Regressão de um bug real, 2026-08-25: endpoints como /notificacoes
-    (JSON, chamado sozinho pelo navegador em segundo plano — sininho do
-    cabeçalho — não é navegação de verdade) ou /notificacoes/eventos (o
-    SSE do mesmo sininho) viravam "ultima_pagina" sem o filtro de
-    content-type, e o botão "Voltar" mandava pra um endpoint de API cru
-    em vez de pra tela anterior real. /notificacoes é só JSON — mais
-    simples de testar que o SSE (stream infinito), mesma lógica de
-    exclusão (content-type não começa com text/html)."""
-    cliente_logado.get("/admin/ferramentas")
+def test_botao_fica_dentro_do_cabecalho_ao_lado_da_marca(cliente_logado):
+    """Henrique, 2026-09-13: o botão antigo era position:fixed, solto na
+    viewport, "parecia tapa-buraco isolado no canto". Agora precisa
+    estar de verdade dentro de .marca-sistema, no fluxo normal do
+    cabeçalho — não mais fora de .pagina/.barra-superior."""
+    resp = cliente_logado.get("/admin/ferramentas")
 
-    resp_json = cliente_logado.get("/notificacoes")
-    assert resp_json.headers["content-type"].startswith("application/json")
-
-    resp = cliente_logado.get("/admin/ferramentas/extratus-relatorios")
-
-    botao = _botao_voltar(resp.text)
-    assert botao is not None
-    assert "/notificacoes" not in botao
-    assert 'href="/admin/ferramentas"' in botao
+    marca = re.search(r'<div class="marca-sistema">.*?</div>\s*</div>', resp.text, re.DOTALL)
+    assert marca is not None
+    assert "botao-voltar-topo" in marca.group(0)

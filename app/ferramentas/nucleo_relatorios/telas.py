@@ -5,19 +5,25 @@ Relatórios do Robô, diferindo só por `ferramenta_slug`/`tipo`/identidade
 visual.
 
 ANTES desta tarefa (Emenda, 2026-09-09), essas 3 telas precisavam ser
-cadastradas manualmente em 5 lugares diferentes, cada um com seu próprio
+cadastradas manualmente em 4 lugares diferentes, cada um com seu próprio
 dict copiado e colado por ferramenta:
   - app/plataforma/web/routes/admin_ferramentas.py::CONFIGURACOES_POR_CHAVE
   - app/plataforma/web/routes/admin_custos.py::CUSTOS_POR_CHAVE
   - app/plataforma/web/notificacoes.py::REGISTRO_NOTIFICACOES
   - app/plataforma/web/chaves_ferramentas.py::CHAVE_POR_SLUG
-  - app/plataforma/nomes_paginas.py::NOMES_POR_PREFIXO
-Cada ferramenta nova (Emenda sendo a 3ª) significava editar os 5 arquivos
+Cada ferramenta nova (Emenda sendo a 3ª) significava editar os arquivos
 à mão, sempre com risco de esquecer um. Este módulo é a fonte ÚNICA de
-verdade — os 5 arquivos acima agora só fazem um loop sobre
+verdade — os 4 arquivos acima agora só fazem um loop sobre
 `REGISTRO_TELAS` (ou usam direto), preservando exatamente o formato/
 comportamento que cada um já tinha (inclusive o uso de `functools.partial`
 pra amarrar `ferramenta_slug`, ver `ligado_a_ferramenta` abaixo).
+
+(Um 5º consumidor, app/plataforma/nomes_paginas.py, existiu até
+2026-09-13 — alimentava o botão "Voltar pra X" do cabeçalho com nome
+dinâmico da tela. Esse botão foi redesenhado pra usar history.back() do
+navegador em vez de nome calculado no servidor, e nomes_paginas.py foi
+removido por completo — não ficou mais nenhum consumidor de nome de
+tela por URL neste projeto.)
 
 Crivus NÃO entra aqui de propósito — é um motor genuinamente separado
 (prompt/schema/pipeline próprios, nem usa `nucleo_relatorios`), não uma

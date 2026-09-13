@@ -7,6 +7,22 @@
     // Usado mais abaixo pro cache-busting do SharedWorker do sininho.
     var VERSAO_ESTATICOS = (document.currentScript && document.currentScript.dataset.versaoEstaticos) || "";
 
+    // Henrique, 2026-09-13: o botão "Voltar" do cabeçalho usa
+    // history.back() (mesmo mecanismo da seta nativa do navegador) —
+    // sem isso, o navegador às vezes restaura a página anterior direto
+    // do bfcache (uma "foto" congelada de como ela estava, sem bater no
+    // servidor de novo), mostrando dado velho (filtro, lista, formulário
+    // preenchido) em vez do estado atual real. `pageshow` com
+    // `persisted: true` é como o navegador avisa "restaurei do cache" —
+    // força um reload de verdade nesse caso específico, sem afetar a
+    // navegação normal (persisted vem false quando a página carrega do
+    // zero, que é o caso comum).
+    window.addEventListener("pageshow", function (evento) {
+        if (evento.persisted) {
+            window.location.reload();
+        }
+    });
+
     // ---------------------------------------------------------------
     // Dica (tooltip) estilizada, sitewide — qualquer elemento com
     // data-dica="texto" ganha isso automaticamente (ver base.css,
