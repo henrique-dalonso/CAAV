@@ -83,6 +83,20 @@ def test_pagina_sem_nome_cadastrado_mostra_botao_generico(cliente_logado):
     assert "Voltar para" not in botao
 
 
+def test_pagina_com_query_string_preserva_filtro_no_botao_voltar(cliente_logado):
+    """Achado real, 2026-09-13: só o path (sem query string) fazia o
+    botão "Voltar" (e qualquer "voltar" que reaproveite esse mesmo
+    rastreamento, como Crivus/Produção) largar filtro/aba/página ativos —
+    sempre voltava pro estado padrão da tela, nunca pro que a pessoa
+    realmente estava vendo."""
+    cliente_logado.get("/crivus/producao?aba=individuais&filtro=concluidos")
+    resp = cliente_logado.get("/crivus/leitor-individual")
+
+    botao = _botao_voltar(resp.text)
+    assert botao is not None
+    assert 'href="/crivus/producao?aba=individuais&amp;filtro=concluidos"' in botao
+
+
 def test_endpoint_json_nao_vira_pagina_de_voltar(cliente_logado):
     """Regressão de um bug real, 2026-08-25: endpoints como /notificacoes
     (JSON, chamado sozinho pelo navegador em segundo plano — sininho do

@@ -336,10 +336,27 @@ def test_descartar_sem_origem_volta_pro_leitor_individual(cliente_logado):
     assert str(resposta.url).endswith("/crivus/leitor-individual")
 
 
-def test_descartar_com_origem_producao_volta_pra_producao(cliente_logado):
-    """Henrique, 2026-09-13: caso aberto pela tela Produção (link leva
-    "?origem=producao") precisa voltar pra lá ao descartar, não pro
-    Leitor Individual — regra geral antes disso."""
+def test_descartar_com_origem_producao_volta_pra_aba_e_filtro_exatos(cliente_logado):
+    """Henrique, 2026-09-13: "voltou pra Produção, mas sem o filtro de
+    aba correto aplicado, retornou em Lotes" — origem precisa ser a URL
+    INTEIRA de onde a pessoa veio (aba/filtro/página), não só um flag
+    genérico "producao" que sempre cai no estado padrão."""
+    cliente, _ = cliente_logado
+    resposta = cliente.post(
+        "/crivus/leitor-individual/analisar",
+        data={"npjur": "0119225", "processo": "0000000-00.0000.0.00.0000", "teor_publicacao": "teor de teste"},
+    )
+    analise_id = int(str(resposta.url).rstrip("/").split("/")[-1])
+    origem = "/crivus/producao?aba=individuais&filtro=concluidos"
+
+    resposta = cliente.post(f"/crivus/leitor-individual/{analise_id}/descartar", data={"origem": origem})
+    assert str(resposta.url).endswith(origem)
+
+
+def test_origem_fora_do_crivus_e_ignorada_por_seguranca(cliente_logado):
+    """`origem` vem de query string/formulário, não é confiável — sem
+    essa checagem, um link malicioso (?origem=https://golpe.com) faria
+    "Descartar"/"Concluir Caso" mandar a pessoa pra fora do site."""
     cliente, _ = cliente_logado
     resposta = cliente.post(
         "/crivus/leitor-individual/analisar",
@@ -347,11 +364,13 @@ def test_descartar_com_origem_producao_volta_pra_producao(cliente_logado):
     )
     analise_id = int(str(resposta.url).rstrip("/").split("/")[-1])
 
-    resposta = cliente.post(f"/crivus/leitor-individual/{analise_id}/descartar", data={"origem": "producao"})
-    assert str(resposta.url).endswith("/crivus/producao")
+    resposta = cliente.post(
+        f"/crivus/leitor-individual/{analise_id}/descartar", data={"origem": "https://golpe.com"}
+    )
+    assert str(resposta.url).endswith("/crivus/leitor-individual")
 
 
-def test_concluir_com_origem_producao_volta_pra_producao(cliente_logado):
+def test_concluir_com_origem_producao_volta_pra_aba_e_filtro_exatos(cliente_logado):
     cliente, _ = cliente_logado
     resposta = cliente.post(
         "/crivus/leitor-individual/analisar",
@@ -359,18 +378,20 @@ def test_concluir_com_origem_producao_volta_pra_producao(cliente_logado):
     )
     analise_id = int(str(resposta.url).rstrip("/").split("/")[-1])
     acompanhamentos, agendamentos = listar_itens(analise_id)
+    origem = "/crivus/producao?aba=individuais&filtro=pendentes"
 
     cliente.post(
         f"/crivus/leitor-individual/{analise_id}/acompanhamento/{acompanhamentos[0].id}/salvar",
-        data={"tipo": "PUBLICAÇÃO", "origem": "producao"},
+        data={"tipo": "PUBLICAÇÃO", "origem": origem},
     )
     cliente.post(
         f"/crivus/leitor-individual/{analise_id}/agendamento/{agendamentos[0].id}/salvar",
-        data={"tipo": "MANIFESTAÇÃO", "data_inicio": "2026-01-01", "data_fim": "2026-01-10", "origem": "producao"},
+        data={"tipo": "MANIFESTAÇÃO", "data_inicio": "2026-01-01", "data_fim": "2026-01-10", "origem": origem},
     )
 
-    resposta = cliente.post(f"/crivus/leitor-individual/{analise_id}/concluir", data={"origem": "producao"})
-    assert "/crivus/producao" in str(resposta.url)
+    resposta = cliente.post(f"/crivus/leitor-individual/{analise_id}/concluir", data={"origem": origem})
+    assert origem in str(resposta.url)
+    assert "sucesso=" in str(resposta.url)
 
 
 def test_origem_producao_propaga_apos_acao_intermediaria(cliente_logado):
@@ -385,10 +406,12 @@ def test_origem_producao_propaga_apos_acao_intermediaria(cliente_logado):
     )
     analise_id = int(str(resposta.url).rstrip("/").split("/")[-1])
     acompanhamentos, _ = listar_itens(analise_id)
+    origem = "/crivus/producao?aba=individuais&filtro=concluidos"
 
     resposta = cliente.post(
         f"/crivus/leitor-individual/{analise_id}/acompanhamento/{acompanhamentos[0].id}/salvar",
-        data={"tipo": "PUBLICAÇÃO", "origem": "producao"},
+        data={"tipo": "PUBLICAÇÃO", "origem": origem},
     )
-    assert "origem=producao" in str(resposta.url)
-    assert 'name="origem" value="producao"' in resposta.text
+    assert "origem=/crivus/producao%3Faba%3Dindividuais%26filtro%3Dconcluidos" in str(resposta.url)
+    # HTML auto-escapa "&" pra "&amp;" dentro do atributo value="..."
+    assert 'name="origem" value="/crivus/producao?aba=individuais&amp;filtro=concluidos"' in resposta.text

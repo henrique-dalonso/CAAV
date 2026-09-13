@@ -38,8 +38,9 @@
 <p class="aviso-discreto">Nenhum caso {{ "pendente" if filtro == "pendentes" else "concluído" }}.</p>
 {% else %}
 <div class="tabela-producao-crivus">
+{% set url_producao_atual = request.url.path ~ ("?" ~ request.url.query if request.url.query else "") %}
 {% for analise in analises %}
-    <a href="/crivus/leitor-individual/{{ analise.id }}?origem=producao" class="linha-producao">
+    <a href="/crivus/leitor-individual/{{ analise.id }}?origem={{ url_producao_atual | urlencode }}" class="linha-producao">
         <div class="linha-producao-conteudo">
             <div class="linha-producao-processo{% if analise.processo %} copiavel{% endif %}"{% if analise.processo %} data-dica="Clique pra copiar" data-copiar="{{ analise.processo }}" data-copiar-mensagem="Número do processo copiado."{% endif %}>
                 <span class="icone-titulo">{{ icone_processo() }}</span>

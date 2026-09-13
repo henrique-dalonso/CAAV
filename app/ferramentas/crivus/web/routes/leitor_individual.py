@@ -79,11 +79,26 @@ def _erro_home(mensagem):
     return RedirectResponse(url=f"/crivus/leitor-individual?erro={quote(mensagem)}", status_code=303)
 
 
+def _origem_valida(origem):
+    """`origem` chega da URL/formulário (não confiável) e é ecoado num
+    redirect depois — precisa ficar restrito a uma URL relativa dentro do
+    próprio Crivus, senão vira porta pra redirect externo (?origem=
+    https://golpe.com). Henrique, 2026-09-13: passou a ser a URL
+    completa da Produção (com aba/filtro/página), não mais um flag fixo
+    "producao" — assim "Descartar"/"Concluir Caso" voltam pro estado
+    EXATO em que a pessoa estava (achado real: sem isso, sempre caía na
+    aba padrão)."""
+    if not origem or not origem.startswith("/crivus/producao"):
+        return None
+    return origem
+
+
 def _pagina_inicial_por_origem(origem):
     """Henrique, 2026-09-13: "Descartar"/"Concluir Caso" precisam voltar
-    pra Produção quando o caso foi aberto de lá, não sempre pro Leitor
-    Individual (regra geral) — ver `origem` em `pagina_detalhe`."""
-    return "/crivus/producao" if origem == "producao" else "/crivus/leitor-individual"
+    pra Produção (na aba/filtro exatos de onde vieram) quando o caso foi
+    aberto de lá, não sempre pro Leitor Individual (regra geral) — ver
+    `origem` em `pagina_detalhe`."""
+    return _origem_valida(origem) or "/crivus/leitor-individual"
 
 
 def _url_detalhe(analise_id, origem=None, erro=None):
@@ -95,8 +110,9 @@ def _url_detalhe(analise_id, origem=None, erro=None):
     partes = []
     if erro:
         partes.append(f"erro={quote(erro)}")
-    if origem == "producao":
-        partes.append("origem=producao")
+    origem_valida = _origem_valida(origem)
+    if origem_valida:
+        partes.append(f"origem={quote(origem_valida)}")
     query = f"?{'&'.join(partes)}" if partes else ""
     return f"/crivus/leitor-individual/{analise_id}{query}"
 
@@ -205,11 +221,12 @@ def pagina_detalhe(
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
     # Henrique, 2026-09-13: só a Produção usa isso hoje (link da linha do
-    # caso leva "?origem=producao") — controla pra onde "Descartar"/
-    # "Concluir Caso" voltam depois. Qualquer valor que não seja esse cai
-    # em None (comportamento de sempre: volta pro Leitor Individual).
-    if origem != "producao":
-        origem = None
+    # caso leva a própria URL atual, com aba/filtro/página, como
+    # "?origem=...") — controla pra onde "Descartar"/"Concluir Caso"
+    # voltam depois, EXATAMENTE no estado de onde a pessoa veio, não só
+    # "pra Produção" genérico. Qualquer valor fora de /crivus/producao
+    # cai em None (comportamento de sempre: volta pro Leitor Individual).
+    origem = _origem_valida(origem)
 
     analise = _exigir_analise_existente(analise_id)
     acompanhamentos, agendamentos = listar_itens(analise_id)
@@ -455,6 +472,12 @@ async def concluir(
         concluir_analise(analise_id)
     except ValueError as exc:
         return RedirectResponse(url=_url_detalhe(analise_id, origem=origem, erro=str(exc)), status_code=303)
+
+    # Henrique, 2026-09-13: a URL de origem já pode vir com query string
+    # própria (aba/filtro da Produção) — "?sucesso=..." tem que virar
+    # "&sucesso=..." nesse caso, senão gera um "?...?..." inválido.
+    url_destino = _pagina_inicial_por_origem(origem)
+    separador = "&" if "?" in url_destino else "?"
     return RedirectResponse(
-        url=f"{_pagina_inicial_por_origem(origem)}?sucesso={quote('Caso concluído.')}", status_code=303
+        url=f"{url_destino}{separador}sucesso={quote('Caso concluído.')}", status_code=303
     )

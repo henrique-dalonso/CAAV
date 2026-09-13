@@ -108,6 +108,22 @@ def test_producao_renderiza_individuais_pendentes(cliente_logado):
     assert f"/crivus/leitor-individual/{analise_id}" in resposta.text
 
 
+def test_link_do_caso_carrega_aba_e_filtro_atuais_como_origem(cliente_logado):
+    """Henrique, 2026-09-13: o link de cada caso precisa levar a URL
+    EXATA da Produção (aba+filtro), não um destino genérico — senão
+    "Descartar"/"Concluir Caso" voltam pro estado padrão em vez de onde
+    a pessoa realmente estava."""
+    cliente, _ = cliente_logado
+    analise_id = _criar_caso(cliente, npjur="0119225")
+
+    resposta = cliente.get("/crivus/producao?aba=individuais&filtro=pendentes")
+    assert (
+        f"/crivus/leitor-individual/{analise_id}"
+        "?origem=/crivus/producao%3Faba%3Dindividuais%26filtro%3Dpendentes"
+        in resposta.text
+    )
+
+
 def test_producao_default_e_lotes_pendentes(cliente_logado):
     """Henrique, 2026-09-13: Lotes vira a aba padrão de Produção (antes
     era Individuais) — acessar /crivus/producao sem parâmetro nenhum já

@@ -192,8 +192,19 @@ async def middleware_rastrear_pagina_anterior(request: Request, call_next):
         and request.url.path != "/login"
         and resposta.headers.get("content-type", "").startswith("text/html")
     ):
+        # Henrique, 2026-09-13: só o path (sem query string) fazia o botão
+        # "Voltar pra X" (e qualquer tela que reaproveite esse mesmo
+        # rastreamento pra "voltar de verdade", ver Crivus/Produção) largar
+        # aba/filtro/página ativos — sempre voltava pro estado padrão da
+        # tela, nunca pro que a pessoa realmente estava vendo. `nome_pagina`
+        # continua recebendo só o path puro (as entradas de nomes_paginas.py
+        # são por prefixo de caminho, não fazem sentido com query junto).
+        url_completa = request.url.path
+        if request.url.query:
+            url_completa += f"?{request.url.query}"
+
         request.session["ultima_pagina"] = {
-            "url": request.url.path,
+            "url": url_completa,
             "nome": nome_pagina(request.url.path),
         }
 
