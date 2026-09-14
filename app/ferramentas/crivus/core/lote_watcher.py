@@ -7,8 +7,8 @@ from app.ferramentas.crivus.core.lote_batch import rodar_ciclo_lote
 
 # 60s — mesmo raciocínio do robô do Extratus (checar status de batch não
 # custa token nem chega perto de limite de taxa da API): quanto menor o
-# intervalo, mais cedo uma linha "envelhecida" pra urgente é notada
-# enquanto ainda está na fila de despacho (ver lote_batch.py).
+# intervalo, mais cedo uma linha que "envelheceu" e ficou atrasada é
+# retirada da fila de despacho (ver lote_batch.py).
 INTERVALO_SEGUNDOS = 60
 
 

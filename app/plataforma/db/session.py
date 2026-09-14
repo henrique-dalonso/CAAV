@@ -142,6 +142,13 @@ COLUNAS_PENDENTES = {
         # a IA não sugeriu — ver docstring de ItemAgendamento.
         "criado_manualmente": "BOOLEAN DEFAULT 0",
     },
+    "lotecrivus": {
+        # Henrique, coordenador, 2026-09-14 — correção no dia seguinte ao
+        # ar do Processamento em Lote: linhas atrasadas (2+ dias) viram
+        # uma 3ª contagem própria, nem sucesso nem erro técnico — ver
+        # docstring de LoteCrivus.
+        "linhas_atrasadas": "INTEGER DEFAULT 0",
+    },
 }
 
 

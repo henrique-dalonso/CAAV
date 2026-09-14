@@ -217,8 +217,8 @@ DESCONTO_BATCH_API = 0.5  # mesmo desconto real da Anthropic pra Batch API, ver 
 def extrair_dados_e_uso(resposta, via_batch=False):
     """`via_batch=True` quando `resposta` veio de um resultado da API de
     Lote (Processamento em Lote) — aplica os 50% de desconto da
-    Anthropic nesse caso; chamadas em tempo real (Leitor Individual ou
-    caminho urgente do lote) usam o preço cheio normalmente."""
+    Anthropic nesse caso; chamadas em tempo real (Leitor Individual) usam
+    o preço cheio normalmente."""
     bloco_ferramenta = next((bloco for bloco in resposta.content if bloco.type == "tool_use"), None)
 
     if not bloco_ferramenta:

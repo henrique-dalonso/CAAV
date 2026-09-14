@@ -14,6 +14,7 @@ from app.ferramentas.crivus.db.lotes_crivus import (
     listar_batch_ids_em_andamento,
     listar_pendentes_de_despacho,
     lote_ainda_tem_linha_processando,
+    marcar_analise_atrasada,
     marcar_analise_de_lote_com_erro,
     marcar_batch_id,
     marcar_lote_concluido,
@@ -165,7 +166,36 @@ def test_lote_ainda_tem_linha_processando_e_marcar_lote_concluido(usuario_teste,
     assert concluido.status == "concluido"
     assert concluido.linhas_sucesso == 1
     assert concluido.linhas_erro == 1
+    assert concluido.linhas_atrasadas == 0
     assert concluido.finalizado_em is not None
     assert concluido.caminho_planilha_saida == str(caminho_saida)
 
     assert obter_lote(lote.id).status == "concluido"
+
+
+def test_marcar_analise_atrasada(usuario_teste):
+    """Henrique, coordenador, 2026-09-14: linha com 2+ dias de atraso
+    nunca vai pra IA — vira status="atrasado", excluída de propósito."""
+    lote = criar_lote(usuario_teste.id, "planilha.xlsx", _linhas_fake(1))
+    pendente = listar_pendentes_de_despacho(lote.id)[0]
+
+    marcada = marcar_analise_atrasada(pendente.id, "Publicado há 3 dias — prazo de 2 dias estourado, encaminhado para tratamento manual.")
+
+    assert marcada.status == "atrasado"
+    assert "tratamento manual" in marcada.erro_mensagem
+
+
+def test_marcar_lote_concluido_conta_atrasadas_separado_de_sucesso_e_erro(usuario_teste, tmp_path):
+    lote = criar_lote(usuario_teste.id, "planilha.xlsx", _linhas_fake(3))
+    pendentes = listar_pendentes_de_despacho(lote.id)
+
+    dados_ia, uso_ia = _dados_ia_fake()
+    concluir_analise_de_lote(pendentes[0].id, dados_ia, uso_ia)
+    marcar_analise_de_lote_com_erro(pendentes[1].id, "erro de teste")
+    marcar_analise_atrasada(pendentes[2].id, "atrasado de teste")
+
+    concluido = marcar_lote_concluido(lote.id, tmp_path / "resultado.xlsx")
+
+    assert concluido.linhas_sucesso == 1
+    assert concluido.linhas_erro == 1
+    assert concluido.linhas_atrasadas == 1

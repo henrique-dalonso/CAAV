@@ -1,5 +1,10 @@
-"""O harness de urgência + submissão/coleta da API de Lote — a Anthropic
-é SEMPRE mockada aqui, nunca uma chamada de rede de verdade."""
+"""O roteamento por atraso + submissão/coleta da API de Lote — a
+Anthropic é SEMPRE mockada aqui, nunca uma chamada de rede de verdade.
+
+Henrique, coordenador, 2026-09-14 (correção no dia seguinte ao ar): o
+caminho síncrono/"urgente" original foi INVERTIDO — casos atrasados (2+
+dias) NUNCA vão pra IA, viram status="atrasado" pra tratamento manual;
+só a 1ª data (DATA DA PUBLICAÇÃO) importa, a 2ª é ignorada 100%."""
 
 from datetime import date, timedelta
 from types import SimpleNamespace
@@ -17,10 +22,9 @@ from app.plataforma.db.usuarios import criar_usuario, excluir_usuario
 NOME_USUARIO_TESTE = "teste_crivus_lote_batch"
 
 
-def _linha(dias_desde_publicacao=0, adiantado=False, npjur="0100000", teor="teor de teste"):
+def _linha(dias_desde_publicacao=0, npjur="0100000", teor="teor de teste"):
     data_publicacao = date.today() - timedelta(days=dias_desde_publicacao)
-    data_importacao = data_publicacao - timedelta(days=1) if adiantado else data_publicacao + timedelta(days=1)
-    return {"npjur": npjur, "data_publicacao": data_publicacao, "data_importacao": data_importacao, "teor": teor}
+    return {"npjur": npjur, "data_publicacao": data_publicacao, "data_importacao": None, "teor": teor}
 
 
 def _dados_ia_fake():
@@ -105,44 +109,41 @@ def usuario_teste():
     excluir_usuario(usuario.id)
 
 
-# --- eh_urgente / eh_adiantado --------------------------------------------
+# --- eh_atrasado -------------------------------------------------------
 
-def test_eh_urgente_com_datas_de_exemplo():
+def test_eh_atrasado_com_datas_de_exemplo():
     hoje = date(2026, 9, 12)
 
     def _analise(dias):
         return SimpleNamespace(data_publicacao_original=hoje - timedelta(days=dias))
 
-    assert lote_batch.eh_urgente(_analise(0), hoje=hoje) is False
-    assert lote_batch.eh_urgente(_analise(1), hoje=hoje) is False
-    # confirmado com Henrique: publicado 10/09, hoje 12/09 (2 dias) já é urgente
-    assert lote_batch.eh_urgente(_analise(2), hoje=hoje) is True
-    assert lote_batch.eh_urgente(_analise(3), hoje=hoje) is True
+    assert lote_batch.eh_atrasado(_analise(0), hoje=hoje) is False
+    assert lote_batch.eh_atrasado(_analise(1), hoje=hoje) is False
+    # confirmado com o coordenador: publicado 10/09, hoje 12/09 (2 dias) já é atrasado
+    assert lote_batch.eh_atrasado(_analise(2), hoje=hoje) is True
+    assert lote_batch.eh_atrasado(_analise(3), hoje=hoje) is True
 
 
-def test_eh_urgente_sem_data_e_falso_por_seguranca():
+def test_eh_atrasado_sem_data_e_falso_por_seguranca():
     analise = SimpleNamespace(data_publicacao_original=None)
-    assert lote_batch.eh_urgente(analise) is False
+    assert lote_batch.eh_atrasado(analise) is False
 
 
-def test_eh_adiantado():
-    publicacao = date(2026, 9, 10)
-
-    adiantado = SimpleNamespace(data_publicacao_original=publicacao, data_importacao_original=publicacao - timedelta(days=1))
-    normal = SimpleNamespace(data_publicacao_original=publicacao, data_importacao_original=publicacao + timedelta(days=1))
-    igual = SimpleNamespace(data_publicacao_original=publicacao, data_importacao_original=publicacao)
-
-    assert lote_batch.eh_adiantado(adiantado) is True
-    assert lote_batch.eh_adiantado(normal) is False
-    assert lote_batch.eh_adiantado(igual) is False
+def test_eh_atrasado_ignora_100_por_cento_a_segunda_data():
+    """Henrique, coordenador, 2026-09-14: "podemos ignorar 100% a segunda
+    data" — mesmo uma 2ª data "adiantada" não muda nada na decisão."""
+    hoje = date(2026, 9, 12)
+    analise = SimpleNamespace(
+        data_publicacao_original=hoje - timedelta(days=2),
+        data_importacao_original=hoje - timedelta(days=5),  # bem adiantada, irrelevante
+    )
+    assert lote_batch.eh_atrasado(analise, hoje=hoje) is True
 
 
 # --- ciclo completo --------------------------------------------------------
 
-def test_linha_urgente_e_processada_na_hora(usuario_teste, monkeypatch, tmp_path):
+def test_linha_atrasada_nunca_vai_pra_ia_e_fica_marcada_para_manual(usuario_teste, monkeypatch, tmp_path):
     monkeypatch.setattr(lote_batch, "PASTA_SAIDA_LOTES", tmp_path)
-    dados_ia, uso_ia = _dados_ia_fake()
-    monkeypatch.setattr(lote_batch, "analisar_publicacao", lambda teor, anexos=None: (dados_ia, uso_ia))
 
     cliente_fake = _ClienteFake()
     monkeypatch.setattr(lote_batch, "_obter_cliente", lambda: cliente_fake)
@@ -154,16 +155,19 @@ def test_linha_urgente_e_processada_na_hora(usuario_teste, monkeypatch, tmp_path
     with obter_sessao() as sessao:
         analise = sessao.exec(select(AnalisePublicacao).where(AnalisePublicacao.lote_id == lote.id)).first()
 
-    assert analise.status == "aguardando_revisao"
-    assert analise.batch_id is None  # nunca passou pela API de Lote
-    assert cliente_fake.chamadas_create == []  # nada sobrou pra submeter
+    assert analise.status == "atrasado"
+    assert analise.batch_id is None  # nunca foi submetida pra API de Lote
+    assert "tratamento manual" in analise.erro_mensagem.lower()
+    assert cliente_fake.chamadas_create == []  # nunca chamou a IA, nem síncrono nem em lote
 
     lote_atualizado = obter_lote(lote.id)
     assert lote_atualizado.status == "concluido"
+    assert lote_atualizado.linhas_atrasadas == 1
+    assert lote_atualizado.linhas_sucesso == 0
     assert lote_atualizado.caminho_planilha_saida is not None
 
 
-def test_linha_nao_urgente_vai_para_api_de_lote(usuario_teste, monkeypatch):
+def test_linha_nao_atrasada_vai_para_api_de_lote(usuario_teste, monkeypatch):
     cliente_fake = _ClienteFake()
     monkeypatch.setattr(lote_batch, "_obter_cliente", lambda: cliente_fake)
 
@@ -180,27 +184,63 @@ def test_linha_nao_urgente_vai_para_api_de_lote(usuario_teste, monkeypatch):
     assert cliente_fake.chamadas_create[0]["requests"][0]["custom_id"] == str(analise.id)
 
 
-def test_adiantado_entra_na_frente_da_fila_de_submissao(usuario_teste, monkeypatch):
+def test_linha_no_limite_de_1_dia_ainda_vai_para_lote(usuario_teste, monkeypatch):
+    """1 dia de atraso é o limite ainda elegível pro lote — só a partir
+    de 2 dias vira "atrasado" (ver test_eh_atrasado_com_datas_de_exemplo)."""
     cliente_fake = _ClienteFake()
     monkeypatch.setattr(lote_batch, "_obter_cliente", lambda: cliente_fake)
 
-    # a linha "normal" é criada primeiro (mais antiga), a "adiantada" depois —
-    # sem a priorização, ela apareceria em 2º na ordem de submissão.
+    lote = criar_lote(usuario_teste.id, "planilha.xlsx", [_linha(dias_desde_publicacao=1)])
+
+    lote_batch.rodar_ciclo_lote({"lote_ativo": True})
+
+    with obter_sessao() as sessao:
+        analise = sessao.exec(select(AnalisePublicacao).where(AnalisePublicacao.lote_id == lote.id)).first()
+
+    assert analise.status == "processando"
+    assert analise.batch_id is not None
+
+
+def test_uma_linha_atrasada_nao_impede_as_outras_de_ir_pro_lote(usuario_teste, monkeypatch):
+    cliente_fake = _ClienteFake()
+    monkeypatch.setattr(lote_batch, "_obter_cliente", lambda: cliente_fake)
+
     lote = criar_lote(usuario_teste.id, "planilha.xlsx", [
-        _linha(dias_desde_publicacao=0, adiantado=False, npjur="0111111"),
-        _linha(dias_desde_publicacao=0, adiantado=True, npjur="0222222"),
+        _linha(dias_desde_publicacao=3, npjur="0111111"),  # atrasada
+        _linha(dias_desde_publicacao=0, npjur="0222222"),  # elegível pro lote
     ])
 
     lote_batch.rodar_ciclo_lote({"lote_ativo": True})
 
     with obter_sessao() as sessao:
-        analise_adiantada = sessao.exec(
+        atrasada = sessao.exec(
+            select(AnalisePublicacao).where(AnalisePublicacao.lote_id == lote.id, AnalisePublicacao.npjur == "0111111")
+        ).first()
+        elegivel = sessao.exec(
             select(AnalisePublicacao).where(AnalisePublicacao.lote_id == lote.id, AnalisePublicacao.npjur == "0222222")
         ).first()
 
-    requests_enviadas = cliente_fake.chamadas_create[0]["requests"]
-    ids_na_ordem_enviada = [r["custom_id"] for r in requests_enviadas]
-    assert ids_na_ordem_enviada[0] == str(analise_adiantada.id)
+    assert atrasada.status == "atrasado"
+    assert elegivel.status == "processando"
+    assert elegivel.batch_id is not None
+    assert len(cliente_fake.chamadas_create[0]["requests"]) == 1
+
+
+def test_linha_ja_submetida_continua_no_lote_mesmo_se_envelhecer(usuario_teste, monkeypatch):
+    """Uma linha que entrou com folga (0 dias) e já foi submetida pra API
+    de Lote não pode ser "puxada de volta" mesmo que envelheça e passe do
+    prazo depois — só linhas ainda pendentes (`batch_id IS NULL`) são
+    reavaliadas a cada ciclo."""
+    cliente_fake = _ClienteFake()
+    monkeypatch.setattr(lote_batch, "_obter_cliente", lambda: cliente_fake)
+
+    lote = criar_lote(usuario_teste.id, "planilha.xlsx", [_linha(dias_desde_publicacao=0, npjur="0333333")])
+
+    lote_batch.rodar_ciclo_lote({"lote_ativo": True})
+    with obter_sessao() as sessao:
+        analise = sessao.exec(select(AnalisePublicacao).where(AnalisePublicacao.npjur == "0333333")).first()
+    assert analise.status == "processando"
+    assert analise.batch_id is not None  # já foi, não dá mais pra "puxar de volta"
 
 
 def test_reconciliacao_de_resultado_sucesso(usuario_teste, monkeypatch, tmp_path):
@@ -248,7 +288,7 @@ def test_reconciliacao_de_resultado_com_erro(usuario_teste, monkeypatch, tmp_pat
     assert "expired" in analise.erro_mensagem
 
 
-def test_uma_falha_local_nunca_bloqueia_o_resto_do_grupo(usuario_teste, monkeypatch):
+def test_falha_ao_preparar_envio_nao_bloqueia_o_resto_do_grupo(usuario_teste, monkeypatch):
     """Uma linha cujo teor quebra na hora de montar os parâmetros (ex:
     erro inesperado) não pode impedir as outras linhas do mesmo grupo de
     serem submetidas."""

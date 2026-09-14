@@ -21,8 +21,10 @@ def criar_lote(usuario_id, nome_arquivo, linhas):
     """`linhas` no formato de `lote_manager.ler_linhas_planilha` — cria o
     LoteCrivus e 1 AnalisePublicacao por linha, já com status
     "processando" (nasce assim, é o default do model) e origem="lote".
-    As datas da planilha alimentam o harness de urgência/"adiantado" em
-    lote_batch.py."""
+    `data_publicacao_original` alimenta a decisão de atraso em
+    lote_batch.py; `data_importacao_original` é só guardada como
+    registro do dado bruto (ignorada 100% nas decisões, ver docstring
+    de lote_batch.py)."""
     with obter_sessao() as sessao:
         lote = LoteCrivus(criado_por=usuario_id, nome_arquivo=nome_arquivo, total_linhas=len(linhas))
         sessao.add(lote)
@@ -58,9 +60,9 @@ def listar_lotes():
 
 
 def listar_pendentes_de_despacho(lote_id=None):
-    """A fila que o harness de urgência avalia a cada tick do robô —
-    linhas de lote que ainda não foram nem despachadas pro caminho
-    urgente/síncrono, nem submetidas pra API de Lote da Anthropic."""
+    """A fila que o roteamento por atraso avalia a cada tick do robô —
+    linhas de lote que ainda não foram nem marcadas como atrasadas, nem
+    submetidas pra API de Lote da Anthropic."""
     with obter_sessao() as sessao:
         consulta = select(AnalisePublicacao).where(
             AnalisePublicacao.origem == "lote",
@@ -117,6 +119,21 @@ def marcar_analise_de_lote_com_erro(analise_id, mensagem):
         return analise
 
 
+def marcar_analise_atrasada(analise_id, mensagem):
+    """Henrique, coordenador, 2026-09-14: linha com 2+ dias de atraso
+    (ver `eh_atrasado` em lote_batch.py) — excluída DE PROPÓSITO do
+    processamento automático, nunca chega a chamar a IA. `mensagem` vira
+    o MOTIVO na planilha de saída (ver gerar_planilha_saida)."""
+    with obter_sessao() as sessao:
+        analise = sessao.get(AnalisePublicacao, analise_id)
+        analise.status = "atrasado"
+        analise.erro_mensagem = mensagem
+        sessao.add(analise)
+        sessao.commit()
+        sessao.refresh(analise)
+        return analise
+
+
 def lote_ainda_tem_linha_processando(lote_id):
     with obter_sessao() as sessao:
         return sessao.exec(
@@ -134,8 +151,9 @@ def marcar_lote_concluido(lote_id, caminho_planilha_saida):
         contagens = sessao.exec(
             select(AnalisePublicacao.status).where(AnalisePublicacao.lote_id == lote_id)
         ).all()
-        lote.linhas_sucesso = sum(1 for status in contagens if status != "erro")
+        lote.linhas_sucesso = sum(1 for status in contagens if status not in ("erro", "atrasado"))
         lote.linhas_erro = sum(1 for status in contagens if status == "erro")
+        lote.linhas_atrasadas = sum(1 for status in contagens if status == "atrasado")
 
         lote.status = "concluido"
         lote.finalizado_em = datetime.now()

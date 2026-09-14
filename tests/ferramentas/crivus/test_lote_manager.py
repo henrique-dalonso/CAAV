@@ -63,14 +63,30 @@ def test_le_planilha_com_colunas_fora_de_ordem_e_espaco_extra(tmp_path):
 def test_coluna_obrigatoria_faltando_levanta_erro_claro(tmp_path):
     caminho = _criar_planilha(
         tmp_path,
-        ["NPJUR", "DATA DA PUBLICAÇÃO", "TEOR PUBLICAÇÃO"],  # falta DATA DA IMPORTAÇÃO
-        [["0119225", "13/08/2013", "teor"]],
+        ["NPJUR", "TEOR PUBLICAÇÃO"],  # falta DATA DA PUBLICAÇÃO
+        [["0119225", "teor"]],
     )
 
     with pytest.raises(PlanilhaInvalida) as excecao:
         ler_linhas_planilha(caminho)
 
-    assert "DATA DA IMPORTAÇÃO DA PUBLICAÇÃO" in str(excecao.value)
+    assert "DATA DA PUBLICAÇÃO" in str(excecao.value)
+
+
+def test_planilha_sem_a_segunda_data_nao_quebra_o_upload(tmp_path):
+    """Henrique, coordenador, 2026-09-14: "podemos ignorar 100% a segunda
+    data" — DATA DA IMPORTAÇÃO DA PUBLICAÇÃO deixou de ser obrigatória."""
+    caminho = _criar_planilha(
+        tmp_path,
+        ["NPJUR", "DATA DA PUBLICAÇÃO", "TEOR PUBLICAÇÃO"],
+        [["0119225", "13/08/2013", "teor de teste"]],
+    )
+
+    linhas = ler_linhas_planilha(caminho)
+
+    assert len(linhas) == 1
+    assert linhas[0]["data_publicacao"] == date(2013, 8, 13)
+    assert linhas[0]["data_importacao"] is None
 
 
 def test_planilha_vazia_levanta_erro(tmp_path):
@@ -109,6 +125,7 @@ def test_gerar_planilha_saida_com_sucesso_e_erro(tmp_path):
     analises = [
         _AnaliseFake("0111111", "0011223-45.2024.8.26.0100", "aguardando_revisao"),
         _AnaliseFake("0222222", None, "erro", erro_mensagem="Falha ao analisar: timeout"),
+        _AnaliseFake("0333333", None, "atrasado", erro_mensagem="Publicado há 3 dias — prazo de 2 dias estourado, encaminhado para tratamento manual."),
     ]
     destino = tmp_path / "saida" / "resultado.xlsx"
 
@@ -123,3 +140,4 @@ def test_gerar_planilha_saida_com_sucesso_e_erro(tmp_path):
     assert linhas[0] == ("NPJUR", "Nº DO PROCESSO", "STATUS", "MOTIVO")
     assert linhas[1] == ("0111111", "0011223-45.2024.8.26.0100", "OK", None)
     assert linhas[2] == ("0222222", None, "ERRO", "Falha ao analisar: timeout")
+    assert linhas[3] == ("0333333", None, "ATRASADO", "Publicado há 3 dias — prazo de 2 dias estourado, encaminhado para tratamento manual.")

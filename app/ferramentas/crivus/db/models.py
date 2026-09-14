@@ -13,9 +13,18 @@ class LoteCrivus(SQLModel, table=True):
     da listagem de Produção que já existem pro modo individual.
 
     status: "processando" (pelo menos 1 linha ainda não terminou, seja
-    pelo caminho síncrono/urgente ou pela API de Lote da Anthropic) ->
-    "concluido" (todas as linhas saíram de "processando"; a planilha de
-    saída já foi gerada). Henrique, 2026-09-14."""
+    pela API de Lote da Anthropic ou aguardando ser marcada como
+    "atrasado") -> "concluido" (todas as linhas saíram de "processando";
+    a planilha de saída já foi gerada). Henrique, 2026-09-14.
+
+    Henrique, coordenador, 2026-09-14 (correção no dia seguinte ao ar):
+    o caminho síncrono/"urgente" original foi INVERTIDO — casos com 2+
+    dias de atraso (ver `eh_atrasado` em lote_batch.py) deixaram de ser
+    processados na hora pela IA e passaram a ser EXCLUÍDOS do
+    processamento automático (viram `status="atrasado"` numa
+    AnalisePublicacao, sem chamada de IA nenhuma), pra ir pra tratamento
+    manual do time — assim ninguém arrisca perder movimentação nova que
+    tenha acontecido durante o atraso. `linhas_atrasadas` conta essas."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
@@ -29,6 +38,7 @@ class LoteCrivus(SQLModel, table=True):
     total_linhas: int = Field(default=0)
     linhas_sucesso: int = Field(default=0)
     linhas_erro: int = Field(default=0)
+    linhas_atrasadas: int = Field(default=0)
 
     caminho_planilha_saida: Optional[str] = None
 
@@ -53,11 +63,18 @@ class AnalisePublicacao(SQLModel, table=True):
     origem: str = Field(default="individual")  # "individual" ou "lote"
 
     # Preenchidos só pra origem="lote" (ver LoteCrivus abaixo) — Henrique,
-    # 2026-09-14: alimentam o "harness" de roteamento por urgência
-    # (lote_batch.py). `lote_id` liga a linha ao upload que a originou;
-    # `batch_id` é o id físico do lote na Anthropic quando essa linha
-    # específica foi pelo caminho barato/lento (fica None se foi
-    # despachada na hora, pelo caminho urgente/síncrono).
+    # 2026-09-14: alimentam o roteamento por atraso (lote_batch.py).
+    # `lote_id` liga a linha ao upload que a originou; `batch_id` é o id
+    # físico do lote na Anthropic (fica None se a linha nunca chegou a
+    # ser submetida — inclui tanto quem ainda espera vez quanto quem foi
+    # marcada como "atrasado" e nunca vai pela IA).
+    #
+    # `data_importacao_original` (2ª data da planilha) é lida e guardada
+    # só como registro do dado bruto — Henrique, coordenador, 2026-09-14
+    # (correção no dia seguinte ao ar): "podemos ignorar 100% a segunda
+    # data". NÃO entra em nenhuma decisão de roteamento/ordem — só
+    # `data_publicacao_original` (1ª data) importa pra decidir se uma
+    # linha está atrasada.
     lote_id: Optional[int] = Field(default=None, foreign_key="lotecrivus.id")
     batch_id: Optional[str] = None
     data_publicacao_original: Optional[date] = None
@@ -103,7 +120,10 @@ class AnalisePublicacao(SQLModel, table=True):
     ciente_alerta_critico: bool = Field(default=False)
 
     # "processando" -> "aguardando_revisao" -> "concluido" (ou "erro" se a
-    # chamada à IA falhar antes de gerar qualquer item).
+    # chamada à IA falhar antes de gerar qualquer item). Só pra
+    # origem="lote": "atrasado" — 2+ dias de atraso (ver `eh_atrasado` em
+    # lote_batch.py), excluída de propósito do processamento automático
+    # (nunca chega a chamar a IA), pra tratamento manual do time.
     status: str = Field(default="processando")
     erro_mensagem: Optional[str] = None
 
