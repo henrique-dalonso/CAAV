@@ -4,13 +4,42 @@ from typing import Optional
 from sqlmodel import SQLModel, Field
 
 
+class LoteCrivus(SQLModel, table=True):
+    """1 upload de planilha do NPJUR = 1 lote. Agrupa N AnalisePublicacao
+    (uma por linha da planilha, origem="lote") — não existe model de
+    "linha crua" separado: cada linha já nasce como uma AnalisePublicacao
+    de verdade (status="processando") na hora do upload, e é preenchida
+    depois pelo lote_batch.py, reaproveitando 100% da tela de revisão e
+    da listagem de Produção que já existem pro modo individual.
+
+    status: "processando" (pelo menos 1 linha ainda não terminou, seja
+    pelo caminho síncrono/urgente ou pela API de Lote da Anthropic) ->
+    "concluido" (todas as linhas saíram de "processando"; a planilha de
+    saída já foi gerada). Henrique, 2026-09-14."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+    criado_por: int = Field(foreign_key="usuario.id")
+    nome_arquivo: str
+    criado_em: datetime = Field(default_factory=datetime.now)
+    finalizado_em: Optional[datetime] = None
+
+    status: str = Field(default="processando")
+
+    total_linhas: int = Field(default=0)
+    linhas_sucesso: int = Field(default=0)
+    linhas_erro: int = Field(default=0)
+
+    caminho_planilha_saida: Optional[str] = None
+
+
 class AnalisePublicacao(SQLModel, table=True):
     """Uma publicação analisada no Crivus (Leitor de Publicação) — 1
     registro por teor enviado à IA. `origem` distingue "individual" (colado
     à mão + anexos, aba Leitor de Publicação) de "lote" (planilha do
-    NPJUR, sem anexos, aba Processamento em Lote — ainda não construída);
-    o mesmo model e o mesmo motor de análise servem os dois, só muda como
-    o caso chega até aqui.
+    NPJUR, sem anexos, aba Processamento em Lote); o mesmo model e o
+    mesmo motor de análise servem os dois, só muda como o caso chega até
+    aqui.
 
     `resumo_ia`/`nivel_confianca` são informativos (a "leitura" da seção 1
     do prompt mestre) — não são campos corrigíveis nem entram no double
@@ -22,6 +51,17 @@ class AnalisePublicacao(SQLModel, table=True):
 
     usuario_id: int = Field(foreign_key="usuario.id")
     origem: str = Field(default="individual")  # "individual" ou "lote"
+
+    # Preenchidos só pra origem="lote" (ver LoteCrivus abaixo) — Henrique,
+    # 2026-09-14: alimentam o "harness" de roteamento por urgência
+    # (lote_batch.py). `lote_id` liga a linha ao upload que a originou;
+    # `batch_id` é o id físico do lote na Anthropic quando essa linha
+    # específica foi pelo caminho barato/lento (fica None se foi
+    # despachada na hora, pelo caminho urgente/síncrono).
+    lote_id: Optional[int] = Field(default=None, foreign_key="lotecrivus.id")
+    batch_id: Optional[str] = None
+    data_publicacao_original: Optional[date] = None
+    data_importacao_original: Optional[date] = None
 
     teor_publicacao: str
 

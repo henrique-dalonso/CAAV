@@ -10,6 +10,7 @@ app/ferramentas/extratus/config/config.json
 app/ferramentas/extratus_aburesi/config/config.json
 app/ferramentas/emenda/config/config.json
 app/ferramentas/condenacao/config/config.json
+app/ferramentas/crivus/config/config_lote.json
 
 # Prompt de instruções: definido e sobrescrito pela tela de Configurações
 # (upload/edição ao vivo pelo admin), não pelo código - nunca deve ser
@@ -117,3 +118,10 @@ app/ferramentas/crivus/config/COMPLEMENTAR - MANUAL.docx
 # documento de cliente) — mesma regra acima.
 app/ferramentas/crivus/dados/anexos/*
 !app/ferramentas/crivus/dados/anexos/.gitkeep
+
+# Planilhas de entrada/saída do Processamento em Lote (2026-09-14) —
+# dado real de cliente/processo, mesma regra acima.
+app/ferramentas/crivus/dados/lotes_entrada/*
+!app/ferramentas/crivus/dados/lotes_entrada/.gitkeep
+app/ferramentas/crivus/dados/lotes_saida/*
+!app/ferramentas/crivus/dados/lotes_saida/.gitkeep

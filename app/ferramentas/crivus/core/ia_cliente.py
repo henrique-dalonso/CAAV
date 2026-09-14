@@ -211,7 +211,14 @@ def montar_parametros_mensagem(teor_publicacao, anexos=None):
     }
 
 
-def extrair_dados_e_uso(resposta):
+DESCONTO_BATCH_API = 0.5  # mesmo desconto real da Anthropic pra Batch API, ver nucleo_relatorios/core/ia_cliente.py
+
+
+def extrair_dados_e_uso(resposta, via_batch=False):
+    """`via_batch=True` quando `resposta` veio de um resultado da API de
+    Lote (Processamento em Lote) — aplica os 50% de desconto da
+    Anthropic nesse caso; chamadas em tempo real (Leitor Individual ou
+    caminho urgente do lote) usam o preço cheio normalmente."""
     bloco_ferramenta = next((bloco for bloco in resposta.content if bloco.type == "tool_use"), None)
 
     if not bloco_ferramenta:
@@ -244,7 +251,9 @@ def extrair_dados_e_uso(resposta):
 
     tokens_cache_escrita = tokens_cache_escrita_1h + tokens_cache_escrita_5m
 
-    custo_estimado = (
+    multiplicador = (1 - DESCONTO_BATCH_API) if via_batch else 1
+
+    custo_estimado = multiplicador * (
         tokens_entrada / 1_000_000 * preco_entrada
         + tokens_saida / 1_000_000 * preco_saida
         + tokens_cache_escrita_1h / 1_000_000 * preco_cache_escrita_1h

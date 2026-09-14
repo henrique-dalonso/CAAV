@@ -48,7 +48,9 @@ from app.ferramentas.condenacao.web.routes import (
     relatorios_manuais as relatorios_manuais_condenacao,
     relatorios_robo as relatorios_robo_condenacao,
 )
+from app.ferramentas.crivus.core.lote_watcher import loop_lote as loop_lote_crivus
 from app.ferramentas.crivus.web.routes import leitor_individual as crivus_leitor_individual
+from app.ferramentas.crivus.web.routes import lote as crivus_lote
 from app.ferramentas.crivus.web.routes import producao as crivus_producao
 
 
@@ -90,6 +92,10 @@ async def lifespan(app: FastAPI):
     # padrão de vigia próprio das ferramentas acima.
     tarefa_robo_condenacao = asyncio.create_task(loop_robo_condenacao())
     tarefa_checagem_condenacao = asyncio.create_task(loop_checagem_condenacao())
+    # Crivus (2026-09-14) — Processamento em Lote, harness de roteamento
+    # por urgência próprio (não é o motor compartilhado): ver
+    # app/ferramentas/crivus/core/lote_batch.py.
+    tarefa_lote_crivus = asyncio.create_task(loop_lote_crivus())
 
     yield
 
@@ -101,6 +107,7 @@ async def lifespan(app: FastAPI):
     tarefa_checagem_emenda.cancel()
     tarefa_robo_condenacao.cancel()
     tarefa_checagem_condenacao.cancel()
+    tarefa_lote_crivus.cancel()
 
 
 app = FastAPI(
@@ -246,6 +253,7 @@ app.include_router(fila_condenacao.router, prefix="/condenacao")
 app.include_router(relatorios_robo_condenacao.router, prefix="/condenacao")
 app.include_router(crivus_leitor_individual.router, prefix="/crivus")
 app.include_router(crivus_producao.router, prefix="/crivus")
+app.include_router(crivus_lote.router, prefix="/crivus")
 
 
 @app.exception_handler(NaoAutenticado)

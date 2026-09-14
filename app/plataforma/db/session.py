@@ -130,6 +130,12 @@ COLUNAS_PENDENTES = {
         "resumo_objetivo": "VARCHAR",
         "comando_judicial": "VARCHAR",
         "resultado_parte": "VARCHAR",
+        # Henrique, 2026-09-14: Processamento em Lote — ver docstring de
+        # LoteCrivus/AnalisePublicacao.
+        "lote_id": "INTEGER",
+        "batch_id": "VARCHAR",
+        "data_publicacao_original": "DATE",
+        "data_importacao_original": "DATE",
     },
     "itemagendamento": {
         # Henrique, 2026-09-04: botão "+" pra acrescentar agendamento que

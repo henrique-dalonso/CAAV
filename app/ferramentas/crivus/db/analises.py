@@ -11,6 +11,71 @@ from app.ferramentas.crivus.db.models import (
 from app.plataforma.db.session import obter_sessao
 
 
+def _preencher_analise_com_resultado_ia(sessao, analise, dados_ia, uso_ia):
+    """Aplica os campos vindos da IA numa AnalisePublicacao JÁ PERSISTIDA
+    (já tem id) e cria os itens de Acompanhamento/Agendamento — mesma
+    lógica usada tanto pra criação imediata (Leitor Individual, via
+    `criar_analise_a_partir_da_ia` abaixo) quanto pra conclusão de uma
+    linha de lote que já existia antes, esperando (ver
+    `concluir_analise_de_lote` em lotes_crivus.py). Henrique, 2026-09-14:
+    extraído pra nunca duplicar como o JSON da IA vira linhas de banco.
+
+    `analise.processo`, quando já vier preenchido (modo individual, a
+    pessoa já viu na fila do NPJUR), tem prioridade sobre o que a
+    própria IA tenta identificar lendo o teor — mais confiável que uma
+    leitura automática. No modo lote, sempre vem None aqui, então o
+    valor da IA prevalece."""
+    analise.processo = analise.processo or (dados_ia.get("processo") or None)
+    analise.carteira = dados_ia.get("carteira")
+    analise.orgao_julgador = dados_ia.get("orgao_julgador") or None
+    analise.carteira_detalhe = dados_ia.get("carteira_detalhe")
+    analise.fase_processual = dados_ia.get("fase_processual")
+    analise.posicao_parte = dados_ia.get("posicao_parte")
+    analise.natureza_ato = dados_ia.get("natureza_ato")
+    analise.quem_foi_intimado = dados_ia.get("quem_foi_intimado")
+    analise.resumo_objetivo = dados_ia.get("resumo_objetivo")
+    analise.comando_judicial = dados_ia.get("comando_judicial")
+    analise.resultado_parte = dados_ia.get("resultado_parte")
+    analise.resumo_ia = dados_ia.get("conclusao_operacional")
+    analise.nivel_confianca = dados_ia.get("nivel_confianca")
+    analise.tem_alerta_critico = bool(dados_ia.get("tem_alerta_critico"))
+    analise.texto_alerta_critico = dados_ia.get("texto_alerta_critico")
+    analise.status = "aguardando_revisao"
+    analise.modelo_ia = uso_ia.get("modelo")
+    analise.tokens_entrada = uso_ia.get("tokens_entrada")
+    analise.tokens_saida = uso_ia.get("tokens_saida")
+    analise.custo_estimado_usd = uso_ia.get("custo_estimado_usd")
+    sessao.add(analise)
+    sessao.commit()
+    sessao.refresh(analise)
+
+    for item in dados_ia.get("acompanhamentos", []):
+        sessao.add(ItemAcompanhamento(
+            analise_id=analise.id,
+            tipo_sugerido=item["tipo"],
+            tipo=item["tipo"],
+        ))
+
+    hoje = date.today()
+    for item in dados_ia.get("agendamentos", []):
+        data_inicio = hoje + timedelta(days=item.get("dias_inicio", 0))
+        data_fim = hoje + timedelta(days=item.get("dias_fim", 0))
+        sessao.add(ItemAgendamento(
+            analise_id=analise.id,
+            tipo_sugerido=item["tipo"],
+            tipo=item["tipo"],
+            data_inicio_sugerida=data_inicio,
+            data_fim_sugerida=data_fim,
+            data_inicio=data_inicio,
+            data_fim=data_fim,
+        ))
+
+    sessao.commit()
+    sessao.refresh(analise)
+
+    return analise
+
+
 def criar_analise_a_partir_da_ia(usuario_id, teor_publicacao, dados_ia, uso_ia, origem="individual",
                                   npjur=None, processo=None):
     """Persiste o resultado de `ia_cliente.analisar_publicacao` — cria a
@@ -19,64 +84,20 @@ def criar_analise_a_partir_da_ia(usuario_id, teor_publicacao, dados_ia, uso_ia, 
 
     `npjur`/`processo`, quando informados (modo individual, a pessoa já
     os vê na fila do NPJUR), têm prioridade sobre o que a própria IA
-    tenta identificar lendo o teor — mais confiável que uma leitura
-    automática. No modo lote (ainda não construído), viriam da planilha."""
+    tenta identificar lendo o teor — ver `_preencher_analise_com_resultado_ia`."""
     with obter_sessao() as sessao:
         analise = AnalisePublicacao(
             usuario_id=usuario_id,
             origem=origem,
             teor_publicacao=teor_publicacao,
             npjur=npjur,
-            processo=processo or (dados_ia.get("processo") or None),
-            carteira=dados_ia.get("carteira"),
-            orgao_julgador=dados_ia.get("orgao_julgador") or None,
-            carteira_detalhe=dados_ia.get("carteira_detalhe"),
-            fase_processual=dados_ia.get("fase_processual"),
-            posicao_parte=dados_ia.get("posicao_parte"),
-            natureza_ato=dados_ia.get("natureza_ato"),
-            quem_foi_intimado=dados_ia.get("quem_foi_intimado"),
-            resumo_objetivo=dados_ia.get("resumo_objetivo"),
-            comando_judicial=dados_ia.get("comando_judicial"),
-            resultado_parte=dados_ia.get("resultado_parte"),
-            resumo_ia=dados_ia.get("conclusao_operacional"),
-            nivel_confianca=dados_ia.get("nivel_confianca"),
-            tem_alerta_critico=bool(dados_ia.get("tem_alerta_critico")),
-            texto_alerta_critico=dados_ia.get("texto_alerta_critico"),
-            status="aguardando_revisao",
-            modelo_ia=uso_ia.get("modelo"),
-            tokens_entrada=uso_ia.get("tokens_entrada"),
-            tokens_saida=uso_ia.get("tokens_saida"),
-            custo_estimado_usd=uso_ia.get("custo_estimado_usd"),
+            processo=processo,
         )
         sessao.add(analise)
         sessao.commit()
         sessao.refresh(analise)
 
-        for item in dados_ia.get("acompanhamentos", []):
-            sessao.add(ItemAcompanhamento(
-                analise_id=analise.id,
-                tipo_sugerido=item["tipo"],
-                tipo=item["tipo"],
-            ))
-
-        hoje = date.today()
-        for item in dados_ia.get("agendamentos", []):
-            data_inicio = hoje + timedelta(days=item.get("dias_inicio", 0))
-            data_fim = hoje + timedelta(days=item.get("dias_fim", 0))
-            sessao.add(ItemAgendamento(
-                analise_id=analise.id,
-                tipo_sugerido=item["tipo"],
-                tipo=item["tipo"],
-                data_inicio_sugerida=data_inicio,
-                data_fim_sugerida=data_fim,
-                data_inicio=data_inicio,
-                data_fim=data_fim,
-            ))
-
-        sessao.commit()
-        sessao.refresh(analise)
-
-        return analise
+        return _preencher_analise_com_resultado_ia(sessao, analise, dados_ia, uso_ia)
 
 
 def obter_analise(analise_id):

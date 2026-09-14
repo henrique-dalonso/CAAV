@@ -40,6 +40,28 @@ def test_extrair_dados_e_uso_calcula_custo_pelo_modelo_padrao():
     assert uso["tokens_saida"] == 1_000_000
 
 
+def test_extrair_dados_e_uso_via_batch_aplica_desconto_de_50_por_cento():
+    """Henrique, 2026-09-14: Processamento em Lote usa a API de Lote de
+    verdade da Anthropic pros casos não-urgentes — 50% mais barato,
+    mesmo desconto já aplicado no motor compartilhado (nucleo_relatorios)
+    pro robô do Extratus."""
+    dados_ferramenta = {
+        "leitura_publicacao": "texto",
+        "conclusao_operacional": "texto",
+        "nivel_confianca": "ALTO",
+        "tem_alerta_critico": False,
+        "acompanhamentos": [],
+        "agendamentos": [],
+    }
+    resposta = _resposta_fake(dados_ferramenta, tokens_entrada=1_000_000, tokens_saida=1_000_000)
+
+    _, uso_tempo_real = extrair_dados_e_uso(resposta)
+    _, uso_via_batch = extrair_dados_e_uso(resposta, via_batch=True)
+
+    assert uso_tempo_real["custo_estimado_usd"] == 12.0
+    assert uso_via_batch["custo_estimado_usd"] == 6.0
+
+
 def test_extrair_dados_e_uso_cobra_escrita_de_cache_1h_mais_cara_que_5m():
     """Henrique, 2026-09-06: escrita de cache de 1h custa 2x o preço
     normal de entrada (vs 1,25x pra 5min) — cobrar como se fosse sempre

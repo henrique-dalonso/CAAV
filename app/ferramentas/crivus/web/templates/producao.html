@@ -32,8 +32,8 @@
     </div>
 </div>
 
-{% if eh_lotes %}
-<p class="aviso-discreto">Nenhum lote encontrado — o Processamento em Lote ainda não existe. Quando entrar no ar, os lotes enviados vão aparecer aqui, agrupados pelo número do lote.</p>
+{% if eh_lotes and not analises %}
+<p class="aviso-discreto">Nenhum caso de lote {{ "pendente" if filtro == "pendentes" else "concluído" }}. Envie uma planilha na aba <a href="/crivus/lote">Processamento em Lote</a>.</p>
 {% elif not analises %}
 <p class="aviso-discreto">Nenhum caso {{ "pendente" if filtro == "pendentes" else "concluído" }}.</p>
 {% else %}

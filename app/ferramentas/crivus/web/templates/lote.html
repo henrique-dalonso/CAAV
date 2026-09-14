@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block titulo %}Processamento em Lote — Crivus{% endblock %}
+{% block css_pagina %}<link rel="stylesheet" href="/crivus/static/crivus.css?v={{ v }}">{% endblock %}
+
+{% from "_macros_crivus.html" import nav_crivus %}
+
+{% block conteudo %}
+<div id="crivus-conteudo">
+<div class="cabecalho-ferramenta">
+    <div>
+        <h1>{{ botao_voltar() }}Processamento em Lote</h1>
+        <p>Envie a planilha exportada do NPJUR — cada linha é analisada automaticamente pela IA, casos urgentes na hora, os demais em lote.</p>
+    </div>
+</div>
+
+{{ nav_crivus("lote") }}
+
+{% if erro %}
+<p class="banner-erro">⚠ {{ erro }}</p>
+{% endif %}
+{% if sucesso %}
+<p class="banner-sucesso">✓ {{ sucesso }}</p>
+{% endif %}
+
+<section class="cartao-secao">
+    <form method="post" action="/crivus/lote/upload" enctype="multipart/form-data" class="form-crivus-lote-upload">
+        <label for="planilha">Planilha (.xlsx)</label>
+        <input type="file" id="planilha" name="arquivo" accept=".xlsx" required>
+        <button type="submit" class="botao botao-enviar-crivus">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+            Enviar Planilha
+        </button>
+    </form>
+</section>
+
+{% if not lotes %}
+<p class="aviso-discreto">Nenhuma planilha enviada ainda.</p>
+{% else %}
+<section class="cartao-secao">
+    <div class="tabela-scroll">
+        <table class="tabela">
+            <thead>
+                <tr>
+                    <th>Arquivo</th>
+                    <th>Enviado em</th>
+                    <th>Total</th>
+                    <th>Sucesso</th>
+                    <th>Erro</th>
+                    <th>Status</th>
+                    <th>Resultado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for lote in lotes %}
+                <tr>
+                    <td>{{ lote.nome_arquivo }}</td>
+                    <td>{{ lote.criado_em.strftime("%d/%m/%Y %H:%M") }}</td>
+                    <td>{{ lote.total_linhas }}</td>
+                    <td>{{ lote.linhas_sucesso }}</td>
+                    <td>{{ lote.linhas_erro }}</td>
+                    <td>
+                        {% if lote.status == "concluido" %}
+                        <span class="selo-positivo">Concluído</span>
+                        {% else %}
+                        <span class="selo-azul">Processando</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if lote.status == "concluido" %}
+                        <a href="/crivus/lote/{{ lote.id }}/planilha">Baixar</a>
+                        {% else %}
+                        —
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+</div>
+{% endblock %}
+{% block js_pagina %}<script src="/crivus/static/crivus.js?v={{ v }}" defer></script>{% endblock %}

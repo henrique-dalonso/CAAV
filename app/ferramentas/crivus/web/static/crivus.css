@@ -173,6 +173,22 @@
     gap: 1.5rem;
 }
 
+/* Processamento em Lote — form de upload bem mais simples que o do
+   Leitor Individual (1 campo só), mesmo respiro/tipografia. */
+.form-crivus-lote-upload {
+    display: flex;
+    align-items: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.form-crivus-lote-upload label {
+    font-weight: 600;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
 @media (max-width: 760px) {
     .form-crivus-identificacao,
     .form-crivus-corpo {
