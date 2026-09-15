@@ -98,10 +98,12 @@ FERRAMENTAS_PADRAO = [
         # romper permissão/favorito de quem já tiver acesso concedido.
         "slug": "leitor-publicacoes",
         "descricao": "Pré-análise por IA de publicações, com sugestão de agendamento para revisão do advogado.",
-        # Henrique, 2026-09-04: cada aba do Crivus ganha URL própria (mesmo
-        # padrão do Extratus — "/extratus/fila-robo" etc.), começando pelo
-        # Leitor Individual; o clique no ícone leva direto pra ela.
-        "url": "/crivus/leitor-individual",
+        # Henrique, diretoria, 2026-09-15: o ícone aponta pra "/crivus" (raiz
+        # do módulo, ver pagina_raiz_crivus em leitor_individual.py), que
+        # decide o destino por permissão — Processamento em Lote pra quem
+        # tem acesso, Leitor Individual pra quem não tem. Antes disso
+        # (2026-09-04), apontava direto pro Leitor Individual pra todo mundo.
+        "url": "/crivus",
         "suporta_fila_robo": False,
         # Henrique, diretoria, 2026-09-15: acesso ao Processamento em Lote
         # precisa ser concedido manualmente, à parte do acesso geral ao

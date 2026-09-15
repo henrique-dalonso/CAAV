@@ -130,6 +130,19 @@ def _exigir_analise_existente(analise_id):
     return analise
 
 
+@router.get("")
+def pagina_raiz_crivus(usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes"))):
+    """Henrique, diretoria, 2026-09-15: "coloca a aba de Processamento em
+    Lote como tela padrão para quem tem acesso. Quem não tem, é o
+    individual mesmo" — o ícone do Crivus na home (Ferramenta.url, ver
+    seed.py) aponta pra cá, que decide o destino por permissão em vez de
+    um caminho fixo. Sem isso, só dava pra ter UM destino padrão pra
+    todo mundo."""
+    if usuario_tem_acesso_lote(usuario, "leitor-publicacoes"):
+        return RedirectResponse(url="/crivus/lote", status_code=303)
+    return RedirectResponse(url="/crivus/leitor-individual", status_code=303)
+
+
 @router.get("/leitor-individual")
 def pagina_inicial(
     request: Request,

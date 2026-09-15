@@ -37,7 +37,7 @@ def _limpar_analises_do_usuario(usuario_id):
         sessao.commit()
 
 
-def _criar_usuario_com_acesso(nome_usuario, cargo=CARGO_COLABORADOR):
+def _criar_usuario_com_acesso(nome_usuario, cargo=CARGO_COLABORADOR, com_acesso_lote=False):
     usuario = criar_usuario(
         nome=f"Teste {nome_usuario}",
         nome_usuario=nome_usuario,
@@ -48,7 +48,8 @@ def _criar_usuario_com_acesso(nome_usuario, cargo=CARGO_COLABORADOR):
     )
     ferramentas = listar_todas_ferramentas()
     crivus_id = next(f.id for f in ferramentas if f.slug == "leitor-publicacoes")
-    definir_ferramentas(usuario.id, [crivus_id])
+    ferramentas_lote_ids = [crivus_id] if com_acesso_lote else []
+    definir_ferramentas(usuario.id, [crivus_id], ferramentas_lote_ids=ferramentas_lote_ids)
     return usuario
 
 
@@ -74,6 +75,36 @@ def test_pagina_inicial_exige_login():
     cliente = TestClient(app, follow_redirects=False)
     resposta = cliente.get("/crivus/leitor-individual")
     assert resposta.status_code in (302, 303)
+
+
+def test_raiz_do_crivus_redireciona_para_lote_quem_tem_acesso():
+    """Henrique, diretoria, 2026-09-15: "coloca a aba de Processamento em
+    Lote como tela padrão para quem tem acesso"."""
+    usuario = _criar_usuario_com_acesso("teste_crivus_raiz_com_lote", com_acesso_lote=True)
+    try:
+        cliente = TestClient(app, follow_redirects=False)
+        cliente.post("/login", data={"usuario_login": "teste_crivus_raiz_com_lote", "senha": SENHA_TESTE})
+
+        resposta = cliente.get("/crivus")
+        assert resposta.status_code == 303
+        assert resposta.headers["location"] == "/crivus/lote"
+    finally:
+        excluir_usuario(usuario.id)
+
+
+def test_raiz_do_crivus_redireciona_para_individual_quem_nao_tem_lote():
+    """"Quem não tem [acesso ao Lote], é o individual mesmo" — continua o
+    destino padrão de sempre pra quem só tem acesso geral ao Crivus."""
+    usuario = _criar_usuario_com_acesso("teste_crivus_raiz_sem_lote", com_acesso_lote=False)
+    try:
+        cliente = TestClient(app, follow_redirects=False)
+        cliente.post("/login", data={"usuario_login": "teste_crivus_raiz_sem_lote", "senha": SENHA_TESTE})
+
+        resposta = cliente.get("/crivus")
+        assert resposta.status_code == 303
+        assert resposta.headers["location"] == "/crivus/leitor-individual"
+    finally:
+        excluir_usuario(usuario.id)
 
 
 def test_pagina_inicial_renderiza_formulario(cliente_logado):
