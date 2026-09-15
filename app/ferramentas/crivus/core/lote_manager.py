@@ -110,14 +110,16 @@ def gerar_planilha_saida(analises, caminho_destino):
     """Planilha NOVA (não a original editada), só com
     NPJUR | Nº DO PROCESSO | STATUS | MOTIVO — Henrique, 2026-09-03.
     STATUS/MOTIVO refletem o resultado do PROCESSAMENTO (a IA rodou ou
-    não), não o da revisão humana depois — "OK" com MOTIVO vazio pra
-    quem terminou (mesmo que ainda aguarde revisão), "ERRO" com o motivo
-    real pra quem falhou.
+    não), não o da revisão humana depois.
 
-    "ATRASADO" (Henrique, coordenador, 2026-09-14): a linha nunca chegou
-    a ir pra IA de propósito — 2+ dias de atraso desde a publicação,
-    encaminhada pro time tratar manualmente (ver `eh_atrasado` em
-    lote_batch.py)."""
+    3 valores de STATUS (Henrique, diretoria, 2026-09-15 — "OK" virou
+    "LEITURA REALIZADA", mais claro pro time): "LEITURA REALIZADA" (a IA
+    concluiu a análise, mesmo que ainda aguarde revisão humana), "ERRO"
+    (falha técnica — rede/API), "EXECUTAR MANUALMENTE" (a linha nunca
+    chegou a ir pra análise completa, de propósito — cobre tanto
+    "atrasado" quanto "descartado" por qualidade, ver docstring de
+    AnalisePublicacao.status; o MOTIVO sempre explica qual dos dois foi
+    e por quê)."""
     pasta_trabalho = Workbook()
     planilha = pasta_trabalho.active
     planilha.append(["NPJUR", "Nº DO PROCESSO", "STATUS", "MOTIVO"])
@@ -125,10 +127,10 @@ def gerar_planilha_saida(analises, caminho_destino):
     for analise in analises:
         if analise.status == "erro":
             planilha.append([analise.npjur or "", "", "ERRO", analise.erro_mensagem or ""])
-        elif analise.status == "atrasado":
-            planilha.append([analise.npjur or "", "", "ATRASADO", analise.erro_mensagem or ""])
+        elif analise.status in ("atrasado", "descartado"):
+            planilha.append([analise.npjur or "", "", "EXECUTAR MANUALMENTE", analise.erro_mensagem or ""])
         else:
-            planilha.append([analise.npjur or "", analise.processo or "", "OK", ""])
+            planilha.append([analise.npjur or "", analise.processo or "", "LEITURA REALIZADA", ""])
 
     Path(caminho_destino).parent.mkdir(parents=True, exist_ok=True)
     pasta_trabalho.save(caminho_destino)

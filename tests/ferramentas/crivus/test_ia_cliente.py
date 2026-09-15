@@ -2,9 +2,13 @@ from types import SimpleNamespace
 
 from app.ferramentas.crivus.core.ia_cliente import (
     FERRAMENTA_ANALISE_PUBLICACAO,
+    FERRAMENTA_TRIAGEM_TEOR,
     MODELO_PADRAO,
+    MODELO_TRIAGEM,
+    avaliar_confiabilidade_teor,
     extrair_dados_e_uso,
     montar_parametros_mensagem,
+    montar_parametros_triagem,
 )
 
 
@@ -117,3 +121,66 @@ def test_montar_parametros_mensagem_sem_anexos_nao_adiciona_blocos_extras():
     # só o bloco do teor + o pedido de análise, nenhum documento/imagem
     assert len(conteudo) == 2
     assert all(bloco["type"] == "text" for bloco in conteudo)
+
+
+def test_montar_parametros_triagem_usa_modelo_mais_barato():
+    """Henrique, diretoria, 2026-09-15: a pré-análise de qualidade do
+    Processamento em Lote usa um modelo bem mais barato que a análise
+    completa — nunca o mesmo modelo forte."""
+    parametros = montar_parametros_triagem("teor de teste qualquer")
+
+    assert parametros["model"] == MODELO_TRIAGEM
+    assert parametros["model"] != MODELO_PADRAO
+    assert parametros["tool_choice"] == {"type": "tool", "name": "avaliar_teor"}
+    assert parametros["tools"] == [FERRAMENTA_TRIAGEM_TEOR]
+    assert "teor de teste qualquer" in parametros["messages"][0]["content"]
+
+
+def test_avaliar_confiabilidade_teor_aprovado(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "chave-fake-teste")
+
+    resultado_ferramenta = {"confiavel": True, "motivo": "Descreve claramente uma sentença de mérito."}
+    bloco = SimpleNamespace(type="tool_use", input=resultado_ferramenta)
+    usage = SimpleNamespace(
+        input_tokens=500, output_tokens=30,
+        cache_creation_input_tokens=0, cache_read_input_tokens=0,
+    )
+    resposta_fake = SimpleNamespace(content=[bloco], usage=usage, model=MODELO_TRIAGEM)
+
+    class _ClienteFake:
+        def __init__(self, api_key):
+            self.messages = SimpleNamespace(create=lambda **kwargs: resposta_fake)
+
+    monkeypatch.setattr("anthropic.Anthropic", _ClienteFake)
+
+    confiavel, motivo, uso_ia = avaliar_confiabilidade_teor("teor de teste")
+
+    assert confiavel is True
+    assert motivo == "Descreve claramente uma sentença de mérito."
+    assert uso_ia["modelo"] == MODELO_TRIAGEM
+    # Haiku é bem mais barato que o Sonnet — 500 tokens de entrada + 30
+    # de saída custa uma fração de centavo.
+    assert uso_ia["custo_estimado_usd"] < 0.01
+
+
+def test_avaliar_confiabilidade_teor_reprovado(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "chave-fake-teste")
+
+    resultado_ferramenta = {"confiavel": False, "motivo": "Teor vago, não descreve nenhum ato processual."}
+    bloco = SimpleNamespace(type="tool_use", input=resultado_ferramenta)
+    usage = SimpleNamespace(
+        input_tokens=400, output_tokens=25,
+        cache_creation_input_tokens=0, cache_read_input_tokens=0,
+    )
+    resposta_fake = SimpleNamespace(content=[bloco], usage=usage, model=MODELO_TRIAGEM)
+
+    class _ClienteFake:
+        def __init__(self, api_key):
+            self.messages = SimpleNamespace(create=lambda **kwargs: resposta_fake)
+
+    monkeypatch.setattr("anthropic.Anthropic", _ClienteFake)
+
+    confiavel, motivo, uso_ia = avaliar_confiabilidade_teor("teor vago")
+
+    assert confiavel is False
+    assert motivo == "Teor vago, não descreve nenhum ato processual."

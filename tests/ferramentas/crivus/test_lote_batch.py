@@ -1,10 +1,15 @@
-"""O roteamento por atraso + submissão/coleta da API de Lote — a
-Anthropic é SEMPRE mockada aqui, nunca uma chamada de rede de verdade.
+"""O roteamento por atraso + qualidade + submissão/coleta da API de
+Lote — a Anthropic é SEMPRE mockada aqui, nunca uma chamada de rede de
+verdade.
 
 Henrique, coordenador, 2026-09-14 (correção no dia seguinte ao ar): o
 caminho síncrono/"urgente" original foi INVERTIDO — casos atrasados (2+
 dias) NUNCA vão pra IA, viram status="atrasado" pra tratamento manual;
-só a 1ª data (DATA DA PUBLICAÇÃO) importa, a 2ª é ignorada 100%."""
+só a 1ª data (DATA DA PUBLICAÇÃO) importa, a 2ª é ignorada 100%.
+
+Henrique, diretoria, 2026-09-15: 2ª exclusão, por qualidade do teor —
+harness de 2 camadas (regra grátis + pré-análise de IA barata) antes de
+qualquer linha ir pra análise completa (cara)."""
 
 from datetime import date, timedelta
 from types import SimpleNamespace
@@ -21,8 +26,14 @@ from app.plataforma.db.usuarios import criar_usuario, excluir_usuario
 
 NOME_USUARIO_TESTE = "teste_crivus_lote_batch"
 
+# Precisa passar da camada 1 do filtro de qualidade (TAMANHO_MINIMO_TEOR
+# = 60) pra chegar na submissão/reconciliação, que é o que a maioria dos
+# testes deste arquivo quer provar — só os testes DA camada 1 usam um
+# teor propositalmente curto.
+TEOR_VALIDO_PADRAO = "Teor de teste, longo o bastante para passar da camada 1 do filtro de qualidade (tamanho mínimo)."
 
-def _linha(dias_desde_publicacao=0, npjur="0100000", teor="teor de teste"):
+
+def _linha(dias_desde_publicacao=0, npjur="0100000", teor=TEOR_VALIDO_PADRAO):
     data_publicacao = date.today() - timedelta(days=dias_desde_publicacao)
     return {"npjur": npjur, "data_publicacao": data_publicacao, "data_importacao": None, "teor": teor}
 
@@ -107,6 +118,20 @@ def usuario_teste():
         sessao.commit()
 
     excluir_usuario(usuario.id)
+
+
+@pytest.fixture(autouse=True)
+def _triagem_aprovada_por_padrao(monkeypatch):
+    """Por padrão, toda pré-análise (camada 2 do filtro de qualidade)
+    aprova — testes que existem pra provar OUTRA coisa (atraso,
+    submissão, reconciliação) não deveriam também precisar simular a
+    triagem toda vez. Os testes que testam a triagem em si sobrescrevem
+    isso dentro do próprio corpo do teste (monkeypatch último a rodar
+    vence)."""
+    monkeypatch.setattr(
+        lote_batch, "avaliar_confiabilidade_teor",
+        lambda teor: (True, "Aprovado (mock padrão de teste).", {"custo_estimado_usd": 0.001}),
+    )
 
 
 # --- eh_atrasado -------------------------------------------------------
@@ -303,8 +328,8 @@ def test_falha_ao_preparar_envio_nao_bloqueia_o_resto_do_grupo(usuario_teste, mo
     monkeypatch.setattr(lote_batch, "montar_parametros_mensagem", _montar_parametros_com_falha_na_primeira)
 
     lote = criar_lote(usuario_teste.id, "planilha.xlsx", [
-        _linha(dias_desde_publicacao=0, npjur="0111111", teor="teor que quebra"),
-        _linha(dias_desde_publicacao=0, npjur="0222222", teor="teor normal"),
+        _linha(dias_desde_publicacao=0, npjur="0111111", teor="teor que quebra, mas ainda longo o bastante pra passar da camada 1"),
+        _linha(dias_desde_publicacao=0, npjur="0222222", teor="teor normal, também longo o bastante pra passar da camada 1 do filtro"),
     ])
 
     lote_batch.rodar_ciclo_lote({"lote_ativo": True})
@@ -321,3 +346,140 @@ def test_falha_ao_preparar_envio_nao_bloqueia_o_resto_do_grupo(usuario_teste, mo
     assert normal.status == "processando"
     assert normal.batch_id is not None
     assert len(cliente_fake.chamadas_create[0]["requests"]) == 1
+
+
+# --- filtro de qualidade (Henrique, diretoria, 2026-09-15) -----------------
+
+def test_teor_curto_e_descartado_pela_camada_1_sem_chamar_ia(usuario_teste, monkeypatch, tmp_path):
+    """Camada 1 (regra grátis): teor curto demais nem chega a acionar a
+    pré-análise de IA — descarta na hora."""
+    monkeypatch.setattr(lote_batch, "PASTA_SAIDA_LOTES", tmp_path)
+
+    chamadas_triagem = []
+    monkeypatch.setattr(
+        lote_batch, "avaliar_confiabilidade_teor",
+        lambda teor: chamadas_triagem.append(teor) or (True, "não deveria ser chamado", {"custo_estimado_usd": 0.001}),
+    )
+
+    cliente_fake = _ClienteFake()
+    monkeypatch.setattr(lote_batch, "_obter_cliente", lambda: cliente_fake)
+
+    lote = criar_lote(usuario_teste.id, "planilha.xlsx", [_linha(teor="teor curto")])
+
+    lote_batch.rodar_ciclo_lote({"lote_ativo": True})
+
+    with obter_sessao() as sessao:
+        analise = sessao.exec(select(AnalisePublicacao).where(AnalisePublicacao.lote_id == lote.id)).first()
+
+    assert analise.status == "descartado"
+    assert "curto" in analise.erro_mensagem.lower() or "inválido" in analise.erro_mensagem.lower()
+    assert analise.custo_triagem_usd is None  # camada 1 nunca chamou IA
+    assert chamadas_triagem == []
+    assert cliente_fake.chamadas_create == []
+
+
+def test_teor_reprovado_na_pre_analise_e_descartado_com_motivo_e_custo(usuario_teste, monkeypatch, tmp_path):
+    """Camada 2 (pré-análise de IA): reprovado vira "descartado", com o
+    motivo que a própria IA deu e o custo da triagem registrado."""
+    monkeypatch.setattr(lote_batch, "PASTA_SAIDA_LOTES", tmp_path)
+    monkeypatch.setattr(
+        lote_batch, "avaliar_confiabilidade_teor",
+        lambda teor: (False, "Teor vago, não descreve nenhum ato processual reconhecível.", {"custo_estimado_usd": 0.0017}),
+    )
+
+    cliente_fake = _ClienteFake()
+    monkeypatch.setattr(lote_batch, "_obter_cliente", lambda: cliente_fake)
+
+    lote = criar_lote(usuario_teste.id, "planilha.xlsx", [_linha()])
+
+    lote_batch.rodar_ciclo_lote({"lote_ativo": True})
+
+    with obter_sessao() as sessao:
+        analise = sessao.exec(select(AnalisePublicacao).where(AnalisePublicacao.lote_id == lote.id)).first()
+
+    assert analise.status == "descartado"
+    assert analise.erro_mensagem == "Teor vago, não descreve nenhum ato processual reconhecível."
+    assert analise.custo_triagem_usd == 0.0017
+    assert cliente_fake.chamadas_create == []  # nunca chegou na análise completa
+
+
+def test_teor_aprovado_na_pre_analise_registra_custo_e_segue_pro_lote(usuario_teste, monkeypatch):
+    """Camada 2 aprovada: custo da triagem é registrado E a linha segue
+    no mesmo ciclo pra submissão real (API de Lote)."""
+    monkeypatch.setattr(
+        lote_batch, "avaliar_confiabilidade_teor",
+        lambda teor: (True, "Descreve claramente uma sentença.", {"custo_estimado_usd": 0.0013}),
+    )
+
+    cliente_fake = _ClienteFake()
+    monkeypatch.setattr(lote_batch, "_obter_cliente", lambda: cliente_fake)
+
+    lote = criar_lote(usuario_teste.id, "planilha.xlsx", [_linha()])
+
+    lote_batch.rodar_ciclo_lote({"lote_ativo": True})
+
+    with obter_sessao() as sessao:
+        analise = sessao.exec(select(AnalisePublicacao).where(AnalisePublicacao.lote_id == lote.id)).first()
+
+    assert analise.status == "processando"  # seguiu pro lote, ainda não voltou resultado
+    assert analise.batch_id is not None  # já foi submetida no MESMO ciclo
+    assert analise.custo_triagem_usd == 0.0013
+
+
+def test_falha_tecnica_na_pre_analise_deixa_linha_pendente_para_retentar(usuario_teste, monkeypatch):
+    """Falha de rede/API na pré-análise não é "teor ruim" — não descarta,
+    deixa a linha pendente pro próximo ciclo tentar de novo."""
+    def _triagem_com_falha(teor):
+        raise RuntimeError("erro de rede simulado")
+
+    monkeypatch.setattr(lote_batch, "avaliar_confiabilidade_teor", _triagem_com_falha)
+
+    cliente_fake = _ClienteFake()
+    monkeypatch.setattr(lote_batch, "_obter_cliente", lambda: cliente_fake)
+
+    lote = criar_lote(usuario_teste.id, "planilha.xlsx", [_linha()])
+
+    lote_batch.rodar_ciclo_lote({"lote_ativo": True})
+
+    with obter_sessao() as sessao:
+        analise = sessao.exec(select(AnalisePublicacao).where(AnalisePublicacao.lote_id == lote.id)).first()
+
+    assert analise.status == "processando"
+    assert analise.batch_id is None  # não avançou pra submissão
+    assert analise.custo_triagem_usd is None
+    assert cliente_fake.chamadas_create == []
+
+
+def test_limite_de_triagem_por_ciclo_deixa_o_resto_pendente(usuario_teste, monkeypatch):
+    """Um backlog maior que LIMITE_TRIAGEM_POR_CICLO não trava o ciclo
+    inteiro — só avalia até o limite, o resto sobra pro próximo tick."""
+    monkeypatch.setattr(lote_batch, "LIMITE_TRIAGEM_POR_CICLO", 1)
+
+    chamadas = []
+
+    def _triagem_conta_chamadas(teor):
+        chamadas.append(teor)
+        return True, "aprovado", {"custo_estimado_usd": 0.001}
+
+    monkeypatch.setattr(lote_batch, "avaliar_confiabilidade_teor", _triagem_conta_chamadas)
+
+    cliente_fake = _ClienteFake()
+    monkeypatch.setattr(lote_batch, "_obter_cliente", lambda: cliente_fake)
+
+    lote = criar_lote(usuario_teste.id, "planilha.xlsx", [
+        _linha(npjur="0111111"),
+        _linha(npjur="0222222"),
+    ])
+
+    lote_batch.rodar_ciclo_lote({"lote_ativo": True})
+
+    assert len(chamadas) == 1  # só 1 avaliada nesse ciclo
+
+    with obter_sessao() as sessao:
+        analises = sessao.exec(select(AnalisePublicacao).where(AnalisePublicacao.lote_id == lote.id)).all()
+
+    # a que não foi avaliada continua pendente (sem custo de triagem, sem batch_id)
+    nao_avaliada = [a for a in analises if a.custo_triagem_usd is None]
+    assert len(nao_avaliada) == 1
+    assert nao_avaliada[0].status == "processando"
+    assert nao_avaliada[0].batch_id is None

@@ -1,8 +1,9 @@
-"""Roteamento por atraso do Processamento em Lote + submissão/coleta da
-API de Lote de verdade da Anthropic. Mesma arquitetura de
-`nucleo_relatorios/core/robo_lote.py` (cliente, preparar, submeter,
-coletar resultados), reescrita contra AnalisePublicacao/LoteCrivus — não
-é literalmente compartilhada, é um model/fluxo diferente.
+"""Roteamento por atraso + qualidade do Processamento em Lote, e
+submissão/coleta da API de Lote de verdade da Anthropic. Mesma
+arquitetura de `nucleo_relatorios/core/robo_lote.py` (cliente, preparar,
+submeter, coletar resultados), reescrita contra AnalisePublicacao/
+LoteCrivus — não é literalmente compartilhada, é um model/fluxo
+diferente.
 
 Henrique, coordenador, 2026-09-14 — correção no dia seguinte ao ar (o
 desenho original tinha um caminho síncrono/"urgente" pra casos
@@ -19,20 +20,43 @@ atrasados; foi INVERTIDO por decisão do coordenador responsável):
   coordenador: dar prioridade ao caso E evitar que uma movimentação nova
   tenha acontecido no meio tempo do atraso sem ninguém perceber (uma IA
   lendo o teor antigo não saberia disso).
-- O resto (menos de 2 dias) vai pela API de Lote de verdade da
-  Anthropic (mais barata).
+
+Henrique, diretoria, 2026-09-15 — 2ª exclusão, por QUALIDADE do teor (a
+diretoria viu o Crivus e pediu mais rigor: só processar pela análise
+completa o que for "nitidamente útil", garantindo qualidade máxima; o
+resto é descartado e apontado na planilha de saída). Harness de 2
+camadas, cada uma só roda pra quem sobrou da anterior:
+1. regra grátis (`_teor_obviamente_invalido`): teor curto demais pra ser
+   um texto de verdade (ex: extração truncada) é descartado na hora, sem
+   IA nenhuma.
+2. pré-análise barata (`avaliar_confiabilidade_teor`, MODELO_TRIAGEM em
+   ia_cliente.py): lê só o teor e decide se dá pra confiar numa análise
+   baseada nisso. Reprovado = descartado, com o motivo que a própria IA
+   deu. Aprovado = segue pendente, `_submeter_pendentes_por_lote` pega
+   em seguida no mesmo ciclo.
+Ambas viram `status="descartado"` — categoria própria (nem "erro", que é
+falha técnica, nem "atrasado", que é por prazo).
+
+Ordem de cada ciclo (Henrique aprovou 2026-09-15): atraso (grátis) ->
+qualidade camada 1 (grátis) -> qualidade camada 2 (IA barata) -> só
+então análise completa (API de Lote). "Atrasado" e "descartado" viram
+STATUS="EXECUTAR MANUALMENTE" na planilha de saída (ver
+gerar_planilha_saida em lote_manager.py), diferenciados só pelo MOTIVO.
 
 Uma linha só é avaliada ENQUANTO ainda está esperando despacho
 (`batch_id IS NULL`) — depois de submetida pra API de Lote, não dá pra
-"puxar de volta" se ela envelhecer e ficar atrasada no meio do caminho
-(mesma limitação já aceita antes desta correção)."""
+"puxar de volta" se ela envelhecer e ficar atrasada no meio do caminho."""
 
 from datetime import date
 from pathlib import Path
 
 from sqlmodel import select
 
-from app.ferramentas.crivus.core.ia_cliente import extrair_dados_e_uso, montar_parametros_mensagem
+from app.ferramentas.crivus.core.ia_cliente import (
+    avaliar_confiabilidade_teor,
+    extrair_dados_e_uso,
+    montar_parametros_mensagem,
+)
 from app.ferramentas.crivus.core.lote_manager import gerar_planilha_saida
 from app.ferramentas.crivus.db.lotes_crivus import (
     concluir_analise_de_lote,
@@ -42,8 +66,10 @@ from app.ferramentas.crivus.db.lotes_crivus import (
     lote_ainda_tem_linha_processando,
     marcar_analise_atrasada,
     marcar_analise_de_lote_com_erro,
+    marcar_analise_descartada,
     marcar_batch_id,
     marcar_lote_concluido,
+    registrar_custo_triagem,
 )
 from app.ferramentas.crivus.db.models import AnalisePublicacao
 from app.plataforma.db.session import obter_sessao
@@ -52,6 +78,20 @@ from app.plataforma.db.session import obter_sessao
 # 10/09, hoje 12/09 já é atrasado): 2 dias corridos desde a 1ª data da
 # planilha (DATA DA PUBLICAÇÃO) já conta como atraso.
 LIMITE_DIAS_ATRASO = 2
+
+# Henrique, diretoria, 2026-09-15: camada 1 do filtro de qualidade —
+# conservador de propósito (Henrique: "garantindo que não teremos
+# prejuízo por remover um teor útil por engano"). Confirmado com dado
+# real: o menor teor LEGÍTIMO visto até agora tinha 130+ caracteres; o
+# único teor genuinamente truncado/inválido visto tinha 29. 60 fica bem
+# no meio, com folga de sobra pros dois lados.
+TAMANHO_MINIMO_TEOR = 60
+
+# Quantas pré-análises de triagem (camada 2, IA) rodar por ciclo, no
+# máximo — cada uma é uma chamada de rede em tempo real; sem limite, um
+# backlog grande seguraria o tick inteiro. Sobra fica pro próximo ciclo
+# (60s depois), sem perda nenhuma.
+LIMITE_TRIAGEM_POR_CICLO = 50
 
 # Linhas por chamada real de API de Lote — deliberadamente modesto (não
 # o limite técnico da Anthropic, que é bem maior): manter a maior parte
@@ -164,19 +204,81 @@ def _marcar_atrasados_para_manual():
         dias = (date.today() - analise.data_publicacao_original).days
         marcar_analise_atrasada(
             analise.id,
-            f"Publicado há {dias} dias — prazo de {LIMITE_DIAS_ATRASO} dias estourado, encaminhado para tratamento manual.",
+            f"Publicado há {dias} dias. Prazo de {LIMITE_DIAS_ATRASO} dias estourado, encaminhado para tratamento manual.",
         )
 
     for lote_id in lotes_afetados:
         _finalizar_lote_se_completo(lote_id)
 
 
+def _teor_obviamente_invalido(teor):
+    """Camada 1 do filtro de qualidade — grátis, sem IA. Ver
+    TAMANHO_MINIMO_TEOR."""
+    return len((teor or "").strip()) < TAMANHO_MINIMO_TEOR
+
+
+def _filtrar_por_qualidade():
+    """Henrique, diretoria, 2026-09-15: só processar pela análise
+    completa (cara) o que for "nitidamente útil" — 2 camadas, ver
+    docstring do módulo. Roda depois de `_marcar_atrasados_para_manual`
+    (não faz sentido gastar com triagem numa linha que já vai ser
+    marcada atrasada de qualquer jeito) e antes de
+    `_submeter_pendentes_por_lote` (só quem sobra daqui é elegível pra
+    análise completa).
+
+    `custo_triagem_usd IS NOT NULL` é o sinal de "já passou pela triagem
+    e foi aprovada" — sem checar isso aqui, uma linha aprovada num ciclo
+    mas ainda não submetida (ex: backlog grande) seria reavaliada de
+    novo a cada tick, gastando com IA repetidamente à toa."""
+    pendentes = [a for a in listar_pendentes_de_despacho() if a.custo_triagem_usd is None]
+
+    avaliados_nesta_rodada = 0
+    lotes_afetados = set()
+
+    for analise in pendentes:
+        if _teor_obviamente_invalido(analise.teor_publicacao):
+            lotes_afetados.add(analise.lote_id)
+            marcar_analise_descartada(analise.id, "Conteúdo muito curto ou inválido para análise.")
+            continue
+
+        if avaliados_nesta_rodada >= LIMITE_TRIAGEM_POR_CICLO:
+            continue
+
+        avaliados_nesta_rodada += 1
+        try:
+            confiavel, motivo, uso_triagem = avaliar_confiabilidade_teor(analise.teor_publicacao)
+        except Exception:
+            # Falha técnica na pré-análise (rede, API) não é a mesma
+            # coisa que "teor ruim" — não descarta, deixa pendente pra
+            # tentar de novo no próximo ciclo.
+            continue
+
+        if confiavel:
+            registrar_custo_triagem(analise.id, uso_triagem["custo_estimado_usd"])
+        else:
+            lotes_afetados.add(analise.lote_id)
+            marcar_analise_descartada(
+                analise.id,
+                motivo or "Teor insuficiente para uma análise confiável.",
+                custo_triagem_usd=uso_triagem["custo_estimado_usd"],
+            )
+
+    for lote_id in lotes_afetados:
+        _finalizar_lote_se_completo(lote_id)
+
+
 def _submeter_pendentes_por_lote(cliente):
-    """O resto (não atrasado) vai pela API de Lote de verdade — mais
-    barato. Ordem natural de chegada (mais antigo primeiro), já garantida
-    por `listar_pendentes_de_despacho`."""
+    """O resto (não atrasado, já aprovado na triagem de qualidade) vai
+    pela API de Lote de verdade — mais barato. Ordem natural de chegada
+    (mais antigo primeiro), já garantida por `listar_pendentes_de_despacho`.
+
+    `custo_triagem_usd IS NOT NULL` exige que a linha já tenha PASSADO
+    pela camada 2 do filtro de qualidade com aprovação — sem isso, uma
+    linha ainda não avaliada (ou que falhou tecnicamente na pré-análise
+    nesse mesmo ciclo) seria submetida direto pra análise completa sem
+    nunca ter sido de fato aprovada."""
     pendentes = listar_pendentes_de_despacho()
-    elegiveis = [a for a in pendentes if not eh_atrasado(a)]
+    elegiveis = [a for a in pendentes if not eh_atrasado(a) and a.custo_triagem_usd is not None]
 
     grupo = elegiveis[:TAMANHO_MAXIMO_LOTE_ANTHROPIC]
     if not grupo:
@@ -201,14 +303,17 @@ def _submeter_pendentes_por_lote(cliente):
 
 
 def rodar_ciclo_lote(config):
-    """Um "tick" do vigia do Processamento em Lote. Ordem: (1) sempre
-    coleta resultados de lotes físicos já em voo, mesmo com `lote_ativo`
-    desligado (um batch já enviado pra Anthropic continua rodando lá de
-    qualquer jeito — mesmo raciocínio do robô do Extratus); (2) se
-    ligado, marca atrasados (sem IA nenhuma); (3) se ligado, submete o
-    resto pela API de Lote. Só pede o cliente Anthropic quando há de
-    fato trabalho pra fazer, pra não exigir ANTHROPIC_API_KEY num ciclo
-    parado (nada em voo + lote desligado)."""
+    """Um "tick" do vigia do Processamento em Lote. Ordem (Henrique
+    aprovou 2026-09-15): (1) sempre coleta resultados de lotes físicos
+    já em voo, mesmo com `lote_ativo` desligado (um batch já enviado pra
+    Anthropic continua rodando lá de qualquer jeito — mesmo raciocínio
+    do robô do Extratus); (2) se ligado, marca atrasados (sem IA
+    nenhuma); (3) se ligado, filtra por qualidade (camada 1 grátis +
+    camada 2 IA barata); (4) se ligado, submete quem sobrou pela API de
+    Lote (cara). Cada etapa só vê quem passou pela anterior. Só pede o
+    cliente Anthropic quando há de fato trabalho pra fazer, pra não
+    exigir ANTHROPIC_API_KEY num ciclo parado (nada em voo + lote
+    desligado)."""
     if listar_batch_ids_em_andamento():
         _coletar_resultados(_obter_cliente())
 
@@ -216,4 +321,5 @@ def rodar_ciclo_lote(config):
         return
 
     _marcar_atrasados_para_manual()
+    _filtrar_por_qualidade()
     _submeter_pendentes_por_lote(_obter_cliente())

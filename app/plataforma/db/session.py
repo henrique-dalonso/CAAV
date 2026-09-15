@@ -136,6 +136,8 @@ COLUNAS_PENDENTES = {
         "batch_id": "VARCHAR",
         "data_publicacao_original": "DATE",
         "data_importacao_original": "DATE",
+        # Henrique, diretoria, 2026-09-15: filtro de qualidade do teor.
+        "custo_triagem_usd": "FLOAT",
     },
     "itemagendamento": {
         # Henrique, 2026-09-04: botão "+" pra acrescentar agendamento que
@@ -148,6 +150,9 @@ COLUNAS_PENDENTES = {
         # uma 3ª contagem própria, nem sucesso nem erro técnico — ver
         # docstring de LoteCrivus.
         "linhas_atrasadas": "INTEGER DEFAULT 0",
+        # Henrique, diretoria, 2026-09-15: 4ª contagem, por qualidade do
+        # teor (motivo diferente de "atrasado", que é por prazo).
+        "linhas_descartadas": "INTEGER DEFAULT 0",
     },
 }
 

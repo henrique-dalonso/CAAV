@@ -114,7 +114,10 @@ def test_linha_com_teor_vazio_e_pulada_sem_derrubar_upload(tmp_path):
     assert linhas[0]["npjur"] == "0119225"
 
 
-def test_gerar_planilha_saida_com_sucesso_e_erro(tmp_path):
+def test_gerar_planilha_saida_com_todos_os_status(tmp_path):
+    """Henrique, diretoria, 2026-09-15: "OK" virou "LEITURA REALIZADA";
+    "atrasado" e "descartado" (motivos diferentes) viram os dois
+    STATUS="EXECUTAR MANUALMENTE", diferenciados só pelo MOTIVO."""
     class _AnaliseFake:
         def __init__(self, npjur, processo, status, erro_mensagem=None):
             self.npjur = npjur
@@ -125,7 +128,8 @@ def test_gerar_planilha_saida_com_sucesso_e_erro(tmp_path):
     analises = [
         _AnaliseFake("0111111", "0011223-45.2024.8.26.0100", "aguardando_revisao"),
         _AnaliseFake("0222222", None, "erro", erro_mensagem="Falha ao analisar: timeout"),
-        _AnaliseFake("0333333", None, "atrasado", erro_mensagem="Publicado há 3 dias — prazo de 2 dias estourado, encaminhado para tratamento manual."),
+        _AnaliseFake("0333333", None, "atrasado", erro_mensagem="Publicado há 3 dias. Prazo de 2 dias estourado, encaminhado para tratamento manual."),
+        _AnaliseFake("0444444", None, "descartado", erro_mensagem="Conteúdo muito curto ou inválido para análise."),
     ]
     destino = tmp_path / "saida" / "resultado.xlsx"
 
@@ -138,6 +142,7 @@ def test_gerar_planilha_saida_com_sucesso_e_erro(tmp_path):
     # openpyxl grava string vazia como célula em branco, e devolve None
     # ao reler — mesma coisa na prática (célula vazia na planilha final).
     assert linhas[0] == ("NPJUR", "Nº DO PROCESSO", "STATUS", "MOTIVO")
-    assert linhas[1] == ("0111111", "0011223-45.2024.8.26.0100", "OK", None)
+    assert linhas[1] == ("0111111", "0011223-45.2024.8.26.0100", "LEITURA REALIZADA", None)
     assert linhas[2] == ("0222222", None, "ERRO", "Falha ao analisar: timeout")
-    assert linhas[3] == ("0333333", None, "ATRASADO", "Publicado há 3 dias — prazo de 2 dias estourado, encaminhado para tratamento manual.")
+    assert linhas[3] == ("0333333", None, "EXECUTAR MANUALMENTE", "Publicado há 3 dias. Prazo de 2 dias estourado, encaminhado para tratamento manual.")
+    assert linhas[4] == ("0444444", None, "EXECUTAR MANUALMENTE", "Conteúdo muito curto ou inválido para análise.")

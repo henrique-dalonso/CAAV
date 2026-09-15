@@ -24,7 +24,17 @@ class LoteCrivus(SQLModel, table=True):
     processamento automático (viram `status="atrasado"` numa
     AnalisePublicacao, sem chamada de IA nenhuma), pra ir pra tratamento
     manual do time — assim ninguém arrisca perder movimentação nova que
-    tenha acontecido durante o atraso. `linhas_atrasadas` conta essas."""
+    tenha acontecido durante o atraso. `linhas_atrasadas` conta essas.
+
+    Henrique, diretoria, 2026-09-15: 2ª exclusão, por QUALIDADE do teor
+    (não por prazo) — só processar pela análise completa (cara) o que
+    for "nitidamente útil"; o resto vira `status="descartado"` (ver
+    `_filtrar_por_qualidade` em lote_batch.py). `linhas_descartadas`
+    conta essas — categoria própria, não confundir com `linhas_erro`
+    (falha técnica) nem `linhas_atrasadas` (motivo é prazo, não
+    qualidade). Na planilha de saída, tanto "atrasado" quanto
+    "descartado" aparecem como STATUS="EXECUTAR MANUALMENTE" (mesma
+    ação esperada do time), só o MOTIVO muda."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
@@ -39,6 +49,7 @@ class LoteCrivus(SQLModel, table=True):
     linhas_sucesso: int = Field(default=0)
     linhas_erro: int = Field(default=0)
     linhas_atrasadas: int = Field(default=0)
+    linhas_descartadas: int = Field(default=0)
 
     caminho_planilha_saida: Optional[str] = None
 
@@ -121,9 +132,12 @@ class AnalisePublicacao(SQLModel, table=True):
 
     # "processando" -> "aguardando_revisao" -> "concluido" (ou "erro" se a
     # chamada à IA falhar antes de gerar qualquer item). Só pra
-    # origem="lote": "atrasado" — 2+ dias de atraso (ver `eh_atrasado` em
-    # lote_batch.py), excluída de propósito do processamento automático
-    # (nunca chega a chamar a IA), pra tratamento manual do time.
+    # origem="lote": "atrasado" (2+ dias de atraso, ver `eh_atrasado` em
+    # lote_batch.py) e "descartado" (teor de qualidade insuficiente, ver
+    # `_filtrar_por_qualidade` em lote_batch.py) — as duas excluídas de
+    # propósito do processamento automático completo, pra tratamento
+    # manual do time (aparecem como STATUS="EXECUTAR MANUALMENTE" na
+    # planilha de saída, ver gerar_planilha_saida em lote_manager.py).
     status: str = Field(default="processando")
     erro_mensagem: Optional[str] = None
 
@@ -132,6 +146,14 @@ class AnalisePublicacao(SQLModel, table=True):
     tokens_entrada: Optional[int] = None
     tokens_saida: Optional[int] = None
     custo_estimado_usd: Optional[float] = None
+
+    # Henrique, diretoria, 2026-09-15: custo da PRÉ-análise de triagem
+    # (MODELO_TRIAGEM, ver ia_cliente.py) — sempre registrado quando a
+    # linha passa pela triagem, mesmo quando ela é descartada em seguida
+    # (nunca chega a gerar `custo_estimado_usd`, que é só da análise
+    # completa) — sem isso, o gasto da triagem em linhas descartadas
+    # ficaria invisível pra qualquer conta de custo.
+    custo_triagem_usd: Optional[float] = None
 
     criado_em: datetime = Field(default_factory=datetime.now)
     concluido_em: Optional[datetime] = None

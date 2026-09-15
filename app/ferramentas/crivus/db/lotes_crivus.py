@@ -134,6 +134,36 @@ def marcar_analise_atrasada(analise_id, mensagem):
         return analise
 
 
+def marcar_analise_descartada(analise_id, mensagem, custo_triagem_usd=None):
+    """Henrique, diretoria, 2026-09-15: teor de qualidade insuficiente
+    (ver `_filtrar_por_qualidade` em lote_batch.py) — excluída DE
+    PROPÓSITO da análise completa, nunca chega a chamar o modelo caro.
+    `custo_triagem_usd` é opcional: só existe quando a decisão veio da
+    pré-análise de IA (camada 2), fica None quando foi a regra grátis de
+    tamanho mínimo (camada 1) que descartou."""
+    with obter_sessao() as sessao:
+        analise = sessao.get(AnalisePublicacao, analise_id)
+        analise.status = "descartado"
+        analise.erro_mensagem = mensagem
+        if custo_triagem_usd is not None:
+            analise.custo_triagem_usd = custo_triagem_usd
+        sessao.add(analise)
+        sessao.commit()
+        sessao.refresh(analise)
+        return analise
+
+
+def registrar_custo_triagem(analise_id, custo_triagem_usd):
+    """A linha passou na pré-análise (segue pendente, sem mudar status) —
+    o custo da chamada de triagem ainda precisa ser registrado, senão o
+    gasto dela fica invisível pra qualquer conta de custo."""
+    with obter_sessao() as sessao:
+        analise = sessao.get(AnalisePublicacao, analise_id)
+        analise.custo_triagem_usd = custo_triagem_usd
+        sessao.add(analise)
+        sessao.commit()
+
+
 def lote_ainda_tem_linha_processando(lote_id):
     with obter_sessao() as sessao:
         return sessao.exec(
@@ -151,9 +181,10 @@ def marcar_lote_concluido(lote_id, caminho_planilha_saida):
         contagens = sessao.exec(
             select(AnalisePublicacao.status).where(AnalisePublicacao.lote_id == lote_id)
         ).all()
-        lote.linhas_sucesso = sum(1 for status in contagens if status not in ("erro", "atrasado"))
+        lote.linhas_sucesso = sum(1 for status in contagens if status not in ("erro", "atrasado", "descartado"))
         lote.linhas_erro = sum(1 for status in contagens if status == "erro")
         lote.linhas_atrasadas = sum(1 for status in contagens if status == "atrasado")
+        lote.linhas_descartadas = sum(1 for status in contagens if status == "descartado")
 
         lote.status = "concluido"
         lote.finalizado_em = datetime.now()

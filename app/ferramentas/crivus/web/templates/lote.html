@@ -10,7 +10,7 @@
 <div class="cabecalho-ferramenta">
     <div>
         <h1>{{ botao_voltar() }}Processamento em Lote</h1>
-        <p>Envie a planilha exportada do NPJUR — cada linha é analisada automaticamente pela IA. Casos com 2 ou mais dias de atraso não são processados: ficam marcados como "Atrasado" para tratamento manual.</p>
+        <p>Envie a planilha exportada do NPJUR — cada linha passa por uma triagem e só é analisada de verdade se tiver qualidade suficiente. Casos atrasados ou com teor insuficiente ficam marcados como "Executar Manualmente".</p>
     </div>
 </div>
 
@@ -48,9 +48,9 @@
                     <th>Arquivo</th>
                     <th>Enviado em</th>
                     <th>Total</th>
-                    <th>Sucesso</th>
+                    <th>Leitura Realizada</th>
                     <th>Erro</th>
-                    <th>Atrasado</th>
+                    <th>Executar Manualmente</th>
                     <th>Status</th>
                     <th>Resultado</th>
                 </tr>
@@ -63,7 +63,7 @@
                     <td>{{ lote.total_linhas }}</td>
                     <td>{{ lote.linhas_sucesso }}</td>
                     <td>{{ lote.linhas_erro }}</td>
-                    <td>{{ lote.linhas_atrasadas }}</td>
+                    <td>{{ lote.linhas_atrasadas + lote.linhas_descartadas }}</td>
                     <td>
                         {% if lote.status == "concluido" %}
                         <span class="selo-positivo">Concluído</span>

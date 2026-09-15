@@ -16,9 +16,11 @@ from app.ferramentas.crivus.db.lotes_crivus import (
     lote_ainda_tem_linha_processando,
     marcar_analise_atrasada,
     marcar_analise_de_lote_com_erro,
+    marcar_analise_descartada,
     marcar_batch_id,
     marcar_lote_concluido,
     obter_lote,
+    registrar_custo_triagem,
 )
 from app.ferramentas.crivus.db.models import AnalisePublicacao, AnexoAnalise, ItemAcompanhamento, ItemAgendamento, LoteCrivus
 from app.plataforma.db.models import CARGO_COLABORADOR
@@ -179,23 +181,65 @@ def test_marcar_analise_atrasada(usuario_teste):
     lote = criar_lote(usuario_teste.id, "planilha.xlsx", _linhas_fake(1))
     pendente = listar_pendentes_de_despacho(lote.id)[0]
 
-    marcada = marcar_analise_atrasada(pendente.id, "Publicado há 3 dias — prazo de 2 dias estourado, encaminhado para tratamento manual.")
+    marcada = marcar_analise_atrasada(pendente.id, "Publicado há 3 dias. Prazo de 2 dias estourado, encaminhado para tratamento manual.")
 
     assert marcada.status == "atrasado"
     assert "tratamento manual" in marcada.erro_mensagem
 
 
-def test_marcar_lote_concluido_conta_atrasadas_separado_de_sucesso_e_erro(usuario_teste, tmp_path):
-    lote = criar_lote(usuario_teste.id, "planilha.xlsx", _linhas_fake(3))
+def test_marcar_analise_descartada_sem_custo_de_triagem(usuario_teste):
+    """Camada 1 (regra grátis) — não passou por IA nenhuma."""
+    lote = criar_lote(usuario_teste.id, "planilha.xlsx", _linhas_fake(1))
+    pendente = listar_pendentes_de_despacho(lote.id)[0]
+
+    marcada = marcar_analise_descartada(pendente.id, "Conteúdo muito curto ou inválido para análise.")
+
+    assert marcada.status == "descartado"
+    assert marcada.erro_mensagem == "Conteúdo muito curto ou inválido para análise."
+    assert marcada.custo_triagem_usd is None
+
+
+def test_marcar_analise_descartada_com_custo_de_triagem(usuario_teste):
+    """Camada 2 (pré-análise de IA) — o custo da triagem precisa ficar
+    registrado mesmo quando a linha é descartada em seguida."""
+    lote = criar_lote(usuario_teste.id, "planilha.xlsx", _linhas_fake(1))
+    pendente = listar_pendentes_de_despacho(lote.id)[0]
+
+    marcada = marcar_analise_descartada(pendente.id, "Teor vago demais.", custo_triagem_usd=0.0017)
+
+    assert marcada.status == "descartado"
+    assert marcada.custo_triagem_usd == 0.0017
+
+
+def test_registrar_custo_triagem_nao_muda_status(usuario_teste):
+    """Linha aprovada na triagem segue pendente (sem batch_id, sem mudar
+    status) — só o custo da pré-análise é gravado."""
+    lote = criar_lote(usuario_teste.id, "planilha.xlsx", _linhas_fake(1))
+    pendente = listar_pendentes_de_despacho(lote.id)[0]
+
+    registrar_custo_triagem(pendente.id, 0.0021)
+
+    with obter_sessao() as sessao:
+        analise = sessao.get(AnalisePublicacao, pendente.id)
+
+    assert analise.status == "processando"
+    assert analise.batch_id is None
+    assert analise.custo_triagem_usd == 0.0021
+
+
+def test_marcar_lote_concluido_conta_os_4_baldes_separados(usuario_teste, tmp_path):
+    lote = criar_lote(usuario_teste.id, "planilha.xlsx", _linhas_fake(4))
     pendentes = listar_pendentes_de_despacho(lote.id)
 
     dados_ia, uso_ia = _dados_ia_fake()
     concluir_analise_de_lote(pendentes[0].id, dados_ia, uso_ia)
     marcar_analise_de_lote_com_erro(pendentes[1].id, "erro de teste")
     marcar_analise_atrasada(pendentes[2].id, "atrasado de teste")
+    marcar_analise_descartada(pendentes[3].id, "descartado de teste")
 
     concluido = marcar_lote_concluido(lote.id, tmp_path / "resultado.xlsx")
 
     assert concluido.linhas_sucesso == 1
     assert concluido.linhas_erro == 1
     assert concluido.linhas_atrasadas == 1
+    assert concluido.linhas_descartadas == 1
