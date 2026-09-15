@@ -16,21 +16,51 @@
 
 {{ nav_crivus("producao", pode_lote) }}
 
+{% set extra_query = (('&busca=' ~ (busca | urlencode)) if busca else '')
+    ~ (('&data_de=' ~ data_de) if data_de else '')
+    ~ (('&data_ate=' ~ data_ate) if data_ate else '')
+    ~ (('&solicitante_id=' ~ solicitante_id) if solicitante_id else '') %}
+
 <div class="crivus-producao-controles">
     <div class="alternador alternador-neutro">
-        <a href="/crivus/producao?aba=lotes&filtro={{ filtro }}"
+        <a href="/crivus/producao?aba=lotes&filtro={{ filtro }}{{ extra_query }}"
            class="alternador-opcao{% if aba == "lotes" %} alternador-ativa{% endif %}">Lotes</a>
-        <a href="/crivus/producao?aba=individuais&filtro={{ filtro }}"
+        <a href="/crivus/producao?aba=individuais&filtro={{ filtro }}{{ extra_query }}"
            class="alternador-opcao{% if aba == "individuais" %} alternador-ativa{% endif %}">Individuais</a>
     </div>
 
     <div class="alternador">
-        <a href="/crivus/producao?aba={{ aba }}&filtro=pendentes"
+        <a href="/crivus/producao?aba={{ aba }}&filtro=pendentes{{ extra_query }}"
            class="alternador-opcao{% if filtro == "pendentes" %} alternador-ativa{% endif %}">Pendentes</a>
-        <a href="/crivus/producao?aba={{ aba }}&filtro=concluidos"
+        <a href="/crivus/producao?aba={{ aba }}&filtro=concluidos{{ extra_query }}"
            class="alternador-opcao{% if filtro == "concluidos" %} alternador-ativa{% endif %}">Concluídos</a>
     </div>
 </div>
+
+<form method="get" action="/crivus/producao" class="barra-filtros barra-filtros-producao">
+    <input type="hidden" name="aba" value="{{ aba }}">
+    <input type="hidden" name="filtro" value="{{ filtro }}">
+    <input type="search" name="busca" class="campo-busca" placeholder="Buscar por NPJUR ou nº do processo..." value="{{ busca }}" aria-label="Buscar por NPJUR ou número do processo">
+    <div class="filtro-data">
+        <label for="filtro-data-de">De:</label>
+        <input type="date" id="filtro-data-de" name="data_de" class="campo-data" value="{{ data_de or '' }}">
+        <label for="filtro-data-ate">Até:</label>
+        <input type="date" id="filtro-data-ate" name="data_ate" class="campo-data" value="{{ data_ate or '' }}">
+    </div>
+    <div class="filtro-solicitante">
+        <label for="filtro-solicitante">Solicitado por:</label>
+        <select id="filtro-solicitante" name="solicitante_id">
+            <option value="">Todos</option>
+            {% for pessoa in usuarios_disponiveis %}
+            <option value="{{ pessoa.id }}" {{ "selected" if solicitante_id == pessoa.id }}>{{ pessoa.nome }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit" class="botao botao-pequeno">Filtrar</button>
+    {% if busca or data_de or data_ate or solicitante_id %}
+    <a href="/crivus/producao?aba={{ aba }}&filtro={{ filtro }}" class="link-limpar-filtros">Limpar filtros</a>
+    {% endif %}
+</form>
 
 {% if eh_lotes and not analises %}
 <p class="aviso-discreto">Nenhum caso de lote {{ "pendente" if filtro == "pendentes" else "concluído" }}. Envie uma planilha na aba <a href="/crivus/lote">Processamento em Lote</a>.</p>
@@ -62,12 +92,12 @@
 {% if total > 50 %}
 <div class="paginacao-crivus">
     {% if pagina > 1 %}
-    <a href="/crivus/producao?aba={{ aba }}&filtro={{ filtro }}&pagina={{ pagina - 1 }}">← Anterior</a>
+    <a href="/crivus/producao?aba={{ aba }}&filtro={{ filtro }}&pagina={{ pagina - 1 }}{{ extra_query }}">← Anterior</a>
     {% else %}
     <span></span>
     {% endif %}
     {% if tem_proxima_pagina %}
-    <a href="/crivus/producao?aba={{ aba }}&filtro={{ filtro }}&pagina={{ pagina + 1 }}">Próxima →</a>
+    <a href="/crivus/producao?aba={{ aba }}&filtro={{ filtro }}&pagina={{ pagina + 1 }}{{ extra_query }}">Próxima →</a>
     {% endif %}
 </div>
 {% endif %}

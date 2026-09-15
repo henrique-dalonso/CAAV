@@ -13,6 +13,7 @@ from app.ferramentas.crivus.db.analises import (
     concluir_analise,
     criar_agendamento_manual,
     criar_analise_a_partir_da_ia,
+    data_maxima_agendamento,
     descartar_alteracoes,
     excluir_agendamento_manual,
     listar_itens,
@@ -285,6 +286,11 @@ def pagina_detalhe(
             "aviso_concluir": aviso_concluir,
             "erro": erro,
             "origem": origem,
+            # Henrique, diretoria, 2026-09-15: trava de prazo no seletor de
+            # data dos agendamentos — nunca antes de hoje, nunca depois do
+            # prazo máximo legal (ver data_maxima_agendamento em analises.py).
+            "data_minima_agendamento": date.today(),
+            "data_maxima_agendamento": data_maxima_agendamento(analise),
         },
     )
 

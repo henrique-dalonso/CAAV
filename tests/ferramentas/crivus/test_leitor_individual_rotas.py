@@ -1,3 +1,5 @@
+from datetime import date, timedelta
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import delete, select
@@ -438,9 +440,15 @@ def test_concluir_com_origem_producao_volta_pra_aba_e_filtro_exatos(cliente_loga
         f"/crivus/leitor-individual/{analise_id}/acompanhamento/{acompanhamentos[0].id}/salvar",
         data={"tipo": "PUBLICAÇÃO", "origem": origem},
     )
+    hoje = date.today()
     cliente.post(
         f"/crivus/leitor-individual/{analise_id}/agendamento/{agendamentos[0].id}/salvar",
-        data={"tipo": "MANIFESTAÇÃO", "data_inicio": "2026-01-01", "data_fim": "2026-01-10", "origem": origem},
+        data={
+            "tipo": "MANIFESTAÇÃO",
+            "data_inicio": str(hoje),
+            "data_fim": str(hoje + timedelta(days=5)),
+            "origem": origem,
+        },
     )
 
     resposta = cliente.post(f"/crivus/leitor-individual/{analise_id}/concluir", data={"origem": origem})

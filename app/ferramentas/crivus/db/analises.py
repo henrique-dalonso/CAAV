@@ -1,6 +1,6 @@
 from datetime import date, datetime, timedelta
 
-from sqlmodel import select
+from sqlmodel import or_, select
 
 from app.ferramentas.crivus.db.models import (
     AnalisePublicacao,
@@ -105,37 +105,61 @@ def obter_analise(analise_id):
         return sessao.get(AnalisePublicacao, analise_id)
 
 
-def listar_analises(origem, status, limite=50, offset=0):
+def _consulta_producao(origem, status, busca=None, data_de=None, data_ate=None, solicitante_id=None):
+    """Filtros compartilhados por listar_analises/contar_analises — pra
+    contagem/paginação sempre baterem com o mesmo recorte. Henrique,
+    diretoria, 2026-09-15: "está faltando busca e filtros, igual o
+    Extratus" — diferente da tela de Relatórios do Robô (carrega tudo e
+    filtra no JS), Produção pagina de verdade no servidor (o acervo pode
+    ter milhares de linhas vindas do Processamento em Lote), então o
+    filtro também precisa ser no servidor — filtrar só o que já está
+    carregado na página atual daria resultado incompleto/enganoso."""
+    campo_data = AnalisePublicacao.concluido_em if status == "concluido" else AnalisePublicacao.criado_em
+
+    consulta = select(AnalisePublicacao).where(
+        AnalisePublicacao.origem == origem,
+        AnalisePublicacao.status == status,
+    )
+
+    if busca:
+        termo = f"%{busca.strip()}%"
+        consulta = consulta.where(
+            or_(AnalisePublicacao.npjur.ilike(termo), AnalisePublicacao.processo.ilike(termo))
+        )
+    if data_de:
+        consulta = consulta.where(campo_data >= datetime.combine(data_de, datetime.min.time()))
+    if data_ate:
+        consulta = consulta.where(campo_data <= datetime.combine(data_ate, datetime.max.time()))
+    if solicitante_id:
+        consulta = consulta.where(AnalisePublicacao.usuario_id == solicitante_id)
+
+    return consulta
+
+
+def listar_analises(origem, status, limite=50, offset=0, busca=None, data_de=None, data_ate=None, solicitante_id=None):
     """Lista AnalisePublicacao pra tela Produção — sem checagem de dono,
     de propósito (Henrique, 2026-09-12: o acervo é do escritório inteiro,
-    não do criador). Pendentes vem do mais antigo pro mais novo (fila que
-    não deixa nada apodrecer no fundo); Concluídos vem do mais novo pro
-    mais antigo (auditoria/histórico recente primeiro). `origem="lote"`
-    hoje sempre devolve vazio — não existe nenhuma linha ainda, o
-    Processamento em Lote é uma etapa futura."""
+    não do criador).
+
+    Henrique, diretoria, 2026-09-15: as duas listas (Pendentes e
+    Concluídos) agora vêm do mais novo pro mais antigo — "as novas devem
+    aparecer por cima" (antes, Pendentes era do mais antigo pro mais
+    novo, decisão de 2026-09-12 pra não deixar nada "apodrecer no
+    fundo"; virou estressante depois que o Processamento em Lote passou
+    a alimentar essa mesma fila com volume real)."""
     with obter_sessao() as sessao:
-        consulta = select(AnalisePublicacao).where(
-            AnalisePublicacao.origem == origem,
-            AnalisePublicacao.status == status,
-        )
-        if status == "concluido":
-            consulta = consulta.order_by(AnalisePublicacao.concluido_em.desc())
-        else:
-            consulta = consulta.order_by(AnalisePublicacao.criado_em.asc())
+        consulta = _consulta_producao(origem, status, busca, data_de, data_ate, solicitante_id)
+
+        campo_ordenacao = AnalisePublicacao.concluido_em if status == "concluido" else AnalisePublicacao.criado_em
+        consulta = consulta.order_by(campo_ordenacao.desc())
 
         return sessao.exec(consulta.limit(limite).offset(offset)).all()
 
 
-def contar_analises(origem, status):
+def contar_analises(origem, status, busca=None, data_de=None, data_ate=None, solicitante_id=None):
     with obter_sessao() as sessao:
-        return len(
-            sessao.exec(
-                select(AnalisePublicacao.id).where(
-                    AnalisePublicacao.origem == origem,
-                    AnalisePublicacao.status == status,
-                )
-            ).all()
-        )
+        consulta = _consulta_producao(origem, status, busca, data_de, data_ate, solicitante_id)
+        return len(sessao.exec(consulta.with_only_columns(AnalisePublicacao.id)).all())
 
 
 def listar_itens(analise_id):
@@ -179,7 +203,58 @@ def _obter_item_editavel(sessao, analise_id, tipo_item, item_id):
     if not item or item.analise_id != analise_id:
         raise ValueError("Item não encontrado nesta análise.")
 
-    return item
+    return item, analise
+
+
+# Henrique, diretoria, 2026-09-15: teto de 15 dias corridos após a
+# publicação — o maior prazo recursal do CPC, unificado pelo art. 1.003,
+# §5º (apelação, agravo, REsp, RE etc., todos em 15 dias úteis; só
+# Embargos de Declaração é menor, 5 dias). Usado como trava única e
+# simples por enquanto — o Renato (sócio) confirmou que a IA não é
+# confiável pra calcular SLA sozinha, então quem revisa TEM que digitar
+# a data manualmente, e essa data nunca pode passar do prazo máximo
+# legal. Ajuste futuro possível: um catálogo por tipo de agendamento em
+# vez de um teto único (nem todo tipo tem prazo legal fixo — muitos
+# dependem do prazo que o próprio juiz determinou no despacho, ver
+# discussão com Henrique 2026-09-15).
+LIMITE_DIAS_PRAZO_AGENDAMENTO = 15
+
+
+def _data_publicacao_referencia(analise):
+    """Base pra calcular o prazo máximo de agendamento. origem="lote" já
+    traz a data real da publicação (`data_publicacao_original`); no
+    Leitor Individual esse campo não existe (a pessoa cola o teor na
+    hora que lê a publicação na fila do NPJUR) — `criado_em` serve de
+    proxy razoável nesse caso, assumindo que o teor é colado no mesmo
+    dia em que a publicação foi lida."""
+    return analise.data_publicacao_original or analise.criado_em.date()
+
+
+def data_maxima_agendamento(analise):
+    """Versão pública de `_data_publicacao_referencia` + o teto de dias —
+    usada pela tela (detalhe.html) pra desenhar `min`/`max` no seletor de
+    data, além da trava de verdade em `_validar_prazo_agendamento`."""
+    return _data_publicacao_referencia(analise) + timedelta(days=LIMITE_DIAS_PRAZO_AGENDAMENTO)
+
+
+def _validar_prazo_agendamento(analise, nova_data_inicio, nova_data_fim):
+    """Henrique, diretoria, 2026-09-15: a data de um agendamento nunca
+    pode ficar no passado (óbvio), nem passar do prazo máximo legal
+    (LIMITE_DIAS_PRAZO_AGENDAMENTO dias corridos após a publicação) —
+    trava de verdade no servidor, não só no seletor de data da tela."""
+    hoje = date.today()
+    data_maxima = data_maxima_agendamento(analise)
+
+    for rotulo, data_escolhida in (("início", nova_data_inicio), ("fim", nova_data_fim)):
+        if data_escolhida is None:
+            continue
+        if data_escolhida < hoje:
+            raise ValueError(f"A data de {rotulo} não pode ser anterior a hoje.")
+        if data_escolhida > data_maxima:
+            raise ValueError(
+                f"A data de {rotulo} não pode passar de {data_maxima.strftime('%d/%m/%Y')} "
+                f"({LIMITE_DIAS_PRAZO_AGENDAMENTO} dias após a publicação)."
+            )
 
 
 def marcar_item_pronto(analise_id, tipo_item, item_id, novo_tipo=None, nova_data_inicio=None, nova_data_fim=None):
@@ -194,11 +269,14 @@ def marcar_item_pronto(analise_id, tipo_item, item_id, novo_tipo=None, nova_data
     chegar aqui com tipo ainda vazio — trava de novo aqui embaixo, não dá
     pra confiar só na validação do navegador."""
     with obter_sessao() as sessao:
-        item = _obter_item_editavel(sessao, analise_id, tipo_item, item_id)
+        item, analise = _obter_item_editavel(sessao, analise_id, tipo_item, item_id)
 
         if novo_tipo:
             item.tipo = novo_tipo
         if tipo_item == "agendamento":
+            data_inicio_final = nova_data_inicio or item.data_inicio
+            data_fim_final = nova_data_fim or item.data_fim
+            _validar_prazo_agendamento(analise, data_inicio_final, data_fim_final)
             if nova_data_inicio:
                 item.data_inicio = nova_data_inicio
             if nova_data_fim:
@@ -230,7 +308,7 @@ def salvar_edicao_item(analise_id, tipo_item, item_id, novo_tipo, nova_data_inic
     não pode ser salvo" vale sempre, mesmo num item recém-criado
     manualmente que nunca teve tipo nenhum."""
     with obter_sessao() as sessao:
-        item = _obter_item_editavel(sessao, analise_id, tipo_item, item_id)
+        item, analise = _obter_item_editavel(sessao, analise_id, tipo_item, item_id)
 
         if not novo_tipo:
             raise ValueError("Selecione um tipo antes de salvar.")
@@ -244,6 +322,11 @@ def salvar_edicao_item(analise_id, tipo_item, item_id, novo_tipo, nova_data_inic
 
         if not mudou:
             return item
+
+        if tipo_item == "agendamento":
+            data_inicio_final = nova_data_inicio or item.data_inicio
+            data_fim_final = nova_data_fim or item.data_fim
+            _validar_prazo_agendamento(analise, data_inicio_final, data_fim_final)
 
         item.tipo = novo_tipo
         if tipo_item == "agendamento":
@@ -334,7 +417,7 @@ def marcar_item_desnecessario(analise_id, tipo_item, item_id, desnecessario=True
         )
 
     with obter_sessao() as sessao:
-        item = _obter_item_editavel(sessao, analise_id, tipo_item, item_id)
+        item, _analise = _obter_item_editavel(sessao, analise_id, tipo_item, item_id)
 
         item.status = "desnecessario" if desnecessario else "sugerido"
         sessao.add(item)

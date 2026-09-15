@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import delete, select
@@ -150,6 +152,52 @@ def test_producao_filtra_por_query_params(cliente_logado):
     resposta_concluidos = cliente.get("/crivus/producao?aba=individuais&filtro=concluidos")
     assert "0222222" in resposta_concluidos.text
     assert "0111111" not in resposta_concluidos.text
+
+
+def test_producao_busca_filtra_por_npjur_ou_processo(cliente_logado):
+    """Henrique, diretoria, 2026-09-15: "faltando busca e filtros, igual
+    o Extratus" — busca livre bate tanto em NPJUR quanto em Nº CNJ."""
+    cliente, _ = cliente_logado
+    _criar_caso(cliente, npjur="0111111")
+    _criar_caso(cliente, npjur="0222222")
+
+    resposta = cliente.get("/crivus/producao?aba=individuais&filtro=pendentes&busca=0111111")
+    assert "0111111" in resposta.text
+    assert "0222222" not in resposta.text
+
+    # a mesma busca bate pelo Nº CNJ (todos os casos de teste usam o
+    # mesmo processo fake) — confirma que o campo processo também é
+    # varrido, não só npjur
+    resposta_processo = cliente.get("/crivus/producao?aba=individuais&filtro=pendentes&busca=0000000-00.0000.0.00.0000")
+    assert "0111111" in resposta_processo.text
+    assert "0222222" in resposta_processo.text
+
+
+def test_producao_filtra_por_intervalo_de_data(cliente_logado):
+    cliente, _ = cliente_logado
+    antigo_id = _criar_caso(cliente, npjur="0333333")
+    recente_id = _criar_caso(cliente, npjur="0444444")
+
+    with obter_sessao() as sessao:
+        antigo = sessao.get(AnalisePublicacao, antigo_id)
+        antigo.criado_em = datetime(2020, 1, 1)
+        sessao.add(antigo)
+        sessao.commit()
+
+    resposta = cliente.get("/crivus/producao?aba=individuais&filtro=pendentes&data_de=2026-01-01")
+    assert "0444444" in resposta.text
+    assert "0333333" not in resposta.text
+
+
+def test_producao_filtra_por_solicitante(cliente_logado):
+    cliente, usuario = cliente_logado
+    _criar_caso(cliente, npjur="0555555")
+
+    resposta_deste_usuario = cliente.get(f"/crivus/producao?aba=individuais&filtro=pendentes&solicitante_id={usuario.id}")
+    assert "0555555" in resposta_deste_usuario.text
+
+    resposta_outro_usuario = cliente.get("/crivus/producao?aba=individuais&filtro=pendentes&solicitante_id=999999")
+    assert "0555555" not in resposta_outro_usuario.text
 
 
 def test_producao_lotes_mostra_estado_vazio(cliente_logado):

@@ -219,9 +219,10 @@
                                 {% endfor %}
                             </select>
                             <div class="linha-datas">
-                                <label>Início: <input type="date" name="data_inicio" value="{{ item.data_inicio }}" {{ "disabled" if analise.status == "concluido" }}></label>
-                                <label>Fim: <input type="date" name="data_fim" value="{{ item.data_fim }}" {{ "disabled" if analise.status == "concluido" }}></label>
+                                <label>Início: <input type="date" name="data_inicio" value="{{ item.data_inicio }}" min="{{ data_minima_agendamento }}" max="{{ data_maxima_agendamento }}" {{ "disabled" if analise.status == "concluido" }}></label>
+                                <label>Fim: <input type="date" name="data_fim" value="{{ item.data_fim }}" min="{{ data_minima_agendamento }}" max="{{ data_maxima_agendamento }}" {{ "disabled" if analise.status == "concluido" }}></label>
                             </div>
+                            <p class="aviso-discreto">Prazo máximo: {{ data_maxima_agendamento.strftime("%d/%m/%Y") }} (15 dias após a publicação).</p>
                             {% if item.criado_manualmente %}
                             <span class="aviso-discreto">* Adicionado manualmente</span>
                             {% elif item.tipo != item.tipo_sugerido or item.data_inicio != item.data_inicio_sugerida or item.data_fim != item.data_fim_sugerida %}

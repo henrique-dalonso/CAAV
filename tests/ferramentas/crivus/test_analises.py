@@ -244,6 +244,78 @@ def test_salvar_edicao_rejeita_tipo_vazio(usuario_teste):
         salvar_edicao_item(analise.id, "agendamento", novo.id, "")
 
 
+def test_marcar_item_pronto_rejeita_data_no_passado(usuario_teste):
+    """Henrique, diretoria, 2026-09-15: "SEMPRE, por exigência" a data
+    precisa ser válida — nunca antes de hoje, trava de verdade no
+    servidor (não só no seletor de data da tela)."""
+    analise = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
+    _, agendamentos = listar_itens(analise.id)
+    ontem = date.today() - timedelta(days=1)
+
+    with pytest.raises(ValueError, match="anterior a hoje"):
+        marcar_item_pronto(analise.id, "agendamento", agendamentos[0].id, nova_data_inicio=ontem, nova_data_fim=ontem)
+
+
+def test_marcar_item_pronto_rejeita_data_alem_do_prazo_maximo(usuario_teste):
+    """Henrique, diretoria, 2026-09-15: teto de 15 dias corridos após a
+    publicação (maior prazo recursal do CPC, art. 1.003 §5º) — pro Leitor
+    Individual, sem `data_publicacao_original`, a referência é
+    `criado_em` (a análise acabou de ser criada, então "hoje")."""
+    analise = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
+    _, agendamentos = listar_itens(analise.id)
+    alem_do_prazo = date.today() + timedelta(days=16)
+
+    with pytest.raises(ValueError, match="não pode passar de"):
+        marcar_item_pronto(
+            analise.id, "agendamento", agendamentos[0].id,
+            nova_data_inicio=date.today(), nova_data_fim=alem_do_prazo,
+        )
+
+
+def test_marcar_item_pronto_aceita_data_no_limite_do_prazo_maximo(usuario_teste):
+    """Exatamente 15 dias — limite INCLUSIVO, não deveria rejeitar."""
+    analise = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
+    _, agendamentos = listar_itens(analise.id)
+    no_limite = date.today() + timedelta(days=15)
+
+    atualizado = marcar_item_pronto(
+        analise.id, "agendamento", agendamentos[0].id,
+        nova_data_inicio=date.today(), nova_data_fim=no_limite,
+    )
+    assert atualizado.data_fim == no_limite
+
+
+def test_salvar_edicao_item_tambem_valida_prazo_agendamento(usuario_teste):
+    """A mesma trava vale pro botão "Salvar Alterações" (modo edição),
+    não só pro "Pronto"."""
+    analise = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
+    _, agendamentos = listar_itens(analise.id)
+    alem_do_prazo = date.today() + timedelta(days=20)
+
+    with pytest.raises(ValueError, match="não pode passar de"):
+        salvar_edicao_item(
+            analise.id, "agendamento", agendamentos[0].id, "MANIFESTAÇÃO",
+            nova_data_inicio=date.today(), nova_data_fim=alem_do_prazo,
+        )
+
+
+def test_data_maxima_agendamento_usa_publicacao_original_quando_existe(usuario_teste):
+    """origem="lote" tem data real da publicação — a referência do prazo
+    máximo é ELA, não `criado_em` (que só vale de proxy pro Leitor
+    Individual, onde não existe data de publicação capturada)."""
+    from app.ferramentas.crivus.db.analises import data_maxima_agendamento
+
+    analise = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
+    with obter_sessao() as sessao:
+        registro = sessao.get(AnalisePublicacao, analise.id)
+        registro.data_publicacao_original = date(2026, 9, 1)
+        sessao.add(registro)
+        sessao.commit()
+        sessao.refresh(registro)
+
+        assert data_maxima_agendamento(registro) == date(2026, 9, 16)
+
+
 def test_excluir_agendamento_manual_remove_o_item(usuario_teste):
     analise = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
     novo = criar_agendamento_manual(analise.id)
@@ -424,10 +496,14 @@ def test_listar_analises_lote_vazio_hoje(usuario_teste):
     assert contar_analises("lote", "aguardando_revisao") == 0
 
 
-def test_listar_analises_pendentes_ordenado_do_mais_antigo(usuario_teste):
-    """Mesma ressalva do teste acima sobre banco compartilhado: filtra o
-    resultado geral só pelos 2 ids deste teste, preservando a ordem
-    relativa entre eles — não assume que a lista inteira é só isso."""
+def test_listar_analises_pendentes_ordenado_do_mais_novo(usuario_teste):
+    """Henrique, diretoria, 2026-09-15: "as novas devem aparecer por
+    cima" — Pendentes passou a vir do mais novo pro mais antigo (antes
+    era o contrário, decisão de 2026-09-12; virou estressante com o
+    volume real trazido pelo Processamento em Lote). Mesma ressalva do
+    teste acima sobre banco compartilhado: filtra o resultado geral só
+    pelos 2 ids deste teste, preservando a ordem relativa entre eles —
+    não assume que a lista inteira é só isso."""
     primeira = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
     segunda = criar_analise_a_partir_da_ia(usuario_teste.id, "teor", _dados_ia_simples(), _uso_fake())
     _forcar_datas(primeira.id, criado_em=datetime(2026, 1, 1))
@@ -435,7 +511,7 @@ def test_listar_analises_pendentes_ordenado_do_mais_antigo(usuario_teste):
 
     ids_relevantes = {primeira.id, segunda.id}
     resultado = [a.id for a in listar_analises("individual", "aguardando_revisao") if a.id in ids_relevantes]
-    assert resultado == [primeira.id, segunda.id]
+    assert resultado == [segunda.id, primeira.id]
 
 
 def test_listar_analises_concluidos_ordenado_do_mais_recente(usuario_teste):
@@ -472,7 +548,9 @@ def test_listar_analises_paginacao(usuario_teste):
         offset += 2
 
     # cada id criado aparece exatamente 1 vez, em algum lugar da paginação
-    # completa, na ordem certa relativa entre si (mais antigo primeiro)
+    # completa, na ordem certa relativa entre si (mais novo primeiro,
+    # Henrique 2026-09-15 — ids_criados está em ordem de criação, mais
+    # antigo primeiro, então as posições saem em ordem decrescente)
     posicoes = [todas_as_paginas.index(id_) for id_ in ids_criados]
-    assert posicoes == sorted(posicoes)
+    assert posicoes == sorted(posicoes, reverse=True)
     assert all(todas_as_paginas.count(id_) == 1 for id_ in ids_criados)

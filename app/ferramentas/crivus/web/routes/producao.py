@@ -1,3 +1,4 @@
+from datetime import date
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
@@ -37,6 +38,17 @@ def pagina_producao(
     aba: str = "lotes",
     filtro: str = "pendentes",
     pagina: int = 1,
+    busca: str = "",
+    # Henrique, diretoria, 2026-09-15: str, não `date | None`/`int | None`
+    # direto no parâmetro — o <form> manda os campos vazios como string
+    # vazia (""), não omitidos, e o FastAPI tenta converter "" num date/
+    # int de verdade e quebra com 422 antes mesmo de chegar aqui (achado
+    # testando de propósito na tela, não só com querystring válida
+    # direto no teste automatizado). Conversão manual abaixo trata ""
+    # como "sem filtro".
+    data_de: str = "",
+    data_ate: str = "",
+    solicitante_id: str = "",
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
     if aba not in ABAS_VALIDAS:
@@ -46,14 +58,31 @@ def pagina_producao(
     if pagina < 1:
         pagina = 1
 
+    try:
+        data_de = date.fromisoformat(data_de) if data_de else None
+    except ValueError:
+        data_de = None
+    try:
+        data_ate = date.fromisoformat(data_ate) if data_ate else None
+    except ValueError:
+        data_ate = None
+    try:
+        solicitante_id = int(solicitante_id) if solicitante_id else None
+    except ValueError:
+        solicitante_id = None
+
     status = STATUS_POR_FILTRO[filtro]
     origem = "lote" if aba == "lotes" else "individual"
     offset = (pagina - 1) * POR_PAGINA
 
-    analises = listar_analises(origem, status, limite=POR_PAGINA, offset=offset)
-    total = contar_analises(origem, status)
+    analises = listar_analises(
+        origem, status, limite=POR_PAGINA, offset=offset,
+        busca=busca, data_de=data_de, data_ate=data_ate, solicitante_id=solicitante_id,
+    )
+    total = contar_analises(origem, status, busca=busca, data_de=data_de, data_ate=data_ate, solicitante_id=solicitante_id)
 
-    nomes_por_usuario_id = {u.id: u.nome for u in listar_todos_usuarios()}
+    todos_usuarios = listar_todos_usuarios()
+    nomes_por_usuario_id = {u.id: u.nome for u in todos_usuarios}
 
     return templates.TemplateResponse(
         request,
@@ -69,5 +98,10 @@ def pagina_producao(
             "tem_proxima_pagina": offset + POR_PAGINA < total,
             "eh_lotes": aba == "lotes",
             "pode_lote": usuario_tem_acesso_lote(usuario, "leitor-publicacoes"),
+            "busca": busca,
+            "data_de": data_de,
+            "data_ate": data_ate,
+            "solicitante_id": solicitante_id,
+            "usuarios_disponiveis": todos_usuarios,
         },
     )
