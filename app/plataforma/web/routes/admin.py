@@ -15,6 +15,7 @@ from app.plataforma.db.usuarios import (
     definir_ferramentas,
     desbloquear_usuario,
     excluir_usuario,
+    listar_ferramentas_lote_ids_por_usuario,
     listar_ferramentas_manual_ids_por_usuario,
     listar_ferramentas_liberadas_ids_por_usuario,
     listar_todas_ferramentas,
@@ -95,9 +96,11 @@ def pagina_usuarios(
     # default vazio cobre o usuário sem nenhuma ferramenta liberada.
     liberadas_bulk = listar_ferramentas_liberadas_ids_por_usuario()
     manual_bulk = listar_ferramentas_manual_ids_por_usuario()
+    lote_bulk = listar_ferramentas_lote_ids_por_usuario()
 
     ferramentas_por_usuario = {u.id: liberadas_bulk.get(u.id, set()) for u in usuarios}
     ferramentas_manual_por_usuario = {u.id: manual_bulk.get(u.id, set()) for u in usuarios}
+    ferramentas_lote_por_usuario = {u.id: lote_bulk.get(u.id, set()) for u in usuarios}
 
     return templates.TemplateResponse(
         request,
@@ -109,6 +112,7 @@ def pagina_usuarios(
             "ferramentas": ferramentas,
             "ferramentas_por_usuario": ferramentas_por_usuario,
             "ferramentas_manual_por_usuario": ferramentas_manual_por_usuario,
+            "ferramentas_lote_por_usuario": ferramentas_lote_por_usuario,
             "erro": erro,
             "sucesso": sucesso,
         },
@@ -125,6 +129,7 @@ def criar_usuario_route(
     cargo: str = Form(CARGO_COLABORADOR),
     ferramenta_ids: list[int] = Form([]),
     ferramentas_manual_ids: list[int] = Form([]),
+    ferramentas_lote_ids: list[int] = Form([]),
 ):
     if len(senha) < TAMANHO_MINIMO_SENHA:
         return _redirecionar(
@@ -142,6 +147,7 @@ def criar_usuario_route(
             cargo=cargo,
             ferramenta_ids=ferramenta_ids,
             ferramentas_manual_ids=ferramentas_manual_ids,
+            ferramentas_lote_ids=ferramentas_lote_ids,
         )
     except ValueError as erro:
         return _redirecionar("/admin/usuarios/novo", erro=str(erro))
@@ -166,8 +172,9 @@ def atualizar_ferramentas_route(
     usuario_id: int,
     ferramenta_ids: list[int] = Form([]),
     ferramentas_manual_ids: list[int] = Form([]),
+    ferramentas_lote_ids: list[int] = Form([]),
 ):
-    definir_ferramentas(usuario_id, ferramenta_ids, ferramentas_manual_ids)
+    definir_ferramentas(usuario_id, ferramenta_ids, ferramentas_manual_ids, ferramentas_lote_ids)
     return _redirecionar("/admin/usuarios", sucesso="Ferramentas atualizadas.")
 
 

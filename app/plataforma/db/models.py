@@ -121,6 +121,16 @@ class Ferramenta(SQLModel, table=True):
     url: str
     suporta_fila_robo: bool = Field(default=False)
 
+    # Henrique, diretoria, 2026-09-15: mesmo espírito de suporta_fila_robo
+    # (controla se a opção aparece pra conceder no painel de usuários),
+    # mas pro Processamento em Lote do Crivus — só "leitor-publicacoes"
+    # liga isso hoje. Campo PRÓPRIO, não reaproveita suporta_fila_robo:
+    # a relação de custo/velocidade é oposta à do Modo Urgente do
+    # Extratus (Lote é o caminho mais barato/lento, não o mais caro/na
+    # hora) — só a MECÂNICA de "permissão extra manual, restrita por
+    # padrão" é a mesma, não o significado.
+    suporta_lote: bool = Field(default=False)
+
     # Identidade visual da ferramenta (bolinha na bandeja de apps/home,
     # tarja acima do título, botões/abas dentro dela) — None em qualquer
     # um deles cai no azul padrão da plataforma (ver base.css). Guarda
@@ -170,6 +180,13 @@ class UsuarioFerramenta(SQLModel, table=True):
     )
     fila_robo: bool = Field(default=False)
     acesso_manual: bool = Field(default=False)
+
+    # Henrique, diretoria, 2026-09-15: acesso ao Processamento em Lote do
+    # Crivus — precisa ser dado manualmente, à parte do acesso geral à
+    # ferramenta (ter acesso a "leitor-publicacoes" dá Leitor Individual
+    # + Produção; Lote é um checkbox extra, mesmo mecanismo de
+    # acesso_manual, campo próprio porque o significado é diferente.
+    acesso_lote: bool = Field(default=False)
 
 
 class AcessoFerramenta(SQLModel, table=True):

@@ -19,6 +19,7 @@ from app.plataforma.db.usuarios import (
     definir_ferramentas,
     excluir_usuario,
     ferramenta_pela_url,
+    listar_ferramentas_lote_ids,
     listar_ferramentas_manual_ids,
     listar_ferramentas_liberadas_ids,
     listar_ferramentas_mais_usadas,
@@ -26,6 +27,7 @@ from app.plataforma.db.usuarios import (
     obter_ultimo_visto,
     registrar_acesso_ferramenta,
     usuario_tem_acesso_a_alguma_fila_robo,
+    usuario_tem_acesso_lote,
     usuario_tem_acesso_manual,
 )
 from app.plataforma.web.rotulos import emblema_ferramenta, rotulo_perfil
@@ -239,6 +241,44 @@ def test_colaborador_sem_acesso_manual_nao_tem_manual(limpar_usuarios_teste):
     )
 
     assert usuario_tem_acesso_manual(usuario, "extratus") is False
+
+
+def test_colaborador_com_acesso_lote_tem_processamento_em_lote(limpar_usuarios_teste):
+    """Henrique, diretoria, 2026-09-15: mesmo mecanismo de acesso_manual,
+    mas pro Processamento em Lote do Crivus."""
+    crivus_id = _buscar_ferramenta_id_por_slug("leitor-publicacoes")
+
+    usuario = criar_usuario(
+        nome="Teste Colaborador",
+        nome_usuario=NOME_COLABORADOR_TESTE,
+        email="teste_usuarios_colab@example.com",
+        senha="senhaTeste123",
+        eh_admin=False,
+        cargo=CARGO_COLABORADOR,
+        ferramenta_ids=[crivus_id],
+        ferramentas_lote_ids=[crivus_id],
+    )
+
+    assert listar_ferramentas_lote_ids(usuario.id) == {crivus_id}
+    assert usuario_tem_acesso_lote(usuario, "leitor-publicacoes") is True
+
+
+def test_colaborador_sem_acesso_lote_nao_tem_processamento_em_lote(limpar_usuarios_teste):
+    crivus_id = _buscar_ferramenta_id_por_slug("leitor-publicacoes")
+
+    usuario = criar_usuario(
+        nome="Teste Colaborador",
+        nome_usuario=NOME_COLABORADOR_TESTE,
+        email="teste_usuarios_colab@example.com",
+        senha="senhaTeste123",
+        eh_admin=False,
+        cargo=CARGO_COLABORADOR,
+        ferramenta_ids=[crivus_id],
+    )
+
+    assert usuario_tem_acesso_lote(usuario, "leitor-publicacoes") is False
+    # ter acesso geral ao Crivus não dá acesso automático ao Lote
+    assert usuario_tem_acesso_manual(usuario, "leitor-publicacoes") is False
 
 
 def test_excluir_usuario_apaga_usuario_e_vinculos(limpar_usuarios_teste):

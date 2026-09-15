@@ -52,6 +52,24 @@ def _marcar_acesso_manual(sessao, usuario_id, ferramenta_ids_manual):
         sessao.add(vinculo)
 
 
+def _marcar_acesso_lote(sessao, usuario_id, ferramenta_ids_lote):
+    """Henrique, diretoria, 2026-09-15: mesmo mecanismo de
+    _marcar_acesso_manual, pro Processamento em Lote do Crivus."""
+    if not ferramenta_ids_lote:
+        return
+
+    vinculos = sessao.exec(
+        select(UsuarioFerramenta).where(
+            UsuarioFerramenta.usuario_id == usuario_id,
+            UsuarioFerramenta.ferramenta_id.in_(ferramenta_ids_lote),
+        )
+    ).all()
+
+    for vinculo in vinculos:
+        vinculo.acesso_lote = True
+        sessao.add(vinculo)
+
+
 def buscar_usuario_por_nome_usuario(nome_usuario: str) -> Optional[Usuario]:
     with obter_sessao() as sessao:
         consulta = select(Usuario).where(
@@ -113,6 +131,10 @@ def listar_ferramentas_manual_ids_por_usuario():
     return _agrupar_ferramenta_ids_por_usuario(UsuarioFerramenta.acesso_manual == True)  # noqa: E712
 
 
+def listar_ferramentas_lote_ids_por_usuario():
+    return _agrupar_ferramenta_ids_por_usuario(UsuarioFerramenta.acesso_lote == True)  # noqa: E712
+
+
 def usuario_tem_acesso_manual(usuario: Usuario, slug_ferramenta: str) -> bool:
     """Acesso ao fluxo Manual/URGENTE (Gerar Relatório URGENTE, Relatórios
     URGENTES) — Henrique, diretoria, 2026-08-19: virou exclusivo de quem
@@ -133,6 +155,27 @@ def usuario_tem_acesso_manual(usuario: Usuario, slug_ferramenta: str) -> bool:
                 UsuarioFerramenta.usuario_id == usuario.id,
                 Ferramenta.slug == slug_ferramenta,
                 UsuarioFerramenta.acesso_manual == True,  # noqa: E712
+            )
+        )
+        return sessao.exec(consulta).first() is not None
+
+
+def usuario_tem_acesso_lote(usuario: Usuario, slug_ferramenta: str) -> bool:
+    """Acesso ao Processamento em Lote do Crivus — Henrique, diretoria,
+    2026-09-15: dado manualmente, à parte do acesso geral à ferramenta
+    (mesmo mecanismo de usuario_tem_acesso_manual, campo próprio porque
+    o significado é diferente, ver docstring de UsuarioFerramenta)."""
+    if usuario.eh_admin:
+        return True
+
+    with obter_sessao() as sessao:
+        consulta = (
+            select(UsuarioFerramenta)
+            .join(Ferramenta, Ferramenta.id == UsuarioFerramenta.ferramenta_id)
+            .where(
+                UsuarioFerramenta.usuario_id == usuario.id,
+                Ferramenta.slug == slug_ferramenta,
+                UsuarioFerramenta.acesso_lote == True,  # noqa: E712
             )
         )
         return sessao.exec(consulta).first() is not None
@@ -174,6 +217,15 @@ def listar_ferramentas_manual_ids(usuario_id: int):
         consulta = select(UsuarioFerramenta.ferramenta_id).where(
             UsuarioFerramenta.usuario_id == usuario_id,
             UsuarioFerramenta.acesso_manual == True,  # noqa: E712
+        )
+        return set(sessao.exec(consulta).all())
+
+
+def listar_ferramentas_lote_ids(usuario_id: int):
+    with obter_sessao() as sessao:
+        consulta = select(UsuarioFerramenta.ferramenta_id).where(
+            UsuarioFerramenta.usuario_id == usuario_id,
+            UsuarioFerramenta.acesso_lote == True,  # noqa: E712
         )
         return set(sessao.exec(consulta).all())
 
@@ -338,11 +390,13 @@ def criar_usuario(
     cargo=CARGO_COLABORADOR,
     ferramenta_ids=None,
     ferramentas_manual_ids=None,
+    ferramentas_lote_ids=None,
 ):
     if cargo not in CARGOS_VALIDOS:
         raise ValueError(f"Cargo inválido: {cargo!r}")
 
     ferramentas_manual_ids = set(ferramentas_manual_ids or [])
+    ferramentas_lote_ids = set(ferramentas_lote_ids or [])
 
     with obter_sessao() as sessao:
         ja_existe = sessao.exec(
@@ -382,6 +436,7 @@ def criar_usuario(
                         usuario_id=usuario.id,
                         ferramenta_id=ferramenta_id,
                         acesso_manual=ferramenta_id in ferramentas_manual_ids,
+                        acesso_lote=ferramenta_id in ferramentas_lote_ids,
                     )
                 )
 
@@ -394,6 +449,7 @@ def criar_usuario(
             if cargo == CARGO_COORDENADOR and not ferramenta_ids:
                 _conceder_todas_ferramentas(sessao, usuario.id)
                 _marcar_acesso_manual(sessao, usuario.id, ferramentas_manual_ids)
+                _marcar_acesso_lote(sessao, usuario.id, ferramentas_lote_ids)
 
         sessao.commit()
         # Esse commit expira os atributos já carregados em "usuario" — sem
@@ -405,8 +461,9 @@ def criar_usuario(
         return usuario
 
 
-def definir_ferramentas(usuario_id, ferramenta_ids, ferramentas_manual_ids=None):
+def definir_ferramentas(usuario_id, ferramenta_ids, ferramentas_manual_ids=None, ferramentas_lote_ids=None):
     ferramentas_manual_ids = set(ferramentas_manual_ids or [])
+    ferramentas_lote_ids = set(ferramentas_lote_ids or [])
 
     with obter_sessao() as sessao:
         atuais = sessao.exec(
@@ -422,6 +479,7 @@ def definir_ferramentas(usuario_id, ferramenta_ids, ferramentas_manual_ids=None)
                     usuario_id=usuario_id,
                     ferramenta_id=ferramenta_id,
                     acesso_manual=ferramenta_id in ferramentas_manual_ids,
+                    acesso_lote=ferramenta_id in ferramentas_lote_ids,
                 )
             )
 

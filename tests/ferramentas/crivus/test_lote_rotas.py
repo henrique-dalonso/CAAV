@@ -27,7 +27,12 @@ def _planilha_valida_bytes(linhas=2):
     return buffer.getvalue()
 
 
-def _criar_usuario_com_acesso(nome_usuario, cargo=CARGO_COLABORADOR):
+def _criar_usuario_com_acesso(nome_usuario, cargo=CARGO_COLABORADOR, com_acesso_lote=True):
+    """Henrique, diretoria, 2026-09-15: acesso ao Processamento em Lote é
+    uma permissão à parte do acesso geral ao Crivus (ver
+    UsuarioFerramenta.acesso_lote) — `com_acesso_lote=True` por padrão
+    porque a maioria dos testes deste arquivo é sobre as rotas de lote em
+    si; o teste da trava em si passa `com_acesso_lote=False`."""
     usuario = criar_usuario(
         nome=f"Teste {nome_usuario}",
         nome_usuario=nome_usuario,
@@ -38,7 +43,8 @@ def _criar_usuario_com_acesso(nome_usuario, cargo=CARGO_COLABORADOR):
     )
     ferramentas = listar_todas_ferramentas()
     crivus_id = next(f.id for f in ferramentas if f.slug == "leitor-publicacoes")
-    definir_ferramentas(usuario.id, [crivus_id])
+    ferramentas_lote_ids = [crivus_id] if com_acesso_lote else []
+    definir_ferramentas(usuario.id, [crivus_id], ferramentas_lote_ids=ferramentas_lote_ids)
     return usuario
 
 
@@ -71,6 +77,27 @@ def test_lote_exige_login():
     cliente = TestClient(app, follow_redirects=False)
     resposta = cliente.get("/crivus/lote")
     assert resposta.status_code in (302, 303)
+
+
+def test_lote_exige_permissao_propria_alem_do_acesso_geral_ao_crivus():
+    """Henrique, diretoria, 2026-09-15: ter acesso ao Crivus (Leitor
+    Individual + Produção) NÃO dá acesso automático ao Processamento em
+    Lote — precisa ser concedido manualmente à parte."""
+    usuario = _criar_usuario_com_acesso("teste_crivus_sem_acesso_lote", com_acesso_lote=False)
+    try:
+        cliente = TestClient(app, follow_redirects=True)
+        cliente.post("/login", data={"usuario_login": "teste_crivus_sem_acesso_lote", "senha": SENHA_TESTE})
+
+        resposta = cliente.get("/crivus/lote")
+        assert resposta.status_code == 403
+
+        # o resto do Crivus continua acessível normalmente
+        resposta_leitor = cliente.get("/crivus/leitor-individual")
+        assert resposta_leitor.status_code == 200
+        assert "Processamento em Lote" not in resposta_leitor.text
+    finally:
+        _limpar_lotes_do_usuario(usuario.id)
+        excluir_usuario(usuario.id)
 
 
 def test_pagina_lote_lista_vazio(cliente_logado):

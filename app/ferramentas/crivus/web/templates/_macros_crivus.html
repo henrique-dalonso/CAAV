@@ -6,12 +6,19 @@
    visuais .abas-extratus/.aba/.aba-ativa (copiadas pro crivus.css, ver
    comentário lá).
 
-   aba_ativa: "leitor-individual" | "producao" | "lote" #}
-{% macro nav_crivus(aba_ativa) %}
+   aba_ativa: "leitor-individual" | "producao" | "lote"
+   pode_lote: Henrique, diretoria, 2026-09-15 — acesso ao Processamento
+   em Lote é restrito, concedido manualmente (ver
+   UsuarioFerramenta.acesso_lote); quem não tem a aba nem aparece. Ganhou
+   a primeira posição pra quem tem acesso — "os lotes serão o modo
+   'urgente' do Crivus", vira o fluxo principal pra quem usa. #}
+{% macro nav_crivus(aba_ativa, pode_lote) %}
 <nav class="abas-extratus">
+    {% if pode_lote %}
+    <a href="/crivus/lote" class="aba{% if aba_ativa == "lote" %} aba-ativa{% endif %}">Processamento em Lote</a>
+    {% endif %}
     <a href="/crivus/leitor-individual" class="aba{% if aba_ativa == "leitor-individual" %} aba-ativa{% endif %}">Leitor Individual</a>
     <a href="/crivus/producao" class="aba{% if aba_ativa == "producao" %} aba-ativa{% endif %}">Produção</a>
-    <a href="/crivus/lote" class="aba{% if aba_ativa == "lote" %} aba-ativa{% endif %}">Processamento em Lote</a>
 </nav>
 {% endmacro %}
 

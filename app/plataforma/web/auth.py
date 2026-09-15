@@ -4,6 +4,7 @@ from app.plataforma.db.models import Usuario
 from app.plataforma.db.usuarios import (
     buscar_usuario_por_id,
     usuario_tem_acesso,
+    usuario_tem_acesso_lote,
     usuario_tem_acesso_manual,
 )
 
@@ -82,6 +83,24 @@ def exigir_acesso_manual(slug_ferramenta: str):
             raise HTTPException(
                 status_code=403,
                 detail="Acesso restrito ao modo Manual/URGENTE.",
+            )
+
+        return usuario
+
+    return dependencia
+
+
+def exigir_acesso_lote(slug_ferramenta: str):
+    """Processamento em Lote do Crivus — Henrique, diretoria, 2026-09-15:
+    acesso restrito, concedido manualmente à parte do acesso geral à
+    ferramenta (mesmo mecanismo de exigir_acesso_manual, ver docstring
+    de UsuarioFerramenta.acesso_lote)."""
+
+    def dependencia(usuario: Usuario = Depends(exigir_login)) -> Usuario:
+        if not usuario_tem_acesso_lote(usuario, slug_ferramenta):
+            raise HTTPException(
+                status_code=403,
+                detail="Acesso restrito ao Processamento em Lote.",
             )
 
         return usuario

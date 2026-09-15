@@ -8,11 +8,15 @@ from fastapi.responses import FileResponse, RedirectResponse
 from app.ferramentas.crivus.core.lote_manager import PlanilhaInvalida, ler_linhas_planilha
 from app.ferramentas.crivus.db.lotes_crivus import criar_lote, listar_lotes, obter_lote
 from app.plataforma.db.models import Usuario
-from app.plataforma.web.auth import exigir_acesso_ferramenta
+from app.plataforma.web.auth import exigir_acesso_lote
 from app.plataforma.web.templates_util import criar_templates
 
 
-router = APIRouter(dependencies=[Depends(exigir_acesso_ferramenta("leitor-publicacoes"))])
+# Henrique, diretoria, 2026-09-15: Processamento em Lote é acesso
+# restrito, concedido manualmente à parte do acesso geral ao Crivus —
+# ver docstring de UsuarioFerramenta.acesso_lote. Diferente dos outros
+# roteadores do Crivus, que usam exigir_acesso_ferramenta normal.
+router = APIRouter(dependencies=[Depends(exigir_acesso_lote("leitor-publicacoes"))])
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 PLATAFORMA_TEMPLATES_DIR = (
@@ -42,7 +46,7 @@ def pagina_lote(
     request: Request,
     erro: str | None = None,
     sucesso: str | None = None,
-    usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
+    usuario: Usuario = Depends(exigir_acesso_lote("leitor-publicacoes")),
 ):
     return templates.TemplateResponse(
         request,
@@ -50,6 +54,8 @@ def pagina_lote(
         {
             "usuario": usuario,
             "lotes": listar_lotes(),
+            # Chegou até aqui porque exigir_acesso_lote já deixou passar.
+            "pode_lote": True,
             "erro": erro,
             "sucesso": sucesso,
         },
@@ -65,7 +71,7 @@ def pagina_lote(
 @router.post("/lote/upload")
 def enviar_planilha(
     arquivo: UploadFile = File(...),
-    usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
+    usuario: Usuario = Depends(exigir_acesso_lote("leitor-publicacoes")),
 ):
     nome_seguro = Path(arquivo.filename or "").name
 
@@ -95,7 +101,7 @@ def enviar_planilha(
     lote = criar_lote(usuario.id, nome_seguro, linhas)
 
     return RedirectResponse(
-        url=f"/crivus/lote?sucesso={quote(f'Planilha enviada — {lote.total_linhas} publicações na fila.')}",
+        url=f"/crivus/lote?sucesso={quote(f'Planilha enviada. {lote.total_linhas} publicações na fila.')}",
         status_code=303,
     )
 

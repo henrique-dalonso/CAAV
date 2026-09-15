@@ -49,6 +49,8 @@ COLUNAS_PENDENTES = {
         "cor_acento_fraco_escuro": "VARCHAR",
         # Mesma retroatividade do usuario.tema/cor_perfil acima.
         "suporta_fila_robo": "BOOLEAN DEFAULT 0",
+        # Henrique, diretoria, 2026-09-15: Processamento em Lote do Crivus.
+        "suporta_lote": "BOOLEAN DEFAULT 0",
     },
     "job": {
         "notificacao_resolvida": "BOOLEAN DEFAULT 0",
@@ -90,6 +92,8 @@ COLUNAS_PENDENTES = {
         # (fila_robo acima não é mais lido — Robô virou padrão, ver
         # docstring de UsuarioFerramenta em db/models.py).
         "acesso_manual": "BOOLEAN DEFAULT 0",
+        # Henrique, diretoria, 2026-09-15: Processamento em Lote do Crivus.
+        "acesso_lote": "BOOLEAN DEFAULT 0",
     },
     "itemloterobo": {
         # Henrique, diretoria, 2026-08-26 — custo do resgate de páginas

@@ -23,6 +23,7 @@ from app.ferramentas.crivus.db.analises import (
     salvar_edicao_item,
 )
 from app.plataforma.db.models import CARGO_COORDENADOR, Usuario
+from app.plataforma.db.usuarios import usuario_tem_acesso_lote
 from app.plataforma.web.auth import exigir_acesso_ferramenta
 from app.plataforma.web.templates_util import criar_templates
 
@@ -143,6 +144,7 @@ def pagina_inicial(
             "usuario": usuario,
             "maximo_anexos": _limite_anexos(usuario),
             "tamanho_maximo_mb": TAMANHO_MAXIMO_ANEXO_MB,
+            "pode_lote": usuario_tem_acesso_lote(usuario, "leitor-publicacoes"),
             "erro": erro,
             "sucesso": sucesso,
         },

@@ -103,6 +103,10 @@ FERRAMENTAS_PADRAO = [
         # Leitor Individual; o clique no ícone leva direto pra ela.
         "url": "/crivus/leitor-individual",
         "suporta_fila_robo": False,
+        # Henrique, diretoria, 2026-09-15: acesso ao Processamento em Lote
+        # precisa ser concedido manualmente, à parte do acesso geral ao
+        # Crivus (ver docstring de UsuarioFerramenta.acesso_lote).
+        "suporta_lote": True,
         # Henrique, 2026-09-04: "torne a cor Verde a cor do Crivus" — mesma
         # estrutura clara/escura da Aburesi acima, só trocando a rampa
         # de cor (teal -> green).
@@ -135,7 +139,7 @@ def garantir_ferramentas_padrao():
                 continue
 
             for campo in (
-                "nome", "descricao", "url", "suporta_fila_robo",
+                "nome", "descricao", "url", "suporta_fila_robo", "suporta_lote",
                 "cor_acento", "cor_acento_hover", "cor_acento_fraco",
                 "cor_acento_escuro", "cor_acento_hover_escuro", "cor_acento_fraco_escuro",
             ):

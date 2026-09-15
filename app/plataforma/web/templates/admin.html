@@ -249,6 +249,13 @@
                                             <span>Modo Urgente</span>
                                         </label>
                                         {% endif %}
+                                        {% if ferramenta.suporta_lote %}
+                                        <label class="ferramenta-tile-fila" data-dica="Acesso ao Processamento em Lote — sem isso, só Leitor Individual e Produção">
+                                            <input type="checkbox" name="ferramentas_lote_ids" value="{{ ferramenta.id }}" class="check-input">
+                                            <span class="check-caixa check-caixa-pequena"></span>
+                                            <span>Processamento em Lote</span>
+                                        </label>
+                                        {% endif %}
                                     </div>
                                     {% endfor %}
                                 </div>
@@ -438,6 +445,14 @@
                                                         {% if ferramenta.id in ferramentas_manual_por_usuario.get(usuario_linha.id, []) %}checked{% endif %}>
                                                     <span class="check-caixa check-caixa-pequena"></span>
                                                     <span>Modo Urgente</span>
+                                                </label>
+                                                {% endif %}
+                                                {% if ferramenta.suporta_lote %}
+                                                <label class="ferramenta-tile-fila" data-dica="Acesso ao Processamento em Lote — sem isso, só Leitor Individual e Produção">
+                                                    <input type="checkbox" name="ferramentas_lote_ids" value="{{ ferramenta.id }}" class="check-input"
+                                                        {% if ferramenta.id in ferramentas_lote_por_usuario.get(usuario_linha.id, []) %}checked{% endif %}>
+                                                    <span class="check-caixa check-caixa-pequena"></span>
+                                                    <span>Processamento em Lote</span>
                                                 </label>
                                                 {% endif %}
                                             </div>

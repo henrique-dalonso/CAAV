@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Request
 from app.ferramentas.crivus.config.taxonomia import confianca_feminino
 from app.ferramentas.crivus.db.analises import contar_analises, listar_analises
 from app.plataforma.db.models import Usuario
-from app.plataforma.db.usuarios import listar_todos_usuarios
+from app.plataforma.db.usuarios import listar_todos_usuarios, usuario_tem_acesso_lote
 from app.plataforma.web.auth import exigir_acesso_ferramenta
 from app.plataforma.web.templates_util import criar_templates
 
@@ -68,5 +68,6 @@ def pagina_producao(
             "total": total,
             "tem_proxima_pagina": offset + POR_PAGINA < total,
             "eh_lotes": aba == "lotes",
+            "pode_lote": usuario_tem_acesso_lote(usuario, "leitor-publicacoes"),
         },
     )
