@@ -690,12 +690,12 @@
     margin: 0;
 }
 
-/* Títulos de "Conclusão Operacional" e "Leitura da Publicação" — Henrique,
+/* Títulos de "Conclusão Operacional" e "Teor da Publicação" — Henrique,
    2026-09-05: "estão pouco destacados, parecem fazer parte do texto
    corrido". Rótulo de seção (maiúsculas + cor de destaque + linha
    embaixo), claramente separado do parágrafo abaixo. */
 .cartao-conclusao h2,
-.cartao-leitura-compacta h2 {
+.cartao-teor-publicacao h2 {
     font-size: 0.78rem;
     font-weight: 800;
     text-transform: uppercase;
@@ -706,10 +706,19 @@
     border-bottom: 2px solid var(--cor-borda);
 }
 
-/* --- Leitura da Publicação — agora compacta e independente da
-   Conclusão: só as primeiras linhas (line-clamp), sempre fechada, com
-   "Ver leitura" abrindo o texto inteiro num popup (ver .modal-leitura
-   abaixo) em vez de esticar a página. --- */
+/* Henrique, diretoria, 2026-09-15: "Leitura da Publicação" (a
+   interpretação da IA) deixou de ficar sempre visível — some daqui pro
+   popup (ver .modal-leitura abaixo), acessado pelo "Ver leitura" que
+   agora mora dentro de Conclusão Operacional. No lugar dela, sempre
+   visível: o TEOR bruto usado pela IA pra análise, pra quem revisa
+   poder conferir a fonte sem precisar abrir nada. pre-wrap preserva a
+   formatação/quebras de linha originais do texto colado/importado. */
+.teor-publicacao-texto {
+    font-size: 0.88rem;
+    line-height: 1.55;
+    margin: 0;
+    white-space: pre-wrap;
+}
 
 .leitura-formatada p {
     margin: 0 0 0.55rem;
@@ -723,13 +732,6 @@
 
 .leitura-formatada strong {
     color: var(--cor-texto);
-}
-
-.leitura-formatada-compacta {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
-    overflow: hidden;
 }
 
 .botao-ver-leitura {

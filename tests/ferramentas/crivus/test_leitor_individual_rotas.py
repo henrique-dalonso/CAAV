@@ -154,6 +154,29 @@ def test_fluxo_completo_analisar_corrigir_e_concluir(cliente_logado):
         assert analise_atual.status == "concluido"
 
 
+def test_detalhe_mostra_teor_sempre_visivel_e_esconde_leitura_atras_de_botao(cliente_logado):
+    """Henrique, diretoria, 2026-09-15: "Leitura da Publicação" (a
+    interpretação da IA) só aparece atrás do botão "Ver leitura" agora
+    (dentro de Conclusão Operacional); o TEOR usado pela IA fica sempre
+    visível na tela, pra quem revisa poder conferir a fonte."""
+    cliente, _ = cliente_logado
+
+    resposta = cliente.post(
+        "/crivus/leitor-individual/analisar",
+        data={
+            "npjur": "0119225",
+            "processo": "0000000-00.0000.0.00.0000",
+            "teor_publicacao": "teor de teste bem específico pra conferir na tela",
+        },
+    )
+    assert resposta.status_code == 200
+
+    assert "teor de teste bem específico pra conferir na tela" in resposta.text
+    assert "Teor da Publicação" in resposta.text
+    assert "Ver leitura" in resposta.text
+    assert "cartao-leitura-compacta" not in resposta.text
+
+
 def test_marcar_desnecessario_tambem_libera_conclusao(cliente_logado):
     """Henrique, 2026-09-06: Acompanhamento nunca pode virar
     "desnecessario" (sempre há exatamente 1, corrige-se em vez de
