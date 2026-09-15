@@ -1606,10 +1606,19 @@ html[data-theme="escuro"] .interruptor-texto-on {
    robô". Mesmas classes/estilo de extratus.css (Relatórios do Robô,
    linhas ~975-1089) copiadas pra cá — variáveis de cor já são globais,
    Crivus só não carrega o CSS do Extratus. */
+/* Henrique, diretoria, 2026-09-15: "o botão de Filtrar quebra a posição
+   e é jogado exageradamente pra esquerda" — `justify-content:
+   space-between` num flex com `wrap` distribui o espaço LINHA POR
+   LINHA (não a fileira inteira), então quando "Solicitado por" + o
+   botão + "Limpar filtros" sobram sozinhos numa 2ª linha, o botão do
+   meio fica espremido perto do início em vez de ficar ao lado do
+   dropdown. `flex-start` deixa tudo fluir naturalmente da esquerda pra
+   direita; `margin-left: auto` no link "Limpar filtros" é quem empurra
+   só ELE pro fim da linha, sem depender do resto. */
 .barra-filtros-producao {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 1rem;
     flex-wrap: wrap;
     margin-bottom: 1.25rem;
@@ -1701,6 +1710,7 @@ html[data-theme="escuro"] .interruptor-texto-on {
 }
 
 .link-limpar-filtros {
+    margin-left: auto;
     font-size: 0.82rem;
     color: var(--cor-texto-suave);
     text-decoration: underline;

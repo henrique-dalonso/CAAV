@@ -431,6 +431,14 @@
 
         if (novoTitulo) { document.title = novoTitulo; }
         if (novaUrl) { window.history.pushState({}, "", novaUrl); }
+
+        // Henrique, diretoria, 2026-09-15: o filtro de data de Produção
+        // troca #crivus-conteudo inteiro por esse mesmo mecanismo (troca
+        // de aba/página são links interceptados acima) — reaplica o
+        // min/max um do outro no par De/Até depois da troca, senão um
+        // valor já preenchido (veio na URL) fica sem o limite até a
+        // pessoa mexer de novo em algum dos dois campos.
+        sincronizarLimitesDataProducao();
     }
 
     function mostrarCarregandoAnalise() {
@@ -620,4 +628,32 @@
                 window.location.href = link.href;
             });
     });
+
+    // -----------------------------------------------------------------
+    // Filtro de data de Produção (De/Até) — Henrique, diretoria,
+    // 2026-09-15: "mesmo comportamento do Extratus" (relatorios_robo.js)
+    // — o calendário de cada campo se ajusta pelo que já foi escolhido
+    // no outro, não faz sentido "Até" permitir uma data antes de "De"
+    // (nem o contrário). Delegado em document (não getElementById +
+    // addEventListener direto) porque a troca de aba/página do Produção
+    // substitui #crivus-conteudo inteiro (ver substituirConteudo acima) —
+    // um listener preso no elemento antigo morreria na primeira troca.
+    // -----------------------------------------------------------------
+
+    function sincronizarLimitesDataProducao() {
+        var campoDataDe = document.getElementById("filtro-data-de");
+        var campoDataAte = document.getElementById("filtro-data-ate");
+        if (!campoDataDe || !campoDataAte) { return; }
+
+        campoDataAte.min = campoDataDe.value || "";
+        campoDataDe.max = campoDataAte.value || "";
+    }
+
+    document.addEventListener("change", function (evento) {
+        if (evento.target.id === "filtro-data-de" || evento.target.id === "filtro-data-ate") {
+            sincronizarLimitesDataProducao();
+        }
+    });
+
+    sincronizarLimitesDataProducao();
 })();

@@ -162,6 +162,22 @@ def contar_analises(origem, status, busca=None, data_de=None, data_ate=None, sol
         return len(sessao.exec(consulta.with_only_columns(AnalisePublicacao.id)).all())
 
 
+def listar_solicitantes_ids(origem, status):
+    """Henrique, diretoria, 2026-09-15: "mesmo comportamento do Extratus"
+    — o dropdown "Solicitado por" só oferece quem de fato tem caso nesse
+    recorte (aba+filtro atuais), não a base de usuários inteira (a
+    maioria nunca mandou nada pra essa aba específica). Ignora
+    busca/data/solicitante de propósito — a lista de opções não deve
+    encolher só porque outro filtro já está aplicado."""
+    with obter_sessao() as sessao:
+        ids = sessao.exec(
+            select(AnalisePublicacao.usuario_id)
+            .where(AnalisePublicacao.origem == origem, AnalisePublicacao.status == status)
+            .distinct()
+        ).all()
+        return set(ids)
+
+
 def listar_itens(analise_id):
     with obter_sessao() as sessao:
         acompanhamentos = sessao.exec(

@@ -4,7 +4,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, Request
 
 from app.ferramentas.crivus.config.taxonomia import confianca_feminino
-from app.ferramentas.crivus.db.analises import contar_analises, listar_analises
+from app.ferramentas.crivus.db.analises import contar_analises, listar_analises, listar_solicitantes_ids
 from app.plataforma.db.models import Usuario
 from app.plataforma.db.usuarios import listar_todos_usuarios, usuario_tem_acesso_lote
 from app.plataforma.web.auth import exigir_acesso_ferramenta
@@ -84,6 +84,15 @@ def pagina_producao(
     todos_usuarios = listar_todos_usuarios()
     nomes_por_usuario_id = {u.id: u.nome for u in todos_usuarios}
 
+    # Henrique, diretoria, 2026-09-15: "mesmo comportamento do Extratus" —
+    # dropdown só com quem de fato tem caso nessa aba+filtro, não a base
+    # de usuários inteira.
+    ids_com_caso = listar_solicitantes_ids(origem, status)
+    usuarios_disponiveis = sorted(
+        (u for u in todos_usuarios if u.id in ids_com_caso),
+        key=lambda u: u.nome.lower(),
+    )
+
     return templates.TemplateResponse(
         request,
         "producao.html",
@@ -102,6 +111,6 @@ def pagina_producao(
             "data_de": data_de,
             "data_ate": data_ate,
             "solicitante_id": solicitante_id,
-            "usuarios_disponiveis": todos_usuarios,
+            "usuarios_disponiveis": usuarios_disponiveis,
         },
     )

@@ -200,6 +200,23 @@ def test_producao_filtra_por_solicitante(cliente_logado):
     assert "0555555" not in resposta_outro_usuario.text
 
 
+def test_producao_dropdown_solicitante_so_mostra_quem_tem_caso(cliente_logado):
+    """Henrique, diretoria, 2026-09-15: "mesmo comportamento do Extratus"
+    — o dropdown "Solicitado por" só oferece quem de fato tem caso nessa
+    aba+filtro, não a base de usuários inteira (a maioria nunca mandou
+    nada pra essa aba)."""
+    cliente, usuario = cliente_logado
+    _criar_caso(cliente, npjur="0666666")
+
+    sem_caso_nenhum = _criar_usuario_com_acesso("teste_crivus_producao_sem_caso")
+    try:
+        resposta = cliente.get("/crivus/producao?aba=individuais&filtro=pendentes")
+        assert f'value="{usuario.id}"' in resposta.text
+        assert f'value="{sem_caso_nenhum.id}"' not in resposta.text
+    finally:
+        excluir_usuario(sem_caso_nenhum.id)
+
+
 def test_producao_lotes_mostra_estado_vazio(cliente_logado):
     cliente, _ = cliente_logado
     _criar_caso(cliente, npjur="0333333")
