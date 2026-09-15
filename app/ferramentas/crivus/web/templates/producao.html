@@ -37,10 +37,10 @@
     </div>
 </div>
 
-<form method="get" action="/crivus/producao" class="barra-filtros barra-filtros-producao">
+<form method="get" action="/crivus/producao" class="barra-filtros barra-filtros-producao" id="form-filtros-producao">
     <input type="hidden" name="aba" value="{{ aba }}">
     <input type="hidden" name="filtro" value="{{ filtro }}">
-    <input type="search" name="busca" class="campo-busca" placeholder="Buscar por NPJUR ou nº do processo..." value="{{ busca }}" aria-label="Buscar por NPJUR ou número do processo">
+    <input type="search" name="busca" id="campo-busca-producao" class="campo-busca" placeholder="Buscar por NPJUR ou nº do processo..." value="{{ busca }}" aria-label="Buscar por NPJUR ou número do processo">
     <div class="filtro-data">
         <label for="filtro-data-de">De:</label>
         <input type="date" id="filtro-data-de" name="data_de" class="campo-data" value="{{ data_de or '' }}">
@@ -56,7 +56,6 @@
             {% endfor %}
         </select>
     </div>
-    <button type="submit" class="botao botao-pequeno">Filtrar</button>
     {% if busca or data_de or data_ate or solicitante_id %}
     <a href="/crivus/producao?aba={{ aba }}&filtro={{ filtro }}" class="link-limpar-filtros">Limpar filtros</a>
     {% endif %}

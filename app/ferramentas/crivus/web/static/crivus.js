@@ -656,4 +656,84 @@
     });
 
     sincronizarLimitesDataProducao();
+
+    // -----------------------------------------------------------------
+    // Busca/filtros de Produção reagem na hora, sem botão "Filtrar" —
+    // Henrique, diretoria, 2026-09-15: "quero assim, digitou, alterou
+    // algo, altera a lista ao mesmo tempo" (igual o Extratus). Diferença
+    // real pro Extratus: lá o filtro é 100% no navegador (a lista
+    // inteira já está carregada); aqui Produção pagina de verdade no
+    // servidor (acervo pode ter milhares de linhas vindas do
+    // Processamento em Lote), então "reagir na hora" significa refazer
+    // a busca no servidor via fetch + trocar #crivus-conteudo (mesmo
+    // mecanismo dos links interceptados acima), não filtrar em memória.
+    //
+    // `buscaProducaoToken` evita uma resposta ANTIGA (rede lenta) pisar
+    // por cima de uma mais nova quando a pessoa digita rápido — só a
+    // última chamada feita é a que realmente atualiza a tela.
+    // -----------------------------------------------------------------
+
+    var buscaProducaoToken = 0;
+    var buscaProducaoDebounce = null;
+
+    function submeterFiltrosProducao() {
+        var form = document.getElementById("form-filtros-producao");
+        if (!form) { return; }
+
+        var campoBusca = document.getElementById("campo-busca-producao");
+        var tinhaFoco = campoBusca && document.activeElement === campoBusca;
+        var valorDigitado = campoBusca ? campoBusca.value : null;
+        var posicaoCursor = campoBusca ? campoBusca.selectionStart : null;
+
+        var meuToken = ++buscaProducaoToken;
+        var url = form.action + "?" + new URLSearchParams(new FormData(form)).toString();
+
+        fetch(url)
+            .then(function (resposta) { return resposta.text().then(function (html) { return { html: html, url: resposta.url }; }); })
+            .then(function (resultado) {
+                if (meuToken !== buscaProducaoToken) { return; } // resposta antiga, uma mais nova já está a caminho/chegou
+
+                var tituloDoc = new DOMParser().parseFromString(resultado.html, "text/html").title;
+                substituirConteudo(resultado.html, resultado.url, tituloDoc);
+
+                // Reforça o foco/cursor no campo de busca — trocar
+                // #crivus-conteudo troca o <input> por um nó novo, que
+                // nasce sem foco nenhum; sem isso, cada letra digitada
+                // "tira o cursor" do campo assim que a resposta chega.
+                if (tinhaFoco) {
+                    var novoCampo = document.getElementById("campo-busca-producao");
+                    if (novoCampo) {
+                        novoCampo.focus();
+                        if (valorDigitado !== null) { novoCampo.value = valorDigitado; }
+                        if (posicaoCursor !== null) { novoCampo.setSelectionRange(posicaoCursor, posicaoCursor); }
+                    }
+                }
+            })
+            .catch(function () {
+                if (meuToken === buscaProducaoToken) { form.submit(); }
+            });
+    }
+
+    document.addEventListener("submit", function (evento) {
+        if (evento.target.id === "form-filtros-producao") {
+            evento.preventDefault();
+            submeterFiltrosProducao();
+        }
+    });
+
+    // Busca livre: debounce de 400ms (espera uma pausa na digitação,
+    // não dispara request por letra) — data/solicitante mudam na hora
+    // (são escolhas discretas, não texto corrido).
+    document.addEventListener("input", function (evento) {
+        if (evento.target.id === "campo-busca-producao") {
+            clearTimeout(buscaProducaoDebounce);
+            buscaProducaoDebounce = setTimeout(submeterFiltrosProducao, 400);
+        }
+    });
+
+    document.addEventListener("change", function (evento) {
+        if (evento.target.id === "filtro-data-de" || evento.target.id === "filtro-data-ate" || evento.target.id === "filtro-solicitante") {
+            submeterFiltrosProducao();
+        }
+    });
 })();
