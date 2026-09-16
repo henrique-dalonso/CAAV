@@ -264,6 +264,30 @@ def marcar_notificacao_resolvida_robo(job_id, ferramenta_slug=FERRAMENTA_SLUG_PA
         return True
 
 
+def marcar_como_revisado(job_id, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
+    """Henrique, diretoria, 2026-09-16: "Marcar como revisado" em
+    Relatórios do Robô, pros casos em "revisão" — vira status="sucesso"
+    de verdade (não um status novo) + revisado_manualmente=True, só pra
+    distinguir na exibição (ver docstring do campo em db/models.py). Só
+    aceita partir de "revisao" — sucesso/erro não têm esse botão na
+    tela, e um job que já é sucesso não precisa (nem pode) ser marcado
+    de novo."""
+    with obter_sessao() as sessao:
+        job = sessao.get(Job, job_id)
+
+        if not job or job.ferramenta_slug != ferramenta_slug or job.status != "revisao":
+            return False
+
+        job.status = "sucesso"
+        job.revisado_manualmente = True
+        sessao.add(job)
+        sessao.commit()
+
+        avisar_mudanca()
+
+        return True
+
+
 def listar_relatorios_manuais_nao_notificados_do_usuario(usuario_id, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Relatórios manuais do PRÓPRIO usuário (sucesso ou revisão) que
     ainda não tiveram a notificação dispensada — alimenta a aba "Minhas"

@@ -15,6 +15,7 @@ from app.ferramentas.nucleo_relatorios.db.jobs import (
     listar_jobs_robo_nao_notificados_de_outros,
     listar_jobs_robo_nao_notificados_do_solicitante,
     listar_relatorios_manuais_nao_notificados_do_usuario,
+    marcar_como_revisado,
     marcar_notificacao_resolvida,
     marcar_notificacao_resolvida_robo,
     registrar_erro,
@@ -709,6 +710,51 @@ def test_marcar_notificacao_resolvida_robo_recusa_job_com_dono(limpar_jobs_criad
 
 def test_marcar_notificacao_resolvida_robo_job_inexistente_nao_quebra():
     assert marcar_notificacao_resolvida_robo(999999999) is False
+
+
+def test_marcar_como_revisado_vira_sucesso_com_flag(limpar_jobs_criados):
+    """Henrique, diretoria, 2026-09-16: "Marcar como revisado" em
+    Relatórios do Robô — vira status="sucesso" de verdade (não um status
+    novo), + revisado_manualmente=True só pra exibição diferenciada."""
+    job = registrar_processado(
+        arquivo_pdf="teste_marcar_revisado.pdf",
+        processo="0000000-00.2026.8.00.0080",
+        relatorio_path=None,
+        destino_pdf=None,
+        confianca="media",
+    )
+    limpar_jobs_criados.append(job.id)
+    assert job.status == "revisao"
+
+    assert marcar_como_revisado(job.id) is True
+
+    with obter_sessao() as sessao:
+        atualizado = sessao.get(Job, job.id)
+        assert atualizado.status == "sucesso"
+        assert atualizado.revisado_manualmente is True
+
+
+def test_marcar_como_revisado_recusa_job_que_nao_esta_em_revisao(limpar_jobs_criados):
+    job = registrar_processado(
+        arquivo_pdf="teste_marcar_revisado_ja_sucesso.pdf",
+        processo="0000000-00.2026.8.00.0081",
+        relatorio_path=None,
+        destino_pdf=None,
+        confianca="alta",
+    )
+    limpar_jobs_criados.append(job.id)
+    assert job.status == "sucesso"
+
+    assert marcar_como_revisado(job.id) is False
+
+    with obter_sessao() as sessao:
+        atualizado = sessao.get(Job, job.id)
+        assert atualizado.status == "sucesso"
+        assert atualizado.revisado_manualmente is False
+
+
+def test_marcar_como_revisado_job_inexistente_nao_quebra():
+    assert marcar_como_revisado(999999999) is False
 
 
 def test_excluir_job_apaga_arquivos_fisicos_e_a_linha(tmp_path, limpar_jobs_criados):

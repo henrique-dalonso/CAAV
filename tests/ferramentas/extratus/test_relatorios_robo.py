@@ -275,6 +275,53 @@ def test_marcar_notificacao_resolvida_robo_route_job_inexistente_da_404(cliente_
     assert resp.status_code == 404
 
 
+def test_marcar_revisado_route_vira_sucesso_com_flag(cliente_logado, limpar_jobs_criados):
+    """Henrique, diretoria, 2026-09-16: botão "Marcar como revisado" em
+    Relatórios do Robô — qualquer um com acesso à ferramenta pode marcar
+    (mesmo nível de acesso de sempre, sem trava por dono)."""
+    job = registrar_processado(
+        arquivo_pdf="teste_relrobo_marcar_revisado.pdf",
+        processo="0000000-00.2026.8.00.0091",
+        relatorio_path=None,
+        destino_pdf=None,
+        confianca="media",
+    )
+    limpar_jobs_criados.append(job.id)
+
+    resp = cliente_logado.post(f"/extratus/relatorios-robo/{job.id}/marcar-revisado", follow_redirects=False)
+
+    assert resp.status_code == 303
+    assert "sucesso=" in resp.headers["location"]
+
+    with obter_sessao() as sessao:
+        atualizado = sessao.get(Job, job.id)
+        assert atualizado.status == "sucesso"
+        assert atualizado.revisado_manualmente is True
+
+
+def test_marcar_revisado_route_job_que_nao_esta_em_revisao_redireciona_com_erro(cliente_logado, limpar_jobs_criados):
+    job = registrar_processado(
+        arquivo_pdf="teste_relrobo_marcar_revisado_ja_sucesso.pdf",
+        processo="0000000-00.2026.8.00.0092",
+        relatorio_path=None,
+        destino_pdf=None,
+        confianca="alta",
+    )
+    limpar_jobs_criados.append(job.id)
+
+    resp = cliente_logado.post(f"/extratus/relatorios-robo/{job.id}/marcar-revisado", follow_redirects=False)
+
+    assert resp.status_code == 303
+    assert "erro=" in resp.headers["location"]
+
+
+def test_marcar_revisado_route_job_inexistente_redireciona_com_erro(cliente_logado):
+    resp = cliente_logado.post("/extratus/relatorios-robo/999999999/marcar-revisado", follow_redirects=False)
+
+    assert resp.status_code == 303
+    assert "erro=" in resp.headers["location"]
+
+
 def test_excluir_relatorio_robo_admin_apaga_de_verdade(cliente_logado):
     job = registrar_processado(
         arquivo_pdf="teste_excluir_relatorio_robo_admin.pdf",

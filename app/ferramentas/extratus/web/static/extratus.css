@@ -1223,6 +1223,162 @@ html[data-theme="escuro"] .campo-data::-webkit-calendar-picker-indicator {
     flex-shrink: 0;
 }
 
+/* Henrique, diretoria, 2026-09-16: redesenho da linha de Relatórios do
+   Robô — o status e o botão "Marcar como revisado" (só em revisão)
+   ficam empilhados na mesma coluna, um embaixo do outro. A coluna NÃO
+   trava min-width em 68px como antes (esse valor cabia só o badge
+   sozinho) — a largura passa a ser ditada pelo maior dos dois
+   (normalmente o botão), pra sobrar sempre espaço confortável e o
+   badge nunca precisar disputar espaço com nada. */
+.relatorio-status-coluna {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.45rem;
+    flex-shrink: 0;
+}
+
+/* Henrique, diretoria, 2026-09-16: "destaque um pouco mais o botão de
+   marcar como revisado... da forma que está o ícone/texto some em
+   relação ao fundo" — cor de borda/texto trocada de --cor-borda/
+   --cor-texto-suave (ambos MUITO próximos do fundo escuro, pensados
+   pra elementos discretos) pra --cor-texto-suave/--cor-texto (texto
+   cheio), sem preencher o fundo — continua "contorno", não um botão
+   sólido feito o de baixar. */
+.botao-marcar-revisado-robo {
+    background: none;
+    border: 1.5px solid var(--cor-texto-suave);
+    color: var(--cor-texto);
+    font-family: inherit;
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.2;
+    padding: 0.3rem 0.65rem;
+    border-radius: var(--raio-pequeno);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.botao-marcar-revisado-robo:hover {
+    border-color: var(--cor-acento);
+    color: var(--cor-acento);
+}
+
+/* Nº do processo (ou nome do arquivo, sem processo identificado) com
+   ícone — icone_processo NÃO tenta preservar largura fixa (flex-shrink:
+   0), quem trunca é o <span> do texto (min-width:0 é o que permite um
+   filho flex encolher além do conteúdo, senão a ellipsis nunca entra
+   em ação numa linha flex). */
+.relatorio-processo {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.icone-relatorio-processo {
+    flex-shrink: 0;
+    color: var(--cor-texto-suave);
+}
+
+.relatorio-processo span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.relatorio-processo.expandido span {
+    white-space: normal;
+    overflow: visible;
+}
+
+/* Data + solicitante, lado a lado com ícone — substituem o antigo bloco
+   ".relatorio-solicitante" (coluna própria, com divisor vertical, só
+   pro nome) — Henrique, diretoria, 2026-09-16: "quero ATUALIZAR o
+   visual, não quero copiar o Crivus" — em vez de uma coluna separada à
+   direita, as duas informações passam a viver JUNTO da linha de meta,
+   embaixo do processo, liberando a faixa da direita só pros botões de
+   ação. */
+.relatorio-meta-linha {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.15rem 0.9rem;
+    font-size: 0.78rem;
+    color: var(--cor-texto-suave);
+}
+
+.relatorio-meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 220px;
+}
+
+.relatorio-meta-item.expandido {
+    white-space: normal;
+    overflow: visible;
+    max-width: none;
+}
+
+.icone-relatorio-meta {
+    flex-shrink: 0;
+    opacity: 0.75;
+}
+
+/* Botões de ação (PDF original + baixar relatório) lado a lado — PDF
+   original fica à ESQUERDA de baixar (Henrique, diretoria, 2026-09-16:
+   "um novo botão junto do de baixar o relatório, à esquerda dele"). */
+.relatorio-acoes {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+/* Mesmo tamanho/formato do .botao-download principal, mas SEM
+   compartilhar a classe (achado ao montar: "Baixar todos"/"Baixar
+   selecionados" identificam quem tem arquivo pra baixar via
+   `.botao-download:not(.botao-fantasma)`, ver relatorioTemArquivo em
+   relatorios_robo.js — se esse botão também fosse .botao-download,
+   entraria junto no lote mesmo quando não existe relatório nenhum pra
+   baixar, só o PDF original). Contorno (não preenchido) — ação
+   secundária ("ver o original"), não a ação primária da linha (baixar
+   o relatório PRODUZIDO). */
+.botao-pdf-original {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 999px;
+    flex-shrink: 0;
+    background: none;
+    /* Henrique, diretoria, 2026-09-16 (achado ao testar): "o ícone some
+       em relação ao fundo" — --cor-borda é quase a mesma cor do próprio
+       fundo escuro (pensada pra divisórias discretas, não pra contorno
+       de botão). --cor-texto-suave/--cor-texto dão contraste de sobra
+       contra --cor-fundo, mantendo o visual "contorno" (sem preencher),
+       só mais visível. */
+    border: 1.5px solid var(--cor-texto-suave);
+    color: var(--cor-texto);
+    text-decoration: none;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.botao-pdf-original:hover {
+    background: var(--cor-acento-fraco);
+    border-color: var(--cor-acento);
+    color: var(--cor-acento);
+}
+
+.botao-pdf-original:active {
+    transform: scale(0.94);
+}
+
 /* Ícone de baixar — clean, sem texto, mas mantém o peso visual (fundo
    sólido na cor de acento) por ser a ação principal de cada linha. */
 .botao-download {
@@ -1557,13 +1713,27 @@ html[data-theme="escuro"] .campo-data::-webkit-calendar-picker-indicator {
     color: var(--cor-erro-texto);
 }
 
+/* Henrique, diretoria, 2026-09-16: "Marcar como revisado" — o Job vira
+   status="sucesso" de verdade (ver Job.revisado_manualmente, db/
+   models.py), então precisa de uma classe PRÓPRIA aqui pro badge (o
+   template escolhe status-sucesso/status-revisado, não o status em si)
+   — verde-azulado (tom diferente do verde puro de sucesso) pra
+   continuar reconhecível como "concluído com sucesso", mas deixando
+   claro que passou por revisão manual. */
+.status-revisado {
+    background: #ccfbf1;
+    color: #0f766e;
+}
+
 @media (prefers-color-scheme: dark) {
     html:not([data-theme="claro"]) .status-sucesso { background: #113321; color: #86efac; }
     html:not([data-theme="claro"]) .status-revisao { background: #332b0f; color: #fde68a; }
+    html:not([data-theme="claro"]) .status-revisado { background: #0f2e2b; color: #5eead4; }
 }
 
 html[data-theme="escuro"] .status-sucesso { background: #113321; color: #86efac; }
 html[data-theme="escuro"] .status-revisao { background: #332b0f; color: #fde68a; }
+html[data-theme="escuro"] .status-revisado { background: #0f2e2b; color: #5eead4; }
 
 .motivo {
     display: -webkit-box;

@@ -71,6 +71,19 @@ class Job(SQLModel, table=True):
     # visível, de propósito — ver web/notificacoes.py.
     notificacao_resolvida: bool = Field(default=False)
 
+    # Henrique, diretoria, 2026-09-16: botão "Marcar como revisado" em
+    # Relatórios do Robô, pros casos com status "revisao" — "esses casos
+    # serão tratados iguais aos 'Sucesso', podem aparecer na aba de
+    # sucesso após revisados". Decisão de desenho: em vez de um status
+    # novo ("revisado"), o Job vira status="sucesso" de verdade (marcar_
+    # como_revisado, db/jobs.py) — assim ele automaticamente entra em
+    # TUDO que já trata "sucesso" (aba Sucesso, contagens, Custos por
+    # status/modelo etc.), sem precisar ensinar cada consulta existente
+    # sobre um status a mais. Esta flag é só pra distinguir na hora de
+    # exibir (badge "REVISADO" em vez de "SUCESSO", tom de verde
+    # diferente) — não muda nenhum comportamento de filtro/agregação.
+    revisado_manualmente: bool = Field(default=False)
+
     # --- Campos específicos do tipo "emenda" (ver nucleo_relatorios/
     # tipos.py e core/pos_processamento_emenda.py) — só preenchidos quando
     # tipo_relatorio == "emenda"; ficam NULL/default em toda linha de

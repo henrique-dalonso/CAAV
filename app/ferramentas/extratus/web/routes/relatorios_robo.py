@@ -11,6 +11,7 @@ from app.ferramentas.nucleo_relatorios.db.checagem_fila import resolver_solicita
 from app.ferramentas.nucleo_relatorios.db.jobs import (
     excluir_job,
     listar_jobs_robo,
+    marcar_como_revisado,
     marcar_notificacao_resolvida_robo,
     obter_job,
 )
@@ -250,6 +251,18 @@ def excluir_lote_relatorios_robo(ids: list[int] = Form(...), usuario: Usuario = 
         else f"{excluidos} relatórios excluídos permanentemente."
     )
     return _redirecionar(sucesso=mensagem)
+
+
+@router.post("/relatorios-robo/{job_id}/marcar-revisado")
+def marcar_revisado_route(job_id: int, usuario: Usuario = Depends(exigir_acesso_ferramenta("extratus"))):
+    """Henrique, diretoria, 2026-09-16: botão "Marcar como revisado" nos
+    casos em "revisão" — qualquer um com acesso à ferramenta pode marcar
+    (mesmo nível de acesso que já vale pra ver o acervo inteiro, sem
+    trava extra por dono — igual ao X de "sucesso" do Robô acima)."""
+    if not marcar_como_revisado(job_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO):
+        return _redirecionar(erro="Esse relatório não existe mais, ou já não está em revisão.")
+
+    return _redirecionar(sucesso="Caso marcado como revisado.")
 
 
 @router.post("/relatorios-robo/{job_id}/marcar-notificacao-resolvida")
