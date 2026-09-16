@@ -1224,16 +1224,20 @@ html[data-theme="escuro"] .campo-data::-webkit-calendar-picker-indicator {
 }
 
 /* Henrique, diretoria, 2026-09-16: redesenho da linha de Relatórios do
-   Robô. 3ª rodada: o ícone de "Marcar como revisado" AO LADO do badge
-   (rodada anterior) também não agradou ("empurrando o resto do
-   conteúdo pra direita") — volta pra EMBAIXO do badge (coluna), mas
-   compacto (ícone pequeno, não mais o botão-texto largo da 1ª rodada,
-   que era o que de fato desalinhava a lista). O motivo/erro, que antes
-   virava um bloco de texto em .relatorio-info, virou um "?" pequeno
-   DENTRO da mesma linha do badge (.relatorio-status-linha) — só
-   aparece quando existe motivo, tooltip (clique ou hover, mesmo
-   data-dica sitewide) mostra a mensagem, "limpa o visual" do resto do
-   bloco. */
+   Robô. 4ª rodada — achado real ao ver rodando: com align-items:center
+   (padrão de .relatorio-item, linha "centralizada" pela altura do
+   maior filho), acrescentar QUALQUER coisa embaixo do badge dentro de
+   .relatorio-status-coluna cresce esse filho e desloca a pílula (e,
+   por tabela, o resto do conteúdo) pra cima — "não quero que a pílula
+   do status saia do lugar original". #lista-relatorios-robo (só esta
+   tela — Relatórios URGENTES usa .relatorio-item com esse valor
+   intacto) ancora tudo no TOPO da linha em vez de centralizar: badge e
+   bloco de processo ficam sempre no mesmo lugar, não importa se o
+   status tem um botão embaixo ou não. */
+#lista-relatorios-robo .relatorio-item {
+    align-items: flex-start;
+}
+
 .relatorio-status-coluna {
     display: flex;
     flex-direction: column;
@@ -1242,29 +1246,33 @@ html[data-theme="escuro"] .campo-data::-webkit-calendar-picker-indicator {
     flex-shrink: 0;
 }
 
-.relatorio-status-linha {
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
+/* Selo do status + "?" — Henrique: "NÃO REDUZA O TAMANHO DO STATUS só
+   pra caber o '?', adicione ele como um expoente" — .status aqui
+   dentro não ganha NENHUMA regra própria (usa exatamente o .status
+   sitewide, mesmo tamanho de sempre); o "?" é posicionado ABSOLUTO no
+   canto (position:relative só neste wrapper), fora do fluxo — não
+   ocupa espaço nenhum ao lado do badge, só sobrepõe visualmente. */
+.relatorio-status-selo {
+    position: relative;
+    display: inline-flex;
 }
 
-/* "?" informacional — Henrique: "discreto e pequeno, não quero que a
-   presença dele continue empurrando o resto do conteúdo pra direita".
-   Só existe no DOM quando há motivo/erro pra mostrar (ver template),
-   então nunca ocupa espaço à toa numa linha "sucesso". */
 .botao-motivo-info {
+    position: absolute;
+    top: -6px;
+    right: -6px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 15px;
-    height: 15px;
+    width: 14px;
+    height: 14px;
     flex-shrink: 0;
-    background: none;
+    background: var(--cor-fundo);
     border: 1px solid var(--cor-texto-suave);
     border-radius: 999px;
     color: var(--cor-texto-suave);
     font-family: inherit;
-    font-size: 0.6rem;
+    font-size: 0.58rem;
     font-weight: 700;
     line-height: 1;
     padding: 0;

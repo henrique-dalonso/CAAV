@@ -102,7 +102,7 @@
             </label>
             {% set motivo_texto = job.motivo_confianca if (job.status == "revisao" and job.motivo_confianca) else (job.erro_mensagem if (job.status == "erro" and job.erro_mensagem) else None) %}
             <div class="relatorio-status-coluna">
-                <div class="relatorio-status-linha">
+                <div class="relatorio-status-selo">
                     {% if job.revisado_manualmente %}
                     <span class="status status-revisado">Revisado</span>
                     {% else %}
