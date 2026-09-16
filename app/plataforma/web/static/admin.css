@@ -1579,13 +1579,38 @@ html[data-theme="escuro"] .cartao-config:hover {
     color: var(--cor-erro-texto);
 }
 
+/* Estados próprios do Crivus (Custos, 2026-09-16) — "concluido" reusa
+   status-sucesso e "aguardando_revisao" reusa status-revisao no
+   template (mesmo sentimento de "pronto"/"precisa de olho humano" já
+   estabelecido acima); os 3 abaixo não têm equivalente em Job. */
+.status-processando {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.status-atrasado {
+    background: #fed7aa;
+    color: #9a3412;
+}
+
+.status-descartado {
+    background: #e5e7eb;
+    color: #374151;
+}
+
 @media (prefers-color-scheme: dark) {
     html:not([data-theme="claro"]) .status-sucesso { background: #113321; color: #86efac; }
     html:not([data-theme="claro"]) .status-revisao { background: #332b0f; color: #fde68a; }
+    html:not([data-theme="claro"]) .status-processando { background: #1e3a5f; color: #93c5fd; }
+    html:not([data-theme="claro"]) .status-atrasado { background: #431407; color: #fdba74; }
+    html:not([data-theme="claro"]) .status-descartado { background: #27272a; color: #d4d4d8; }
 }
 
 html[data-theme="escuro"] .status-sucesso { background: #113321; color: #86efac; }
 html[data-theme="escuro"] .status-revisao { background: #332b0f; color: #fde68a; }
+html[data-theme="escuro"] .status-processando { background: #1e3a5f; color: #93c5fd; }
+html[data-theme="escuro"] .status-atrasado { background: #431407; color: #fdba74; }
+html[data-theme="escuro"] .status-descartado { background: #27272a; color: #d4d4d8; }
 
 /* Dashboard de Custos (redesenho 2026-08-26) — cartões de métrica, mesmo
    padrão visual de .robo-stats/.robo-stat (Configurações), pra dar o

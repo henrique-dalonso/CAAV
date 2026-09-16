@@ -13,6 +13,15 @@ CONFIG_PADRAO = {
     # padrão (sem etapa de "testar desligado primeiro") — essa bandeira
     # existe pra permitir pausar depois, na tela de Configurações.
     "lote_ativo": True,
+
+    # Premissa de "economia estimada" na tela de Custos (admin), 2026-
+    # 09-16 — mesmo campo/raciocínio de app/ferramentas/extratus/core/
+    # config_manager.py (Henrique, diretoria, 2026-08-26): não é medido,
+    # é uma estimativa configurável de quanto tempo/dinheiro um caso
+    # levaria pra ser lido manualmente, editável a qualquer momento na
+    # própria tela.
+    "horas_estimadas_por_caso": 1.0,
+    "valor_hora_profissional": 200.0,
 }
 
 
@@ -54,3 +63,23 @@ def definir_lote_ativo(ativo: bool):
     config["lote_ativo"] = bool(ativo)
     salvar_config(config)
     return config["lote_ativo"]
+
+
+def atualizar_parametros_economia(horas_estimadas_por_caso, valor_hora_profissional):
+    """Edita a premissa de "economia estimada" da tela de Custos (admin) —
+    mesmo padrão de app/ferramentas/extratus/core/config_manager.py. Os
+    dois valores precisam ser positivos (uma premissa zero/negativa não
+    faz sentido pra estimar economia nenhuma)."""
+    if horas_estimadas_por_caso <= 0:
+        raise ValueError("Horas estimadas por caso precisa ser maior que zero.")
+
+    if valor_hora_profissional <= 0:
+        raise ValueError("Valor da hora do profissional precisa ser maior que zero.")
+
+    config = carregar_config()
+    config["horas_estimadas_por_caso"] = float(horas_estimadas_por_caso)
+    config["valor_hora_profissional"] = float(valor_hora_profissional)
+
+    salvar_config(config)
+
+    return config

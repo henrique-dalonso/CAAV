@@ -15,9 +15,19 @@ nas duas grades em vez de dar 404.
 
 Derivado de REGISTRO_TELAS (nucleo_relatorios/telas.py) desde a tarefa
 Emenda (2026-09-09) — ver docstring de telas.py pro raciocínio completo da
-generalização. Crivus continua fora (motor separado, sem entrada aqui,
-mesmo comportamento de antes)."""
+generalização. Crivus continua fora do REGISTRO_TELAS (motor separado),
+mas ganhou entrada MANUAL aqui em 2026-09-16 (Henrique, diretoria: "criar
+a tela de custos do Crivus também, da mesma forma das outras
+ferramentas") — precisa de uma chave pra aparecer no cartão de Custos do
+admin (ver app/plataforma/web/routes/admin_custos.py)."""
 
 from app.ferramentas.nucleo_relatorios.telas import REGISTRO_TELAS
 
-CHAVE_POR_SLUG = {tela.slug_plataforma: tela.chave_admin for tela in REGISTRO_TELAS.values()}
+CHAVE_POR_SLUG = {
+    tela.slug_plataforma: tela.chave_admin for tela in REGISTRO_TELAS.values()
+} | {
+    # Ferramenta.slug de verdade (seed.py) é "leitor-publicacoes" — a
+    # URL do admin usa o nome real da ferramenta, "crivus", mesmo padrão
+    # das outras.
+    "leitor-publicacoes": "crivus",
+}

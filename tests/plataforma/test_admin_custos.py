@@ -297,3 +297,128 @@ def test_salvar_parametros_economia_chave_invalida_404(limpar_usuarios_teste):
     )
 
     assert resp.status_code == 404
+
+
+# --- Custos do Crivus (Henrique, diretoria, 2026-09-16: "criar a tela
+# de custos do Crivus também, da mesma forma das outras ferramentas") —
+# rota/template PRÓPRIOS (AnalisePublicacao, não Job), mas mesmo
+# contrato de acesso/UI das demais. ---
+
+def test_pagina_custos_crivus_exige_login():
+    cliente = TestClient(app)
+
+    resp = cliente.get("/admin/custos/crivus", follow_redirects=False)
+
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/login"
+
+
+def test_pagina_custos_crivus_coordenador_sem_ser_admin_plataforma_e_recusado(limpar_usuarios_teste):
+    criar_usuario(
+        nome="Teste Coordenador Custos",
+        nome_usuario=NOME_COORDENADOR,
+        email="teste_admin_custos_coord@example.com",
+        senha=SENHA,
+        eh_admin=False,
+    )
+
+    cliente = TestClient(app)
+    cliente.post("/login", data={"usuario_login": NOME_COORDENADOR, "senha": SENHA})
+
+    resp = cliente.get("/admin/custos/crivus")
+
+    assert resp.status_code == 403
+
+
+def test_pagina_custos_crivus_admin_acessa_e_mostra_dashboard(limpar_usuarios_teste):
+    criar_usuario(
+        nome="Teste Admin Custos Plataforma",
+        nome_usuario=NOME_ADMIN_PLATAFORMA,
+        email="teste_admin_custos_plataforma@example.com",
+        senha=SENHA,
+        eh_admin=True,
+    )
+
+    cliente = TestClient(app)
+    cliente.post("/login", data={"usuario_login": NOME_ADMIN_PLATAFORMA, "senha": SENHA})
+
+    resp = cliente.get("/admin/custos/crivus")
+
+    assert resp.status_code == 200
+    assert "Leitor de Publicações" in resp.text
+    assert "Mês atual" in resp.text
+    assert "Economia estimada no mês" in resp.text
+    assert "Gasto ao longo do tempo" in resp.text
+    assert "Por status" in resp.text
+    assert "Por modelo de IA" in resp.text
+    assert 'id="dados-grafico-custos"' in resp.text
+
+
+def test_pagina_custos_grade_lista_o_cartao_do_crivus(limpar_usuarios_teste):
+    criar_usuario(
+        nome="Teste Admin Custos Plataforma",
+        nome_usuario=NOME_ADMIN_PLATAFORMA,
+        email="teste_admin_custos_plataforma@example.com",
+        senha=SENHA,
+        eh_admin=True,
+    )
+
+    cliente = TestClient(app)
+    cliente.post("/login", data={"usuario_login": NOME_ADMIN_PLATAFORMA, "senha": SENHA})
+
+    resp = cliente.get("/admin/custos")
+
+    assert resp.status_code == 200
+    assert 'href="/admin/custos/crivus"' in resp.text
+
+
+def test_salvar_parametros_economia_crivus_atualiza_e_reflete_na_tela(limpar_usuarios_teste):
+    criar_usuario(
+        nome="Teste Admin Custos Plataforma",
+        nome_usuario=NOME_ADMIN_PLATAFORMA,
+        email="teste_admin_custos_plataforma@example.com",
+        senha=SENHA,
+        eh_admin=True,
+    )
+
+    cliente = TestClient(app)
+    cliente.post("/login", data={"usuario_login": NOME_ADMIN_PLATAFORMA, "senha": SENHA})
+
+    resp = cliente.post(
+        "/admin/custos/crivus/parametros-economia",
+        data={"horas_estimadas_por_caso": "0.5", "valor_hora_profissional": "180"},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/admin/custos/crivus"
+
+    resp_tela = cliente.get("/admin/custos/crivus")
+    assert 'value="0.5"' in resp_tela.text
+    assert 'value="180.0"' in resp_tela.text
+
+    # devolve ao valor padrão pra não vazar estado entre testes/sessões
+    cliente.post(
+        "/admin/custos/crivus/parametros-economia",
+        data={"horas_estimadas_por_caso": "1.0", "valor_hora_profissional": "200.0"},
+    )
+
+
+def test_salvar_parametros_economia_crivus_valor_invalido_mostra_erro_sem_salvar(limpar_usuarios_teste):
+    criar_usuario(
+        nome="Teste Admin Custos Plataforma",
+        nome_usuario=NOME_ADMIN_PLATAFORMA,
+        email="teste_admin_custos_plataforma@example.com",
+        senha=SENHA,
+        eh_admin=True,
+    )
+
+    cliente = TestClient(app)
+    cliente.post("/login", data={"usuario_login": NOME_ADMIN_PLATAFORMA, "senha": SENHA})
+
+    resp = cliente.post(
+        "/admin/custos/crivus/parametros-economia",
+        data={"horas_estimadas_por_caso": "0", "valor_hora_profissional": "200"},
+    )
+
+    assert resp.status_code == 200
+    assert "maior que zero" in resp.text

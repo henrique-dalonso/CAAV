@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block titulo %}Custos — {{ nome_ferramenta }} — Administração — CAAV{% endblock %}
+{% block css_pagina %}<link rel="stylesheet" href="/static/admin.css?v={{ v }}">{% endblock %}
+
+{% block conteudo %}
+<div class="cabecalho-ferramenta cabecalho-custos">
+    <div>
+        <h1>{{ botao_voltar() }}Custos — {{ nome_ferramenta }}</h1>
+        <p>Todo processamento, com custo de IA e detalhe técnico. Acessível só por administradores da plataforma.</p>
+    </div>
+</div>
+
+<section class="cartao-secao">
+    <h2>Mês atual</h2>
+    <div class="custos-stats">
+        <div class="custos-stat">
+            <span class="custos-stat-valor">R$ {{ "%.2f"|format(resumo_mes.custo_mes * cotacao) }}</span>
+            <span class="custos-stat-rotulo">Custo do mês <span class="motivo">US$ {{ "%.4f"|format(resumo_mes.custo_mes) }}</span></span>
+            {% if resumo_mes.custo_mes_anterior %}
+            {% set variacao_custo = ((resumo_mes.custo_mes - resumo_mes.custo_mes_anterior) / resumo_mes.custo_mes_anterior) * 100 %}
+            <span class="custos-stat-comparacao {{ 'subiu' if variacao_custo > 0 else 'desceu' }}">{{ "%+.0f"|format(variacao_custo) }}% vs. mês anterior</span>
+            {% endif %}
+        </div>
+        <div class="custos-stat">
+            <span class="custos-stat-valor">{{ resumo_mes.quantidade_mes }}</span>
+            <span class="custos-stat-rotulo">Casos processados no mês</span>
+            {% if resumo_mes.quantidade_mes_anterior %}
+            <span class="custos-stat-comparacao">{{ resumo_mes.quantidade_mes_anterior }} no mês anterior</span>
+            {% endif %}
+        </div>
+        <div class="custos-stat">
+            <span class="custos-stat-valor">R$ {{ "%.2f"|format(resumo_mes.custo_medio_mes * cotacao) }}</span>
+            <span class="custos-stat-rotulo">Custo médio por caso <span class="motivo">US$ {{ "%.4f"|format(resumo_mes.custo_medio_mes) }}</span></span>
+        </div>
+    </div>
+    <p class="aviso-discreto">O mês reinicia sozinho todo dia 1º — os números acima são só do mês corrente. Inclui o custo da pré-triagem do Processamento em Lote, mesmo em casos descartados por qualidade antes da análise completa.</p>
+</section>
+
+<section class="cartao-secao custos-economia">
+    <h2>💰 Economia estimada no mês</h2>
+    <span class="custos-economia-valor">R$ {{ "%.2f"|format(economia_estimada_mes_reais) }}</span>
+    <p class="aviso-discreto">
+        Comparação entre o custo real de IA e uma ESTIMATIVA de quanto {{ resumo_mes.quantidade_mes }} caso{{ "s" if resumo_mes.quantidade_mes != 1 else "" }} deste mês levaria{{ "m" if resumo_mes.quantidade_mes != 1 else "" }} pra ser lido{{ "s" if resumo_mes.quantidade_mes != 1 else "" }} manualmente
+        ({{ horas_estimadas_por_caso }}h por caso × R$ {{ "%.2f"|format(valor_hora_profissional) }}/hora). Não é fato, é premissa — ajuste os dois campos abaixo quando quiser.
+    </p>
+
+    {% if erro_parametros_economia %}
+    <p class="banner-erro">⚠ {{ erro_parametros_economia }}</p>
+    {% endif %}
+
+    <form method="post" action="/admin/custos/crivus/parametros-economia" class="custos-economia-premissa">
+        <div class="campo-grupo">
+            <label for="horas_estimadas_por_caso">Horas estimadas por caso</label>
+            <input type="number" id="horas_estimadas_por_caso" name="horas_estimadas_por_caso" step="0.1" min="0.1" value="{{ horas_estimadas_por_caso }}" required>
+        </div>
+        <div class="campo-grupo">
+            <label for="valor_hora_profissional">Valor da hora do profissional (R$)</label>
+            <input type="number" id="valor_hora_profissional" name="valor_hora_profissional" step="1" min="1" value="{{ valor_hora_profissional }}" required>
+        </div>
+        <button type="submit" class="botao botao-pequeno">Salvar premissa</button>
+    </form>
+</section>
+
+<section class="cartao-secao">
+    <h2>Gasto ao longo do tempo</h2>
+    <div class="grafico-periodo-botoes" role="group" aria-label="Período do gráfico">
+        <button type="button" class="botao-secundario botao-pequeno grafico-periodo-botao" data-periodo="7d">Últimos 7 dias</button>
+        <button type="button" class="botao-secundario botao-pequeno grafico-periodo-botao" data-periodo="15d">Últimos 15 dias</button>
+        <button type="button" class="botao-secundario botao-pequeno grafico-periodo-botao ativo" data-periodo="30d">Últimos 30 dias</button>
+        <button type="button" class="botao-secundario botao-pequeno grafico-periodo-botao" data-periodo="1a">Último ano</button>
+    </div>
+    <div class="grafico-custos-container">
+        <svg class="grafico-custos-svg" id="grafico-custos" role="img" aria-label="Gráfico de gasto ao longo do tempo"></svg>
+    </div>
+</section>
+
+<section class="cartao-secao">
+    <h2>Gasto total</h2>
+    <ul class="lista-custos">
+        <li class="lista-custos-total">
+            <span>Total do sistema</span>
+            <span class="valor-reais"><strong>R$ {{ "%.4f"|format(custo_total * cotacao) }}</strong> <span class="motivo">US$ {{ "%.4f"|format(custo_total) }}</span></span>
+        </li>
+    </ul>
+    <p class="aviso-discreto cambio-nota">Câmbio USD→BRL: R$ {{ "%.4f"|format(cotacao) }} — atualizado a cada hora. Sem "Robô automático" aqui: todo caso do Crivus (individual ou de lote) tem um dono, então o total acima já é a soma de todos os colaboradores.</p>
+</section>
+
+<div class="grade-dupla">
+    <section class="cartao-secao">
+        <h2>Por status</h2>
+        <div class="custos-stats">
+            {% for status, rotulo in rotulos_status.items() %}
+            <div class="custos-stat">
+                <span class="custos-stat-valor">{{ resumo_por_status[status].quantidade }}</span>
+                <span class="custos-stat-rotulo">
+                    <span class="status status-{{ status }}">{{ rotulo }}</span>
+                </span>
+                <span class="custos-stat-comparacao">R$ {{ "%.2f"|format(resumo_por_status[status].custo * cotacao) }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="cartao-secao">
+        <h2>Por modelo de IA</h2>
+        {% if resumo_por_modelo %}
+        <div class="custos-stats">
+            {% for item in resumo_por_modelo %}
+            <div class="custos-stat">
+                <span class="custos-stat-valor">{{ item.quantidade }}</span>
+                <span class="custos-stat-rotulo">{{ item.modelo }}</span>
+                <span class="custos-stat-comparacao">R$ {{ "%.2f"|format(item.custo * cotacao) }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="vazio">Nenhum processamento com custo registrado ainda.</p>
+        {% endif %}
+    </section>
+</div>
+
+{% if colaboradores %}
+<section class="cartao-secao">
+    <h2>Colaboradores</h2>
+    <p class="aviso-discreto">Busque por nome e marque quem quiser destacar na tabela abaixo — também serve de glossário, ninguém precisa decorar login de ninguém. Ordenado por quem mais gastou.</p>
+    <input type="search" class="campo-busca campo-busca-colaborador" placeholder="Buscar colaborador por nome..." aria-label="Buscar colaborador por nome">
+    <ul class="lista-colaboradores">
+        {% for pessoa in colaboradores %}
+        <li class="colaborador-item" data-busca="{{ pessoa.nome | lower }}">
+            <label>
+                <input type="checkbox" class="colaborador-check check-input" value="{{ pessoa.id }}">
+                <span class="check-caixa"></span>
+                <span class="colaborador-nome">{{ pessoa.nome }}</span>
+                <span class="colaborador-login">{{ pessoa.login }} · {{ pessoa.quantidade }} caso{{ "s" if pessoa.quantidade != 1 else "" }}</span>
+            </label>
+            <span class="valor-reais"><strong>R$ {{ "%.4f"|format(pessoa.custo * cotacao) }}</strong> <span class="motivo">média R$ {{ "%.2f"|format(pessoa.custo_medio * cotacao) }}/caso</span></span>
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+
+<section class="cartao-secao">
+    <h2>Todos os processamentos</h2>
+    {% if analises %}
+    <p class="aviso-discreto">Custo de IA é uma estimativa interna, não a fatura oficial. Marque colaboradores acima pra filtrar a tabela.</p>
+    <div class="tabela-scroll">
+    <table class="tabela-custos">
+        <thead>
+            <tr>
+                <th>Quando</th>
+                <th>Usuário</th>
+                <th>NPJUR / Processo</th>
+                <th>Origem</th>
+                <th>Status</th>
+                <th>Custo IA (estimado)</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in analises %}
+            <tr data-usuario-id="{{ item.usuario_id }}">
+                <td>{{ item.criado_em.strftime("%d/%m/%Y %H:%M") }}</td>
+                <td>
+                    {% if info_por_id.get(item.usuario_id) %}
+                    {{ info_por_id[item.usuario_id].nome }}
+                    <span class="motivo">{{ info_por_id[item.usuario_id].login }}</span>
+                    {% else %}
+                    Usuário #{{ item.usuario_id }}
+                    {% endif %}
+                </td>
+                <td class="truncavel" data-dica="{{ item.npjur or item.processo or '—' }}">{{ item.npjur or item.processo or "—" }}</td>
+                <td>{{ "Lote" if item.origem == "lote" else "Individual" }}</td>
+                <td><span class="status status-{{ item.status }}">{{ rotulos_status.get(item.status, item.status) }}</span></td>
+                <td>
+                    {% set custo_linha = (item.custo_estimado_usd or 0) + (item.custo_triagem_usd or 0) %}
+                    {% if custo_linha %}
+                    R$ {{ "%.4f"|format(custo_linha * cotacao) }}
+                    <span class="motivo">US$ {{ "%.4f"|format(custo_linha) }}{{ " · " + item.modelo_ia if item.modelo_ia }}</span>
+                    {% else %}
+                    <span class="motivo">sem custo ({{ rotulos_status.get(item.status, item.status)|lower }})</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="/crivus/leitor-individual/{{ item.id }}" class="botao-download botao-download-pequeno" data-dica="Ver caso" aria-label="Ver caso">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M9 18l6-6-6-6"></path>
+                        </svg>
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="vazio">Nenhum processamento registrado ainda.</p>
+    {% endif %}
+</section>
+
+<script id="dados-grafico-custos" type="application/json">{{ series_json | safe }}</script>
+{% endblock %}
+
+{% block js_pagina %}<script src="/static/admin_custos.js?v={{ v }}" defer></script>{% endblock %}

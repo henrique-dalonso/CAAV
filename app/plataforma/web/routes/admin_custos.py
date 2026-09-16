@@ -4,6 +4,8 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 
+from app.ferramentas.crivus.core import config_manager as _config_manager_crivus
+from app.ferramentas.crivus.db import custos as _custos_crivus
 from app.ferramentas.nucleo_relatorios.db.checagem_fila import (
     resolver_solicitantes as _resolver_solicitantes_nucleo,
 )
@@ -67,6 +69,23 @@ CUSTOS_POR_CHAVE = {
     for chave, tela in REGISTRO_TELAS.items()
 }
 
+# Henrique, diretoria, 2026-09-16: "criar a tela de custos do Crivus
+# também, da mesma forma das outras ferramentas". Crivus fica FORA do
+# loop acima de propósito (motor genuinamente separado — AnalisePublicacao,
+# não Job — ver docstring de nucleo_relatorios/telas.py), mas entra aqui
+# à mão só com o que o CARTÃO da grade /admin/custos precisa ("nome" +
+# "somar_custo_por_usuario", ver pagina_custos_grade abaixo). O DETALHE
+# tem rota e template próprios (pagina_custos_crivus/admin_custos_
+# crivus.html), não reaproveita pagina_custos_detalhe — o "entrada" de
+# lá espera o contrato inteiro do Job (listar_jobs, resolver_solicitantes,
+# rotulo_status/erro etc.) que não faz sentido pro modelo do Crivus (sem
+# "Robô automático": AnalisePublicacao.usuario_id nunca é None).
+CUSTOS_POR_CHAVE["crivus"] = {
+    "nome": "Leitor de Publicações",
+    "url_base": "/crivus",
+    "somar_custo_por_usuario": _custos_crivus.somar_custo_por_usuario,
+}
+
 
 router = APIRouter(dependencies=[Depends(exigir_admin)])
 
@@ -104,6 +123,115 @@ def pagina_custos_grade(request: Request, usuario: Usuario = Depends(exigir_admi
             "cotacao": obter_cotacao_usd_brl(),
         },
     )
+
+
+# Rótulos dos status próprios do Crivus (AnalisePublicacao) — sem
+# rotulo_status próprio (nunca existiu, ver web/rotulos.py de cada
+# módulo do motor compartilhado pro equivalente de lá); dict simples é
+# suficiente pra só essa tela.
+ROTULOS_STATUS_CRIVUS = {
+    "processando": "Processando",
+    "aguardando_revisao": "Aguardando revisão",
+    "concluido": "Concluído",
+    "erro": "Erro",
+    "atrasado": "Atrasado",
+    "descartado": "Descartado",
+}
+
+
+def _contexto_custos_crivus(usuario, erro_parametros_economia=None):
+    """Equivalente a _contexto_custos_detalhe, mas pro modelo do Crivus
+    (AnalisePublicacao, não Job) — ver comentário em CUSTOS_POR_CHAVE
+    acima sobre por que não reaproveita o contexto/template dos outros."""
+    analises = _custos_crivus.listar_analises_para_custos()
+    info_por_id = {u.id: {"nome": u.nome, "login": u.nome_usuario} for u in listar_todos_usuarios()}
+    detalhe_por_usuario = _custos_crivus.detalhar_custo_e_quantidade_por_usuario()
+
+    # Sem "Robô automático" aqui (AnalisePublicacao.usuario_id nunca é
+    # None) — custo_colaboradores JÁ é o custo total do sistema.
+    custo_total = sum(dados["custo"] for dados in detalhe_por_usuario.values())
+
+    colaboradores = sorted(
+        (
+            {
+                "id": usuario_id,
+                "nome": info_por_id.get(usuario_id, {}).get("nome", f"Usuário #{usuario_id}"),
+                "login": info_por_id.get(usuario_id, {}).get("login", ""),
+                "custo": dados["custo"],
+                "quantidade": dados["quantidade"],
+                "custo_medio": dados["custo_medio"],
+            }
+            for usuario_id, dados in detalhe_por_usuario.items()
+        ),
+        key=lambda item: item["custo"],
+        reverse=True,
+    )
+
+    series_por_periodo = {
+        periodo: _custos_crivus.serie_temporal_custo(periodo) for periodo in PERIODOS_GRAFICO_VALIDOS
+    }
+
+    config = _config_manager_crivus.carregar_config()
+    horas_estimadas_por_caso = config["horas_estimadas_por_caso"]
+    valor_hora_profissional = config["valor_hora_profissional"]
+
+    cotacao = obter_cotacao_usd_brl()
+
+    resumo_mes = _custos_crivus.resumo_mes_atual()
+    # Ver comentário equivalente em _contexto_custos_detalhe — mesma
+    # conversão de moeda ANTES de subtrair.
+    custo_manual_estimado_mes_reais = resumo_mes["quantidade_mes"] * horas_estimadas_por_caso * valor_hora_profissional
+    custo_ia_mes_reais = resumo_mes["custo_mes"] * cotacao
+    economia_estimada_mes_reais = custo_manual_estimado_mes_reais - custo_ia_mes_reais
+
+    return {
+        "usuario": usuario,
+        "nome_ferramenta": "Leitor de Publicações",
+        "url_base": "/crivus",
+        "analises": analises,
+        "info_por_id": info_por_id,
+        "colaboradores": colaboradores,
+        "custo_total": custo_total,
+        "resumo_mes": resumo_mes,
+        "series_por_periodo": series_por_periodo,
+        "series_json": json.dumps({"series": series_por_periodo, "cotacao": cotacao}),
+        "resumo_por_status": _custos_crivus.resumo_por_status_com_custo(),
+        "resumo_por_modelo": _custos_crivus.resumo_por_modelo(),
+        "rotulos_status": ROTULOS_STATUS_CRIVUS,
+        "horas_estimadas_por_caso": horas_estimadas_por_caso,
+        "valor_hora_profissional": valor_hora_profissional,
+        "economia_estimada_mes_reais": economia_estimada_mes_reais,
+        "erro_parametros_economia": erro_parametros_economia,
+        "cotacao": cotacao,
+    }
+
+
+@router.get("/admin/custos/crivus")
+def pagina_custos_crivus(request: Request, usuario: Usuario = Depends(exigir_admin)):
+    return templates.TemplateResponse(
+        request,
+        "admin_custos_crivus.html",
+        _contexto_custos_crivus(usuario),
+    )
+
+
+@router.post("/admin/custos/crivus/parametros-economia")
+def salvar_parametros_economia_crivus(
+    request: Request,
+    horas_estimadas_por_caso: float = Form(...),
+    valor_hora_profissional: float = Form(...),
+    usuario: Usuario = Depends(exigir_admin),
+):
+    try:
+        _config_manager_crivus.atualizar_parametros_economia(horas_estimadas_por_caso, valor_hora_profissional)
+    except ValueError as erro:
+        return templates.TemplateResponse(
+            request,
+            "admin_custos_crivus.html",
+            _contexto_custos_crivus(usuario, erro_parametros_economia=str(erro)),
+        )
+
+    return RedirectResponse("/admin/custos/crivus", status_code=303)
 
 
 def _contexto_custos_detalhe(chave, entrada, usuario, erro_parametros_economia=None):
