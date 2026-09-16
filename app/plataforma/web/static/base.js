@@ -786,16 +786,18 @@
         // alert() nu nem algo novo.
         //
         // Henrique, diretoria, 2026-09-16: mesmo botão agora também em
-        // "Ferramentas" — diferente de "Minhas" (onde revisão/erro
-        // continuam exigindo o fluxo real, são pendência de alguém
-        // específico), em "Ferramentas" as notificações não têm dono
-        // ("são notificações universais, não convém a pessoa mesmo") —
-        // por isso ali TAMBÉM inclui "revisão" (ver descartavel/resolver
-        // adicionados em erro/revisao/pronto nos *.web.notificacoes de
-        // cada módulo, não só triagem/pronto como antes). "Triagem"
-        // (inconsistência de arquivo) continua de fora dos dois — não
-        // tem flag de "resolvida" nenhuma, só some quando o arquivo é
-        // corrigido de verdade.
+        // "Ferramentas", mas com um mecanismo DIFERENTE por baixo — "um
+        // apagar lógico, não físico, removendo somente pro usuário que
+        // apagou, continua existindo a notificação de fato". "Minhas"
+        // continua resolvendo o Job de verdade (mesma flag global pra
+        // quem quer que veja); "Ferramentas" grava uma dispensa PRÓPRIA
+        // desse usuário (NotificacaoDispensada, ver app/plataforma/db/
+        // usuarios.py) sem tocar a notificação de origem — por isso
+        // cobre os 4 tipos (triagem/erro/sucesso/revisão), já que
+        // ninguém mais deixa de ver por causa do clique de um colega.
+        // resolver aqui é sempre /notificacoes/ferramentas/dispensar,
+        // montado pelo agregador (app/plataforma/web/notificacoes.py) a
+        // partir da `chave` que cada módulo fornece.
         //
         // `criarLimpezaEmLote` generaliza o que antes era só de
         // "Minhas" — mesma lógica, parametrizada por aba/botão/rótulo,
@@ -1324,11 +1326,11 @@
             // Henrique, 2026-09-02: "Limpar notificações" no topo de
             // "Minhas" — só considera quem já tem "×" hoje (mesma regra
             // do clique acima). Henrique, diretoria, 2026-09-16: mesma
-            // ideia agora em "Ferramentas" também, incluindo "revisão"
-            // (ver descartavel/resolver setados em cada *.web.
-            // notificacoes.py). A visibilidade do botão em si (aba ativa
-            // + tem o que limpar) é decidida em mostrarAbaNotificacoes,
-            // chamada logo abaixo.
+            // ideia agora em "Ferramentas" também, cobrindo os 4 tipos
+            // (dispensa lógica por pessoa, ver comentário em
+            // criarLimpezaEmLote acima). A visibilidade do botão em si
+            // (aba ativa + tem o que limpar) é decidida em
+            // mostrarAbaNotificacoes, chamada logo abaixo.
             ultimosItensMinhasDescartaveis = itensMinhas.filter(function (item) {
                 return item.descartavel && item.resolver;
             });

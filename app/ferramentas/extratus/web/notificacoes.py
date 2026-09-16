@@ -39,29 +39,20 @@ def listar_notificacoes(usuario_id):
     itens da consulta (listar_jobs_robo_nao_notificados_de_outros);
     "Ferramentas" continua sem filtro de acesso além disso.
 
-    4 comportamentos de propósito diferentes:
-    - Inconsistências da triagem: somem sozinhas quando o arquivo é
-      corrigido/removido da fila — sem ação manual nenhuma, e sem flag
-      de "resolvida" nenhuma pra usar aqui (por isso é o único tipo
-      abaixo que continua sem descartavel/resolver).
-    - Erro/Revisão do Robô: Henrique, diretoria, 2026-09-16 —
-      "Ferramentas" ganhou o botão "Limpar notificações" (igual
-      "Minhas"), incluindo revisão: "são notificações universais, não
-      convém a pessoa mesmo" — ninguém é DONO de um job sem
-      solicitante, então não faz sentido travar até "o fluxo real"
-      resolver (diferente de "Minhas", onde revisão/erro continuam
-      travados — lá sim é pendência de alguém específico). Reusa o
-      MESMO marcar_notificacao_resolvida_robo de sempre (já era
-      genérico por job_id, nunca teve restrição por status — só a
-      montagem do item aqui embaixo é que nunca tinha oferecido o X
-      pra erro/revisão).
-    - Sucesso do Robô: CONTINUA sem X aqui, de propósito — motivo
-      diferente de erro/revisão (não é "precisa do fluxo real", é
-      DONO: "só quem pediu, em Minhas, pode dispensar" ainda vale,
-      já que dispensar aqui usaria a MESMA flag de "Minhas" — um
-      colega clicando "Limpar" em Ferramentas apagaria o aviso de
-      "seu relatório ficou pronto" de quem pediu, antes dela nem ver.
-    """
+    4 tipos, todos com `chave` (identifica a notificação de origem de
+    forma estável, prefixada por tabela pra nunca colidir id entre
+    tabelas diferentes) — Henrique, diretoria, 2026-09-16: TODA
+    notificação de "Ferramentas" ganhou dispensa LÓGICA por pessoa: "um
+    apagar lógico, não físico, removendo somente pro usuário que apagou,
+    continua existindo a notificação de fato". A montagem de
+    descartavel/resolver a partir dessa `chave` é genérica, feita pelo
+    agregador (app/plataforma/web/notificacoes.py) — este módulo só
+    precisa fornecer uma chave estável por item, nada mais.
+
+    Diferente de "Minhas" (listar_notificacoes_pessoais, abaixo), onde
+    revisão/erro continuam SEM chave — lá o X que já existe resolve o
+    Job de verdade (mesma flag pra quem quer que veja, é pendência de
+    alguém específico), não precisa também de dispensa lógica."""
     notificacoes = []
 
     for registro in listar_inconsistencias(ferramenta_slug=_FERRAMENTA_SLUG_NUCLEO):
@@ -70,6 +61,7 @@ def listar_notificacoes(usuario_id):
             "mensagem": f'"{registro.nome_arquivo}": {motivo}',
             "tipo": "triagem",
             "link": "/extratus/fila-robo",
+            "chave": f"checagem:{registro.id}",
             "criado_em": registro.atualizado_em.isoformat(),
         })
 
@@ -85,7 +77,7 @@ def listar_notificacoes(usuario_id):
         if job.processo:
             link += "?processo=" + quote(job.processo)
 
-        resolver = f"/extratus/relatorios-robo/{job.id}/marcar-notificacao-resolvida"
+        chave = f"job:{job.id}"
 
         if job.status == "erro":
             motivo = job.erro_mensagem or job.tipo_erro or "falha desconhecida"
@@ -93,8 +85,7 @@ def listar_notificacoes(usuario_id):
                 "mensagem": f'"{job.arquivo_pdf}": erro ao processar ({motivo})',
                 "tipo": "erro",
                 "link": link,
-                "descartavel": True,
-                "resolver": resolver,
+                "chave": chave,
                 "criado_em": job.criado_em.isoformat(),
             })
         elif job.status == "sucesso":
@@ -102,6 +93,7 @@ def listar_notificacoes(usuario_id):
                 "mensagem": f'"{job.arquivo_pdf}": relatório do Robô pronto',
                 "tipo": "pronto",
                 "link": link,
+                "chave": chave,
                 "criado_em": job.criado_em.isoformat(),
             })
         else:  # "revisao"
@@ -109,8 +101,7 @@ def listar_notificacoes(usuario_id):
                 "mensagem": f'"{job.arquivo_pdf}": relatório do Robô pronto, mas precisa de revisão',
                 "tipo": "revisao",
                 "link": link,
-                "descartavel": True,
-                "resolver": resolver,
+                "chave": chave,
                 "criado_em": job.criado_em.isoformat(),
             })
 

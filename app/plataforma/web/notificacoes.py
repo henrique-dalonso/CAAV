@@ -1,5 +1,7 @@
+from urllib.parse import quote
+
 from app.ferramentas.nucleo_relatorios.telas import REGISTRO_TELAS
-from app.plataforma.db.usuarios import usuario_tem_acesso
+from app.plataforma.db.usuarios import listar_chaves_notificacoes_dispensadas, usuario_tem_acesso
 
 
 # Um registro simples (slug + nome de exibição da ferramenta -> funções
@@ -47,15 +49,41 @@ def notificacoes_do_usuario(usuario):
     Cada item ganha "ferramenta" (nome de exibição) aqui, não em cada
     módulo — Henrique pediu (2026-08-06/07) que toda notificação deixe
     claro de qual ferramenta ela veio, pensando em quando existirem
-    muitas ferramentas e as notificações começarem a se misturar."""
+    muitas ferramentas e as notificações começarem a se misturar.
+
+    Henrique, diretoria, 2026-09-16: "Ferramentas" (a família `listar`,
+    não `listar_pessoais`) ganhou dispensa LÓGICA por pessoa — "só
+    queria uma opção da pessoa limpar VISUALMENTE... um apagar lógico,
+    não físico, removendo somente pro usuário que apagou, continua
+    existindo a notificação de fato" (corrigindo um desenho anterior que
+    reusava a flag global de "resolvido" do Job, que sumiria pra todo
+    mundo). Cada módulo só precisa marcar seus itens com uma `chave`
+    estável (ver *.web.notificacoes.py de cada um); é aqui, de forma
+    genérica pra todas as ferramentas, que: (1) filtra o que esse
+    usuário já dispensou (NotificacaoDispensada, ver app/plataforma/db/
+    usuarios.py) e (2) monta descartavel/resolver pro que sobrou, sem
+    cada módulo precisar saber nada sobre essa mecânica. Item sem
+    `chave` (não deveria acontecer, mas por segurança) fica sem X, do
+    jeito que já era antes dessa dispensa existir."""
     notificacoes = []
 
     for slug, nome_ferramenta, listar, listar_pessoais in REGISTRO_NOTIFICACOES:
         if not usuario_tem_acesso(usuario, slug):
             continue
 
+        dispensadas = listar_chaves_notificacoes_dispensadas(usuario.id, slug)
+
         for item in listar(usuario.id):
-            notificacoes.append({**item, "mensagem": _com_ponto_final(item["mensagem"]), "ferramenta": nome_ferramenta})
+            chave = item.get("chave")
+            if chave in dispensadas:
+                continue
+
+            item_final = {**item, "mensagem": _com_ponto_final(item["mensagem"]), "ferramenta": nome_ferramenta}
+            item_final.pop("chave", None)
+            if chave:
+                item_final["descartavel"] = True
+                item_final["resolver"] = f"/notificacoes/ferramentas/dispensar?ferramenta_slug={quote(slug)}&chave={quote(chave)}"
+            notificacoes.append(item_final)
 
         for item in listar_pessoais(usuario.id):
             notificacoes.append({**item, "mensagem": _com_ponto_final(item["mensagem"]), "ferramenta": nome_ferramenta})

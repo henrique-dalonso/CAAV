@@ -224,6 +224,31 @@ class UltimoVistoAba(SQLModel, table=True):
     visto_em: datetime = Field(default_factory=datetime.now)
 
 
+class NotificacaoDispensada(SQLModel, table=True):
+    """Dispensa LÓGICA (só visual, por pessoa) de uma notificação da aba
+    "Ferramentas" do sininho. Henrique, diretoria, 2026-09-16, corrigindo
+    o desenho anterior (que reusava a flag global de "resolvido" do
+    Job): "só queria uma opção da pessoa limpar VISUALMENTE... é um
+    apagar lógico, não físico, removendo somente pro usuário que apagou,
+    continua existindo a notificação de fato" — cada usuário tem seu
+    próprio registro de dispensa aqui; a notificação de origem (Job,
+    ChecagemFila) nunca é tocada, e continua aparecendo normalmente pra
+    quem não dispensou. Mesmo padrão de chave composta que
+    UltimoVistoAba já usa, sem `id` próprio.
+
+    `chave` identifica a notificação de origem de forma estável entre
+    ciclos, prefixada pelo tipo de origem pra nunca colidir id de
+    tabelas diferentes (ex: "job:123", "checagem:45") — ver
+    app/plataforma/web/notificacoes.py."""
+
+    usuario_id: Optional[int] = Field(
+        default=None, foreign_key="usuario.id", primary_key=True
+    )
+    ferramenta_slug: str = Field(primary_key=True)
+    chave: str = Field(primary_key=True)
+    criado_em: datetime = Field(default_factory=datetime.now)
+
+
 class TentativaLoginFalha(SQLModel, table=True):
     """Trava por IP/rede (Henrique, 2026-08-11): guarda cada tentativa de
     login que falhou (senha errada, ou nome de usuário que nem existe).

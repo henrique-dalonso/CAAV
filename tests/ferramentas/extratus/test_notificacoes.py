@@ -53,6 +53,14 @@ def test_inconsistencia_de_triagem_vira_notificacao(limpar_notificacoes_teste):
     assert achado is not None
     assert achado["tipo"] == "triagem"
     assert achado["link"] == "/extratus/fila-robo"
+    # Henrique, diretoria, 2026-09-16: até triagem ganhou `chave` —
+    # dispensa lógica por pessoa cobre os 4 tipos de "Ferramentas", não
+    # só erro/sucesso/revisão. `descartavel`/`resolver` NÃO são montados
+    # aqui — isso é trabalho do agregador (app/plataforma/web/
+    # notificacoes.py), a partir dessa chave.
+    assert achado["chave"].startswith("checagem:")
+    assert "descartavel" not in achado
+    assert "resolver" not in achado
 
 
 def test_status_aprovado_e_pendente_nao_viram_notificacao(limpar_notificacoes_teste):
@@ -70,7 +78,7 @@ def test_status_aprovado_e_pendente_nao_viram_notificacao(limpar_notificacoes_te
 
 def test_erro_do_robo_vira_notificacao(limpar_notificacoes_teste):
     nome = f"{PREFIXO_TESTE}erro_robo.pdf"
-    registrar_erro(nome, None, "erro_pdf", "PDF corrompido", usuario_id=None)
+    job = registrar_erro(nome, None, "erro_pdf", "PDF corrompido", usuario_id=None)
 
     itens = listar_notificacoes(USUARIO_TESTE)
     achado = next((i for i in itens if nome in i["mensagem"]), None)
@@ -78,6 +86,7 @@ def test_erro_do_robo_vira_notificacao(limpar_notificacoes_teste):
     assert achado is not None
     assert achado["tipo"] == "erro"
     assert achado["link"] == "/extratus/relatorios-robo"
+    assert achado["chave"] == f"job:{job.id}"
 
 
 def test_erro_do_robo_com_processo_vira_notificacao_com_deep_link(limpar_notificacoes_teste):
@@ -211,10 +220,13 @@ def test_relatorio_ja_notificado_nao_aparece_de_novo(limpar_notificacoes_teste):
     assert not any(job.arquivo_pdf in i["mensagem"] for i in itens)
 
 
-def test_sucesso_do_robo_vira_notificacao_nao_descartavel_em_ferramentas(limpar_notificacoes_teste):
-    # Henrique, 2026-09-02: "Ferramentas" (dos outros) deixou de ter X —
-    # só quem pediu, em "Minhas", pode dispensar (ver
-    # test_sucesso_do_robo_do_solicitante_vai_pra_minhas_e_e_descartavel).
+def test_sucesso_do_robo_vira_notificacao_com_chave_em_ferramentas(limpar_notificacoes_teste):
+    # Henrique, diretoria, 2026-09-16: "Ferramentas" ganhou dispensa
+    # LÓGICA por pessoa (não mais a flag global de "Minhas") — por isso
+    # "pronto" aqui também carrega `chave`, igual erro/revisão/triagem.
+    # `descartavel`/`resolver` continuam de fora do retorno deste módulo
+    # (isso é montado pelo agregador a partir da chave, ver
+    # app/plataforma/web/notificacoes.py).
     job = registrar_processado(
         arquivo_pdf=f"{PREFIXO_TESTE}sucesso_robo.pdf",
         processo="0000000-00.2026.8.00.0070",
@@ -229,6 +241,7 @@ def test_sucesso_do_robo_vira_notificacao_nao_descartavel_em_ferramentas(limpar_
 
     assert achado is not None
     assert achado["tipo"] == "pronto"
+    assert achado["chave"] == f"job:{job.id}"
     assert "descartavel" not in achado
     assert "resolver" not in achado
 
@@ -269,11 +282,11 @@ def test_sucesso_do_robo_do_solicitante_vai_pra_minhas_e_e_descartavel(limpar_no
     assert not any(job.arquivo_pdf in i["mensagem"] for i in listar_notificacoes_pessoais(OUTRO_USUARIO))
 
 
-def test_revisao_do_robo_vira_notificacao_descartavel(limpar_notificacoes_teste):
-    """Henrique, diretoria, 2026-09-16: "Ferramentas" ganhou o botão
-    "Limpar notificações" cobrindo até "revisão" — "são notificações
-    universais, não convém a pessoa mesmo" (diferente de "Minhas", onde
-    revisão continua travada por ser pendência de alguém específico)."""
+def test_revisao_do_robo_vira_notificacao_com_chave(limpar_notificacoes_teste):
+    """Henrique, diretoria, 2026-09-16: "Ferramentas" ganhou dispensa
+    lógica por pessoa cobrindo até "revisão" — diferente de "Minhas",
+    onde revisão continua sem chave (o X de lá resolve o Job de
+    verdade, mesma flag pra quem quer que veja)."""
     job = registrar_processado(
         arquivo_pdf=f"{PREFIXO_TESTE}revisao_robo.pdf",
         processo="0000000-00.2026.8.00.0071",
@@ -288,8 +301,9 @@ def test_revisao_do_robo_vira_notificacao_descartavel(limpar_notificacoes_teste)
 
     assert achado is not None
     assert achado["tipo"] == "revisao"
-    assert achado["descartavel"] is True
-    assert achado["resolver"] == f"/extratus/relatorios-robo/{job.id}/marcar-notificacao-resolvida"
+    assert achado["chave"] == f"job:{job.id}"
+    assert "descartavel" not in achado
+    assert "resolver" not in achado
 
 
 def test_sucesso_do_robo_resolvido_nao_vira_notificacao(limpar_notificacoes_teste):

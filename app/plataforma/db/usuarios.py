@@ -12,6 +12,7 @@ from app.plataforma.db.models import (
     CARGOS_VALIDOS,
     CORES_PERFIL_VALIDAS,
     Ferramenta,
+    NotificacaoDispensada,
     TEMAS_VALIDOS,
     UltimoVistoAba,
     Usuario,
@@ -336,6 +337,35 @@ def marcar_aba_vista(usuario_id, ferramenta_slug, aba):
             registro = UltimoVistoAba(usuario_id=usuario_id, ferramenta_slug=ferramenta_slug, aba=aba)
 
         sessao.add(registro)
+        sessao.commit()
+
+
+def listar_chaves_notificacoes_dispensadas(usuario_id, ferramenta_slug):
+    """Chaves que esse usuário já dispensou (botão "Limpar notificações"
+    da aba "Ferramentas") nessa ferramenta — usado por notificacoes_do_
+    usuario (app/plataforma/web/notificacoes.py) pra filtrar da lista o
+    que ele já mandou sumir da própria tela, sem afetar quem mais vê a
+    mesma notificação."""
+    with obter_sessao() as sessao:
+        linhas = sessao.exec(
+            select(NotificacaoDispensada.chave).where(
+                NotificacaoDispensada.usuario_id == usuario_id,
+                NotificacaoDispensada.ferramenta_slug == ferramenta_slug,
+            )
+        ).all()
+        return set(linhas)
+
+
+def dispensar_notificacao(usuario_id, ferramenta_slug, chave):
+    """Registra a dispensa lógica de UMA notificação da aba "Ferramentas"
+    pra ESSE usuário — idempotente (chave composta como primary key: 2
+    cliques, ou 2 abas mandando a mesma dispensa quase junto, nunca
+    duplicam linha nem quebram)."""
+    with obter_sessao() as sessao:
+        if sessao.get(NotificacaoDispensada, (usuario_id, ferramenta_slug, chave)):
+            return
+
+        sessao.add(NotificacaoDispensada(usuario_id=usuario_id, ferramenta_slug=ferramenta_slug, chave=chave))
         sessao.commit()
 
 

@@ -25,10 +25,9 @@ def listar_notificacoes(usuario_id):
     """Ver docstring equivalente em app/ferramentas/extratus/web/
     notificacoes.py (Extratus - Relatórios) — mesma lógica, motor
     compartilhado (nucleo_relatorios), isolado por ferramenta_slug
-    (`_FERRAMENTA_SLUG_NUCLEO`). Henrique, diretoria, 2026-09-16:
-    erro/revisão ganharam descartavel/resolver (botão "Limpar
-    notificações" de Ferramentas, ver base.js) — "pronto" continua sem,
-    de propósito (é pendência de quem pediu, não "universal")."""
+    (`_FERRAMENTA_SLUG_NUCLEO`). Henrique, diretoria, 2026-09-16: todo
+    item ganha `chave` — dispensa lógica por pessoa (montagem de
+    descartavel/resolver é genérica, no agregador)."""
     notificacoes = []
 
     for registro in listar_inconsistencias(ferramenta_slug=_FERRAMENTA_SLUG_NUCLEO):
@@ -37,6 +36,7 @@ def listar_notificacoes(usuario_id):
             "mensagem": f'"{registro.nome_arquivo}": {motivo}',
             "tipo": "triagem",
             "link": "/extratus-aburesi/fila-robo",
+            "chave": f"checagem:{registro.id}",
             "criado_em": registro.atualizado_em.isoformat(),
         })
 
@@ -47,7 +47,7 @@ def listar_notificacoes(usuario_id):
         if job.processo:
             link += "?processo=" + quote(job.processo)
 
-        resolver = f"/extratus-aburesi/relatorios-robo/{job.id}/marcar-notificacao-resolvida"
+        chave = f"job:{job.id}"
 
         if job.status == "erro":
             motivo = job.erro_mensagem or job.tipo_erro or "falha desconhecida"
@@ -55,8 +55,7 @@ def listar_notificacoes(usuario_id):
                 "mensagem": f'"{job.arquivo_pdf}": erro ao processar ({motivo})',
                 "tipo": "erro",
                 "link": link,
-                "descartavel": True,
-                "resolver": resolver,
+                "chave": chave,
                 "criado_em": job.criado_em.isoformat(),
             })
         elif job.status == "sucesso":
@@ -64,6 +63,7 @@ def listar_notificacoes(usuario_id):
                 "mensagem": f'"{job.arquivo_pdf}": relatório do Robô pronto',
                 "tipo": "pronto",
                 "link": link,
+                "chave": chave,
                 "criado_em": job.criado_em.isoformat(),
             })
         else:  # "revisao"
@@ -71,8 +71,7 @@ def listar_notificacoes(usuario_id):
                 "mensagem": f'"{job.arquivo_pdf}": relatório do Robô pronto, mas precisa de revisão',
                 "tipo": "revisao",
                 "link": link,
-                "descartavel": True,
-                "resolver": resolver,
+                "chave": chave,
                 "criado_em": job.criado_em.isoformat(),
             })
 

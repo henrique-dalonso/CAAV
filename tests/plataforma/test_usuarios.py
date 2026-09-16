@@ -6,6 +6,7 @@ from app.plataforma.db.models import (
     CARGO_COLABORADOR,
     CARGO_COORDENADOR,
     Ferramenta,
+    NotificacaoDispensada,
     UltimoVistoAba,
     Usuario,
     UsuarioFerramenta,
@@ -17,8 +18,10 @@ from app.plataforma.db.usuarios import (
     criar_usuario,
     definir_cargo,
     definir_ferramentas,
+    dispensar_notificacao,
     excluir_usuario,
     ferramenta_pela_url,
+    listar_chaves_notificacoes_dispensadas,
     listar_ferramentas_lote_ids,
     listar_ferramentas_manual_ids,
     listar_ferramentas_liberadas_ids,
@@ -566,6 +569,72 @@ def test_marcar_aba_vista_nao_afeta_outra_aba(limpar_usuarios_teste):
     marcar_aba_vista(usuario.id, "extratus", "relatorios")
 
     assert obter_ultimo_visto(usuario.id, "extratus", "relatorios-robo") is None
+
+
+# --- NotificacaoDispensada — dispensa LÓGICA por pessoa da aba
+# "Ferramentas" do sino (Henrique, diretoria, 2026-09-16: "um apagar
+# lógico, não físico, removendo somente pro usuário que apagou, continua
+# existindo a notificação de fato"). IDs negativos de propósito, mesmo
+# padrão de tests/ferramentas/extratus/test_notificacoes.py — não
+# precisa de um Usuario real pra testar a tabela em si.
+
+USUARIO_DISPENSA_TESTE = -9101
+OUTRO_USUARIO_DISPENSA_TESTE = -9102
+
+
+@pytest.fixture
+def limpar_notificacoes_dispensadas_teste():
+    yield
+    with obter_sessao() as sessao:
+        sessao.exec(delete(NotificacaoDispensada).where(
+            NotificacaoDispensada.usuario_id.in_([USUARIO_DISPENSA_TESTE, OUTRO_USUARIO_DISPENSA_TESTE])
+        ))
+        sessao.commit()
+
+
+def test_listar_chaves_notificacoes_dispensadas_vazio_quando_nunca_dispensou(limpar_notificacoes_dispensadas_teste):
+    assert listar_chaves_notificacoes_dispensadas(USUARIO_DISPENSA_TESTE, "extratus") == set()
+
+
+def test_dispensar_notificacao_depois_aparece_em_listar_chaves(limpar_notificacoes_dispensadas_teste):
+    dispensar_notificacao(USUARIO_DISPENSA_TESTE, "extratus", "job:1")
+
+    assert listar_chaves_notificacoes_dispensadas(USUARIO_DISPENSA_TESTE, "extratus") == {"job:1"}
+
+
+def test_dispensar_notificacao_e_idempotente(limpar_notificacoes_dispensadas_teste):
+    # 2 cliques (ou 2 abas mandando a mesma dispensa quase junto) não
+    # duplicam linha nem quebram — chave composta como primary key.
+    dispensar_notificacao(USUARIO_DISPENSA_TESTE, "extratus", "job:1")
+    dispensar_notificacao(USUARIO_DISPENSA_TESTE, "extratus", "job:1")
+
+    with obter_sessao() as sessao:
+        total = sessao.exec(
+            select(NotificacaoDispensada).where(
+                NotificacaoDispensada.usuario_id == USUARIO_DISPENSA_TESTE,
+                NotificacaoDispensada.ferramenta_slug == "extratus",
+                NotificacaoDispensada.chave == "job:1",
+            )
+        ).all()
+        assert len(total) == 1
+
+
+def test_dispensa_e_isolada_por_ferramenta(limpar_notificacoes_dispensadas_teste):
+    # A MESMA chave ("job:1") pode existir em 2 ferramentas diferentes
+    # (cada uma com seu próprio Job) sem colidir — ferramenta_slug faz
+    # parte da chave composta.
+    dispensar_notificacao(USUARIO_DISPENSA_TESTE, "extratus", "job:1")
+
+    assert listar_chaves_notificacoes_dispensadas(USUARIO_DISPENSA_TESTE, "extratus-aburesi") == set()
+
+
+def test_dispensa_e_isolada_por_usuario(limpar_notificacoes_dispensadas_teste):
+    # A dispensa de uma pessoa nunca afeta o que a OUTRA vê — é
+    # exatamente o ponto do desenho (Henrique: "removendo somente pro
+    # usuário que apagou").
+    dispensar_notificacao(USUARIO_DISPENSA_TESTE, "extratus", "job:1")
+
+    assert listar_chaves_notificacoes_dispensadas(OUTRO_USUARIO_DISPENSA_TESTE, "extratus") == set()
 
 
 # --- ferramenta_pela_url — cor/marca de identidade em qualquer sub-página
