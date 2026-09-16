@@ -25,7 +25,10 @@ def listar_notificacoes(usuario_id):
     """Ver docstring equivalente em app/ferramentas/extratus/web/
     notificacoes.py (Extratus - Relatórios) — mesma lógica, motor
     compartilhado (nucleo_relatorios), isolado por ferramenta_slug
-    (`_FERRAMENTA_SLUG_NUCLEO`)."""
+    (`_FERRAMENTA_SLUG_NUCLEO`). Henrique, diretoria, 2026-09-16:
+    erro/revisão ganharam descartavel/resolver (botão "Limpar
+    notificações" de Ferramentas, ver base.js) — "pronto" continua sem,
+    de propósito (é pendência de quem pediu, não "universal")."""
     notificacoes = []
 
     for registro in listar_inconsistencias(ferramenta_slug=_FERRAMENTA_SLUG_NUCLEO):
@@ -44,12 +47,16 @@ def listar_notificacoes(usuario_id):
         if job.processo:
             link += "?processo=" + quote(job.processo)
 
+        resolver = f"/condenacao/relatorios-robo/{job.id}/marcar-notificacao-resolvida"
+
         if job.status == "erro":
             motivo = job.erro_mensagem or job.tipo_erro or "falha desconhecida"
             notificacoes.append({
                 "mensagem": f'"{job.arquivo_pdf}": erro ao processar ({motivo})',
                 "tipo": "erro",
                 "link": link,
+                "descartavel": True,
+                "resolver": resolver,
                 "criado_em": job.criado_em.isoformat(),
             })
         elif job.status == "sucesso":
@@ -64,6 +71,8 @@ def listar_notificacoes(usuario_id):
                 "mensagem": f'"{job.arquivo_pdf}": relatório do Robô pronto, mas precisa de revisão',
                 "tipo": "revisao",
                 "link": link,
+                "descartavel": True,
+                "resolver": resolver,
                 "criado_em": job.criado_em.isoformat(),
             })
 

@@ -136,6 +136,7 @@
             <ul class="lista-notificacoes" id="lista-notificacoes-minhas" hidden></ul>
             <p class="vazio painel-notificacoes-vazio" id="painel-notificacoes-vazio-minhas" hidden>Nenhuma pendência sua no momento.</p>
             {% if usuario_tem_acesso_a_alguma_fila_robo(usuario) %}
+            <button type="button" class="painel-notificacoes-limpar" id="limpar-notificacoes-conferencias" hidden>Limpar notificações</button>
             <ul class="lista-notificacoes" id="lista-notificacoes-conferencias" hidden></ul>
             <p class="vazio painel-notificacoes-vazio" id="painel-notificacoes-vazio-conferencias" hidden>Nenhuma notificação de ferramentas no momento.</p>
             {% endif %}

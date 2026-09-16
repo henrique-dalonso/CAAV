@@ -269,7 +269,11 @@ def test_sucesso_do_robo_do_solicitante_vai_pra_minhas_e_e_descartavel(limpar_no
     assert not any(job.arquivo_pdf in i["mensagem"] for i in listar_notificacoes_pessoais(OUTRO_USUARIO))
 
 
-def test_revisao_do_robo_vira_notificacao_nao_descartavel(limpar_notificacoes_teste):
+def test_revisao_do_robo_vira_notificacao_descartavel(limpar_notificacoes_teste):
+    """Henrique, diretoria, 2026-09-16: "Ferramentas" ganhou o botão
+    "Limpar notificações" cobrindo até "revisão" — "são notificações
+    universais, não convém a pessoa mesmo" (diferente de "Minhas", onde
+    revisão continua travada por ser pendência de alguém específico)."""
     job = registrar_processado(
         arquivo_pdf=f"{PREFIXO_TESTE}revisao_robo.pdf",
         processo="0000000-00.2026.8.00.0071",
@@ -284,8 +288,8 @@ def test_revisao_do_robo_vira_notificacao_nao_descartavel(limpar_notificacoes_te
 
     assert achado is not None
     assert achado["tipo"] == "revisao"
-    assert "descartavel" not in achado
-    assert "resolver" not in achado
+    assert achado["descartavel"] is True
+    assert achado["resolver"] == f"/extratus/relatorios-robo/{job.id}/marcar-notificacao-resolvida"
 
 
 def test_sucesso_do_robo_resolvido_nao_vira_notificacao(limpar_notificacoes_teste):

@@ -41,15 +41,26 @@ def listar_notificacoes(usuario_id):
 
     4 comportamentos de propósito diferentes:
     - Inconsistências da triagem: somem sozinhas quando o arquivo é
-      corrigido/removido da fila — sem ação manual nenhuma.
-    - Erro do Robô: sem ação de resolver ainda (mesma lacuna de sempre,
-      catalogada — não pode sumir sozinho).
-    - Revisão do Robô: mesma coisa — sem ação de "marcar como revisado"
-      pro Robô ainda, então também não pode sumir sozinho.
-    - Sucesso do Robô: SEM X aqui (Henrique, 2026-09-02: "Ferramentas" é
-      dos outros — só quem pediu, em "Minhas", pode dispensar; um job
-      sem solicitante resolvido também aparece aqui, também sem X, até
-      alguém tratar pelo fluxo real).
+      corrigido/removido da fila — sem ação manual nenhuma, e sem flag
+      de "resolvida" nenhuma pra usar aqui (por isso é o único tipo
+      abaixo que continua sem descartavel/resolver).
+    - Erro/Revisão do Robô: Henrique, diretoria, 2026-09-16 —
+      "Ferramentas" ganhou o botão "Limpar notificações" (igual
+      "Minhas"), incluindo revisão: "são notificações universais, não
+      convém a pessoa mesmo" — ninguém é DONO de um job sem
+      solicitante, então não faz sentido travar até "o fluxo real"
+      resolver (diferente de "Minhas", onde revisão/erro continuam
+      travados — lá sim é pendência de alguém específico). Reusa o
+      MESMO marcar_notificacao_resolvida_robo de sempre (já era
+      genérico por job_id, nunca teve restrição por status — só a
+      montagem do item aqui embaixo é que nunca tinha oferecido o X
+      pra erro/revisão).
+    - Sucesso do Robô: CONTINUA sem X aqui, de propósito — motivo
+      diferente de erro/revisão (não é "precisa do fluxo real", é
+      DONO: "só quem pediu, em Minhas, pode dispensar" ainda vale,
+      já que dispensar aqui usaria a MESMA flag de "Minhas" — um
+      colega clicando "Limpar" em Ferramentas apagaria o aviso de
+      "seu relatório ficou pronto" de quem pediu, antes dela nem ver.
     """
     notificacoes = []
 
@@ -74,12 +85,16 @@ def listar_notificacoes(usuario_id):
         if job.processo:
             link += "?processo=" + quote(job.processo)
 
+        resolver = f"/extratus/relatorios-robo/{job.id}/marcar-notificacao-resolvida"
+
         if job.status == "erro":
             motivo = job.erro_mensagem or job.tipo_erro or "falha desconhecida"
             notificacoes.append({
                 "mensagem": f'"{job.arquivo_pdf}": erro ao processar ({motivo})',
                 "tipo": "erro",
                 "link": link,
+                "descartavel": True,
+                "resolver": resolver,
                 "criado_em": job.criado_em.isoformat(),
             })
         elif job.status == "sucesso":
@@ -94,6 +109,8 @@ def listar_notificacoes(usuario_id):
                 "mensagem": f'"{job.arquivo_pdf}": relatório do Robô pronto, mas precisa de revisão',
                 "tipo": "revisao",
                 "link": link,
+                "descartavel": True,
+                "resolver": resolver,
                 "criado_em": job.criado_em.isoformat(),
             })
 

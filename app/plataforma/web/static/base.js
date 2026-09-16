@@ -692,10 +692,13 @@
     var contagemAbaMinhasEl = document.getElementById("contagem-aba-minhas");
     var contagemAbaConferenciasEl = document.getElementById("contagem-aba-conferencias");
     var limparNotificacoesMinhasEl = document.getElementById("limpar-notificacoes-minhas");
-    // Descartáveis da última renderização de "Minhas" (item.descartavel
-    // && item.resolver) — alimenta tanto a visibilidade do botão
-    // "Limpar notificações" quanto o próprio clique dele.
+    var limparNotificacoesConferenciasEl = document.getElementById("limpar-notificacoes-conferencias");
+    // Descartáveis da última renderização de "Minhas"/"Ferramentas"
+    // (item.descartavel && item.resolver) — alimenta tanto a
+    // visibilidade do botão "Limpar notificações" quanto o próprio
+    // clique dele.
     var ultimosItensMinhasDescartaveis = [];
+    var ultimosItensConferenciasDescartaveis = [];
     // Últimos itens renderizados de CADA aba — alimenta o badge "não
     // visto" (ver marcarAbaVista/contarNaoVistos abaixo), recalculado a
     // cada poll mas só "consumido" (marcado como visto) quando a pessoa
@@ -734,8 +737,14 @@
         // backend (ver item.pessoal em notificacoes_do_usuario).
         var ABAS_NOTIFICACOES = [
             { nome: "sistema", botao: abaSistemaEl, lista: listaNotificacoesEl, vazio: painelNotificacoesVazioEl },
-            { nome: "minhas", botao: abaMinhasEl, lista: listaNotificacoesMinhasEl, vazio: painelNotificacoesVazioMinhasEl, limpar: limparNotificacoesMinhasEl },
-            { nome: "conferencias", botao: abaConferenciasEl, lista: listaNotificacoesConferenciasEl, vazio: painelNotificacoesVazioConferenciasEl },
+            {
+                nome: "minhas", botao: abaMinhasEl, lista: listaNotificacoesMinhasEl, vazio: painelNotificacoesVazioMinhasEl,
+                limpar: limparNotificacoesMinhasEl, obterDescartaveis: function () { return ultimosItensMinhasDescartaveis; },
+            },
+            {
+                nome: "conferencias", botao: abaConferenciasEl, lista: listaNotificacoesConferenciasEl, vazio: painelNotificacoesVazioConferenciasEl,
+                limpar: limparNotificacoesConferenciasEl, obterDescartaveis: function () { return ultimosItensConferenciasDescartaveis; },
+            },
         ];
         var abaNotificacoesAtiva = "sistema";
 
@@ -757,7 +766,12 @@
                     aba.vazio.hidden = !ativa || (aba.lista ? aba.lista.children.length > 0 : false);
                 }
                 if (aba.limpar) {
-                    aba.limpar.hidden = !ativa || ultimosItensMinhasDescartaveis.length === 0;
+                    // Henrique, diretoria, 2026-09-16, achado real: isso
+                    // sempre checava ultimosItensMinhasDescartaveis, não
+                    // importa a aba — inofensivo enquanto só "Minhas"
+                    // tinha o botão, quebraria "Ferramentas" agora.
+                    var descartaveisDaAba = aba.obterDescartaveis ? aba.obterDescartaveis() : [];
+                    aba.limpar.hidden = !ativa || descartaveisDaAba.length === 0;
                 }
             });
         }
@@ -765,40 +779,65 @@
         // Henrique, 2026-09-02: "aproveita e adiciona um botão 'Limpar
         // notificações' no topo de 'Minhas'" — dispensa de uma vez só
         // tudo que já tem "×" hoje (mesma flag compartilhada por baixo,
-        // marcar_notificacao_resolvida/_robo); revisão/erro continuam
-        // exigindo o fluxo real. Henrique, 2026-09-02 (mais tarde): pede
-        // confirmação antes — mesmo modal já usado em "Excluir relatório"/
-        // "Descartar todas" (ver confirmarAcao, definida lá em cima junto
-        // do modal-confirmacao), não um alert() nu nem algo novo.
-        function executarLimpezaNotificacoesMinhas() {
-            if (ultimosItensMinhasDescartaveis.length === 0) {
+        // marcar_notificacao_resolvida/_robo). Henrique, 2026-09-02 (mais
+        // tarde): pede confirmação antes — mesmo modal já usado em
+        // "Excluir relatório"/"Descartar todas" (ver confirmarAcao,
+        // definida lá em cima junto do modal-confirmacao), não um
+        // alert() nu nem algo novo.
+        //
+        // Henrique, diretoria, 2026-09-16: mesmo botão agora também em
+        // "Ferramentas" — diferente de "Minhas" (onde revisão/erro
+        // continuam exigindo o fluxo real, são pendência de alguém
+        // específico), em "Ferramentas" as notificações não têm dono
+        // ("são notificações universais, não convém a pessoa mesmo") —
+        // por isso ali TAMBÉM inclui "revisão" (ver descartavel/resolver
+        // adicionados em erro/revisao/pronto nos *.web.notificacoes de
+        // cada módulo, não só triagem/pronto como antes). "Triagem"
+        // (inconsistência de arquivo) continua de fora dos dois — não
+        // tem flag de "resolvida" nenhuma, só some quando o arquivo é
+        // corrigido de verdade.
+        //
+        // `criarLimpezaEmLote` generaliza o que antes era só de
+        // "Minhas" — mesma lógica, parametrizada por aba/botão/rótulo,
+        // pra não duplicar a função inteira por causa de um texto de
+        // confirmação diferente.
+        function criarLimpezaEmLote(botaoEl, obterItens, rotuloAba) {
+            if (!botaoEl) {
                 return;
             }
 
-            limparNotificacoesMinhasEl.disabled = true;
+            function executar() {
+                var itens = obterItens();
+                if (itens.length === 0) {
+                    return;
+                }
 
-            Promise.all(ultimosItensMinhasDescartaveis.map(function (item) {
-                return fetch(item.resolver, { method: "POST" });
-            }))
-                .then(function () { consultarNotificacoes(); })
-                .finally(function () { limparNotificacoesMinhasEl.disabled = false; });
-        }
+                botaoEl.disabled = true;
 
-        if (limparNotificacoesMinhasEl) {
-            limparNotificacoesMinhasEl.addEventListener("click", function () {
-                var quantidade = ultimosItensMinhasDescartaveis.length;
+                Promise.all(itens.map(function (item) {
+                    return fetch(item.resolver, { method: "POST" });
+                }))
+                    .then(function () { consultarNotificacoes(); })
+                    .finally(function () { botaoEl.disabled = false; });
+            }
+
+            botaoEl.addEventListener("click", function () {
+                var quantidade = obterItens().length;
 
                 if (quantidade === 0) {
                     return;
                 }
 
                 var mensagem = quantidade === 1
-                    ? "Marcar a 1 notificação de \"Minhas\" como lida?"
-                    : "Marcar as " + quantidade + " notificações de \"Minhas\" como lidas?";
+                    ? "Marcar a 1 notificação de \"" + rotuloAba + "\" como lida?"
+                    : "Marcar as " + quantidade + " notificações de \"" + rotuloAba + "\" como lidas?";
 
-                confirmarAcao(mensagem, executarLimpezaNotificacoesMinhas, true);
+                confirmarAcao(mensagem, executar, true);
             });
         }
+
+        criarLimpezaEmLote(limparNotificacoesMinhasEl, function () { return ultimosItensMinhasDescartaveis; }, "Minhas");
+        criarLimpezaEmLote(limparNotificacoesConferenciasEl, function () { return ultimosItensConferenciasDescartaveis; }, "Ferramentas");
 
         ABAS_NOTIFICACOES.forEach(function (aba) {
             if (aba.botao) {
@@ -1255,6 +1294,25 @@
             var itensSistema = itens.filter(function (item) { return !item.pessoal && item.tipo === "comunicado"; });
             var itensConferencias = itens.filter(function (item) { return !item.pessoal && item.tipo !== "comunicado"; });
 
+            // Henrique, diretoria, 2026-09-16: "as mais novas no topo,
+            // mais antigas vão descendo" — antes não tinha ordenação
+            // nenhuma aplicada aqui, a ordem era só a que o backend
+            // devolvia (cada fonte concatenada, ver notificacoes_do_
+            // usuario). criado_em é string ISO — compara direto com >/<,
+            // sem precisar virar Date (mesmo truque já usado em
+            // marcarAbaVista acima). Item sem criado_em (não deveria
+            // existir, mas por segurança) vai pro fim.
+            function porCriadoEmDesc(a, b) {
+                if (!a.criado_em) { return 1; }
+                if (!b.criado_em) { return -1; }
+                if (a.criado_em > b.criado_em) { return -1; }
+                if (a.criado_em < b.criado_em) { return 1; }
+                return 0;
+            }
+            itensMinhas.sort(porCriadoEmDesc);
+            itensSistema.sort(porCriadoEmDesc);
+            itensConferencias.sort(porCriadoEmDesc);
+
             preencherListaNotificacoes(listaNotificacoesEl, itensSistema);
             if (listaNotificacoesMinhasEl) {
                 preencherListaNotificacoes(listaNotificacoesMinhasEl, itensMinhas, true);
@@ -1265,10 +1323,16 @@
 
             // Henrique, 2026-09-02: "Limpar notificações" no topo de
             // "Minhas" — só considera quem já tem "×" hoje (mesma regra
-            // do clique acima); revisão/erro nunca somem por aqui. A
-            // visibilidade do botão em si (aba ativa + tem o que limpar)
-            // é decidida em mostrarAbaNotificacoes, chamada logo abaixo.
+            // do clique acima). Henrique, diretoria, 2026-09-16: mesma
+            // ideia agora em "Ferramentas" também, incluindo "revisão"
+            // (ver descartavel/resolver setados em cada *.web.
+            // notificacoes.py). A visibilidade do botão em si (aba ativa
+            // + tem o que limpar) é decidida em mostrarAbaNotificacoes,
+            // chamada logo abaixo.
             ultimosItensMinhasDescartaveis = itensMinhas.filter(function (item) {
+                return item.descartavel && item.resolver;
+            });
+            ultimosItensConferenciasDescartaveis = itensConferencias.filter(function (item) {
                 return item.descartavel && item.resolver;
             });
 
