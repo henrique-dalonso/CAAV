@@ -1224,50 +1224,35 @@ html[data-theme="escuro"] .campo-data::-webkit-calendar-picker-indicator {
 }
 
 /* Henrique, diretoria, 2026-09-16: redesenho da linha de Relatórios do
-   Robô. 6ª rodada — as tentativas anteriores baseadas em fluxo flexbox
-   (empilhar/ancorar/centralizar o conjunto) sempre acabavam deixando a
-   pílula sensível ao que existe embaixo dela. Troca de estratégia:
-   .relatorio-status-coluna vira uma caixa de TAMANHO FIXO (mesma altura
-   em TODA linha, tenha ou não botão/"?"/"Por: X"), e a pílula
-   (.relatorio-status-selo) é travada com position:absolute + top FIXO
-   em pixels (não depende de nenhum sibling) — matematicamente
-   impossível dela se mover, porque nada mais no bloco participa do
-   cálculo da posição dela. O botão/texto embaixo usa esse MESMO ponto
-   de referência (top fixo a partir do topo da caixa, não da borda da
-   pílula), então também não depende de layout/fluxo. Efeito colateral
-   bom, não intencional de propósito: como a caixa tem o MESMO tamanho
-   pra toda linha (revisão, sucesso, erro), a lista INTEIRA fica com
-   altura uniforme de verdade — resolve de vez o "desalinhamento"
-   original. */
+   Robô. 7ª rodada — o botão "Marcar como revisado" (várias tentativas
+   de posição) foi removido de vez desta tela por ora ("vamos tomar
+   outro rumo, mas quero os alinhamentos e tamanhos originais
+   corretos") — .relatorio-status-coluna volta a ser um wrapper simples
+   (sem coluna, sem caixa de tamanho fixo), tamanho e posição da pílula
+   voltam a ser EXATAMENTE o padrão sitewide de .relatorio-item .status
+   (min-width:68px, centralizado pelo align-items:center de sempre,
+   sem nenhum override aqui). O "?" informacional (aprovado, mantido
+   onde está) é a ÚNICA sobra deste redesenho — pequeno, position:
+   absolute no canto da pílula, não ocupa espaço nenhum no fluxo, então
+   nunca conta pra altura de nada. Backend (Job.revisado_manualmente/
+   revisado_por_id, marcar_como_revisado, rota /marcar-revisado)
+   continua existindo, só sem gatilho na tela por enquanto — quem já
+   está revisado mostra "Revisado" e o motivo vira "Marcado como
+   revisado por X" dentro do mesmo "?", sem precisar de espaço extra
+   nenhum embaixo do badge. */
 .relatorio-status-coluna {
-    position: relative;
-    width: 72px;
-    height: 70px;
+    display: inline-flex;
     flex-shrink: 0;
 }
 
-/* top:16px é um valor FIXO (não 50%/transform) de propósito — evita
-   precisar dobrar a altura da caixa só pra manter uma centralização
-   matemática perfeita quando o conteúdo de baixo (botão) é bem mais
-   alto que a pílula. 16px é a estimativa de onde a pílula ficaria
-   centralizada numa linha comum (~.relatorio-info, sem nada embaixo) —
-   pode precisar de um ajuste fino de +/-2px depois de ver rodando. */
 .relatorio-status-selo {
-    position: absolute;
-    top: 16px;
-    left: 50%;
-    transform: translateX(-50%);
+    position: relative;
     display: inline-flex;
 }
 
-/* "?" informacional — Henrique: "NÃO REDUZA O TAMANHO DO STATUS só pra
-   caber o '?', adicione ele como um expoente... deve se posicionar
-   FORA DOS LIMITES da pílula". .status aqui dentro não ganha NENHUMA
-   regra própria (usa exatamente o .status sitewide, mesmo tamanho de
-   sempre) — o "?" é absoluto relativo a .relatorio-status-selo (que já
-   é absoluto ele mesmo, mas continua servindo de ponto de referência
-   pros próprios filhos — CSS permite isso), deslocado o bastante pra
-   não tocar a borda da pílula. */
+/* "?" informacional — pequeno e discreto, position:absolute no canto
+   da pílula (fora dos limites dela, sem tocar a borda), sem ocupar
+   espaço nenhum no fluxo normal. */
 .botao-motivo-info {
     position: absolute;
     top: -10px;
@@ -1295,64 +1280,6 @@ html[data-theme="escuro"] .campo-data::-webkit-calendar-picker-indicator {
 .botao-motivo-info:focus-visible {
     border-color: var(--cor-acento);
     color: var(--cor-acento);
-}
-
-/* Botão-ícone "Marcar como revisado" — ancorado a partir do CENTRO da
-   caixa fixa (mesmo ponto de referência da pílula, não da borda dela),
-   empurrado pra baixo com margin-top fixo. Nunca desloca a pílula
-   porque não participa do posicionamento dela — os dois são
-   independentes, calculados a partir do mesmo centro. */
-.botao-marcar-revisado-robo {
-    position: absolute;
-    top: 42px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 22px;
-    flex-shrink: 0;
-    background: none;
-    border: 1.5px solid var(--cor-texto-suave);
-    color: var(--cor-texto);
-    border-radius: 999px;
-    cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
-}
-
-.botao-marcar-revisado-robo:hover {
-    background: var(--cor-acento-fraco);
-    border-color: var(--cor-acento);
-    color: var(--cor-acento);
-}
-
-.botao-marcar-revisado-robo:active {
-    transform: translateX(-50%) scale(0.94);
-}
-
-/* Henrique, diretoria, 2026-09-16 (rodada seguinte): "no lugar do
-   'Marcar como revisado' aparecer um textinho... 'Por: nome da
-   pessoa'" — some o botão, deixa só essa informação, discreta (não é
-   ação, é só rastro de quem revisou). Mesmo ponto de ancoragem
-   (centro da caixa fixa) do botão acima — não desloca a pílula.*/
-.revisado-por {
-    position: absolute;
-    top: 42px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 0.66rem;
-    color: var(--cor-texto-suave);
-    max-width: 80px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.revisado-por.expandido {
-    white-space: normal;
-    overflow: visible;
-    max-width: none;
 }
 
 /* Nº do processo (ou nome do arquivo, sem processo identificado) com

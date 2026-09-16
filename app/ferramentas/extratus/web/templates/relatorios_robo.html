@@ -100,7 +100,11 @@
                 <input type="checkbox" class="check-input relatorio-item-check" data-job-id="{{ job.id }}">
                 <span class="check-caixa check-caixa-pequena"></span>
             </label>
+            {% if job.revisado_manualmente %}
+            {% set motivo_texto = "Marcado como revisado por " ~ nomes_por_id.get(job.revisado_por_id, "não identificado") %}
+            {% else %}
             {% set motivo_texto = job.motivo_confianca if (job.status == "revisao" and job.motivo_confianca) else (job.erro_mensagem if (job.status == "erro" and job.erro_mensagem) else None) %}
+            {% endif %}
             <div class="relatorio-status-coluna">
                 <span class="relatorio-status-selo">
                     {% if job.revisado_manualmente %}
@@ -112,18 +116,6 @@
                     <button type="button" class="botao-motivo-info" data-dica="{{ motivo_texto }}" aria-label="Ver motivo">?</button>
                     {% endif %}
                 </span>
-                {% if job.revisado_manualmente %}
-                <span class="revisado-por truncavel" data-dica="Marcado como revisado por {{ nomes_por_id.get(job.revisado_por_id, 'não identificado') }}">Por: {{ nomes_por_id.get(job.revisado_por_id, "não identificado") }}</span>
-                {% elif job.status == "revisao" %}
-                <form action="/extratus/relatorios-robo/{{ job.id }}/marcar-revisado" method="post"
-                    data-confirm="Tem certeza que deseja marcar o caso como revisado?">
-                    <button type="submit" class="botao-marcar-revisado-robo" data-dica="Marcar como revisado" aria-label="Marcar como revisado">
-                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <polyline points="20 6 9 17 4 12"></polyline>
-                        </svg>
-                    </button>
-                </form>
-                {% endif %}
             </div>
             <div class="relatorio-info{% if job.relatorio_path %} relatorio-info-clicavel{% endif %}"{% if job.relatorio_path %} data-download="download/{{ job.relatorio_path.split('\\')[-1].split('/')[-1] }}"{% endif %}>
                 <strong class="relatorio-processo truncavel" data-dica="{{ job.processo or job.arquivo_pdf }}">
