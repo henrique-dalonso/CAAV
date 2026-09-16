@@ -201,7 +201,6 @@
         {% endfor %}
     </ul>
     <p class="vazio filtro-vazio" hidden>Nenhum relatório encontrado com esse filtro.</p>
-    <p class="vazio filtro-vazio-sem-solicitacoes" id="aviso-sem-solicitacoes-robo" data-ativo="{{ 'true' if sem_solicitacoes_proprias else 'false' }}" hidden>Você ainda não solicitou nenhum relatório ao Robô — assim que enviar um PDF pela Fila, o resultado aparece aqui. Os filtros acima continuam disponíveis pra consultar o que o resto do escritório já processou.</p>
     {% else %}
     <p class="vazio">Nenhum processamento do Robô registrado ainda.</p>
     {% endif %}

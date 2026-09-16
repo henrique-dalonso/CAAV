@@ -89,15 +89,26 @@ def pagina_relatorios_robo(
 
     # Só os solicitantes que de fato aparecem na lista atual — dropdown
     # do filtro "Solicitado por", ordenado por nome (não a base de
-    # usuários inteira, a maioria nunca mandou nada pro Robô). Henrique,
-    # 2026-09-02: o PRÓPRIO usuário NÃO entra aqui à força só pra ter uma
-    # opção — se ele nunca pediu nada, não faz sentido oferecer "ver só
-    # os meus" como opção selecionável (ficaria sempre vazio); ver
-    # `sem_solicitacoes_proprias` abaixo, que cobre esse caso à parte.
+    # usuários inteira, a maioria nunca mandou nada pro Robô).
+    #
+    # Henrique, diretoria, 2026-09-16 (correção): a versão anterior não
+    # incluía o PRÓPRIO usuário aqui se ele nunca tivesse solicitado nada
+    # — o dropdown mostrava "Todos" (não tinha opção pra selecionar o
+    # nome dele) enquanto a lista inteira ficava escondida por um
+    # mecanismo à parte (filtroInicialForcado, já removido). "Isso está
+    # gerando confusão... a pessoa entra na aba e não aparecem todos,
+    # mesmo estando ali 'Todos'" — o campo precisa mostrar a VERDADE
+    # (que está filtrado pra ela), não "Todos" enquanto some tudo por
+    # baixo. Agora o próprio usuário SEMPRE entra na lista de opções
+    # (mesmo com zero casos ainda) pra poder aparecer selecionado.
+    ids_para_dropdown = set(ids_solicitantes_reais)
+    if not usuario.eh_admin:
+        ids_para_dropdown.add(usuario.id)
+
     solicitantes_disponiveis = sorted(
         (
             {"id": usuario_id, "nome": nomes_por_id.get(usuario_id, f"Usuário #{usuario_id}")}
-            for usuario_id in ids_solicitantes_reais
+            for usuario_id in ids_para_dropdown
         ),
         key=lambda item: item["nome"].lower(),
     )
@@ -105,18 +116,12 @@ def pagina_relatorios_robo(
     # Henrique, 2026-09-02: não-admin já abre a tela filtrado em "só os
     # meus" (ver filtro-solicitante no template + relatorios_robo.js) —
     # `solicitante_padrao` é só o valor inicial, a pessoa pode trocar
-    # livremente pra "Todos" depois. Quando ela NUNCA pediu nada ainda,
-    # não tem um valor real pra usar como padrão (ela nem aparece em
-    # `solicitantes_disponiveis`) — nesse caso a tela mostra uma mensagem
-    # dedicada no lugar da lista (ver template) em vez de aplicar um
-    # filtro que corresponderia a uma opção inexistente no dropdown.
-    solicitante_padrao = None
-    sem_solicitacoes_proprias = False
-    if not usuario.eh_admin:
-        if usuario.id in ids_solicitantes_reais:
-            solicitante_padrao = usuario.id
-        else:
-            sem_solicitacoes_proprias = True
+    # livremente pra "Todos" depois. Sem exceção pra quem nunca
+    # solicitou nada mais (ver comentário acima) — a lista fica vazia
+    # através do filtro normal (mesma mensagem genérica de "nenhum
+    # relatório encontrado com esse filtro"), não escondida por um
+    # mecanismo à parte.
+    solicitante_padrao = usuario.id if not usuario.eh_admin else None
 
     # Renderiza PRIMEIRO, marca como visto DEPOIS — mesmo motivo de
     # gerar_relatorio.py (senão o badge dessa própria visita nunca apareceria).
@@ -130,7 +135,6 @@ def pagina_relatorios_robo(
             "solicitante_por_job_id": solicitante_por_job_id,
             "solicitantes_disponiveis": solicitantes_disponiveis,
             "solicitante_padrao": solicitante_padrao,
-            "sem_solicitacoes_proprias": sem_solicitacoes_proprias,
             # Deep-link vindo do botão "Ir ao relatório" (Conferências
             # manuais, web/routes/gerar_relatorio.py, quando o duplicado é do
             # Robô) — pré-preenche a busca, troca pra aba certa

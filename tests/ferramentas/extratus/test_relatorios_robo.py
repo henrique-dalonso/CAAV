@@ -455,16 +455,22 @@ def test_nao_admin_com_solicitacao_ve_filtro_padrao_preenchido(cliente_nao_admin
 
     assert resp.status_code == 200
     assert f'data-padrao="{usuario_id}"' in resp.text
-    assert 'id="aviso-sem-solicitacoes-robo" data-ativo="false"' in resp.text
 
 
-def test_nao_admin_sem_nenhuma_solicitacao_ve_aviso_dedicado(cliente_nao_admin_logado, limpar_jobs_criados):
+def test_nao_admin_sem_nenhuma_solicitacao_ainda_ve_proprio_nome_como_padrao(cliente_nao_admin_logado, limpar_jobs_criados):
+    """Henrique, diretoria, 2026-09-16 (correção): antes, quem nunca
+    solicitou nada não aparecia no dropdown, e a tela mostrava "Todos"
+    selecionado enquanto escondia a lista inteira por um mecanismo à
+    parte — "confusão... a pessoa entra na aba e não aparecem todos,
+    mesmo estando ali 'Todos'". Agora o próprio usuário SEMPRE é a opção
+    padrão, mesmo com zero solicitações — o campo reflete a verdade (que
+    está filtrado pra ele), a lista fica vazia pelo filtro normal."""
     cliente, usuario_id = cliente_nao_admin_logado
 
-    # Existe job no sistema (de OUTRA pessoa) — prova que o aviso é sobre
-    # a falta de solicitação DESSE usuário específico, não da tela vazia
-    # em geral (esse caso já é coberto por "Nenhum processamento do Robô
-    # registrado ainda.").
+    # Existe job no sistema (de OUTRA pessoa) — prova que o padrão é
+    # sobre ESSE usuário específico, não a tela vazia em geral (esse
+    # caso já é coberto por "Nenhum processamento do Robô registrado
+    # ainda.").
     job_de_outro = registrar_processado(
         arquivo_pdf="teste_relrobo_padrao_de_outro.pdf",
         processo="0000000-00.2026.8.00.0952",
@@ -476,17 +482,15 @@ def test_nao_admin_sem_nenhuma_solicitacao_ve_aviso_dedicado(cliente_nao_admin_l
     resp = cliente.get("/extratus/relatorios-robo")
 
     assert resp.status_code == 200
-    assert 'data-padrao=""' in resp.text
-    assert 'id="aviso-sem-solicitacoes-robo" data-ativo="true"' in resp.text
-    assert "Você ainda não solicitou nenhum relatório ao Robô" in resp.text
-    # A pessoa dela mesma não vira opção "fantasma" no dropdown, mesmo
-    # forçando o filtro — só quem de fato aparece na fila entra ali.
-    assert f'value="{usuario_id}"' not in resp.text
+    assert f'data-padrao="{usuario_id}"' in resp.text
+    # O próprio usuário agora vira opção no dropdown, mesmo com zero
+    # solicitações — só assim o campo consegue mostrar o nome dele.
+    assert f'value="{usuario_id}"' in resp.text
 
 
 def test_admin_nunca_recebe_filtro_padrao(cliente_logado, limpar_jobs_criados):
-    """Admin sempre parte de "Todos" — mesmo tendo zero solicitações
-    próprias, `sem_solicitacoes_proprias` só existe pra não-admin."""
+    """Admin sempre parte de "Todos" — o padrão automático só existe
+    pra não-admin."""
     job_de_outro = registrar_processado(
         arquivo_pdf="teste_relrobo_admin_sem_padrao.pdf",
         processo="0000000-00.2026.8.00.0953",
@@ -499,7 +503,6 @@ def test_admin_nunca_recebe_filtro_padrao(cliente_logado, limpar_jobs_criados):
 
     assert resp.status_code == 200
     assert 'data-padrao=""' in resp.text
-    assert 'id="aviso-sem-solicitacoes-robo" data-ativo="false"' in resp.text
 
 
 # --- Baixar em lote (.zip) e excluir em lote (Henrique, 2026-09-02) ---

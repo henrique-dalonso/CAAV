@@ -5,7 +5,6 @@
     var abas = document.querySelectorAll(".aba-relatorios-robo");
     var itens = document.querySelectorAll(".relatorio-item");
     var avisoVazio = document.querySelector(".filtro-vazio");
-    var avisoSemSolicitacoes = document.getElementById("aviso-sem-solicitacoes-robo");
     var listaEl = document.getElementById("lista-relatorios-robo");
     var campoDataDe = document.getElementById("filtro-data-de");
     var campoDataAte = document.getElementById("filtro-data-ate");
@@ -15,17 +14,6 @@
         return;
     }
 
-    // Henrique, 2026-09-02: quem nunca solicitou nada ao Robô não tem
-    // como aparecer pré-selecionado no dropdown "Solicitado por" (não
-    // existe opção pra isso, de propósito — ver relatorios_robo.py). O
-    // jeito de mesmo assim abrir a tela "filtrada em mim" é um flag à
-    // parte, sem depender de nenhum valor de filtro de verdade: começa
-    // forçando a lista inteira escondida (com a mensagem dedicada no
-    // lugar), e qualquer interação real com QUALQUER filtro desliga isso
-    // de vez — a pessoa nunca fica presa, só não vê o acervo inteiro sem
-    // querer logo de cara.
-    var filtroInicialForcado = !!(avisoSemSolicitacoes && avisoSemSolicitacoes.dataset.ativo === "true");
-
     // "Todos" é a aba padrão (Henrique, 2026-08-21, mudou de ideia em
     // relação à decisão de 2026-08-08 abaixo) — mostra do mais antigo
     // pro mais novo (column-reverse no CSS), diferente das outras 3
@@ -34,23 +22,6 @@
     var statusAtivo = "todos";
 
     function aplicarFiltros() {
-        if (filtroInicialForcado) {
-            itens.forEach(function (item) { item.style.display = "none"; });
-            if (avisoVazio) { avisoVazio.style.display = "none"; }
-            // "block", não "" — esses <p> nascem com o atributo `hidden`
-            // (não só sem classe de display nenhuma), e limpar o inline
-            // style só devolve o controle pro `[hidden]` nativo do
-            // navegador, que continua escondendo. Precisa de um valor
-            // concreto pra vencer de vez (mesma pegadinha catalogada em
-            // base.css, ex: .bandeja-apps[hidden]).
-            if (avisoSemSolicitacoes) { avisoSemSolicitacoes.style.display = "block"; }
-            return;
-        }
-
-        if (avisoSemSolicitacoes) {
-            avisoSemSolicitacoes.style.display = "none";
-        }
-
         var termo = campoBusca.value.trim().toLowerCase();
         var dataDe = campoDataDe ? campoDataDe.value : "";
         var dataAte = campoDataAte ? campoDataAte.value : "";
@@ -90,7 +61,6 @@
     }
 
     campoBusca.addEventListener("input", function () {
-        filtroInicialForcado = false;
         aplicarFiltros();
     });
 
@@ -100,7 +70,6 @@
     // vira o limite do outro; limpar o campo remove o limite de novo.
     if (campoDataDe) {
         campoDataDe.addEventListener("change", function () {
-            filtroInicialForcado = false;
             if (campoDataAte) {
                 campoDataAte.min = campoDataDe.value || "";
             }
@@ -109,7 +78,6 @@
     }
     if (campoDataAte) {
         campoDataAte.addEventListener("change", function () {
-            filtroInicialForcado = false;
             if (campoDataDe) {
                 campoDataDe.max = campoDataAte.value || "";
             }
@@ -119,14 +87,12 @@
 
     if (campoSolicitante) {
         campoSolicitante.addEventListener("change", function () {
-            filtroInicialForcado = false;
             aplicarFiltros();
         });
     }
 
     abas.forEach(function (aba) {
         aba.addEventListener("click", function () {
-            filtroInicialForcado = false;
             abas.forEach(function (a) { a.classList.remove("aba-relatorios-robo-ativa"); });
             aba.classList.add("aba-relatorios-robo-ativa");
             statusAtivo = aba.dataset.status;
@@ -165,16 +131,14 @@
             }
         }
         campoBusca.value = processoInicial;
-        // Um deep-link sempre vence — nunca pode ficar escondido atrás do
-        // filtro "só o que é meu" (padrão ou forçado), mesmo relatório
-        // sendo de outra pessoa.
-        filtroInicialForcado = false;
     }
 
     // Henrique, 2026-09-02: valor INICIAL do dropdown "Solicitado por" —
-    // só pra quem tem pelo menos 1 solicitação de verdade (ver
-    // sem_solicitacoes_proprias/filtroInicialForcado acima, o caso
-    // oposto). Continua trocável livremente depois, igual ao "Solicitados
+    // Henrique, diretoria, 2026-09-16: o próprio usuário agora SEMPRE
+    // aparece nas opções (ver relatorios_robo.py), mesmo sem nenhuma
+    // solicitação ainda — o campo precisa refletir a verdade (que está
+    // filtrado pra ele), nunca mostrar "Todos" enquanto filtra por
+    // baixo. Continua trocável livremente depois, igual ao "Solicitados
     // por mim" da tela manual.
     var solicitantePadrao = campoSolicitante ? campoSolicitante.dataset.padrao : "";
     if (solicitantePadrao && !processoInicial) {
