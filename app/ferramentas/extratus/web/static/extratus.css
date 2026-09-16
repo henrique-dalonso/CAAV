@@ -1357,6 +1357,48 @@ html[data-theme="escuro"] .campo-data::-webkit-calendar-picker-indicator {
     flex-shrink: 0;
 }
 
+/* Henrique, diretoria, 2026-09-16 (8ª rodada, "Marcar como revisado"
+   volta agora dentro de .relatorio-acoes): "o botão tem que divergir
+   em tamanho, estilo... coisas que não criem MAIS um botão genérico e
+   igual aos outros dois, se não vai virar 3 botão redondo largado lá".
+   Por isso NADA aqui copia .botao-download/.botao-pdf-original: é uma
+   PÍLULA com texto (não um círculo só ícone), PREENCHIDA (não contorno)
+   na mesma cor teal de .status-revisado — a cor já entrega o que vai
+   acontecer ao clicar (o caso vira esse mesmo tom). */
+.botao-marcar-revisado-robo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    height: 38px;
+    padding: 0 0.75rem;
+    border-radius: 999px;
+    flex-shrink: 0;
+    background: #ccfbf1;
+    color: #0f766e;
+    border: none;
+    font-family: inherit;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.botao-marcar-revisado-robo:hover {
+    background: #99f6e4;
+}
+
+.botao-marcar-revisado-robo:active {
+    transform: scale(0.96);
+}
+
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme="claro"]) .botao-marcar-revisado-robo { background: #0f2e2b; color: #5eead4; }
+    html:not([data-theme="claro"]) .botao-marcar-revisado-robo:hover { background: #134e4a; }
+}
+
+html[data-theme="escuro"] .botao-marcar-revisado-robo { background: #0f2e2b; color: #5eead4; }
+html[data-theme="escuro"] .botao-marcar-revisado-robo:hover { background: #134e4a; }
+
 /* Mesmo tamanho/formato do .botao-download principal, mas SEM
    compartilhar a classe (achado ao montar: "Baixar todos"/"Baixar
    selecionados" identificam quem tem arquivo pra baixar via
