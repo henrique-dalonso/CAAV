@@ -1681,6 +1681,41 @@ html[data-theme="escuro"] .interruptor-texto-on {
     color: var(--cor-texto);
 }
 
+/* Henrique, diretoria, 2026-09-16: "adicione um filtro, tipo o de
+   usuário... para selecionar o grau de confiança" — mesmo visual do
+   filtro de solicitante acima (regras repetidas de propósito, mesmo
+   padrão já usado entre .filtro-data/.filtro-solicitante nesta
+   página). */
+.filtro-confianca {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--cor-texto-suave);
+    white-space: nowrap;
+}
+
+.filtro-confianca select {
+    padding: 0.5rem 0.6rem;
+    font-size: 0.85rem;
+    font-family: inherit;
+    color: var(--cor-texto);
+    background: var(--cor-fundo);
+    border: 1.5px solid var(--cor-borda);
+    border-radius: var(--raio-pequeno);
+    outline: none;
+    max-width: 180px;
+}
+
+.filtro-confianca select:focus {
+    border-color: var(--cor-acento);
+}
+
+.filtro-confianca select option {
+    background-color: var(--cor-fundo);
+    color: var(--cor-texto);
+}
+
 .campo-data {
     padding: 0.5rem 0.6rem;
     font-size: 0.85rem;

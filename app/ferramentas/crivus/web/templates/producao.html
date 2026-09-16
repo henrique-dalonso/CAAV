@@ -19,7 +19,8 @@
 {% set extra_query = (('&busca=' ~ (busca | urlencode)) if busca else '')
     ~ (('&data_de=' ~ data_de) if data_de else '')
     ~ (('&data_ate=' ~ data_ate) if data_ate else '')
-    ~ (('&solicitante_id=' ~ solicitante_id) if solicitante_id else '') %}
+    ~ (('&solicitante_id=' ~ solicitante_id) if solicitante_id else '')
+    ~ (('&nivel_confianca=' ~ (nivel_confianca | urlencode)) if nivel_confianca else '') %}
 
 <div class="crivus-producao-controles">
     <div class="alternador alternador-neutro">
@@ -56,7 +57,16 @@
             {% endfor %}
         </select>
     </div>
-    {% if busca or data_de or data_ate or solicitante_id %}
+    <div class="filtro-confianca">
+        <label for="filtro-confianca">Confiança:</label>
+        <select id="filtro-confianca" name="nivel_confianca">
+            <option value="">Todas</option>
+            {% for nivel in niveis_confianca_disponiveis %}
+            <option value="{{ nivel }}" {{ "selected" if nivel_confianca == nivel }}>{{ nivel | confianca_feminino }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    {% if busca or data_de or data_ate or solicitante_id or nivel_confianca %}
     <a href="/crivus/producao?aba={{ aba }}&filtro={{ filtro }}" class="link-limpar-filtros">Limpar filtros</a>
     {% endif %}
 </form>

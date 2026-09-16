@@ -200,6 +200,42 @@ def test_producao_filtra_por_solicitante(cliente_logado):
     assert "0555555" not in resposta_outro_usuario.text
 
 
+def test_producao_filtra_por_confianca(cliente_logado):
+    """Henrique, diretoria, 2026-09-16: "adicione um filtro, tipo o de
+    usuário... para selecionar o grau de confiança"."""
+    cliente, _ = cliente_logado
+    alto_id = _criar_caso(cliente, npjur="0777771")
+    baixo_id = _criar_caso(cliente, npjur="0777772")
+
+    with obter_sessao() as sessao:
+        caso_baixo = sessao.get(AnalisePublicacao, baixo_id)
+        caso_baixo.nivel_confianca = "BAIXO"
+        sessao.add(caso_baixo)
+        sessao.commit()
+
+    resposta_alto = cliente.get("/crivus/producao?aba=individuais&filtro=pendentes&nivel_confianca=ALTO")
+    assert "0777771" in resposta_alto.text
+    assert "0777772" not in resposta_alto.text
+
+    resposta_baixo = cliente.get("/crivus/producao?aba=individuais&filtro=pendentes&nivel_confianca=BAIXO")
+    assert "0777772" in resposta_baixo.text
+    assert "0777771" not in resposta_baixo.text
+
+    resposta_todas = cliente.get("/crivus/producao?aba=individuais&filtro=pendentes")
+    assert "0777771" in resposta_todas.text
+    assert "0777772" in resposta_todas.text
+
+
+def test_producao_confianca_invalida_cai_no_default_sem_422(cliente_logado):
+    cliente, _ = cliente_logado
+    _criar_caso(cliente, npjur="0888881")
+
+    resposta = cliente.get("/crivus/producao?aba=individuais&filtro=pendentes&nivel_confianca=inventado")
+
+    assert resposta.status_code == 200
+    assert "0888881" in resposta.text
+
+
 def test_producao_dropdown_solicitante_so_mostra_quem_tem_caso(cliente_logado):
     """Henrique, diretoria, 2026-09-15: "mesmo comportamento do Extratus"
     — o dropdown "Solicitado por" só oferece quem de fato tem caso nessa

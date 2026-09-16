@@ -105,7 +105,7 @@ def obter_analise(analise_id):
         return sessao.get(AnalisePublicacao, analise_id)
 
 
-def _consulta_producao(origem, status, busca=None, data_de=None, data_ate=None, solicitante_id=None):
+def _consulta_producao(origem, status, busca=None, data_de=None, data_ate=None, solicitante_id=None, nivel_confianca=None):
     """Filtros compartilhados por listar_analises/contar_analises — pra
     contagem/paginação sempre baterem com o mesmo recorte. Henrique,
     diretoria, 2026-09-15: "está faltando busca e filtros, igual o
@@ -113,7 +113,15 @@ def _consulta_producao(origem, status, busca=None, data_de=None, data_ate=None, 
     filtra no JS), Produção pagina de verdade no servidor (o acervo pode
     ter milhares de linhas vindas do Processamento em Lote), então o
     filtro também precisa ser no servidor — filtrar só o que já está
-    carregado na página atual daria resultado incompleto/enganoso."""
+    carregado na página atual daria resultado incompleto/enganoso.
+
+    `nivel_confianca` (Henrique, diretoria, 2026-09-16: "adicione um
+    filtro, tipo o de usuário... para selecionar o grau de confiança")
+    é um valor exato de um conjunto fechado (ALTO/MÉDIO/BAIXO, ver
+    RÓTULO_CONFIANÇA_FEMININO em config/taxonomia.py) — igualdade
+    simples, sem dropdown dinâmico igual solicitante_id (não precisa
+    consultar quais níveis "de fato têm caso" — são só 3, sempre
+    oferecidos)."""
     campo_data = AnalisePublicacao.concluido_em if status == "concluido" else AnalisePublicacao.criado_em
 
     consulta = select(AnalisePublicacao).where(
@@ -132,11 +140,14 @@ def _consulta_producao(origem, status, busca=None, data_de=None, data_ate=None, 
         consulta = consulta.where(campo_data <= datetime.combine(data_ate, datetime.max.time()))
     if solicitante_id:
         consulta = consulta.where(AnalisePublicacao.usuario_id == solicitante_id)
+    if nivel_confianca:
+        consulta = consulta.where(AnalisePublicacao.nivel_confianca == nivel_confianca)
 
     return consulta
 
 
-def listar_analises(origem, status, limite=50, offset=0, busca=None, data_de=None, data_ate=None, solicitante_id=None):
+def listar_analises(origem, status, limite=50, offset=0, busca=None, data_de=None, data_ate=None, solicitante_id=None,
+                     nivel_confianca=None):
     """Lista AnalisePublicacao pra tela Produção — sem checagem de dono,
     de propósito (Henrique, 2026-09-12: o acervo é do escritório inteiro,
     não do criador).
@@ -148,7 +159,7 @@ def listar_analises(origem, status, limite=50, offset=0, busca=None, data_de=Non
     fundo"; virou estressante depois que o Processamento em Lote passou
     a alimentar essa mesma fila com volume real)."""
     with obter_sessao() as sessao:
-        consulta = _consulta_producao(origem, status, busca, data_de, data_ate, solicitante_id)
+        consulta = _consulta_producao(origem, status, busca, data_de, data_ate, solicitante_id, nivel_confianca)
 
         campo_ordenacao = AnalisePublicacao.concluido_em if status == "concluido" else AnalisePublicacao.criado_em
         consulta = consulta.order_by(campo_ordenacao.desc())
@@ -156,9 +167,9 @@ def listar_analises(origem, status, limite=50, offset=0, busca=None, data_de=Non
         return sessao.exec(consulta.limit(limite).offset(offset)).all()
 
 
-def contar_analises(origem, status, busca=None, data_de=None, data_ate=None, solicitante_id=None):
+def contar_analises(origem, status, busca=None, data_de=None, data_ate=None, solicitante_id=None, nivel_confianca=None):
     with obter_sessao() as sessao:
-        consulta = _consulta_producao(origem, status, busca, data_de, data_ate, solicitante_id)
+        consulta = _consulta_producao(origem, status, busca, data_de, data_ate, solicitante_id, nivel_confianca)
         return len(sessao.exec(consulta.with_only_columns(AnalisePublicacao.id)).all())
 
 

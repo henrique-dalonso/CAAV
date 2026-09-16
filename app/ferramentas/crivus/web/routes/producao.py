@@ -3,7 +3,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
 
-from app.ferramentas.crivus.config.taxonomia import confianca_feminino
+from app.ferramentas.crivus.config.taxonomia import RÓTULO_CONFIANÇA_FEMININO, confianca_feminino
 from app.ferramentas.crivus.db.analises import contar_analises, listar_analises, listar_solicitantes_ids
 from app.plataforma.db.models import Usuario
 from app.plataforma.db.usuarios import listar_todos_usuarios, usuario_tem_acesso_lote
@@ -49,6 +49,7 @@ def pagina_producao(
     data_de: str = "",
     data_ate: str = "",
     solicitante_id: str = "",
+    nivel_confianca: str = "",
     usuario: Usuario = Depends(exigir_acesso_ferramenta("leitor-publicacoes")),
 ):
     if aba not in ABAS_VALIDAS:
@@ -70,6 +71,11 @@ def pagina_producao(
         solicitante_id = int(solicitante_id) if solicitante_id else None
     except ValueError:
         solicitante_id = None
+    # Henrique, diretoria, 2026-09-16: conjunto fechado (ALTO/MÉDIO/
+    # BAIXO) — qualquer coisa fora disso é ignorada silenciosamente, sem
+    # 422, mesmo espírito das outras conversões manuais acima.
+    if nivel_confianca not in RÓTULO_CONFIANÇA_FEMININO:
+        nivel_confianca = ""
 
     status = STATUS_POR_FILTRO[filtro]
     origem = "lote" if aba == "lotes" else "individual"
@@ -78,8 +84,12 @@ def pagina_producao(
     analises = listar_analises(
         origem, status, limite=POR_PAGINA, offset=offset,
         busca=busca, data_de=data_de, data_ate=data_ate, solicitante_id=solicitante_id,
+        nivel_confianca=nivel_confianca or None,
     )
-    total = contar_analises(origem, status, busca=busca, data_de=data_de, data_ate=data_ate, solicitante_id=solicitante_id)
+    total = contar_analises(
+        origem, status, busca=busca, data_de=data_de, data_ate=data_ate, solicitante_id=solicitante_id,
+        nivel_confianca=nivel_confianca or None,
+    )
 
     todos_usuarios = listar_todos_usuarios()
     nomes_por_usuario_id = {u.id: u.nome for u in todos_usuarios}
@@ -112,5 +122,7 @@ def pagina_producao(
             "data_ate": data_ate,
             "solicitante_id": solicitante_id,
             "usuarios_disponiveis": usuarios_disponiveis,
+            "nivel_confianca": nivel_confianca,
+            "niveis_confianca_disponiveis": list(RÓTULO_CONFIANÇA_FEMININO.keys()),
         },
     )

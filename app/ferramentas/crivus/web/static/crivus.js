@@ -732,7 +732,10 @@
     });
 
     document.addEventListener("change", function (evento) {
-        if (evento.target.id === "filtro-data-de" || evento.target.id === "filtro-data-ate" || evento.target.id === "filtro-solicitante") {
+        if (
+            evento.target.id === "filtro-data-de" || evento.target.id === "filtro-data-ate" ||
+            evento.target.id === "filtro-solicitante" || evento.target.id === "filtro-confianca"
+        ) {
             submeterFiltrosProducao();
         }
     });
