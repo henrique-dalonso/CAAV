@@ -1224,33 +1224,54 @@ html[data-theme="escuro"] .campo-data::-webkit-calendar-picker-indicator {
 }
 
 /* Henrique, diretoria, 2026-09-16: redesenho da linha de Relatórios do
-   Robô. 5ª rodada — a tentativa anterior (ancorar a linha inteira no
-   topo) foi rejeitada: "volta o status pra posição original, mesmo com
-   o botão NÃO é pra mudar a posição dele". .relatorio-item VOLTA a usar
-   align-items:center puro, sitewide, sem override nenhum aqui — a
-   pílula central novamente, EXATAMENTE como sempre foi. O botão de
-   marcar/"Por: X" fica POSITION:ABSOLUTE, ancorado embaixo da pílula
-   — fora do fluxo normal, então NUNCA conta pra altura de
-   .relatorio-status-coluna nem pra centralização de .relatorio-item:
-   a pílula fica do MESMO tamanho/posição que uma linha "sucesso" sem
-   nada embaixo, o botão só é desenhado por cima, sem empurrar nada. */
+   Robô. 6ª rodada — as tentativas anteriores baseadas em fluxo flexbox
+   (empilhar/ancorar/centralizar o conjunto) sempre acabavam deixando a
+   pílula sensível ao que existe embaixo dela. Troca de estratégia:
+   .relatorio-status-coluna vira uma caixa de TAMANHO FIXO (mesma altura
+   em TODA linha, tenha ou não botão/"?"/"Por: X"), e a pílula
+   (.relatorio-status-selo) é travada com position:absolute + top FIXO
+   em pixels (não depende de nenhum sibling) — matematicamente
+   impossível dela se mover, porque nada mais no bloco participa do
+   cálculo da posição dela. O botão/texto embaixo usa esse MESMO ponto
+   de referência (top fixo a partir do topo da caixa, não da borda da
+   pílula), então também não depende de layout/fluxo. Efeito colateral
+   bom, não intencional de propósito: como a caixa tem o MESMO tamanho
+   pra toda linha (revisão, sucesso, erro), a lista INTEIRA fica com
+   altura uniforme de verdade — resolve de vez o "desalinhamento"
+   original. */
 .relatorio-status-coluna {
     position: relative;
-    display: inline-flex;
+    width: 72px;
+    height: 70px;
     flex-shrink: 0;
 }
 
-/* Selo do status + "?" — Henrique: "NÃO REDUZA O TAMANHO DO STATUS só
-   pra caber o '?', adicione ele como um expoente... deve se posicionar
+/* top:16px é um valor FIXO (não 50%/transform) de propósito — evita
+   precisar dobrar a altura da caixa só pra manter uma centralização
+   matemática perfeita quando o conteúdo de baixo (botão) é bem mais
+   alto que a pílula. 16px é a estimativa de onde a pílula ficaria
+   centralizada numa linha comum (~.relatorio-info, sem nada embaixo) —
+   pode precisar de um ajuste fino de +/-2px depois de ver rodando. */
+.relatorio-status-selo {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: inline-flex;
+}
+
+/* "?" informacional — Henrique: "NÃO REDUZA O TAMANHO DO STATUS só pra
+   caber o '?', adicione ele como um expoente... deve se posicionar
    FORA DOS LIMITES da pílula". .status aqui dentro não ganha NENHUMA
    regra própria (usa exatamente o .status sitewide, mesmo tamanho de
-   sempre); o "?" é ABSOLUTO, deslocado o bastante pra não sobrepor a
-   borda da pílula (mais afastado que a 1ª tentativa, que ainda tocava
-   o canto). */
+   sempre) — o "?" é absoluto relativo a .relatorio-status-selo (que já
+   é absoluto ele mesmo, mas continua servindo de ponto de referência
+   pros próprios filhos — CSS permite isso), deslocado o bastante pra
+   não tocar a borda da pílula. */
 .botao-motivo-info {
     position: absolute;
-    top: -16px;
-    right: -2px;
+    top: -10px;
+    right: -10px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1276,17 +1297,16 @@ html[data-theme="escuro"] .campo-data::-webkit-calendar-picker-indicator {
     color: var(--cor-acento);
 }
 
-/* Botão-ícone pequeno "Marcar como revisado" — ABSOLUTO, ancorado
-   embaixo da pílula (top:100% do wrapper .relatorio-status-coluna),
-   centralizado horizontalmente. Por estar fora do fluxo, não conta
-   pra altura de .relatorio-status-coluna: a pílula continua do MESMO
-   tamanho/posição de uma linha sem botão nenhum. */
+/* Botão-ícone "Marcar como revisado" — ancorado a partir do CENTRO da
+   caixa fixa (mesmo ponto de referência da pílula, não da borda dela),
+   empurrado pra baixo com margin-top fixo. Nunca desloca a pílula
+   porque não participa do posicionamento dela — os dois são
+   independentes, calculados a partir do mesmo centro. */
 .botao-marcar-revisado-robo {
     position: absolute;
-    top: 100%;
+    top: 42px;
     left: 50%;
     transform: translateX(-50%);
-    margin-top: 0.3rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1314,14 +1334,13 @@ html[data-theme="escuro"] .campo-data::-webkit-calendar-picker-indicator {
 /* Henrique, diretoria, 2026-09-16 (rodada seguinte): "no lugar do
    'Marcar como revisado' aparecer um textinho... 'Por: nome da
    pessoa'" — some o botão, deixa só essa informação, discreta (não é
-   ação, é só rastro de quem revisou). Mesmo tratamento ABSOLUTO do
-   botão acima — não empurra/desloca a pílula.*/
+   ação, é só rastro de quem revisou). Mesmo ponto de ancoragem
+   (centro da caixa fixa) do botão acima — não desloca a pílula.*/
 .revisado-por {
     position: absolute;
-    top: 100%;
+    top: 42px;
     left: 50%;
     transform: translateX(-50%);
-    margin-top: 0.3rem;
     font-size: 0.66rem;
     color: var(--cor-texto-suave);
     max-width: 80px;
