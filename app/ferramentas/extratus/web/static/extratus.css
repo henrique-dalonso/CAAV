@@ -1224,32 +1224,70 @@ html[data-theme="escuro"] .campo-data::-webkit-calendar-picker-indicator {
 }
 
 /* Henrique, diretoria, 2026-09-16: redesenho da linha de Relatórios do
-   Robô. Achado ao ver rodando de verdade (rodada seguinte, lista
-   corrida com muitos casos em revisão): o botão-texto "Marcar como
-   revisado" empilhado ABAIXO do badge deixava cada linha com uma
-   altura diferente da vizinha (linha "sucesso" baixa, linha "revisão"
-   alta) — lista inteira desalinhada, "escroto" nas palavras do
-   Henrique. Virou ícone pequeno, ao LADO do badge (linha, não coluna)
-   — toda linha fica com a MESMA altura, badge sozinho ou badge+ícone
-   não muda a altura da pílula em si. */
+   Robô. 3ª rodada: o ícone de "Marcar como revisado" AO LADO do badge
+   (rodada anterior) também não agradou ("empurrando o resto do
+   conteúdo pra direita") — volta pra EMBAIXO do badge (coluna), mas
+   compacto (ícone pequeno, não mais o botão-texto largo da 1ª rodada,
+   que era o que de fato desalinhava a lista). O motivo/erro, que antes
+   virava um bloco de texto em .relatorio-info, virou um "?" pequeno
+   DENTRO da mesma linha do badge (.relatorio-status-linha) — só
+   aparece quando existe motivo, tooltip (clique ou hover, mesmo
+   data-dica sitewide) mostra a mensagem, "limpa o visual" do resto do
+   bloco. */
 .relatorio-status-coluna {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.35rem;
     flex-shrink: 0;
 }
 
-/* Botão-ícone pequeno "Marcar como revisado" — mesma pegada de contorno
-   (não preenchido) do .botao-pdf-original, só menor por viver ao lado
-   de um badge, não na faixa de ações principais. data-dica (tooltip
-   sitewide) substitui o texto que o botão tinha antes. */
+.relatorio-status-linha {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+/* "?" informacional — Henrique: "discreto e pequeno, não quero que a
+   presença dele continue empurrando o resto do conteúdo pra direita".
+   Só existe no DOM quando há motivo/erro pra mostrar (ver template),
+   então nunca ocupa espaço à toa numa linha "sucesso". */
+.botao-motivo-info {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    background: none;
+    border: 1px solid var(--cor-texto-suave);
+    border-radius: 999px;
+    color: var(--cor-texto-suave);
+    font-family: inherit;
+    font-size: 0.6rem;
+    font-weight: 700;
+    line-height: 1;
+    padding: 0;
+    cursor: pointer;
+}
+
+.botao-motivo-info:hover,
+.botao-motivo-info:focus-visible {
+    border-color: var(--cor-acento);
+    color: var(--cor-acento);
+}
+
+/* Botão-ícone pequeno "Marcar como revisado", embaixo do badge — mesma
+   pegada de contorno (não preenchido) do .botao-pdf-original, só menor
+   por viver junto de um badge, não na faixa de ações principais.
+   data-dica (tooltip sitewide) substitui o texto que o botão tinha na
+    1ª versão. */
 .botao-marcar-revisado-robo {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 26px;
-    height: 26px;
+    width: 24px;
+    height: 24px;
     flex-shrink: 0;
     background: none;
     border: 1.5px solid var(--cor-texto-suave);
@@ -1269,13 +1307,13 @@ html[data-theme="escuro"] .campo-data::-webkit-calendar-picker-indicator {
     transform: scale(0.94);
 }
 
-/* Henrique, diretoria, 2026-09-16 (mesmo dia, rodada seguinte): "no
-   lugar do 'Marcar como revisado' aparecer um textinho... 'Por: nome
-   da pessoa'" — some o botão, deixa só essa informação, discreta (não é
-   ação, é só rastro de quem revisou). Ao lado do badge (mesma correção
-   de altura de linha do ícone acima), não embaixo. */
+/* Henrique, diretoria, 2026-09-16 (rodada seguinte): "no lugar do
+   'Marcar como revisado' aparecer um textinho... 'Por: nome da
+   pessoa'" — some o botão, deixa só essa informação, discreta (não é
+   ação, é só rastro de quem revisou). Embaixo do badge, mesmo lugar do
+   botão de marcar. */
 .revisado-por {
-    font-size: 0.68rem;
+    font-size: 0.66rem;
     color: var(--cor-texto-suave);
     max-width: 80px;
     overflow: hidden;

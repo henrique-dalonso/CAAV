@@ -100,13 +100,21 @@
                 <input type="checkbox" class="check-input relatorio-item-check" data-job-id="{{ job.id }}">
                 <span class="check-caixa check-caixa-pequena"></span>
             </label>
+            {% set motivo_texto = job.motivo_confianca if (job.status == "revisao" and job.motivo_confianca) else (job.erro_mensagem if (job.status == "erro" and job.erro_mensagem) else None) %}
             <div class="relatorio-status-coluna">
+                <div class="relatorio-status-linha">
+                    {% if job.revisado_manualmente %}
+                    <span class="status status-revisado">Revisado</span>
+                    {% else %}
+                    <span class="status status-{{ job.status }}">{{ job.status | rotulo_status }}</span>
+                    {% endif %}
+                    {% if motivo_texto %}
+                    <button type="button" class="botao-motivo-info" data-dica="{{ motivo_texto }}" aria-label="Ver motivo">?</button>
+                    {% endif %}
+                </div>
                 {% if job.revisado_manualmente %}
-                <span class="status status-revisado">Revisado</span>
                 <span class="revisado-por truncavel" data-dica="Marcado como revisado por {{ nomes_por_id.get(job.revisado_por_id, 'não identificado') }}">Por: {{ nomes_por_id.get(job.revisado_por_id, "não identificado") }}</span>
-                {% else %}
-                <span class="status status-{{ job.status }}">{{ job.status | rotulo_status }}</span>
-                {% if job.status == "revisao" %}
+                {% elif job.status == "revisao" %}
                 <form action="/extratus/relatorios-robo/{{ job.id }}/marcar-revisado" method="post"
                     data-confirm="Tem certeza que deseja marcar o caso como revisado?">
                     <button type="submit" class="botao-marcar-revisado-robo" data-dica="Marcar como revisado" aria-label="Marcar como revisado">
@@ -115,7 +123,6 @@
                         </svg>
                     </button>
                 </form>
-                {% endif %}
                 {% endif %}
             </div>
             <div class="relatorio-info{% if job.relatorio_path %} relatorio-info-clicavel{% endif %}"{% if job.relatorio_path %} data-download="download/{{ job.relatorio_path.split('\\')[-1].split('/')[-1] }}"{% endif %}>
@@ -150,11 +157,6 @@
                         {{ nome_solicitante }}
                     </span>
                 </div>
-                {% if job.status == "revisao" and job.motivo_confianca %}
-                <span class="motivo" data-dica="{{ job.motivo_confianca }}">{{ job.motivo_confianca }}</span>
-                {% elif job.status == "erro" and job.erro_mensagem %}
-                <span class="motivo" data-dica="{{ job.erro_mensagem }}">{{ job.tipo_erro | rotulo_erro }}</span>
-                {% endif %}
             </div>
             <div class="relatorio-acoes">
                 {% if job.destino_pdf %}
