@@ -254,3 +254,62 @@ def test_endpoint_dispensar_exige_acesso_a_ferramenta():
     with obter_sessao() as sessao:
         sessao.exec(delete(Usuario).where(Usuario.nome_usuario == NOME_USUARIO_TESTE))
         sessao.commit()
+
+
+# --- Aba "Erros" (sininho) — só pra admin (Henrique, diretoria,
+# 2026-09-16: "cria uma nova aba de notificações para ADM, que notifica
+# somente os erros das ferramentas... aparecendo somente para adms") ---
+
+def test_aba_erros_aparece_no_html_pra_admin():
+    with obter_sessao() as sessao:
+        sessao.exec(delete(Usuario).where(Usuario.nome_usuario == NOME_USUARIO_TESTE))
+        sessao.commit()
+
+    criar_usuario(
+        nome="Teste Notificações",
+        nome_usuario=NOME_USUARIO_TESTE,
+        email="teste_notificacoes@example.com",
+        senha="senhaTeste123",
+        eh_admin=True,
+    )
+
+    cliente = TestClient(app)
+    cliente.post("/login", data={"usuario_login": NOME_USUARIO_TESTE, "senha": "senhaTeste123"})
+
+    resp = cliente.get("/")
+
+    assert 'id="aba-erros"' in resp.text
+    assert 'id="lista-notificacoes-erros"' in resp.text
+
+    with obter_sessao() as sessao:
+        # eh_admin=True nunca cria UsuarioFerramenta (ver criar_usuario,
+        # app/plataforma/db/usuarios.py) — só Usuario mesmo pra limpar.
+        sessao.exec(delete(Usuario).where(Usuario.nome_usuario == NOME_USUARIO_TESTE))
+        sessao.commit()
+
+
+def test_aba_erros_nao_aparece_no_html_pra_nao_admin():
+    with obter_sessao() as sessao:
+        sessao.exec(delete(Usuario).where(Usuario.nome_usuario == NOME_USUARIO_TESTE))
+        sessao.commit()
+
+    criar_usuario(
+        nome="Teste Notificações",
+        nome_usuario=NOME_USUARIO_TESTE,
+        email="teste_notificacoes@example.com",
+        senha="senhaTeste123",
+        eh_admin=False,
+        ferramenta_ids=[],
+    )
+
+    cliente = TestClient(app)
+    cliente.post("/login", data={"usuario_login": NOME_USUARIO_TESTE, "senha": "senhaTeste123"})
+
+    resp = cliente.get("/")
+
+    assert 'id="aba-erros"' not in resp.text
+    assert 'id="lista-notificacoes-erros"' not in resp.text
+
+    with obter_sessao() as sessao:
+        sessao.exec(delete(Usuario).where(Usuario.nome_usuario == NOME_USUARIO_TESTE))
+        sessao.commit()

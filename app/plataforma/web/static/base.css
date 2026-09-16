@@ -1777,12 +1777,13 @@ html[data-theme="escuro"] .selo-roxo {
    .contagem-aba das abas "Gerar relatórios"/"Relatórios" de cada
    ferramenta, mas com a cor da categoria em vez de neutra (Henrique,
    2026-08-07: "a cor dessa bolinha de notificação vai ser de acordo com
-   a categoria"). Sistema usa a mesma --cor-erro-texto do badge do
-   próprio sininho (erro = vermelho, em todo lugar); Conferências usa o
-   mesmo laranja de .item-notificacao-triagem/bolinha-laranja da fila,
-   já estabelecido como "isso é uma pendência de triagem" em todo o
-   site. Minhas não tem cor fixa aqui — vem inline no HTML (cor de
-   perfil do próprio usuário), por isso não tem uma regra própria. */
+   a categoria"). Sistema e Erros (2026-09-16, aba só pra admin) usam a
+   mesma --cor-erro-texto do badge do próprio sininho (erro = vermelho,
+   em todo lugar); Conferências usa o mesmo laranja de .item-notificacao-
+   triagem/bolinha-laranja da fila, já estabelecido como "isso é uma
+   pendência de triagem" em todo o site. Minhas não tem cor fixa aqui —
+   vem inline no HTML (cor de perfil do próprio usuário), por isso não
+   tem uma regra própria. */
 .contagem-aba-notificacoes {
     display: inline-flex;
     align-items: center;
@@ -1804,6 +1805,10 @@ html[data-theme="escuro"] .selo-roxo {
    o [hidden] nativo do navegador. */
 .contagem-aba-notificacoes[hidden] {
     display: none;
+}
+
+.contagem-aba-erros {
+    background: var(--cor-erro-texto);
 }
 
 .contagem-aba-sistema {

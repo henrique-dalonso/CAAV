@@ -678,32 +678,38 @@
     var painelNotificacoesEl = document.getElementById("painel-notificacoes");
     var fecharNotificacoesEl = document.getElementById("fechar-notificacoes");
     var fundoNotificacoesEl = document.getElementById("notificacoes-fundo");
+    var abaErrosEl = document.getElementById("aba-erros");
     var abaSistemaEl = document.getElementById("aba-sistema");
     var abaMinhasEl = document.getElementById("aba-minhas");
     var abaConferenciasEl = document.getElementById("aba-conferencias");
+    var listaNotificacoesErrosEl = document.getElementById("lista-notificacoes-erros");
     var listaNotificacoesEl = document.getElementById("lista-notificacoes");
     var listaNotificacoesMinhasEl = document.getElementById("lista-notificacoes-minhas");
     var listaNotificacoesConferenciasEl = document.getElementById("lista-notificacoes-conferencias");
+    var painelNotificacoesVazioErrosEl = document.getElementById("painel-notificacoes-vazio-erros");
     var painelNotificacoesVazioEl = document.getElementById("painel-notificacoes-vazio");
     var painelNotificacoesVazioMinhasEl = document.getElementById("painel-notificacoes-vazio-minhas");
     var painelNotificacoesVazioConferenciasEl = document.getElementById("painel-notificacoes-vazio-conferencias");
     var badgeNotificacoesEl = document.getElementById("badge-notificacoes");
+    var contagemAbaErrosEl = document.getElementById("contagem-aba-erros");
     var contagemAbaSistemaEl = document.getElementById("contagem-aba-sistema");
     var contagemAbaMinhasEl = document.getElementById("contagem-aba-minhas");
     var contagemAbaConferenciasEl = document.getElementById("contagem-aba-conferencias");
+    var limparNotificacoesErrosEl = document.getElementById("limpar-notificacoes-erros");
     var limparNotificacoesMinhasEl = document.getElementById("limpar-notificacoes-minhas");
     var limparNotificacoesConferenciasEl = document.getElementById("limpar-notificacoes-conferencias");
-    // Descartáveis da última renderização de "Minhas"/"Ferramentas"
-    // (item.descartavel && item.resolver) — alimenta tanto a
-    // visibilidade do botão "Limpar notificações" quanto o próprio
+    // Descartáveis da última renderização de "Erros"/"Minhas"/
+    // "Ferramentas" (item.descartavel && item.resolver) — alimenta tanto
+    // a visibilidade do botão "Limpar notificações" quanto o próprio
     // clique dele.
+    var ultimosItensErrosDescartaveis = [];
     var ultimosItensMinhasDescartaveis = [];
     var ultimosItensConferenciasDescartaveis = [];
     // Últimos itens renderizados de CADA aba — alimenta o badge "não
     // visto" (ver marcarAbaVista/contarNaoVistos abaixo), recalculado a
     // cada poll mas só "consumido" (marcado como visto) quando a pessoa
     // de fato clica na aba ou já está com o painel aberto olhando ela.
-    var ultimosItensPorAba = { sistema: [], minhas: [], conferencias: [] };
+    var ultimosItensPorAba = { erros: [], sistema: [], minhas: [], conferencias: [] };
 
     if (botaoNotificacoesEl && painelNotificacoesEl) {
         var fecharPainelNotificacoes = configurarAlternador("botao-notificacoes", "painel-notificacoes");
@@ -723,10 +729,10 @@
             }).observe(painelNotificacoesEl, { attributes: true, attributeFilter: ["hidden"] });
         }
 
-        // Abas "Sistema"/"Minhas"/"Conferências" — só trocam o que aparece
-        // no conteúdo, sem pedir nada novo ao servidor (os dados de todas
-        // as abas já vêm juntos numa chamada só a /notificacoes, ver
-        // renderizarNotificacoes). "Conferências" só existe no DOM pra
+        // Abas "Erros"/"Sistema"/"Minhas"/"Conferências" — só trocam o que
+        // aparece no conteúdo, sem pedir nada novo ao servidor (os dados
+        // de todas as abas já vêm juntos numa chamada só a /notificacoes,
+        // ver renderizarNotificacoes). "Conferências" só existe no DOM pra
         // quem tem acesso a pelo menos uma fila do robô (gate no próprio
         // base.html, usuario_tem_acesso_a_alguma_fila_robo) — por isso
         // abaConferenciasEl pode ser null aqui, e cada entrada abaixo
@@ -735,7 +741,23 @@
         // Robô também) reúne conferência/erro/pronto/revisão do próprio
         // usuário — identificados pelo item.pessoal === true vindo do
         // backend (ver item.pessoal em notificacoes_do_usuario).
+        //
+        // "Erros" (Henrique, diretoria, 2026-09-16): "cria uma nova aba
+        // de notificações para ADM, que notifica somente os erros das
+        // ferramentas... deixa ela em primeiro, aparecendo somente para
+        // adms". Só existe no DOM pra usuario.eh_admin (gate no
+        // base.html) — abaErrosEl pode ser null pro resto. Não busca
+        // nada novo: é um recorte client-side de itensConferencias
+        // (tipo === "erro"), ver renderizarNotificacoes. Por ser
+        // recorte da MESMA família, os itens já chegam com
+        // descartavel/resolver (dispensa lógica por pessoa) — "Limpar"
+        // aqui despacha pro mesmo endpoint, só que filtrado a essa
+        // aba.
         var ABAS_NOTIFICACOES = [
+            {
+                nome: "erros", botao: abaErrosEl, lista: listaNotificacoesErrosEl, vazio: painelNotificacoesVazioErrosEl,
+                limpar: limparNotificacoesErrosEl, obterDescartaveis: function () { return ultimosItensErrosDescartaveis; },
+            },
             { nome: "sistema", botao: abaSistemaEl, lista: listaNotificacoesEl, vazio: painelNotificacoesVazioEl },
             {
                 nome: "minhas", botao: abaMinhasEl, lista: listaNotificacoesMinhasEl, vazio: painelNotificacoesVazioMinhasEl,
@@ -838,6 +860,7 @@
             });
         }
 
+        criarLimpezaEmLote(limparNotificacoesErrosEl, function () { return ultimosItensErrosDescartaveis; }, "Erros");
         criarLimpezaEmLote(limparNotificacoesMinhasEl, function () { return ultimosItensMinhasDescartaveis; }, "Minhas");
         criarLimpezaEmLote(limparNotificacoesConferenciasEl, function () { return ultimosItensConferenciasDescartaveis; }, "Ferramentas");
 
@@ -1008,6 +1031,7 @@
         }
 
         function atualizarContagensAbas() {
+            atualizarContagemAba(contagemAbaErrosEl, "erros", ultimosItensPorAba.erros);
             atualizarContagemAba(contagemAbaSistemaEl, "sistema", ultimosItensPorAba.sistema);
             atualizarContagemAba(contagemAbaMinhasEl, "minhas", ultimosItensPorAba.minhas);
             atualizarContagemAba(contagemAbaConferenciasEl, "conferencias", ultimosItensPorAba.conferencias);
@@ -1015,6 +1039,10 @@
             // Badge do próprio ícone do sino — mesmo recorte do popup
             // (só "Minhas" + "Sistema", ver alertarNovasNotificacoes),
             // agora também "não visto" em vez de "quantidade total".
+            // "Erros" fica de fora, mesma regra que já valia pra
+            // "Conferências"/Ferramentas (o sino não conta a fila geral
+            // da ferramenta, só o que é pessoal + comunicados) — cada
+            // aba tem seu próprio contador ao lado do nome.
             var totalNaoVisto =
                 contarNaoVistos("sistema", ultimosItensPorAba.sistema) +
                 contarNaoVistos("minhas", ultimosItensPorAba.minhas);
@@ -1315,6 +1343,17 @@
             itensSistema.sort(porCriadoEmDesc);
             itensConferencias.sort(porCriadoEmDesc);
 
+            // Henrique, diretoria, 2026-09-16: aba "Erros", só pra
+            // usuario.eh_admin — recorte de itensConferencias (já
+            // ordenado, filter preserva a ordem), sem pedir nada novo ao
+            // servidor. listaNotificacoesErrosEl só existe no DOM pra
+            // admin (gate em base.html), então isso é sempre seguro
+            // mesmo pra quem não tem a aba.
+            var itensErros = itensConferencias.filter(function (item) { return item.tipo === "erro"; });
+
+            if (listaNotificacoesErrosEl) {
+                preencherListaNotificacoes(listaNotificacoesErrosEl, itensErros);
+            }
             preencherListaNotificacoes(listaNotificacoesEl, itensSistema);
             if (listaNotificacoesMinhasEl) {
                 preencherListaNotificacoes(listaNotificacoesMinhasEl, itensMinhas, true);
@@ -1331,6 +1370,9 @@
             // criarLimpezaEmLote acima). A visibilidade do botão em si
             // (aba ativa + tem o que limpar) é decidida em
             // mostrarAbaNotificacoes, chamada logo abaixo.
+            ultimosItensErrosDescartaveis = itensErros.filter(function (item) {
+                return item.descartavel && item.resolver;
+            });
             ultimosItensMinhasDescartaveis = itensMinhas.filter(function (item) {
                 return item.descartavel && item.resolver;
             });
@@ -1338,7 +1380,7 @@
                 return item.descartavel && item.resolver;
             });
 
-            ultimosItensPorAba = { sistema: itensSistema, minhas: itensMinhas, conferencias: itensConferencias };
+            ultimosItensPorAba = { erros: itensErros, sistema: itensSistema, minhas: itensMinhas, conferencias: itensConferencias };
 
             // Painel já pode estar aberto quando um poll periódico
             // reconstrói a lista (não só na primeira carga) — nesse caso

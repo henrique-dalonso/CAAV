@@ -123,6 +123,9 @@
             </button>
         </div>
         <div class="painel-notificacoes-abas">
+            {% if usuario.eh_admin %}
+            <button type="button" class="aba-notificacoes" id="aba-erros" data-aba="erros">Erros <span class="contagem-aba-notificacoes contagem-aba-erros" id="contagem-aba-erros" hidden>0</span></button>
+            {% endif %}
             <button type="button" class="aba-notificacoes aba-notificacoes-ativa" id="aba-sistema" data-aba="sistema">Sistema <span class="contagem-aba-notificacoes contagem-aba-sistema" id="contagem-aba-sistema" hidden>0</span></button>
             <button type="button" class="aba-notificacoes" id="aba-minhas" data-aba="minhas">Minhas <span class="contagem-aba-notificacoes" id="contagem-aba-minhas" style="background: {{ usuario.cor_perfil or "#4f46e5" }};" hidden>0</span></button>
             {% if usuario_tem_acesso_a_alguma_fila_robo(usuario) %}
@@ -130,6 +133,11 @@
             {% endif %}
         </div>
         <div class="painel-notificacoes-conteudo">
+            {% if usuario.eh_admin %}
+            <button type="button" class="painel-notificacoes-limpar" id="limpar-notificacoes-erros" hidden>Limpar notificações</button>
+            <ul class="lista-notificacoes" id="lista-notificacoes-erros" hidden></ul>
+            <p class="vazio painel-notificacoes-vazio" id="painel-notificacoes-vazio-erros" hidden>Nenhum erro no momento.</p>
+            {% endif %}
             <ul class="lista-notificacoes" id="lista-notificacoes"></ul>
             <p class="vazio painel-notificacoes-vazio" id="painel-notificacoes-vazio">Nenhum comunicado no momento.</p>
             <button type="button" class="painel-notificacoes-limpar" id="limpar-notificacoes-minhas" hidden>Limpar notificações</button>
