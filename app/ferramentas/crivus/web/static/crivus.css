@@ -174,19 +174,18 @@
 }
 
 /* Processamento em Lote — form de upload bem mais simples que o do
-   Leitor Individual (1 campo só), mesmo respiro/tipografia. */
+   Leitor Individual (1 campo só), mesmo respiro/tipografia. Henrique,
+   diretoria, 2026-09-16: dropzone em cima, botão de enviar embaixo
+   (alinhado à direita) — troca o <input type="file"> cru por
+   .dropzone-lote (ver crivus.css/.js), sem <label> solto de antes. */
 .form-crivus-lote-upload {
     display: flex;
-    align-items: flex-end;
+    flex-direction: column;
     gap: 1rem;
-    flex-wrap: wrap;
 }
 
-.form-crivus-lote-upload label {
-    font-weight: 600;
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
+.form-crivus-lote-upload .botao-enviar-crivus {
+    align-self: flex-end;
 }
 
 @media (max-width: 760px) {
@@ -311,6 +310,63 @@
 
 .botao-limpar-anexos:hover {
     background: var(--cor-erro-fundo);
+}
+
+/* Henrique, diretoria, 2026-09-16: "vamos começar por você criar um
+   estilo legal para a área de envio da planilha... tá um botão padrão
+   do navegador, sem estilo" — dropzone de ARQUIVO ÚNICO (Processamento
+   em Lote), reaproveitando a casca de .dropzone-crivus (contorno
+   tracejado, hover na cor de acento), mas bem mais baixa (só 1 arquivo
+   nunca precisa de 260px de altura) e com os dois estados (vazio /
+   arquivo escolhido) lado a lado numa linha só, não empilhados. */
+.dropzone-lote {
+    min-height: auto;
+    flex-direction: row;
+    padding: 1rem 1.25rem;
+}
+
+.dropzone-lote-badge {
+    width: 42px;
+    height: 42px;
+    font-size: 1.1rem;
+}
+
+.dropzone-lote-arrastando {
+    border-color: var(--cor-acento);
+    background: var(--cor-acento-fraco);
+}
+
+.dropzone-lote-arquivo {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    width: 100%;
+    min-width: 0;
+}
+
+.dropzone-lote-arquivo-icone {
+    flex-shrink: 0;
+    color: #16a34a;
+    display: inline-flex;
+}
+
+.dropzone-lote-arquivo-nome {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.dropzone-lote-arquivo-tamanho {
+    flex-shrink: 0;
+    color: var(--cor-texto-suave);
+    font-size: 0.82rem;
+}
+
+.dropzone-lote #botao-limpar-planilha {
+    margin-left: auto;
+    flex-shrink: 0;
 }
 
 /* Cartão de anexo — cópia adaptada de .arquivo-cartao (fila.js/
@@ -1582,6 +1638,166 @@ html[data-theme="escuro"] .interruptor-texto-on {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+/* Henrique, diretoria, 2026-09-16: "Dentro de Lotes eu não quero todos
+   os casos largados, corridos, quero que seja exibido o card do LOTE.
+   A pessoa clica e entra no lote" — grade de cards (1 por LoteCrivus),
+   substituindo a lista corrida de milhares de casos que existia antes
+   na aba "Lotes" de Produção. */
+.grade-lotes-crivus {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1rem;
+}
+
+.cartao-lote-crivus {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    padding: 1.1rem 1.25rem;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio);
+    background: var(--cor-cartao);
+    box-shadow: var(--sombra-suave);
+    color: var(--cor-texto);
+    text-decoration: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+.cartao-lote-crivus:hover {
+    border-color: var(--cor-acento);
+    box-shadow: var(--sombra);
+    transform: translateY(-1px);
+}
+
+.cartao-lote-crivus-topo {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.cartao-lote-crivus-nome {
+    font-weight: 700;
+    font-size: 0.92rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.cartao-lote-crivus-contagem {
+    font-size: 0.85rem;
+    color: var(--cor-texto);
+}
+
+.cartao-lote-crivus-contagem strong {
+    font-size: 1.4rem;
+    margin-right: 0.3rem;
+}
+
+.cartao-lote-crivus-contagem-vazia {
+    color: var(--cor-texto-suave);
+}
+
+.cartao-lote-crivus-contagem-vazia strong {
+    color: var(--cor-texto-suave);
+}
+
+.cartao-lote-crivus-rodape {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-size: 0.75rem;
+    color: var(--cor-texto-suave);
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--cor-borda);
+}
+
+.cartao-lote-crivus-rodape a {
+    color: var(--cor-acento);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.cartao-lote-crivus-rodape a:hover {
+    text-decoration: underline;
+}
+
+/* Henrique, diretoria, 2026-09-16: "a forma como é exibida o lote que
+   está em produção está HORRÍVEL... mostrar o card do lote sem título
+   das colunas da lista" — /crivus/lote (upload + acompanhamento de
+   processamento) reaproveita a MESMA casca de card acima
+   (.cartao-lote-crivus), só que este card não é um link (o clique não
+   leva a lugar nenhum — só "Baixar resultado", no rodapé, é ação de
+   verdade), então tira o cursor/hover de link herdado. */
+.cartao-lote-processamento {
+    cursor: default;
+}
+
+.cartao-lote-processamento:hover {
+    border-color: var(--cor-borda);
+    box-shadow: var(--sombra-suave);
+    transform: none;
+}
+
+/* 4 números lado a lado (Total/Lidas/Erro/Manual) — rótulo pequeno
+   embaixo de cada um, sem cabeçalho de coluna nenhum (era isso que
+   "torna a experiência péssima" na tabela antiga). */
+.cartao-lote-crivus-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+    text-align: center;
+}
+
+.cartao-lote-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.cartao-lote-stat strong {
+    font-size: 1.15rem;
+}
+
+.cartao-lote-stat span {
+    font-size: 0.68rem;
+    color: var(--cor-texto-suave);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.cartao-lote-stat-sucesso strong {
+    color: #16a34a;
+}
+
+.cartao-lote-stat-erro strong {
+    color: var(--cor-erro-texto);
+}
+
+.cartao-lote-stat-manual strong {
+    color: #d97706;
+}
+
+/* Breadcrumb pra voltar da lista de casos de UM lote pra grade de
+   cards — só aparece quando `lote_id` está na URL. */
+.link-voltar-lote {
+    display: inline-block;
+    margin-bottom: 0.5rem;
+    color: var(--cor-acento);
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-decoration: none;
+}
+
+.link-voltar-lote:hover {
+    text-decoration: underline;
+}
+
+.crivus-lote-atual-nome {
+    margin-top: 0;
 }
 
 .paginacao-crivus {

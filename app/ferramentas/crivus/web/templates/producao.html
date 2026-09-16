@@ -16,17 +16,23 @@
 
 {{ nav_crivus("producao", pode_lote) }}
 
+{# Henrique, diretoria, 2026-09-16: computado aqui em cima, ANTES do
+   "if modo_lotes_cards", pra servir os dois modos por igual — na grade
+   de cards os campos de filtro nem existem (busca/data/etc chegam
+   vazios do backend), então isso vira "" sem quebrar nada; dentro de um
+   lote ou em "Individuais", carrega o que estiver ativo de verdade. #}
 {% set extra_query = (('&busca=' ~ (busca | urlencode)) if busca else '')
     ~ (('&data_de=' ~ data_de) if data_de else '')
     ~ (('&data_ate=' ~ data_ate) if data_ate else '')
     ~ (('&solicitante_id=' ~ solicitante_id) if solicitante_id else '')
-    ~ (('&nivel_confianca=' ~ (nivel_confianca | urlencode)) if nivel_confianca else '') %}
+    ~ (('&nivel_confianca=' ~ (nivel_confianca | urlencode)) if nivel_confianca else '')
+    ~ (('&lote_id=' ~ lote_id) if lote_id else '') %}
 
 <div class="crivus-producao-controles">
     <div class="alternador alternador-neutro">
-        <a href="/crivus/producao?aba=lotes&filtro={{ filtro }}{{ extra_query }}"
+        <a href="/crivus/producao?aba=lotes&filtro={{ filtro }}"
            class="alternador-opcao{% if aba == "lotes" %} alternador-ativa{% endif %}">Lotes</a>
-        <a href="/crivus/producao?aba=individuais&filtro={{ filtro }}{{ extra_query }}"
+        <a href="/crivus/producao?aba=individuais&filtro={{ filtro }}"
            class="alternador-opcao{% if aba == "individuais" %} alternador-ativa{% endif %}">Individuais</a>
     </div>
 
@@ -38,9 +44,51 @@
     </div>
 </div>
 
+{% if modo_lotes_cards %}
+{# Henrique, diretoria, 2026-09-16: "Dentro de Lotes eu não quero todos os
+   casos largados, corridos, quero que seja exibido o card do LOTE. A
+   pessoa clica e entra no lote" — 1 card por LoteCrivus, cada um levando
+   pra lista de casos DAQUELE lote (mesma tela de sempre, só escopada). #}
+{% if not lotes %}
+<p class="aviso-discreto">Nenhuma planilha enviada ainda. Envie uma planilha na aba <a href="/crivus/lote">Processamento em Lote</a>.</p>
+{% else %}
+<div class="grade-lotes-crivus">
+    {% for lote in lotes %}
+    {% set contagem = (contagem_pendentes_por_lote if filtro == "pendentes" else contagem_concluidos_por_lote).get(lote.id, 0) %}
+    <a href="/crivus/producao?aba=lotes&filtro={{ filtro }}&lote_id={{ lote.id }}" class="cartao-lote-crivus">
+        <div class="cartao-lote-crivus-topo">
+            <span class="cartao-lote-crivus-nome truncavel" data-dica="{{ lote.nome_arquivo }}">{{ lote.nome_arquivo }}</span>
+            <span class="selo {{ "selo-positivo" if lote.status == "concluido" else "selo-azul" }}">{{ "Concluído" if lote.status == "concluido" else "Processando" }}</span>
+        </div>
+        <div class="cartao-lote-crivus-contagem{% if contagem == 0 %} cartao-lote-crivus-contagem-vazia{% endif %}">
+            <strong>{{ contagem }}</strong>
+            {% if filtro == "pendentes" %}
+            caso{{ "s" if contagem != 1 else "" }} pendente{{ "s" if contagem != 1 else "" }} de revisão
+            {% else %}
+            caso{{ "s" if contagem != 1 else "" }} concluído{{ "s" if contagem != 1 else "" }}
+            {% endif %}
+        </div>
+        <div class="cartao-lote-crivus-rodape">
+            <span>{{ lote.total_linhas }} linhas ao todo</span>
+            <span>{{ lote.criado_em.strftime("%d/%m/%Y") }}</span>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% else %}
+{% if lote_atual %}
+<a href="/crivus/producao?aba=lotes&filtro={{ filtro }}" class="link-voltar-lote">← Voltar aos lotes</a>
+<p class="aviso-discreto crivus-lote-atual-nome truncavel" data-dica="{{ lote_atual.nome_arquivo }}">Lote: <strong>{{ lote_atual.nome_arquivo }}</strong></p>
+{% endif %}
+
 <form method="get" action="/crivus/producao" class="barra-filtros barra-filtros-producao" id="form-filtros-producao">
     <input type="hidden" name="aba" value="{{ aba }}">
     <input type="hidden" name="filtro" value="{{ filtro }}">
+    {% if lote_id %}
+    <input type="hidden" name="lote_id" value="{{ lote_id }}">
+    {% endif %}
     <input type="search" name="busca" id="campo-busca-producao" class="campo-busca" placeholder="Buscar por NPJUR ou nº do processo..." value="{{ busca }}" aria-label="Buscar por NPJUR ou número do processo">
     <div class="filtro-data">
         <label for="filtro-data-de">De:</label>
@@ -67,12 +115,12 @@
         </select>
     </div>
     {% if busca or data_de or data_ate or solicitante_id or nivel_confianca %}
-    <a href="/crivus/producao?aba={{ aba }}&filtro={{ filtro }}" class="link-limpar-filtros">Limpar filtros</a>
+    <a href="/crivus/producao?aba={{ aba }}&filtro={{ filtro }}{% if lote_id %}&lote_id={{ lote_id }}{% endif %}" class="link-limpar-filtros">Limpar filtros</a>
     {% endif %}
 </form>
 
 {% if eh_lotes and not analises %}
-<p class="aviso-discreto">Nenhum caso de lote {{ "pendente" if filtro == "pendentes" else "concluído" }}. Envie uma planilha na aba <a href="/crivus/lote">Processamento em Lote</a>.</p>
+<p class="aviso-discreto">Nenhum caso de lote {{ "pendente" if filtro == "pendentes" else "concluído" }}{% if lote_atual %} neste lote{% endif %}.</p>
 {% elif not analises %}
 <p class="aviso-discreto">Nenhum caso {{ "pendente" if filtro == "pendentes" else "concluído" }}.</p>
 {% else %}
@@ -109,6 +157,7 @@
     <a href="/crivus/producao?aba={{ aba }}&filtro={{ filtro }}&pagina={{ pagina + 1 }}{{ extra_query }}">Próxima →</a>
     {% endif %}
 </div>
+{% endif %}
 {% endif %}
 {% endif %}
 </div>

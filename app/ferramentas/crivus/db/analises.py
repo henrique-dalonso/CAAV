@@ -1,6 +1,6 @@
 from datetime import date, datetime, timedelta
 
-from sqlmodel import or_, select
+from sqlmodel import func, or_, select
 
 from app.ferramentas.crivus.db.models import (
     AnalisePublicacao,
@@ -105,7 +105,8 @@ def obter_analise(analise_id):
         return sessao.get(AnalisePublicacao, analise_id)
 
 
-def _consulta_producao(origem, status, busca=None, data_de=None, data_ate=None, solicitante_id=None, nivel_confianca=None):
+def _consulta_producao(origem, status, busca=None, data_de=None, data_ate=None, solicitante_id=None, nivel_confianca=None,
+                        lote_id=None):
     """Filtros compartilhados por listar_analises/contar_analises — pra
     contagem/paginação sempre baterem com o mesmo recorte. Henrique,
     diretoria, 2026-09-15: "está faltando busca e filtros, igual o
@@ -121,7 +122,13 @@ def _consulta_producao(origem, status, busca=None, data_de=None, data_ate=None, 
     RÓTULO_CONFIANÇA_FEMININO em config/taxonomia.py) — igualdade
     simples, sem dropdown dinâmico igual solicitante_id (não precisa
     consultar quais níveis "de fato têm caso" — são só 3, sempre
-    oferecidos)."""
+    oferecidos).
+
+    `lote_id` (Henrique, diretoria, 2026-09-16: "quero que seja exibido
+    o card do LOTE. A pessoa clica e entra no lote") — escopa a consulta
+    a UM lote específico, usado quando a pessoa já entrou no card; a
+    aba "Lotes" sem `lote_id` nenhum não chama isso (mostra os cards,
+    não uma lista de casos)."""
     campo_data = AnalisePublicacao.concluido_em if status == "concluido" else AnalisePublicacao.criado_em
 
     consulta = select(AnalisePublicacao).where(
@@ -142,12 +149,14 @@ def _consulta_producao(origem, status, busca=None, data_de=None, data_ate=None, 
         consulta = consulta.where(AnalisePublicacao.usuario_id == solicitante_id)
     if nivel_confianca:
         consulta = consulta.where(AnalisePublicacao.nivel_confianca == nivel_confianca)
+    if lote_id:
+        consulta = consulta.where(AnalisePublicacao.lote_id == lote_id)
 
     return consulta
 
 
 def listar_analises(origem, status, limite=50, offset=0, busca=None, data_de=None, data_ate=None, solicitante_id=None,
-                     nivel_confianca=None):
+                     nivel_confianca=None, lote_id=None):
     """Lista AnalisePublicacao pra tela Produção — sem checagem de dono,
     de propósito (Henrique, 2026-09-12: o acervo é do escritório inteiro,
     não do criador).
@@ -159,7 +168,7 @@ def listar_analises(origem, status, limite=50, offset=0, busca=None, data_de=Non
     fundo"; virou estressante depois que o Processamento em Lote passou
     a alimentar essa mesma fila com volume real)."""
     with obter_sessao() as sessao:
-        consulta = _consulta_producao(origem, status, busca, data_de, data_ate, solicitante_id, nivel_confianca)
+        consulta = _consulta_producao(origem, status, busca, data_de, data_ate, solicitante_id, nivel_confianca, lote_id)
 
         campo_ordenacao = AnalisePublicacao.concluido_em if status == "concluido" else AnalisePublicacao.criado_em
         consulta = consulta.order_by(campo_ordenacao.desc())
@@ -167,26 +176,44 @@ def listar_analises(origem, status, limite=50, offset=0, busca=None, data_de=Non
         return sessao.exec(consulta.limit(limite).offset(offset)).all()
 
 
-def contar_analises(origem, status, busca=None, data_de=None, data_ate=None, solicitante_id=None, nivel_confianca=None):
+def contar_analises(origem, status, busca=None, data_de=None, data_ate=None, solicitante_id=None, nivel_confianca=None,
+                     lote_id=None):
     with obter_sessao() as sessao:
-        consulta = _consulta_producao(origem, status, busca, data_de, data_ate, solicitante_id, nivel_confianca)
+        consulta = _consulta_producao(origem, status, busca, data_de, data_ate, solicitante_id, nivel_confianca, lote_id)
         return len(sessao.exec(consulta.with_only_columns(AnalisePublicacao.id)).all())
 
 
-def listar_solicitantes_ids(origem, status):
+def listar_solicitantes_ids(origem, status, lote_id=None):
     """Henrique, diretoria, 2026-09-15: "mesmo comportamento do Extratus"
     — o dropdown "Solicitado por" só oferece quem de fato tem caso nesse
     recorte (aba+filtro atuais), não a base de usuários inteira (a
     maioria nunca mandou nada pra essa aba específica). Ignora
     busca/data/solicitante de propósito — a lista de opções não deve
-    encolher só porque outro filtro já está aplicado."""
+    encolher só porque outro filtro já está aplicado. `lote_id` (2026-
+    09-16) já escopa pro lote certo quando a pessoa está dentro de um."""
     with obter_sessao() as sessao:
-        ids = sessao.exec(
-            select(AnalisePublicacao.usuario_id)
-            .where(AnalisePublicacao.origem == origem, AnalisePublicacao.status == status)
-            .distinct()
-        ).all()
+        consulta = select(AnalisePublicacao.usuario_id).where(
+            AnalisePublicacao.origem == origem, AnalisePublicacao.status == status
+        )
+        if lote_id:
+            consulta = consulta.where(AnalisePublicacao.lote_id == lote_id)
+        ids = sessao.exec(consulta.distinct()).all()
         return set(ids)
+
+
+def contar_analises_por_lote(status):
+    """Quantidade de AnalisePublicacao com esse status, agrupada por
+    lote_id — alimenta o card de cada lote na aba "Lotes" de Produção
+    (Henrique, diretoria, 2026-09-16: "quero que seja exibido o card do
+    LOTE"), mostrando quantos casos daquele lote ainda estão pendentes/
+    já concluídos, sem precisar abrir o lote pra saber."""
+    with obter_sessao() as sessao:
+        linhas = sessao.exec(
+            select(AnalisePublicacao.lote_id, func.count())
+            .where(AnalisePublicacao.origem == "lote", AnalisePublicacao.status == status)
+            .group_by(AnalisePublicacao.lote_id)
+        ).all()
+        return {lote_id: quantidade for lote_id, quantidade in linhas}
 
 
 def listar_itens(analise_id):

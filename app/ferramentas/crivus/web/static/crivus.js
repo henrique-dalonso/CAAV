@@ -280,6 +280,84 @@
         });
     }
 
+    // -----------------------------------------------------------------
+    // Dropzone de ARQUIVO ÚNICO — Processamento em Lote (lote.html).
+    // Henrique, diretoria, 2026-09-16: "vamos começar por você criar um
+    // estilo legal para a área de envio da planilha... tá um botão
+    // padrão do navegador, sem estilo". Bem mais simples que o dropzone
+    // multi-arquivo acima (.dropzone-crivus, anexos do Leitor Individual)
+    // — só 1 arquivo, sempre obrigatório (.xlsx), sem precisar de
+    // DataTransfer/array (o próprio <input type="file"> já é a fonte da
+    // verdade, só cuida de mostrar/esconder os dois estados visuais).
+    // -----------------------------------------------------------------
+    var dropzoneLote = document.getElementById("dropzone-lote");
+
+    if (dropzoneLote) {
+        var campoPlanilha = document.getElementById("planilha");
+        var cliqueLoteEl = document.getElementById("dropzone-lote-clique");
+        var arquivoLoteEl = document.getElementById("dropzone-lote-arquivo");
+        var nomeLoteEl = document.getElementById("dropzone-lote-arquivo-nome");
+        var tamanhoLoteEl = document.getElementById("dropzone-lote-arquivo-tamanho");
+        var botaoLimparPlanilha = document.getElementById("botao-limpar-planilha");
+        var botaoEnviarLote = document.getElementById("botao-enviar-lote");
+
+        function formatarTamanhoLote(bytes) {
+            if (bytes < 1024) { return bytes + " B"; }
+            if (bytes < 1024 * 1024) { return (bytes / 1024).toFixed(0) + " KB"; }
+            return (bytes / (1024 * 1024)).toFixed(1).replace(".", ",") + " MB";
+        }
+
+        function renderizarPlanilha() {
+            var arquivo = campoPlanilha.files[0];
+
+            if (!arquivo) {
+                cliqueLoteEl.hidden = false;
+                arquivoLoteEl.hidden = true;
+                botaoEnviarLote.disabled = true;
+                return;
+            }
+
+            cliqueLoteEl.hidden = true;
+            arquivoLoteEl.hidden = false;
+            nomeLoteEl.textContent = arquivo.name;
+            nomeLoteEl.dataset.dica = arquivo.name;
+            tamanhoLoteEl.textContent = formatarTamanhoLote(arquivo.size);
+            botaoEnviarLote.disabled = false;
+        }
+
+        dropzoneLote.addEventListener("click", function (evento) {
+            if (evento.target.closest("#botao-limpar-planilha")) { return; }
+            campoPlanilha.click();
+        });
+
+        campoPlanilha.addEventListener("change", renderizarPlanilha);
+
+        botaoLimparPlanilha.addEventListener("click", function (evento) {
+            evento.preventDefault();
+            evento.stopPropagation();
+            campoPlanilha.value = "";
+            renderizarPlanilha();
+        });
+
+        // Arrastar-e-soltar — mesmo visual de "arraste aqui" já prometido
+        // no texto do dropzone, sem exigir nada novo do back-end (o
+        // arquivo solto vira o valor do MESMO <input>, via DataTransfer).
+        ["dragover", "dragleave", "drop"].forEach(function (tipo) {
+            dropzoneLote.addEventListener(tipo, function (evento) {
+                evento.preventDefault();
+                evento.stopPropagation();
+                dropzoneLote.classList.toggle("dropzone-lote-arrastando", tipo === "dragover");
+
+                if (tipo === "drop" && evento.dataTransfer.files.length) {
+                    campoPlanilha.files = evento.dataTransfer.files;
+                    renderizarPlanilha();
+                }
+            });
+        });
+
+        renderizarPlanilha();
+    }
+
     // Acompanhamento/Agendamento (detalhe.html) — Henrique, 2026-09-04:
     // exibição só de leitura por padrão; o lápis (canto superior direito,
     // vermelho — "algo delicado") revela tipo/[datas] editáveis +

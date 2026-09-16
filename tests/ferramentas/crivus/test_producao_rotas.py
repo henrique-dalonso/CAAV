@@ -1,10 +1,11 @@
-from datetime import datetime
+from datetime import date, datetime
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import delete, select
 
-from app.ferramentas.crivus.db.models import AnalisePublicacao, AnexoAnalise, ItemAcompanhamento, ItemAgendamento
+from app.ferramentas.crivus.db.lotes_crivus import criar_lote
+from app.ferramentas.crivus.db.models import AnalisePublicacao, AnexoAnalise, ItemAcompanhamento, ItemAgendamento, LoteCrivus
 from app.plataforma.db.models import CARGO_COLABORADOR
 from app.plataforma.db.session import obter_sessao
 from app.plataforma.db.usuarios import criar_usuario, definir_ferramentas, excluir_usuario, listar_todas_ferramentas
@@ -80,6 +81,39 @@ def _criar_caso(cliente, npjur="0119225"):
     return analise_id
 
 
+def _criar_lote_teste(usuario_id, nome_arquivo, npjurs, status="aguardando_revisao"):
+    """Cria um LoteCrivus de teste com 1 AnalisePublicacao por NPJUR —
+    `criar_lote` sempre nasce com status="processando" (é o default do
+    model), então ajusta pra `status` na sequência pra já poder aparecer
+    em Pendentes/Concluídos sem precisar rodar o motor de verdade."""
+    linhas = [
+        {"npjur": npjur, "teor": "teor de teste", "data_publicacao": date.today(), "data_importacao": date.today()}
+        for npjur in npjurs
+    ]
+    lote = criar_lote(usuario_id, nome_arquivo, linhas)
+
+    with obter_sessao() as sessao:
+        analises = sessao.exec(select(AnalisePublicacao).where(AnalisePublicacao.lote_id == lote.id)).all()
+        for analise in analises:
+            analise.status = status
+            sessao.add(analise)
+        sessao.commit()
+
+    return lote
+
+
+def _limpar_lote_teste(lote_id):
+    with obter_sessao() as sessao:
+        analises = sessao.exec(select(AnalisePublicacao).where(AnalisePublicacao.lote_id == lote_id)).all()
+        for analise in analises:
+            sessao.exec(delete(ItemAcompanhamento).where(ItemAcompanhamento.analise_id == analise.id))
+            sessao.exec(delete(ItemAgendamento).where(ItemAgendamento.analise_id == analise.id))
+            sessao.exec(delete(AnexoAnalise).where(AnexoAnalise.analise_id == analise.id))
+        sessao.exec(delete(AnalisePublicacao).where(AnalisePublicacao.lote_id == lote_id))
+        sessao.exec(delete(LoteCrivus).where(LoteCrivus.id == lote_id))
+        sessao.commit()
+
+
 def _concluir_caso(analise_id):
     with obter_sessao() as sessao:
         item_acomp = sessao.exec(
@@ -129,13 +163,17 @@ def test_link_do_caso_carrega_aba_e_filtro_atuais_como_origem(cliente_logado):
 def test_producao_default_e_lotes_pendentes(cliente_logado):
     """Henrique, 2026-09-13: Lotes vira a aba padrão de Produção (antes
     era Individuais) — acessar /crivus/producao sem parâmetro nenhum já
-    cai direto no estado vazio de Lotes, não mostra casos individuais."""
+    cai direto na aba Lotes, não mostra casos individuais. Henrique,
+    diretoria, 2026-09-16: Lotes virou uma grade de CARDS (não a lista
+    de casos direto), então o teste confere isso em vez do estado vazio
+    (que depende de não existir nenhum lote real na base, algo que este
+    teste não controla)."""
     cliente, _ = cliente_logado
     _criar_caso(cliente, npjur="0119225")
 
     resposta = cliente.get("/crivus/producao")
     assert resposta.status_code == 200
-    assert "Processamento em Lote" in resposta.text
+    assert 'class="alternador-opcao alternador-ativa">Lotes' in resposta.text
     assert "0119225" not in resposta.text
 
 
@@ -253,14 +291,72 @@ def test_producao_dropdown_solicitante_so_mostra_quem_tem_caso(cliente_logado):
         excluir_usuario(sem_caso_nenhum.id)
 
 
-def test_producao_lotes_mostra_estado_vazio(cliente_logado):
+def test_producao_lotes_nunca_mostra_caso_individual(cliente_logado):
+    """Henrique, diretoria, 2026-09-16: a grade de cards da aba "Lotes"
+    nunca deveria vazar um caso de origem "individual" — o teste antigo
+    checava um texto específico do estado "nenhum lote enviado ainda",
+    que não é garantido (a base compartilhada de dev pode ter lotes
+    reais de sessões anteriores)."""
     cliente, _ = cliente_logado
     _criar_caso(cliente, npjur="0333333")
 
     resposta = cliente.get("/crivus/producao?aba=lotes&filtro=pendentes")
     assert resposta.status_code == 200
     assert "0333333" not in resposta.text
-    assert "Processamento em Lote" in resposta.text
+
+
+def test_producao_lotes_mostra_grade_de_cards(cliente_logado):
+    """Henrique, diretoria, 2026-09-16: "quero que seja exibido o card
+    do LOTE" — a aba "Lotes" sem nenhum `lote_id` escolhido mostra 1
+    card por LoteCrivus, não a lista de casos direto."""
+    cliente, usuario = cliente_logado
+    lote = _criar_lote_teste(usuario.id, "teste_producao_card.xlsx", ["0888801", "0888802"])
+
+    try:
+        resposta = cliente.get("/crivus/producao?aba=lotes&filtro=pendentes")
+
+        assert resposta.status_code == 200
+        assert "teste_producao_card.xlsx" in resposta.text
+        assert f"lote_id={lote.id}" in resposta.text
+        # Contagem de pendentes DESTE lote (as 2 linhas criadas) aparece
+        # no card, sem precisar entrar nele — ver contar_analises_por_lote.
+        assert "<strong>2</strong>" in resposta.text
+        assert "casos pendentes de revisão" in resposta.text
+        # Ainda na grade de cards — os NPJUR das linhas do lote não
+        # aparecem aqui, só depois de clicar no card.
+        assert "0888801" not in resposta.text
+    finally:
+        _limpar_lote_teste(lote.id)
+
+
+def test_producao_lote_card_leva_so_pros_casos_daquele_lote(cliente_logado):
+    """Henrique, diretoria, 2026-09-16: "A pessoa clica e entra no lote"
+    — a lista de casos, ao entrar num lote específico, mostra só os
+    casos DAQUELE lote, isolado de outro lote qualquer."""
+    cliente, usuario = cliente_logado
+    lote_a = _criar_lote_teste(usuario.id, "teste_producao_lote_a.xlsx", ["0888811"])
+    lote_b = _criar_lote_teste(usuario.id, "teste_producao_lote_b.xlsx", ["0888822"])
+
+    try:
+        resposta = cliente.get(f"/crivus/producao?aba=lotes&filtro=pendentes&lote_id={lote_a.id}")
+
+        assert resposta.status_code == 200
+        assert "0888811" in resposta.text
+        assert "0888822" not in resposta.text
+        assert "teste_producao_lote_a.xlsx" in resposta.text
+        assert "← Voltar aos lotes" in resposta.text
+    finally:
+        _limpar_lote_teste(lote_a.id)
+        _limpar_lote_teste(lote_b.id)
+
+
+def test_producao_lote_id_invalido_volta_pra_grade_de_cards(cliente_logado):
+    cliente, _ = cliente_logado
+
+    resposta = cliente.get("/crivus/producao?aba=lotes&filtro=pendentes&lote_id=999999999")
+
+    assert resposta.status_code == 200
+    assert 'class="alternador-opcao alternador-ativa">Lotes' in resposta.text
 
 
 def test_producao_valores_invalidos_caem_no_default(cliente_logado):
