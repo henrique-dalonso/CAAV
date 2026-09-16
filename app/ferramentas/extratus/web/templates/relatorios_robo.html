@@ -103,13 +103,17 @@
             <div class="relatorio-status-coluna">
                 {% if job.revisado_manualmente %}
                 <span class="status status-revisado">Revisado</span>
-                <span class="revisado-por" data-dica="Marcado como revisado por {{ nomes_por_id.get(job.revisado_por_id, 'não identificado') }}">Por: {{ nomes_por_id.get(job.revisado_por_id, "não identificado") }}</span>
+                <span class="revisado-por truncavel" data-dica="Marcado como revisado por {{ nomes_por_id.get(job.revisado_por_id, 'não identificado') }}">Por: {{ nomes_por_id.get(job.revisado_por_id, "não identificado") }}</span>
                 {% else %}
                 <span class="status status-{{ job.status }}">{{ job.status | rotulo_status }}</span>
                 {% if job.status == "revisao" %}
                 <form action="/extratus/relatorios-robo/{{ job.id }}/marcar-revisado" method="post"
                     data-confirm="Tem certeza que deseja marcar o caso como revisado?">
-                    <button type="submit" class="botao-marcar-revisado-robo">Marcar como revisado</button>
+                    <button type="submit" class="botao-marcar-revisado-robo" data-dica="Marcar como revisado" aria-label="Marcar como revisado">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                    </button>
                 </form>
                 {% endif %}
                 {% endif %}
