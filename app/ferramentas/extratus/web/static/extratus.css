@@ -1264,6 +1264,20 @@ html[data-theme="escuro"] .campo-data::-webkit-calendar-picker-indicator {
     color: var(--cor-acento);
 }
 
+/* Henrique, diretoria, 2026-09-16 (mesmo dia, rodada seguinte): "no
+   lugar do 'Marcar como revisado' aparecer um textinho... 'Por: nome
+   da pessoa'" — some o botão, deixa só essa informação, discreta (não é
+   ação, é só rastro de quem revisou). */
+.revisado-por {
+    font-size: 0.68rem;
+    color: var(--cor-texto-suave);
+    text-align: center;
+    max-width: 90px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* Nº do processo (ou nome do arquivo, sem processo identificado) com
    ícone — icone_processo NÃO tenta preservar largura fixa (flex-shrink:
    0), quem trunca é o <span> do texto (min-width:0 é o que permite um

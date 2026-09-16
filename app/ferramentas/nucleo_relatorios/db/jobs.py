@@ -264,14 +264,18 @@ def marcar_notificacao_resolvida_robo(job_id, ferramenta_slug=FERRAMENTA_SLUG_PA
         return True
 
 
-def marcar_como_revisado(job_id, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
+def marcar_como_revisado(job_id, revisado_por_id, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Henrique, diretoria, 2026-09-16: "Marcar como revisado" em
     Relatórios do Robô, pros casos em "revisão" — vira status="sucesso"
     de verdade (não um status novo) + revisado_manualmente=True, só pra
     distinguir na exibição (ver docstring do campo em db/models.py). Só
     aceita partir de "revisao" — sucesso/erro não têm esse botão na
     tela, e um job que já é sucesso não precisa (nem pode) ser marcado
-    de novo."""
+    de novo.
+
+    `revisado_por_id` (mesmo dia, rodada seguinte): "um textinho
+    informacional como 'Por: nome da pessoa'" — quem clicou, pra exibir
+    no lugar do botão depois de marcado."""
     with obter_sessao() as sessao:
         job = sessao.get(Job, job_id)
 
@@ -280,6 +284,7 @@ def marcar_como_revisado(job_id, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
 
         job.status = "sucesso"
         job.revisado_manualmente = True
+        job.revisado_por_id = revisado_por_id
         sessao.add(job)
         sessao.commit()
 

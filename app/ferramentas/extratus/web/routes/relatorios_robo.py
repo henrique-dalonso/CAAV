@@ -259,7 +259,7 @@ def marcar_revisado_route(job_id: int, usuario: Usuario = Depends(exigir_acesso_
     casos em "revisão" — qualquer um com acesso à ferramenta pode marcar
     (mesmo nível de acesso que já vale pra ver o acervo inteiro, sem
     trava extra por dono — igual ao X de "sucesso" do Robô acima)."""
-    if not marcar_como_revisado(job_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO):
+    if not marcar_como_revisado(job_id, usuario.id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO):
         return _redirecionar(erro="Esse relatório não existe mais, ou já não está em revisão.")
 
     return _redirecionar(sucesso="Caso marcado como revisado.")

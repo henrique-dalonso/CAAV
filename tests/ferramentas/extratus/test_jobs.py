@@ -726,12 +726,13 @@ def test_marcar_como_revisado_vira_sucesso_com_flag(limpar_jobs_criados):
     limpar_jobs_criados.append(job.id)
     assert job.status == "revisao"
 
-    assert marcar_como_revisado(job.id) is True
+    assert marcar_como_revisado(job.id, USUARIO_TESTE_A) is True
 
     with obter_sessao() as sessao:
         atualizado = sessao.get(Job, job.id)
         assert atualizado.status == "sucesso"
         assert atualizado.revisado_manualmente is True
+        assert atualizado.revisado_por_id == USUARIO_TESTE_A
 
 
 def test_marcar_como_revisado_recusa_job_que_nao_esta_em_revisao(limpar_jobs_criados):
@@ -745,16 +746,17 @@ def test_marcar_como_revisado_recusa_job_que_nao_esta_em_revisao(limpar_jobs_cri
     limpar_jobs_criados.append(job.id)
     assert job.status == "sucesso"
 
-    assert marcar_como_revisado(job.id) is False
+    assert marcar_como_revisado(job.id, USUARIO_TESTE_A) is False
 
     with obter_sessao() as sessao:
         atualizado = sessao.get(Job, job.id)
         assert atualizado.status == "sucesso"
         assert atualizado.revisado_manualmente is False
+        assert atualizado.revisado_por_id is None
 
 
 def test_marcar_como_revisado_job_inexistente_nao_quebra():
-    assert marcar_como_revisado(999999999) is False
+    assert marcar_como_revisado(999999999, USUARIO_TESTE_A) is False
 
 
 def test_excluir_job_apaga_arquivos_fisicos_e_a_linha(tmp_path, limpar_jobs_criados):

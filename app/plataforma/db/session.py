@@ -58,6 +58,7 @@ COLUNAS_PENDENTES = {
         # em Relatórios do Robô, ver docstring de Job.revisado_manualmente
         # em db/models.py.
         "revisado_manualmente": "BOOLEAN DEFAULT 0",
+        "revisado_por_id": "INTEGER",
         # Henrique, diretoria, 2026-08-27 — quem PEDIU esse processo, ver
         # docstring de Job.solicitante_id em db/models.py.
         "solicitante_id": "INTEGER",

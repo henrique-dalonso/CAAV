@@ -297,6 +297,8 @@ def test_marcar_revisado_route_vira_sucesso_com_flag(cliente_logado, limpar_jobs
         atualizado = sessao.get(Job, job.id)
         assert atualizado.status == "sucesso"
         assert atualizado.revisado_manualmente is True
+        usuario_logado_id = sessao.exec(select(Usuario.id).where(Usuario.nome_usuario == NOME_USUARIO_TESTE)).first()
+        assert atualizado.revisado_por_id == usuario_logado_id
 
 
 def test_marcar_revisado_route_job_que_nao_esta_em_revisao_redireciona_com_erro(cliente_logado, limpar_jobs_criados):

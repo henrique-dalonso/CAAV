@@ -84,6 +84,13 @@ class Job(SQLModel, table=True):
     # diferente) — não muda nenhum comportamento de filtro/agregação.
     revisado_manualmente: bool = Field(default=False)
 
+    # Henrique, diretoria, 2026-09-16 (mesmo dia, rodada seguinte): "se
+    # uma pessoa der como revisado um caso... é preciso... um textinho
+    # informacional como 'Por: nome da pessoa'" — quem clicou em "Marcar
+    # como revisado" (não confundir com usuario_id/solicitante_id, que
+    # são sobre QUEM GEROU o Job, não quem revisou depois).
+    revisado_por_id: Optional[int] = Field(default=None, foreign_key="usuario.id")
+
     # --- Campos específicos do tipo "emenda" (ver nucleo_relatorios/
     # tipos.py e core/pos_processamento_emenda.py) — só preenchidos quando
     # tipo_relatorio == "emenda"; ficam NULL/default em toda linha de

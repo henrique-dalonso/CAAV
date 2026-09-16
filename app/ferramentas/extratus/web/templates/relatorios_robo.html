@@ -103,14 +103,15 @@
             <div class="relatorio-status-coluna">
                 {% if job.revisado_manualmente %}
                 <span class="status status-revisado">Revisado</span>
+                <span class="revisado-por" data-dica="Marcado como revisado por {{ nomes_por_id.get(job.revisado_por_id, 'não identificado') }}">Por: {{ nomes_por_id.get(job.revisado_por_id, "não identificado") }}</span>
                 {% else %}
                 <span class="status status-{{ job.status }}">{{ job.status | rotulo_status }}</span>
-                {% endif %}
                 {% if job.status == "revisao" %}
                 <form action="/extratus/relatorios-robo/{{ job.id }}/marcar-revisado" method="post"
                     data-confirm="Tem certeza que deseja marcar o caso como revisado?">
                     <button type="submit" class="botao-marcar-revisado-robo">Marcar como revisado</button>
                 </form>
+                {% endif %}
                 {% endif %}
             </div>
             <div class="relatorio-info{% if job.relatorio_path %} relatorio-info-clicavel{% endif %}"{% if job.relatorio_path %} data-download="download/{{ job.relatorio_path.split('\\')[-1].split('/')[-1] }}"{% endif %}>
