@@ -314,6 +314,7 @@
                 cliqueLoteEl.hidden = false;
                 arquivoLoteEl.hidden = true;
                 botaoEnviarLote.disabled = true;
+                botaoLimparPlanilha.hidden = true;
                 return;
             }
 
@@ -323,10 +324,10 @@
             nomeLoteEl.dataset.dica = arquivo.name;
             tamanhoLoteEl.textContent = formatarTamanhoLote(arquivo.size);
             botaoEnviarLote.disabled = false;
+            botaoLimparPlanilha.hidden = false;
         }
 
-        dropzoneLote.addEventListener("click", function (evento) {
-            if (evento.target.closest("#botao-limpar-planilha")) { return; }
+        dropzoneLote.addEventListener("click", function () {
             campoPlanilha.click();
         });
 

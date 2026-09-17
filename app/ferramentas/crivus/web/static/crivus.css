@@ -175,17 +175,40 @@
 
 /* Processamento em Lote — form de upload bem mais simples que o do
    Leitor Individual (1 campo só), mesmo respiro/tipografia. Henrique,
-   diretoria, 2026-09-16: dropzone em cima, botão de enviar embaixo
-   (alinhado à direita) — troca o <input type="file"> cru por
-   .dropzone-lote (ver crivus.css/.js), sem <label> solto de antes. */
+   diretoria, 2026-09-16: troca o <input type="file"> cru por
+   .dropzone-lote (ver crivus.css/.js), sem <label> solto de antes.
+   Henrique, diretoria, 2026-09-17: dropzone reduzida pra metade da
+   largura do cartão, com Enviar/Remover encaixados ao lado (mesma
+   altura, lado a lado — não mais empilhados embaixo). */
 .form-crivus-lote-upload {
     display: flex;
-    flex-direction: column;
+    align-items: stretch;
     gap: 1rem;
 }
 
-.form-crivus-lote-upload .botao-enviar-crivus {
-    align-self: flex-end;
+.form-crivus-lote-upload .dropzone-lote {
+    flex: 0 1 50%;
+    max-width: 50%;
+}
+
+.lote-upload-acoes {
+    flex: 1;
+    display: flex;
+    align-items: stretch;
+    gap: 0.6rem;
+}
+
+.lote-upload-acoes .botao-enviar-crivus {
+    flex: 1;
+    justify-content: center;
+}
+
+.lote-upload-acoes .botao-limpar-anexos {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding-inline: 1.1rem;
 }
 
 @media (max-width: 760px) {
@@ -364,9 +387,17 @@
     font-size: 0.82rem;
 }
 
-.dropzone-lote #botao-limpar-planilha {
-    margin-left: auto;
-    flex-shrink: 0;
+/* [hidden] some vira "display:none" pela stylesheet do navegador, mas
+   tem a MESMA especificidade que as classes acima (que já declaram
+   display:flex) — sem isso aqui, a mais recente das duas no cascade
+   vence e o elemento "escondido" continua aparecendo por cima do outro
+   estado (foi o bug dos ícones quebrados no Processamento em Lote,
+   Henrique, 2026-09-17; mesmo padrão já usado em .modal-leitura[hidden]). */
+.dropzone-crivus-clique[hidden],
+.dropzone-crivus-cartoes[hidden],
+.dropzone-lote-arquivo[hidden],
+.botao-limpar-anexos[hidden] {
+    display: none;
 }
 
 /* Cartão de anexo — cópia adaptada de .arquivo-cartao (fila.js/
