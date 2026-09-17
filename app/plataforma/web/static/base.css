@@ -36,6 +36,18 @@
     --cor-acento: var(--db-cor-acento, #4f46e5);
     --cor-acento-hover: var(--db-cor-acento-hover, #4338ca);
     --cor-acento-fraco: var(--db-cor-acento-fraco, #eef2ff);
+    /* Azul "sem cor própria" do Extratus - Relatórios (ferramenta
+       "original", ver _SEM_COR_PROPRIA em db/seed.py) — igual ao azul
+       padrão acima, mas FIXO, nunca trocado por --db-cor-acento. Achado
+       real, Henrique, 2026-09-17: o emblema dele na bandejinha de apps
+       usava var(--cor-acento) como fallback, que MUDA por página (vira
+       a cor da ferramenta que você está vendo) — o ícone do Relatórios
+       "pegava" a cor de qualquer ferramenta aberta no momento (amarelo
+       dentro de Condenação, roxo dentro de Emenda...). Essa variável
+       existe só pra dar ao emblema/cartão um fallback que não depende
+       de em qual página você está. */
+    --cor-acento-padrao: #4f46e5;
+    --cor-acento-padrao-hover: #4338ca;
     --cor-erro-fundo: #fef2f2;
     --cor-erro-texto: #b91c1c;
     --cor-erro-borda: #fecaca;
@@ -71,6 +83,8 @@
         --cor-acento: var(--db-cor-acento-escuro, #818cf8);
         --cor-acento-hover: var(--db-cor-acento-hover-escuro, #a5b4fc);
         --cor-acento-fraco: var(--db-cor-acento-fraco-escuro, #1e2247);
+        --cor-acento-padrao: #818cf8;
+        --cor-acento-padrao-hover: #a5b4fc;
         --cor-erro-fundo: #2a1215;
         --cor-erro-texto: #fca5a5;
         --cor-erro-borda: #4c1d24;
@@ -99,6 +113,8 @@
     --cor-acento: var(--db-cor-acento-escuro, #818cf8);
     --cor-acento-hover: var(--db-cor-acento-hover-escuro, #a5b4fc);
     --cor-acento-fraco: var(--db-cor-acento-fraco-escuro, #1e2247);
+    --cor-acento-padrao: #818cf8;
+    --cor-acento-padrao-hover: #a5b4fc;
     --cor-erro-fundo: #2a1215;
     --cor-erro-texto: #fca5a5;
     --cor-erro-borda: #4c1d24;
@@ -573,13 +589,15 @@ a {
    cores de cada ferramenta como variáveis locais no próprio elemento
    (style="--emblema-cor:...", vindas de Ferramenta.cor_acento* no
    banco) — --emblema-cor* sem valor (ferramenta sem cor própria) cai
-   em var(--cor-acento), o azul padrão. */
+   em var(--cor-acento-padrao), o azul padrão FIXO (não --cor-acento,
+   que muda conforme a página — ver comentário dessa variável no topo
+   do arquivo; usar a errada aqui foi um bug real, Henrique 2026-09-17). */
 .emblema {
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: var(--raio-pequeno);
-    background: linear-gradient(135deg, var(--emblema-cor, var(--cor-acento)), var(--emblema-cor-hover, var(--cor-acento-hover)));
+    background: linear-gradient(135deg, var(--emblema-cor, var(--cor-acento-padrao)), var(--emblema-cor-hover, var(--cor-acento-padrao-hover)));
     color: white;
     font-weight: 700;
     letter-spacing: 0.02em;
@@ -588,12 +606,12 @@ a {
 
 @media (prefers-color-scheme: dark) {
     html:not([data-theme="claro"]) .emblema {
-        background: linear-gradient(135deg, var(--emblema-cor-escuro, var(--cor-acento)), var(--emblema-cor-hover-escuro, var(--cor-acento-hover)));
+        background: linear-gradient(135deg, var(--emblema-cor-escuro, var(--cor-acento-padrao)), var(--emblema-cor-hover-escuro, var(--cor-acento-padrao-hover)));
     }
 }
 
 html[data-theme="escuro"] .emblema {
-    background: linear-gradient(135deg, var(--emblema-cor-escuro, var(--cor-acento)), var(--emblema-cor-hover-escuro, var(--cor-acento-hover)));
+    background: linear-gradient(135deg, var(--emblema-cor-escuro, var(--cor-acento-padrao)), var(--emblema-cor-hover-escuro, var(--cor-acento-padrao-hover)));
 }
 
 html[data-theme="escuro"] .bandeja-apps-item[data-slug="extratus-aburesi"] .emblema,

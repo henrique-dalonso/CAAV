@@ -205,7 +205,7 @@
     font-weight: 700;
     color: white;
     letter-spacing: 0.02em;
-    background: linear-gradient(135deg, var(--emblema-cor, var(--cor-acento)), var(--emblema-cor-hover, var(--cor-acento-hover)));
+    background: linear-gradient(135deg, var(--emblema-cor, var(--cor-acento-padrao)), var(--emblema-cor-hover, var(--cor-acento-padrao-hover)));
     box-shadow: 0 2px 6px rgb(0 0 0 / 0.25);
     border: 2px solid var(--cor-cartao);
     transition: transform 0.3s cubic-bezier(.34, 1.56, .64, 1);
@@ -213,12 +213,12 @@
 
 @media (prefers-color-scheme: dark) {
     html:not([data-theme="claro"]) .leque-fan-item {
-        background: linear-gradient(135deg, var(--emblema-cor-escuro, var(--emblema-cor, var(--cor-acento))), var(--emblema-cor-hover-escuro, var(--emblema-cor-hover, var(--cor-acento-hover))));
+        background: linear-gradient(135deg, var(--emblema-cor-escuro, var(--emblema-cor, var(--cor-acento-padrao))), var(--emblema-cor-hover-escuro, var(--emblema-cor-hover, var(--cor-acento-padrao-hover))));
     }
 }
 
 html[data-theme="escuro"] .leque-fan-item {
-    background: linear-gradient(135deg, var(--emblema-cor-escuro, var(--emblema-cor, var(--cor-acento))), var(--emblema-cor-hover-escuro, var(--emblema-cor-hover, var(--cor-acento-hover))));
+    background: linear-gradient(135deg, var(--emblema-cor-escuro, var(--emblema-cor, var(--cor-acento-padrao))), var(--emblema-cor-hover-escuro, var(--emblema-cor-hover, var(--cor-acento-padrao-hover))));
 }
 
 .leque-fan-item:nth-child(1) { top: 6px; left: 0; z-index: 3; }

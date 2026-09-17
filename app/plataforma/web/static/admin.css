@@ -772,7 +772,7 @@
 
 .cartao-config,
 .cartao-config:hover {
-    border-top-color: var(--acento-cartao, var(--cor-acento));
+    border-top-color: var(--acento-cartao, var(--cor-acento-padrao));
 }
 
 /* :hover explícito acima é necessário, não decorativo: .cartao-ferramenta:hover
@@ -786,13 +786,13 @@
 @media (prefers-color-scheme: dark) {
     html:not([data-theme="claro"]) .cartao-config,
     html:not([data-theme="claro"]) .cartao-config:hover {
-        border-top-color: var(--acento-cartao-escuro, var(--cor-acento));
+        border-top-color: var(--acento-cartao-escuro, var(--cor-acento-padrao));
     }
 }
 
 html[data-theme="escuro"] .cartao-config,
 html[data-theme="escuro"] .cartao-config:hover {
-    border-top-color: var(--acento-cartao-escuro, var(--cor-acento));
+    border-top-color: var(--acento-cartao-escuro, var(--cor-acento-padrao));
 }
 
 .cartao-ferramenta-topo {
