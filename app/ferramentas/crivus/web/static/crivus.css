@@ -173,42 +173,169 @@
     gap: 1.5rem;
 }
 
-/* Processamento em Lote — form de upload bem mais simples que o do
-   Leitor Individual (1 campo só), mesmo respiro/tipografia. Henrique,
-   diretoria, 2026-09-16: troca o <input type="file"> cru por
-   .dropzone-lote (ver crivus.css/.js), sem <label> solto de antes.
-   Henrique, diretoria, 2026-09-17: dropzone reduzida pra metade da
-   largura do cartão, com Enviar/Remover encaixados ao lado (mesma
-   altura, lado a lado — não mais empilhados embaixo). */
-.form-crivus-lote-upload {
+/* Processamento em Lote — área de envio. Henrique, diretoria,
+   2026-09-16/17: passou por 3 rodadas em cima do padrão "dropzone +
+   botão" já usado no resto do site (2026-09-16: dropzone própria;
+   2026-09-17 1ª/2ª/3ª rodadas: metade da largura, painel emoldurado,
+   botão circular — nenhuma colou de verdade) até ele apontar a causa
+   real: "não tem originalidade nenhuma, a área de envio é IGUAL" às
+   outras ferramentas. Mockup com 3 propostas bem diferentes (não só
+   variações do mesmo layout) — escolheu a 3: passo a passo numerado
+   ("Escolher planilha" -> "Enviar"), ideia que ele já queria levar pro
+   site como direção geral. Passo 2 É o próprio <button type="submit">
+   de sempre (#botao-enviar-lote), só reestilizado — vira a pílula
+   verde clicável de verdade só depois que o arquivo é escolhido.
+   Cores herdadas de --cor-acento/--cor-acento-fraco (a cor do Crivus
+   NESTA página, injetada por base.html) — não hardcoded. */
+.passos-lote {
     display: flex;
-    align-items: stretch;
-    gap: 1rem;
+    align-items: center;
+    gap: 0.75rem;
 }
 
-.form-crivus-lote-upload .dropzone-lote {
-    flex: 0 1 50%;
-    max-width: 50%;
-}
-
-.lote-upload-acoes {
-    flex: 1;
-    display: flex;
-    align-items: stretch;
+.passo-lote {
+    display: inline-flex;
+    align-items: center;
     gap: 0.6rem;
+    padding: 0.85rem 1.1rem;
+    border-radius: 999px;
+    border: 1.5px dashed var(--cor-borda);
+    background: var(--crivus-cor-fundo-campo);
+    font-family: inherit;
+    font-size: 0.85rem;
+    color: var(--cor-texto-suave);
+    cursor: pointer;
+    min-width: 0;
+    max-width: 340px;
+    transition: border-color 0.15s ease, background 0.15s ease;
 }
 
-.lote-upload-acoes .botao-enviar-crivus {
-    flex: 1;
-    justify-content: center;
+.passo-lote-escolher:hover {
+    border-color: var(--cor-acento);
 }
 
-.lote-upload-acoes .botao-limpar-anexos {
-    flex-shrink: 0;
+.passo-lote-arrastando {
+    border-color: var(--cor-acento);
+    background: var(--cor-acento-fraco);
+}
+
+.passo-lote-feito {
+    border-style: solid;
+    border-color: var(--cor-borda);
+    cursor: default;
+}
+
+.passo-lote-numero {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding-inline: 1.1rem;
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    background: var(--cor-borda);
+    color: var(--cor-texto-suave);
+    font-size: 0.72rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.passo-lote-feito .passo-lote-numero {
+    background: var(--cor-acento-fraco);
+    color: var(--cor-acento);
+}
+
+.passo-lote-texto {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 600;
+    color: var(--cor-texto);
+    min-width: 0;
+}
+
+.passo-lote-nome-arquivo {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.passo-lote-tamanho-arquivo {
+    flex-shrink: 0;
+    font-weight: 400;
+    color: var(--cor-texto-suave);
+    font-size: 0.78rem;
+}
+
+.passo-lote-remover {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--cor-erro-texto);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.passo-lote-remover:hover {
+    background: var(--cor-erro-fundo);
+}
+
+.passo-lote-seta {
+    color: var(--cor-borda);
+    flex-shrink: 0;
+}
+
+.passo-lote-seta-ativa {
+    color: var(--cor-acento);
+}
+
+.passo-lote-enviar {
+    background: transparent;
+    color: var(--cor-texto-suave);
+}
+
+.passo-lote-enviar:disabled {
+    cursor: not-allowed;
+}
+
+.passo-lote-enviar:not(:disabled) {
+    border-style: solid;
+    border-color: var(--cor-acento);
+    background: var(--cor-acento);
+    color: white;
+}
+
+.passo-lote-enviar:not(:disabled) .passo-lote-numero {
+    background: rgba(255, 255, 255, 0.22);
+    color: white;
+}
+
+.passo-lote-enviar:not(:disabled):hover {
+    background: var(--cor-acento-hover);
+    border-color: var(--cor-acento-hover);
+}
+
+.passo-lote-enviar:not(:disabled):active {
+    transform: scale(0.98);
+}
+
+/* .passo-lote-numero/.passo-lote-texto (as duas variantes vazio/feito
+   de cada, sempre com a classe base) já declaram display:inline-flex
+   — [hidden] sozinho (1 atributo) empata em especificidade com a
+   classe base (1 classe) e dependeria da ORDEM no arquivo pra
+   continuar escondendo de verdade (já mordeu este projeto antes, ver
+   .modal-leitura[hidden]/comentário mais abaixo). Classe + atributo
+   juntos vencem sempre, de propósito, cobrindo as duas variantes numa
+   regra só (a "-feito" também carrega a classe base). */
+.passo-lote-numero[hidden],
+.passo-lote-texto[hidden] {
+    display: none;
 }
 
 @media (max-width: 760px) {
@@ -335,67 +462,11 @@
     background: var(--cor-erro-fundo);
 }
 
-/* Henrique, diretoria, 2026-09-16: "vamos começar por você criar um
-   estilo legal para a área de envio da planilha... tá um botão padrão
-   do navegador, sem estilo" — dropzone de ARQUIVO ÚNICO (Processamento
-   em Lote), reaproveitando a casca de .dropzone-crivus (contorno
-   tracejado, hover na cor de acento), mas bem mais baixa (só 1 arquivo
-   nunca precisa de 260px de altura) e com os dois estados (vazio /
-   arquivo escolhido) lado a lado numa linha só, não empilhados. */
-.dropzone-lote {
-    min-height: auto;
-    flex-direction: row;
-    padding: 1rem 1.25rem;
-}
-
-.dropzone-lote-badge {
-    width: 42px;
-    height: 42px;
-    font-size: 1.1rem;
-}
-
-.dropzone-lote-arrastando {
-    border-color: var(--cor-acento);
-    background: var(--cor-acento-fraco);
-}
-
-.dropzone-lote-arquivo {
-    display: flex;
-    align-items: center;
-    gap: 0.65rem;
-    width: 100%;
-    min-width: 0;
-}
-
-.dropzone-lote-arquivo-icone {
-    flex-shrink: 0;
-    color: #16a34a;
-    display: inline-flex;
-}
-
-.dropzone-lote-arquivo-nome {
-    font-weight: 600;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    min-width: 0;
-}
-
-.dropzone-lote-arquivo-tamanho {
-    flex-shrink: 0;
-    color: var(--cor-texto-suave);
-    font-size: 0.82rem;
-}
-
-/* [hidden] some vira "display:none" pela stylesheet do navegador, mas
-   tem a MESMA especificidade que as classes acima (que já declaram
-   display:flex) — sem isso aqui, a mais recente das duas no cascade
-   vence e o elemento "escondido" continua aparecendo por cima do outro
-   estado (foi o bug dos ícones quebrados no Processamento em Lote,
-   Henrique, 2026-09-17; mesmo padrão já usado em .modal-leitura[hidden]). */
+/* Área de envio de Processamento em Lote não usa mais .dropzone-lote*
+   (ver .passos-lote mais acima) — só .dropzone-crivus/-clique/-cartoes
+   seguem em uso, pelo Leitor Individual (home.html). */
 .dropzone-crivus-clique[hidden],
 .dropzone-crivus-cartoes[hidden],
-.dropzone-lote-arquivo[hidden],
 .botao-limpar-anexos[hidden] {
     display: none;
 }
@@ -1773,42 +1844,54 @@ html[data-theme="escuro"] .interruptor-texto-on {
     transform: none;
 }
 
-/* 4 números lado a lado (Total/Lidas/Erro/Manual) — rótulo pequeno
-   embaixo de cada um, sem cabeçalho de coluna nenhum (era isso que
-   "torna a experiência péssima" na tabela antiga). */
+/* Henrique, diretoria, 2026-09-17 (3ª rodada): "os números estão
+   poluindo muito" — texto grande + legenda por extenso embaixo de cada
+   um (Total/Lidas/Erro/Manual, 2 linhas cada) virou ícone + número
+   numa linha só. A cor do ícone/número já diz o que é (mesmas 3 cores
+   de sempre — verde/vermelho/âmbar), sem precisar escrever o rótulo;
+   quem quiser confirmar por extenso passa o mouse (data-dica). Também
+   ajuda a caber mais cards por linha no futuro (ideia adiada por ora,
+   só a apresentação mudou aqui). */
+/* Henrique, diretoria, 2026-09-17 (4ª rodada): "gostei dos ícones, mas
+   os números ainda estão muito grandes" — cada stat vira uma pilulazinha
+   com fundo tingido na própria cor (mesma linguagem visual dos selos de
+   status de Relatórios do Robô), fonte bem menor. A cor+fundo já
+   comunica o que é, o ícone reforça, o número não precisa mais chamar
+   atenção sozinho. */
 .cartao-lote-crivus-stats {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.5rem;
-    text-align: center;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
 }
 
 .cartao-lote-stat {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    color: var(--cor-texto-suave);
 }
 
 .cartao-lote-stat strong {
-    font-size: 1.15rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: inherit;
 }
 
-.cartao-lote-stat span {
-    font-size: 0.68rem;
-    color: var(--cor-texto-suave);
-    text-transform: uppercase;
-    letter-spacing: 0.02em;
+.icone-cartao-lote-stat {
+    flex-shrink: 0;
+    width: 11px;
+    height: 11px;
 }
 
-.cartao-lote-stat-sucesso strong {
+.cartao-lote-stat-sucesso {
     color: #16a34a;
 }
 
-.cartao-lote-stat-erro strong {
+.cartao-lote-stat-erro {
     color: var(--cor-erro-texto);
 }
 
-.cartao-lote-stat-manual strong {
+.cartao-lote-stat-manual {
     color: #d97706;
 }
 

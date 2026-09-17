@@ -281,25 +281,29 @@
     }
 
     // -----------------------------------------------------------------
-    // Dropzone de ARQUIVO ÚNICO — Processamento em Lote (lote.html).
-    // Henrique, diretoria, 2026-09-16: "vamos começar por você criar um
-    // estilo legal para a área de envio da planilha... tá um botão
-    // padrão do navegador, sem estilo". Bem mais simples que o dropzone
-    // multi-arquivo acima (.dropzone-crivus, anexos do Leitor Individual)
-    // — só 1 arquivo, sempre obrigatório (.xlsx), sem precisar de
-    // DataTransfer/array (o próprio <input type="file"> já é a fonte da
-    // verdade, só cuida de mostrar/esconder os dois estados visuais).
+    // Passo a passo ("1. Escolher planilha" -> "2. Enviar") — Processamento
+    // em Lote (lote.html). Henrique, diretoria, 2026-09-17 (4ª rodada):
+    // "não tem originalidade nenhuma" no dropzone+botão de sempre — mockup
+    // com 3 propostas, escolheu a de passo numerado. Passo 1 (clicável/
+    // soltável) alterna "1"+texto <-> check+nome do arquivo; passo 2 É o
+    // próprio botão de envio (#botao-enviar-lote), só habilita quando o
+    // passo 1 está feito. Só 1 arquivo, sempre obrigatório (.xlsx), sem
+    // precisar de DataTransfer/array (o próprio <input type="file"> já é a
+    // fonte da verdade, só cuida de mostrar/esconder os dois estados).
     // -----------------------------------------------------------------
-    var dropzoneLote = document.getElementById("dropzone-lote");
+    var passoLoteEscolher = document.getElementById("passo-lote-escolher");
 
-    if (dropzoneLote) {
+    if (passoLoteEscolher) {
         var campoPlanilha = document.getElementById("planilha");
-        var cliqueLoteEl = document.getElementById("dropzone-lote-clique");
-        var arquivoLoteEl = document.getElementById("dropzone-lote-arquivo");
-        var nomeLoteEl = document.getElementById("dropzone-lote-arquivo-nome");
-        var tamanhoLoteEl = document.getElementById("dropzone-lote-arquivo-tamanho");
+        var numeroVazioEl = document.getElementById("passo-lote-numero-vazio");
+        var numeroFeitoEl = document.getElementById("passo-lote-numero-feito");
+        var textoVazioEl = document.getElementById("passo-lote-texto-vazio");
+        var textoFeitoEl = document.getElementById("passo-lote-texto-feito");
+        var nomeLoteEl = document.getElementById("passo-lote-nome-arquivo");
+        var tamanhoLoteEl = document.getElementById("passo-lote-tamanho-arquivo");
         var botaoLimparPlanilha = document.getElementById("botao-limpar-planilha");
         var botaoEnviarLote = document.getElementById("botao-enviar-lote");
+        var setaLoteEl = document.getElementById("passo-lote-seta");
 
         function formatarTamanhoLote(bytes) {
             if (bytes < 1024) { return bytes + " B"; }
@@ -311,23 +315,29 @@
             var arquivo = campoPlanilha.files[0];
 
             if (!arquivo) {
-                cliqueLoteEl.hidden = false;
-                arquivoLoteEl.hidden = true;
+                numeroVazioEl.hidden = false;
+                numeroFeitoEl.hidden = true;
+                textoVazioEl.hidden = false;
+                textoFeitoEl.hidden = true;
+                passoLoteEscolher.classList.remove("passo-lote-feito");
+                setaLoteEl.classList.remove("passo-lote-seta-ativa");
                 botaoEnviarLote.disabled = true;
-                botaoLimparPlanilha.hidden = true;
                 return;
             }
 
-            cliqueLoteEl.hidden = true;
-            arquivoLoteEl.hidden = false;
+            numeroVazioEl.hidden = true;
+            numeroFeitoEl.hidden = false;
+            textoVazioEl.hidden = true;
+            textoFeitoEl.hidden = false;
+            passoLoteEscolher.classList.add("passo-lote-feito");
+            setaLoteEl.classList.add("passo-lote-seta-ativa");
             nomeLoteEl.textContent = arquivo.name;
             nomeLoteEl.dataset.dica = arquivo.name;
             tamanhoLoteEl.textContent = formatarTamanhoLote(arquivo.size);
             botaoEnviarLote.disabled = false;
-            botaoLimparPlanilha.hidden = false;
         }
 
-        dropzoneLote.addEventListener("click", function () {
+        passoLoteEscolher.addEventListener("click", function () {
             campoPlanilha.click();
         });
 
@@ -341,13 +351,13 @@
         });
 
         // Arrastar-e-soltar — mesmo visual de "arraste aqui" já prometido
-        // no texto do dropzone, sem exigir nada novo do back-end (o
+        // no texto do passo 1, sem exigir nada novo do back-end (o
         // arquivo solto vira o valor do MESMO <input>, via DataTransfer).
         ["dragover", "dragleave", "drop"].forEach(function (tipo) {
-            dropzoneLote.addEventListener(tipo, function (evento) {
+            passoLoteEscolher.addEventListener(tipo, function (evento) {
                 evento.preventDefault();
                 evento.stopPropagation();
-                dropzoneLote.classList.toggle("dropzone-lote-arrastando", tipo === "dragover");
+                passoLoteEscolher.classList.toggle("passo-lote-arrastando", tipo === "dragover");
 
                 if (tipo === "drop" && evento.dataTransfer.files.length) {
                     campoPlanilha.files = evento.dataTransfer.files;
