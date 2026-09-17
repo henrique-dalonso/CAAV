@@ -137,7 +137,7 @@
             <span class="botao-download botao-fantasma" aria-hidden="true"></span>
             {% endif %}
             {% if usuario.eh_admin %}
-            <form action="/condenacao/relatorios-robo/{{ job.id }}/excluir" method="post" data-perigo="true"
+            <form action="/condenacao/relatorios-robo/{{ job.id }}/excluir" method="post" data-perigo="true" data-ajax="true"
                 data-confirm="Excluir este relatório permanentemente? O arquivo e o PDF de origem serão apagados. Essa ação não pode ser desfeita.">
                 <button type="submit" class="botao-excluir" data-dica="Excluir relatório" aria-label="Excluir relatório">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

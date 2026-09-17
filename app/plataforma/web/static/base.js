@@ -401,13 +401,89 @@
 
         botaoCancelarConfirmacao.addEventListener("click", fecharModalConfirmacao);
 
+        // form[data-confirm][data-ajax="true"]: em vez de navegar de
+        // verdade pra rota de destino (F5 na prática — rolagem zerada,
+        // tela inteira piscando), manda o POST por baixo dos panos e
+        // troca só a LINHA afetada pela versão atualizada, sem sair do
+        // lugar. Henrique, diretoria, 2026-09-17: "Marcar como revisado"
+        // recarregando a tela inteira só pra atualizar 1 status foi o
+        // gatilho — "a notificação deve aparecer no canto da tela como
+        // um push... dando confirmação visual em qualquer posição de
+        // scroll". Reaproveita o próprio HTML que o servidor já renderiza
+        // pra rota de destino (nenhuma rota precisou virar JSON): busca a
+        // MESMA linha (por [data-job-id], convenção já usada em
+        // Relatórios do Robô) dentro da resposta e troca a linha antiga
+        // por ela — se a linha não existe mais na resposta (ex: excluído),
+        // simplesmente remove. O banner-sucesso/erro que o servidor já
+        // gera vai pro mesmo "pushzinho" flutuante do sino/Fila
+        // (window.mostrarBanner), em vez de aparecer fixo no topo. Opt-in
+        // por form (data-ajax) de propósito — cada tela migra na sua vez,
+        // sem quebrar quem ainda não foi convertido.
+        function enviarFormularioSemRecarregar(form) {
+            var linhaOrigem = form.closest("[data-job-id]");
+            var idLinha = linhaOrigem ? linhaOrigem.dataset.jobId : null;
+
+            fetch(form.action, { method: form.method || "POST", body: new FormData(form) })
+                .then(function (resposta) {
+                    // 403/500/etc — página de erro genérica, não a listagem
+                    // de verdade. Nela, [data-job-id="X"] nunca existe (é
+                    // de outra tela inteira), e sem essa checagem isso
+                    // seria lido como "a linha sumiu" e apagaria a linha
+                    // da tela mesmo sem ter feito nada no servidor.
+                    if (!resposta.ok) {
+                        throw new Error("resposta_nao_ok");
+                    }
+                    return resposta.text();
+                })
+                .then(function (html) {
+                    var doc = new DOMParser().parseFromString(html, "text/html");
+                    var bannerSucesso = doc.querySelector(".banner-sucesso");
+                    var bannerErro = doc.querySelector(".banner-erro");
+
+                    if (bannerSucesso) {
+                        window.mostrarBanner(bannerSucesso.textContent.replace(/^\s*✓\s*/, ""), "sucesso");
+                    } else if (bannerErro) {
+                        window.mostrarBanner(bannerErro.textContent.replace(/^\s*⚠\s*/, ""), "erro");
+                    }
+
+                    if (!linhaOrigem || !idLinha || !linhaOrigem.parentNode) {
+                        return;
+                    }
+
+                    var linhaNova = doc.querySelector('[data-job-id="' + CSS.escape(idLinha) + '"]');
+
+                    if (linhaNova) {
+                        linhaOrigem.replaceWith(linhaNova);
+                    } else {
+                        linhaOrigem.remove();
+                    }
+
+                    // Disparado nos dois casos (trocada OU removida) —
+                    // quem escuta (ex: relatorios_robo.js) normalmente
+                    // guarda uma lista de linhas pra filtro de aba/busca
+                    // capturada uma vez só (`querySelectorAll` não é
+                    // "ao vivo"); precisa recapturar depois de qualquer
+                    // mudança na lista, não só quando troca.
+                    document.dispatchEvent(new CustomEvent("linha-atualizada-sem-recarregar", {
+                        detail: { linhaAntiga: linhaOrigem, linhaNova: linhaNova },
+                    }));
+                })
+                .catch(function () {
+                    window.mostrarBanner("Não foi possível concluir a ação. Tente novamente.", "erro");
+                });
+        }
+
         botaoConfirmarConfirmacao.addEventListener("click", function () {
             var form = formPendente;
             var callback = callbackPendente;
             fecharModalConfirmacao();
 
             if (form) {
-                form.submit();
+                if (form.dataset.ajax === "true") {
+                    enviarFormularioSemRecarregar(form);
+                } else {
+                    form.submit();
+                }
             } else if (callback) {
                 callback();
             }

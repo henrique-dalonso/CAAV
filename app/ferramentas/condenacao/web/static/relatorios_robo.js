@@ -350,4 +350,25 @@
             });
         }
     }
+
+    // "Excluir" agora aplica sem recarregar a página (ver base.js,
+    // form[data-ajax="true"]). `itens` foi capturado uma vez só no
+    // carregamento da página (querySelectorAll não é "ao vivo") —
+    // remover uma linha por fora não atualiza essa lista sozinha, então
+    // as abas/busca ficariam desatualizadas dali pra frente. Recaptura +
+    // reaplica o filtro atual toda vez. Também reexibe o checkbox da
+    // linha, se o modo "Selecionar" já estiver ativo (não se aplica aqui
+    // hoje — "Excluir" só remove — mas mantém o mesmo comportamento dos
+    // outros módulos caso esta tela ganhe "Marcar como revisado" depois).
+    document.addEventListener("linha-atualizada-sem-recarregar", function (evento) {
+        itens = document.querySelectorAll(".relatorio-item");
+        aplicarFiltros();
+
+        if (evento.detail.linhaNova && acoesSelecaoRobo && !acoesSelecaoRobo.hidden) {
+            var checkboxNovo = evento.detail.linhaNova.querySelector(".relatorio-item-checkbox");
+            if (checkboxNovo) {
+                checkboxNovo.hidden = false;
+            }
+        }
+    });
 })();

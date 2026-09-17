@@ -316,4 +316,28 @@
             });
         }
     }
+
+    // Marcar como revisado / Excluir agora aplicam sem recarregar a
+    // página (ver base.js, form[data-ajax="true"]). Duas consequências
+    // pra tratar aqui:
+    // 1) `itens` foi capturado uma vez só no carregamento da página
+    //    (querySelectorAll não é "ao vivo") — trocar/remover uma linha
+    //    por fora não atualiza essa lista sozinho, então as abas/busca
+    //    ficariam desatualizadas pra aquele item dali pra frente. Recaptura
+    //    + reaplica o filtro atual toda vez.
+    // 2) a linha trocada vem sempre com o checkbox oculto por padrão
+    //    (HTML renderizado do zero pelo servidor) — se o modo "Selecionar"
+    //    já estiver ativo na hora, o checkbox da linha nova precisa
+    //    reaparecer pra continuar batendo com o resto da lista.
+    document.addEventListener("linha-atualizada-sem-recarregar", function (evento) {
+        itens = document.querySelectorAll(".relatorio-item");
+        aplicarFiltros();
+
+        if (evento.detail.linhaNova && acoesSelecaoRobo && !acoesSelecaoRobo.hidden) {
+            var checkboxNovo = evento.detail.linhaNova.querySelector(".relatorio-item-checkbox");
+            if (checkboxNovo) {
+                checkboxNovo.hidden = false;
+            }
+        }
+    });
 })();
