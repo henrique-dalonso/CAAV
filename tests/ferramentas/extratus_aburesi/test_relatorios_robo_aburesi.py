@@ -386,8 +386,8 @@ def test_ver_pdf_relatorio_robo_job_inexistente_da_404(cliente_logado):
     assert resp.status_code == 404
 
 
-# --- Filtro padrão "Solicitado por" + aviso de "sem solicitações"
-# (Henrique, 2026-09-02) — ver docstrings equivalentes em
+# --- Filtro padrão "Solicitado por" (Henrique, 2026-09-02; correção
+# 2026-09-16) — ver docstrings equivalentes em
 # tests/ferramentas/extratus/test_relatorios_robo.py. ---
 
 def test_nao_admin_com_solicitacao_ve_filtro_padrao_preenchido(cliente_nao_admin_logado, limpar_jobs_criados):
@@ -406,10 +406,12 @@ def test_nao_admin_com_solicitacao_ve_filtro_padrao_preenchido(cliente_nao_admin
 
     assert resp.status_code == 200
     assert f'data-padrao="{usuario_id}"' in resp.text
-    assert 'id="aviso-sem-solicitacoes-robo" data-ativo="false"' in resp.text
 
 
-def test_nao_admin_sem_nenhuma_solicitacao_ve_aviso_dedicado(cliente_nao_admin_logado, limpar_jobs_criados):
+def test_nao_admin_sem_nenhuma_solicitacao_ainda_ve_proprio_nome_como_padrao(cliente_nao_admin_logado, limpar_jobs_criados):
+    """Ver docstring equivalente em tests/ferramentas/extratus/
+    test_relatorios_robo.py — mesma correção (2026-09-16): o próprio
+    usuário SEMPRE é a opção padrão, mesmo com zero solicitações."""
     cliente, usuario_id = cliente_nao_admin_logado
 
     job_de_outro = registrar_processado(
@@ -424,10 +426,8 @@ def test_nao_admin_sem_nenhuma_solicitacao_ve_aviso_dedicado(cliente_nao_admin_l
     resp = cliente.get("/extratus-aburesi/relatorios-robo")
 
     assert resp.status_code == 200
-    assert 'data-padrao=""' in resp.text
-    assert 'id="aviso-sem-solicitacoes-robo" data-ativo="true"' in resp.text
-    assert "Você ainda não solicitou nenhum relatório ao Robô" in resp.text
-    assert f'value="{usuario_id}"' not in resp.text
+    assert f'data-padrao="{usuario_id}"' in resp.text
+    assert f'value="{usuario_id}"' in resp.text
 
 
 def test_admin_nunca_recebe_filtro_padrao(cliente_logado, limpar_jobs_criados):
@@ -444,7 +444,6 @@ def test_admin_nunca_recebe_filtro_padrao(cliente_logado, limpar_jobs_criados):
 
     assert resp.status_code == 200
     assert 'data-padrao=""' in resp.text
-    assert 'id="aviso-sem-solicitacoes-robo" data-ativo="false"' in resp.text
 
 
 # --- Baixar em lote (.zip) e excluir em lote (Henrique, 2026-09-02) ---

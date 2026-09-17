@@ -1200,6 +1200,171 @@ html[data-theme="escuro"] .campo-data::-webkit-calendar-picker-indicator {
     flex-shrink: 0;
 }
 
+/* Redesenho da linha de Relatórios do Robô — ver comentário equivalente
+   em app/ferramentas/extratus/web/static/extratus.css (Extratus -
+   Relatórios), mesma lógica: status vira coluna própria com "?"
+   informacional pro motivo/revisado, processo com ícone, data+
+   solicitante juntos na linha de meta (não mais coluna separada à
+   direita), e os botões de ação (PDF original + baixar + "Marcar como
+   revisado") ficam na faixa da direita. */
+.relatorio-status-coluna {
+    display: inline-flex;
+    flex-shrink: 0;
+}
+
+.relatorio-status-selo {
+    position: relative;
+    display: inline-flex;
+}
+
+.botao-motivo-info {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    background: var(--cor-fundo);
+    border: 1px solid var(--cor-texto-suave);
+    border-radius: 999px;
+    color: var(--cor-texto-suave);
+    font-family: inherit;
+    font-size: 0.58rem;
+    font-weight: 700;
+    line-height: 1;
+    padding: 0;
+    cursor: pointer;
+    z-index: 1;
+}
+
+.botao-motivo-info:hover,
+.botao-motivo-info:focus-visible {
+    border-color: var(--cor-acento);
+    color: var(--cor-acento);
+}
+
+.relatorio-processo {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.icone-relatorio-processo {
+    flex-shrink: 0;
+    color: var(--cor-texto-suave);
+}
+
+.relatorio-processo span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.relatorio-processo.expandido span {
+    white-space: normal;
+    overflow: visible;
+}
+
+.relatorio-meta-linha {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.15rem 0.9rem;
+    font-size: 0.78rem;
+    color: var(--cor-texto-suave);
+}
+
+.relatorio-meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 220px;
+}
+
+.relatorio-meta-item.expandido {
+    white-space: normal;
+    overflow: visible;
+    max-width: none;
+}
+
+.icone-relatorio-meta {
+    flex-shrink: 0;
+    opacity: 0.75;
+}
+
+.relatorio-acoes {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.botao-marcar-revisado-robo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    height: 38px;
+    padding: 0 0.75rem;
+    border-radius: 999px;
+    flex-shrink: 0;
+    background: #ccfbf1;
+    color: #0f766e;
+    border: none;
+    font-family: inherit;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.botao-marcar-revisado-robo:hover {
+    background: #99f6e4;
+}
+
+.botao-marcar-revisado-robo:active {
+    transform: scale(0.96);
+}
+
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme="claro"]) .botao-marcar-revisado-robo { background: #0f2e2b; color: #5eead4; }
+    html:not([data-theme="claro"]) .botao-marcar-revisado-robo:hover { background: #134e4a; }
+}
+
+html[data-theme="escuro"] .botao-marcar-revisado-robo { background: #0f2e2b; color: #5eead4; }
+html[data-theme="escuro"] .botao-marcar-revisado-robo:hover { background: #134e4a; }
+
+.botao-pdf-original {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 999px;
+    flex-shrink: 0;
+    background: none;
+    border: 1.5px solid var(--cor-texto-suave);
+    color: var(--cor-texto);
+    text-decoration: none;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.botao-pdf-original:hover {
+    background: var(--cor-acento-fraco);
+    border-color: var(--cor-acento);
+    color: var(--cor-acento);
+}
+
+.botao-pdf-original:active {
+    transform: scale(0.94);
+}
+
 /* Ícone de baixar — clean, sem texto, mas mantém o peso visual (fundo
    sólido na cor de acento) por ser a ação principal de cada linha. */
 .botao-download {
@@ -1525,13 +1690,25 @@ html[data-theme="escuro"] .campo-data::-webkit-calendar-picker-indicator {
     color: var(--cor-erro-texto);
 }
 
+/* "Marcar como revisado" — ver comentário equivalente em
+   app/ferramentas/extratus/web/static/extratus.css (Extratus -
+   Relatórios), mesma lógica: badge próprio (verde-azulado, tom diferente
+   do verde puro de sucesso) pra deixar claro que passou por revisão
+   manual. */
+.status-revisado {
+    background: #ccfbf1;
+    color: #0f766e;
+}
+
 @media (prefers-color-scheme: dark) {
     html:not([data-theme="claro"]) .status-sucesso { background: #113321; color: #86efac; }
     html:not([data-theme="claro"]) .status-revisao { background: #332b0f; color: #fde68a; }
+    html:not([data-theme="claro"]) .status-revisado { background: #0f2e2b; color: #5eead4; }
 }
 
 html[data-theme="escuro"] .status-sucesso { background: #113321; color: #86efac; }
 html[data-theme="escuro"] .status-revisao { background: #332b0f; color: #fde68a; }
+html[data-theme="escuro"] .status-revisado { background: #0f2e2b; color: #5eead4; }
 
 .motivo {
     display: -webkit-box;

@@ -100,37 +100,92 @@
                 <input type="checkbox" class="check-input relatorio-item-check" data-job-id="{{ job.id }}">
                 <span class="check-caixa check-caixa-pequena"></span>
             </label>
-            <span class="status status-{{ job.status }}">{{ job.status | rotulo_status }}</span>
-            <div class="relatorio-info{% if job.relatorio_path %} relatorio-info-clicavel{% endif %}"{% if job.relatorio_path %} data-download="download/{{ job.relatorio_path.split('\\')[-1].split('/')[-1] }}"{% endif %}>
-                {% if job.processo %}
-                <strong class="truncavel" data-dica="{{ job.processo }}">{{ job.processo }}</strong>
-                <span class="relatorio-meta truncavel" data-dica="{{ job.arquivo_pdf }} · {{ job.criado_em.strftime('%d/%m/%Y %H:%M') }}">{% if job.destino_pdf %}<a href="/extratus-aburesi/relatorios-robo/{{ job.id }}/pdf" target="_blank" rel="noopener" class="link-pdf-original">{{ job.arquivo_pdf }}</a>{% else %}{{ job.arquivo_pdf }}{% endif %} · {{ job.criado_em.strftime("%d/%m/%Y %H:%M") }}</span>
-                {% else %}
-                <strong class="truncavel" data-dica="{{ job.arquivo_pdf }}">{% if job.destino_pdf %}<a href="/extratus-aburesi/relatorios-robo/{{ job.id }}/pdf" target="_blank" rel="noopener" class="link-pdf-original">{{ job.arquivo_pdf }}</a>{% else %}{{ job.arquivo_pdf }}{% endif %}</strong>
-                <span class="relatorio-meta truncavel" data-dica="{{ job.criado_em.strftime('%d/%m/%Y %H:%M') }}">{{ job.criado_em.strftime("%d/%m/%Y %H:%M") }}</span>
-                {% endif %}
-                {% if job.status == "revisao" and job.motivo_confianca %}
-                <span class="motivo" data-dica="{{ job.motivo_confianca }}">{{ job.motivo_confianca }}</span>
-                {% elif job.status == "erro" and job.erro_mensagem %}
-                <span class="motivo" data-dica="{{ job.erro_mensagem }}">{{ job.tipo_erro | rotulo_erro }}</span>
-                {% endif %}
-            </div>
-            <div class="relatorio-solicitante">
-                <span class="divisor-vertical" aria-hidden="true"></span>
-                {% set nome_solicitante = "Solicitado por: " ~ nomes_por_id.get(solicitante_por_job_id.get(job.id), "não identificado") %}
-                <span class="solicitante-texto truncavel" data-dica="{{ nome_solicitante }}">{{ nome_solicitante }}</span>
-            </div>
-            {% if job.relatorio_path %}
-            <a href="download/{{ job.relatorio_path.split('\\')[-1].split('/')[-1] }}" class="botao-download" data-dica="Baixar relatório" aria-label="Baixar relatório">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="7 10 12 15 17 10"></polyline>
-                    <line x1="12" y1="15" x2="12" y2="3"></line>
-                </svg>
-            </a>
+            {% if job.revisado_manualmente %}
+            {% set motivo_texto = "Marcado como revisado por " ~ nomes_por_id.get(job.revisado_por_id, "não identificado") %}
             {% else %}
-            <span class="botao-download botao-fantasma" aria-hidden="true"></span>
+            {% set motivo_texto = job.motivo_confianca if (job.status == "revisao" and job.motivo_confianca) else (job.erro_mensagem if (job.status == "erro" and job.erro_mensagem) else None) %}
             {% endif %}
+            <div class="relatorio-status-coluna">
+                <span class="relatorio-status-selo">
+                    {% if job.revisado_manualmente %}
+                    <span class="status status-revisado">Revisado</span>
+                    {% else %}
+                    <span class="status status-{{ job.status }}">{{ job.status | rotulo_status }}</span>
+                    {% endif %}
+                    {% if motivo_texto %}
+                    <button type="button" class="botao-motivo-info" data-dica="{{ motivo_texto }}" aria-label="Ver motivo">?</button>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="relatorio-info{% if job.relatorio_path %} relatorio-info-clicavel{% endif %}"{% if job.relatorio_path %} data-download="download/{{ job.relatorio_path.split('\\')[-1].split('/')[-1] }}"{% endif %}>
+                <strong class="relatorio-processo truncavel" data-dica="{{ job.processo or job.arquivo_pdf }}">
+                    <svg class="icone-relatorio-processo" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <line x1="4" y1="9" x2="20" y2="9"></line>
+                        <line x1="4" y1="15" x2="20" y2="15"></line>
+                        <line x1="10" y1="3" x2="8" y2="21"></line>
+                        <line x1="16" y1="3" x2="14" y2="21"></line>
+                    </svg>
+                    <span>{{ job.processo or job.arquivo_pdf }}</span>
+                </strong>
+                <div class="relatorio-meta-linha">
+                    <span class="relatorio-meta-item" data-dica="{{ job.criado_em.strftime('%d/%m/%Y %H:%M') }}">
+                        <svg class="icone-relatorio-meta" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                        {{ job.criado_em.strftime("%d/%m/%Y %H:%M") }}
+                    </span>
+                    {% set nome_solicitante = nomes_por_id.get(solicitante_por_job_id.get(job.id), "não identificado") %}
+                    <span class="relatorio-meta-item truncavel" data-dica="Solicitado por: {{ nome_solicitante }}">
+                        <svg class="icone-relatorio-meta" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+                            <circle cx="9" cy="10" r="2"></circle>
+                            <line x1="14" y1="8" x2="17" y2="8"></line>
+                            <line x1="14" y1="12" x2="17" y2="12"></line>
+                            <line x1="6" y1="16" x2="18" y2="16"></line>
+                        </svg>
+                        {{ nome_solicitante }}
+                    </span>
+                </div>
+            </div>
+            <div class="relatorio-acoes">
+                {% if job.status == "revisao" %}
+                <form action="/extratus-aburesi/relatorios-robo/{{ job.id }}/marcar-revisado" method="post"
+                    data-confirm="Tem certeza que deseja marcar o caso como revisado?">
+                    <button type="submit" class="botao-marcar-revisado-robo" data-dica="Marca o caso como revisado, tratado igual a um sucesso">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        Revisar
+                    </button>
+                </form>
+                {% endif %}
+                {% if job.destino_pdf %}
+                <a href="/extratus-aburesi/relatorios-robo/{{ job.id }}/pdf" target="_blank" rel="noopener" class="botao-pdf-original" data-dica="Ver PDF original" aria-label="Ver PDF original">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="9" y1="15" x2="15" y2="15"></line>
+                        <line x1="9" y1="18" x2="15" y2="18"></line>
+                    </svg>
+                </a>
+                {% else %}
+                <span class="botao-pdf-original botao-fantasma" aria-hidden="true"></span>
+                {% endif %}
+                {% if job.relatorio_path %}
+                <a href="download/{{ job.relatorio_path.split('\\')[-1].split('/')[-1] }}" class="botao-download" data-dica="Baixar relatório" aria-label="Baixar relatório">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                </a>
+                {% else %}
+                <span class="botao-download botao-fantasma" aria-hidden="true"></span>
+                {% endif %}
+            </div>
             {% if usuario.eh_admin %}
             <form action="/extratus-aburesi/relatorios-robo/{{ job.id }}/excluir" method="post" data-perigo="true"
                 data-confirm="Excluir este relatório permanentemente? O arquivo e o PDF de origem serão apagados. Essa ação não pode ser desfeita.">
@@ -146,7 +201,6 @@
         {% endfor %}
     </ul>
     <p class="vazio filtro-vazio" hidden>Nenhum relatório encontrado com esse filtro.</p>
-    <p class="vazio filtro-vazio-sem-solicitacoes" id="aviso-sem-solicitacoes-robo" data-ativo="{{ 'true' if sem_solicitacoes_proprias else 'false' }}" hidden>Você ainda não solicitou nenhum relatório ao Robô — assim que enviar um PDF pela Fila, o resultado aparece aqui. Os filtros acima continuam disponíveis pra consultar o que o resto do escritório já processou.</p>
     {% else %}
     <p class="vazio">Nenhum processamento do Robô registrado ainda.</p>
     {% endif %}

@@ -5,7 +5,6 @@
     var abas = document.querySelectorAll(".aba-relatorios-robo");
     var itens = document.querySelectorAll(".relatorio-item");
     var avisoVazio = document.querySelector(".filtro-vazio");
-    var avisoSemSolicitacoes = document.getElementById("aviso-sem-solicitacoes-robo");
     var listaEl = document.getElementById("lista-relatorios-robo");
     var campoDataDe = document.getElementById("filtro-data-de");
     var campoDataAte = document.getElementById("filtro-data-ate");
@@ -15,17 +14,6 @@
         return;
     }
 
-    // Henrique, 2026-09-02: quem nunca solicitou nada ao Robô não tem
-    // como aparecer pré-selecionado no dropdown "Solicitado por" (não
-    // existe opção pra isso, de propósito — ver relatorios_robo.py). O
-    // jeito de mesmo assim abrir a tela "filtrada em mim" é um flag à
-    // parte, sem depender de nenhum valor de filtro de verdade: começa
-    // forçando a lista inteira escondida (com a mensagem dedicada no
-    // lugar), e qualquer interação real com QUALQUER filtro desliga isso
-    // de vez — a pessoa nunca fica presa, só não vê o acervo inteiro sem
-    // querer logo de cara.
-    var filtroInicialForcado = !!(avisoSemSolicitacoes && avisoSemSolicitacoes.dataset.ativo === "true");
-
     // "Todos" é a aba padrão (Henrique, 2026-08-21, mudou de ideia em
     // relação à decisão de 2026-08-08 abaixo) — mostra do mais antigo
     // pro mais novo (column-reverse no CSS), diferente das outras 3
@@ -34,19 +22,6 @@
     var statusAtivo = "todos";
 
     function aplicarFiltros() {
-        if (filtroInicialForcado) {
-            itens.forEach(function (item) { item.style.display = "none"; });
-            if (avisoVazio) { avisoVazio.style.display = "none"; }
-            // "block", não "" — ver comentário equivalente em
-            // app/ferramentas/extratus/web/static/relatorios_robo.js.
-            if (avisoSemSolicitacoes) { avisoSemSolicitacoes.style.display = "block"; }
-            return;
-        }
-
-        if (avisoSemSolicitacoes) {
-            avisoSemSolicitacoes.style.display = "none";
-        }
-
         var termo = campoBusca.value.trim().toLowerCase();
         var dataDe = campoDataDe ? campoDataDe.value : "";
         var dataAte = campoDataAte ? campoDataAte.value : "";
@@ -79,12 +54,13 @@
         });
 
         if (avisoVazio) {
+            // Mesmo motivo do "block" acima — este <p> também nasce com
+            // `hidden`.
             avisoVazio.style.display = visiveis === 0 ? "block" : "none";
         }
     }
 
     campoBusca.addEventListener("input", function () {
-        filtroInicialForcado = false;
         aplicarFiltros();
     });
 
@@ -94,7 +70,6 @@
     // vira o limite do outro; limpar o campo remove o limite de novo.
     if (campoDataDe) {
         campoDataDe.addEventListener("change", function () {
-            filtroInicialForcado = false;
             if (campoDataAte) {
                 campoDataAte.min = campoDataDe.value || "";
             }
@@ -103,7 +78,6 @@
     }
     if (campoDataAte) {
         campoDataAte.addEventListener("change", function () {
-            filtroInicialForcado = false;
             if (campoDataDe) {
                 campoDataDe.max = campoDataAte.value || "";
             }
@@ -113,14 +87,12 @@
 
     if (campoSolicitante) {
         campoSolicitante.addEventListener("change", function () {
-            filtroInicialForcado = false;
             aplicarFiltros();
         });
     }
 
     abas.forEach(function (aba) {
         aba.addEventListener("click", function () {
-            filtroInicialForcado = false;
             abas.forEach(function (a) { a.classList.remove("aba-relatorios-robo-ativa"); });
             aba.classList.add("aba-relatorios-robo-ativa");
             statusAtivo = aba.dataset.status;
@@ -138,14 +110,6 @@
     document.querySelectorAll(".relatorio-info-clicavel").forEach(function (bloco) {
         bloco.addEventListener("click", function () {
             window.location = bloco.dataset.download;
-        });
-    });
-
-    // Nome do PDF de origem — ver comentário equivalente em
-    // relatorios_manuais.js (Relatórios URGENTES) — mesma lógica.
-    document.querySelectorAll(".link-pdf-original").forEach(function (link) {
-        link.addEventListener("click", function (evento) {
-            evento.stopPropagation();
         });
     });
 
@@ -167,16 +131,14 @@
             }
         }
         campoBusca.value = processoInicial;
-        // Um deep-link sempre vence — nunca pode ficar escondido atrás do
-        // filtro "só o que é meu" (padrão ou forçado), mesmo relatório
-        // sendo de outra pessoa.
-        filtroInicialForcado = false;
     }
 
     // Henrique, 2026-09-02: valor INICIAL do dropdown "Solicitado por" —
-    // só pra quem tem pelo menos 1 solicitação de verdade (ver
-    // sem_solicitacoes_proprias/filtroInicialForcado acima, o caso
-    // oposto). Continua trocável livremente depois, igual ao "Solicitados
+    // Henrique, diretoria, 2026-09-16: o próprio usuário agora SEMPRE
+    // aparece nas opções (ver relatorios_robo.py), mesmo sem nenhuma
+    // solicitação ainda — o campo precisa refletir a verdade (que está
+    // filtrado pra ele), nunca mostrar "Todos" enquanto filtra por
+    // baixo. Continua trocável livremente depois, igual ao "Solicitados
     // por mim" da tela manual.
     var solicitantePadrao = campoSolicitante ? campoSolicitante.dataset.padrao : "";
     if (solicitantePadrao && !processoInicial) {
@@ -292,6 +254,10 @@
         }
 
         function entrarModoSelecaoRobo() {
+            // Henrique, 2026-09-02 (3ª rodada): "Selecionar" some de vez
+            // (não só esmaece) — igual "Baixar todos" — pra dar lugar aos
+            // botões novos da barra de seleção, sem ficar um botão
+            // desabilitado sobrando em cima.
             botaoSelecionarRobo.hidden = true;
             acoesSelecaoRobo.hidden = false;
             if (botaoBaixarTodos) { botaoBaixarTodos.hidden = true; }

@@ -11,6 +11,7 @@ from app.ferramentas.nucleo_relatorios.db.checagem_fila import resolver_solicita
 from app.ferramentas.nucleo_relatorios.db.jobs import (
     excluir_job,
     listar_jobs_robo,
+    marcar_como_revisado,
     marcar_notificacao_resolvida_robo,
     obter_job,
 )
@@ -69,22 +70,22 @@ def pagina_relatorios_robo(
     ids_solicitantes_reais = {sid for sid in solicitante_por_job_id.values() if sid}
 
     # Ver comentário equivalente em app/ferramentas/extratus/web/routes/
-    # relatorios_robo.py (Extratus - Relatórios) — mesma lógica.
+    # relatorios_robo.py (Extratus - Relatórios) — mesma lógica: o próprio
+    # usuário SEMPRE entra na lista de opções (mesmo com zero casos
+    # ainda), pra nunca mostrar "Todos" enquanto filtra por baixo.
+    ids_para_dropdown = set(ids_solicitantes_reais)
+    if not usuario.eh_admin:
+        ids_para_dropdown.add(usuario.id)
+
     solicitantes_disponiveis = sorted(
         (
             {"id": usuario_id, "nome": nomes_por_id.get(usuario_id, f"Usuário #{usuario_id}")}
-            for usuario_id in ids_solicitantes_reais
+            for usuario_id in ids_para_dropdown
         ),
         key=lambda item: item["nome"].lower(),
     )
 
-    solicitante_padrao = None
-    sem_solicitacoes_proprias = False
-    if not usuario.eh_admin:
-        if usuario.id in ids_solicitantes_reais:
-            solicitante_padrao = usuario.id
-        else:
-            sem_solicitacoes_proprias = True
+    solicitante_padrao = usuario.id if not usuario.eh_admin else None
 
     # Renderiza PRIMEIRO, marca como visto DEPOIS — ver comentário
     # equivalente em app/ferramentas/extratus/web/routes/relatorios_robo.py.
@@ -98,7 +99,6 @@ def pagina_relatorios_robo(
             "solicitante_por_job_id": solicitante_por_job_id,
             "solicitantes_disponiveis": solicitantes_disponiveis,
             "solicitante_padrao": solicitante_padrao,
-            "sem_solicitacoes_proprias": sem_solicitacoes_proprias,
             "processo_busca": processo,
             "erro": erro,
             "sucesso": sucesso,
@@ -207,6 +207,16 @@ def excluir_lote_relatorios_robo(ids: list[int] = Form(...), usuario: Usuario = 
         else f"{excluidos} relatórios excluídos permanentemente."
     )
     return _redirecionar(sucesso=mensagem)
+
+
+@router.post("/relatorios-robo/{job_id}/marcar-revisado")
+def marcar_revisado_route(job_id: int, usuario: Usuario = Depends(exigir_acesso_ferramenta("emenda"))):
+    """Ver docstring equivalente em app/ferramentas/extratus/web/routes/
+    relatorios_robo.py (Extratus - Relatórios) — mesma lógica."""
+    if not marcar_como_revisado(job_id, usuario.id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO):
+        return _redirecionar(erro="Esse relatório não existe mais, ou já não está em revisão.")
+
+    return _redirecionar(sucesso="Caso marcado como revisado.")
 
 
 @router.post("/relatorios-robo/{job_id}/marcar-notificacao-resolvida")
