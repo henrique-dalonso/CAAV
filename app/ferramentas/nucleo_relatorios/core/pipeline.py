@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from app.ferramentas.nucleo_relatorios.core.app_logger import registrar_log
+from app.ferramentas.nucleo_relatorios.core.pdf_isolado import executar_isolado
 from app.ferramentas.nucleo_relatorios.core.processo_detector import analisar_pdf
 from app.ferramentas.nucleo_relatorios.core.ia_cliente import gerar_relatorio_claude
 from app.ferramentas.nucleo_relatorios.core.relatorio_manager import salvar_relatorio_docx
@@ -17,7 +18,9 @@ from app.ferramentas.nucleo_relatorios.db.models import FERRAMENTA_SLUG_PADRAO
 def obter_dados_deteccao(caminho_pdf):
     caminho_pdf = Path(caminho_pdf)
 
-    resultado = analisar_pdf(caminho_pdf)
+    # Processo separado, não só thread — pypdf é Python puro e nunca
+    # libera o GIL (ver pdf_isolado.py).
+    resultado = executar_isolado(analisar_pdf, caminho_pdf)
 
     dominante = resultado.get("dominante")
     confianca = resultado.get("confianca") or {

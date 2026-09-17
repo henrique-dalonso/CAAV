@@ -1,3 +1,4 @@
+from app.ferramentas.nucleo_relatorios.core.pdf_isolado import executar_isolado
 from app.ferramentas.nucleo_relatorios.core.processo_detector import analisar_pdf
 
 
@@ -19,7 +20,9 @@ def filtrar_por_conteudo(pdfs, processo_especifico):
     encontrados = []
 
     for pdf in pdfs:
-        resultado = analisar_pdf(pdf)
+        # Processo separado, não só thread — pypdf é Python puro e nunca
+        # libera o GIL (ver pdf_isolado.py).
+        resultado = executar_isolado(analisar_pdf, pdf)
         dominante = resultado.get("dominante")
 
         if dominante and dominante.get("processo") == processo_especifico:

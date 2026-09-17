@@ -331,6 +331,13 @@ def test_gerar_relatorio_claude_dividido_faz_uma_chamada_por_pedaco_mais_reducao
         "app.ferramentas.nucleo_relatorios.core.ia_cliente.extrair_paginas_pdf",
         return_value=([], 2),
     ), patch(
+        # Chamada real passa pelo ProcessPoolExecutor de pdf_isolado.py
+        # (isolamento contra o bug do GIL — ver ia_cliente.py); em teste,
+        # roda a função mockada direto no mesmo processo, sem precisar
+        # que ela seja "picklável" pro pool.
+        "app.ferramentas.nucleo_relatorios.core.ia_cliente.executar_isolado",
+        side_effect=lambda funcao, *args: funcao(*args),
+    ), patch(
         "app.ferramentas.nucleo_relatorios.core.ia_cliente._dividir_paginas_em_pedacos",
         return_value=["texto do pedaço 1", "texto do pedaço 2"],
     ):
@@ -530,16 +537,21 @@ def test_montar_diagnostico_sem_paginas_suspeitas_devolve_diagnostico_original()
 
 def test_montar_diagnostico_extrai_paginas_quando_nao_fornecidas():
     """Quando paginas/total_paginas não vêm preenchidos (uso direto, ou
-    fluxo manual que não tem isolamento de processo), a função extrai o
-    PDF sozinha — mesmo comportamento de sempre, só que agora baseado em
-    extrair_paginas_pdf (não mais extrair_texto_pdf_com_diagnostico, que
-    fazia uma segunda extração redundante)."""
+    fluxo manual — que TAMBÉM roda isolado num processo separado desde
+    2026-09-17, mesmo bug do GIL da triagem/Robô, achado no mesmo lugar
+    que faltava), a função extrai o PDF sozinha — mesmo comportamento de
+    sempre, só que agora baseado em extrair_paginas_pdf (não mais
+    extrair_texto_pdf_com_diagnostico, que fazia uma segunda extração
+    redundante)."""
     paginas_fake = [_pagina_fake_completa(1, "Vistos. Defiro o pedido de busca e apreensão do bem.")]
 
     with patch(
         "app.ferramentas.nucleo_relatorios.core.ia_cliente.extrair_paginas_pdf",
         return_value=(paginas_fake, 1),
-    ) as extrair_paginas_mock:
+    ) as extrair_paginas_mock, patch(
+        "app.ferramentas.nucleo_relatorios.core.ia_cliente.executar_isolado",
+        side_effect=lambda funcao, *args: funcao(*args),
+    ):
         diagnostico, _, _, _, _ = montar_diagnostico_com_triagem("qualquer.pdf")
 
     extrair_paginas_mock.assert_called_once()

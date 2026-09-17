@@ -3,6 +3,7 @@ import os
 import re
 from pathlib import Path
 
+from app.ferramentas.nucleo_relatorios.core.pdf_isolado import executar_isolado
 from app.ferramentas.nucleo_relatorios.core.prompt_manager import carregar_instrucoes_relatorio
 from app.ferramentas.nucleo_relatorios.core.texto_manager import (
     diagnostico_a_partir_das_paginas,
@@ -264,7 +265,12 @@ def montar_diagnostico_com_triagem(caminho_pdf, paginas=None, total_paginas=None
     caminho_pdf = Path(caminho_pdf)
 
     if paginas is None or total_paginas is None:
-        paginas, total_paginas = extrair_paginas_pdf(caminho_pdf)
+        # Processo separado, não só thread — pypdf é Python puro e nunca
+        # libera o GIL; sem isso, ler um PDF grande aqui trava o site
+        # inteiro (mesma causa raiz de pdf_isolado.py, achado real
+        # 2026-09-17: essa leitura ficou de fora quando a correção
+        # original foi aplicada só na triagem, não na geração).
+        paginas, total_paginas = executar_isolado(extrair_paginas_pdf, caminho_pdf)
 
     problematicas = identificar_paginas_problematicas(paginas)
     diagnostico_original = diagnostico_a_partir_das_paginas(paginas, total_paginas, problematicas=problematicas)
@@ -1027,7 +1033,9 @@ def gerar_relatorio_claude_dividido(caminho_pdf, processo_detectado, cliente, in
     caminho mais novo e mais complexo que o de chamada única."""
     caminho_pdf = Path(caminho_pdf)
     if paginas is None:
-        paginas, _ = extrair_paginas_pdf(caminho_pdf)
+        # Mesmo motivo do isolamento em montar_diagnostico_com_triagem
+        # acima — ver pdf_isolado.py.
+        paginas, _ = executar_isolado(extrair_paginas_pdf, caminho_pdf)
     pedacos_texto = _dividir_paginas_em_pedacos(paginas)
     total_pedacos = len(pedacos_texto)
 
@@ -1089,7 +1097,9 @@ def montar_parametros_mensagem(caminho_pdf, processo_detectado, instrucoes, clie
     """
     caminho_pdf = Path(caminho_pdf)
     if diagnostico is None:
-        diagnostico = extrair_texto_pdf_com_diagnostico(caminho_pdf)
+        # Mesmo motivo do isolamento em montar_diagnostico_com_triagem
+        # acima — ver pdf_isolado.py.
+        diagnostico = executar_isolado(extrair_texto_pdf_com_diagnostico, caminho_pdf)
 
     schema_relatorio = _resolver_tipo(tipo).schema_relatorio
 
