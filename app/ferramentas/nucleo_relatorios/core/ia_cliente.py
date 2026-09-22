@@ -758,7 +758,16 @@ def contar_tokens_requisicao(cliente, texto, instrucoes, tipo=None):
             {
                 "type": "text",
                 "text": instrucoes + _instrucao_formato(),
-                "cache_control": {"type": "ephemeral"},
+                # 1h, não os 5min padrão — Henrique, diretoria, 2026-09-22:
+                # notificação da própria Anthropic ("taxa de acerto do cache
+                # caiu de 66% pra 7%"). Medido com dado real de produção (14
+                # dias, VM): o intervalo típico entre casos já fica em 4-6
+                # minutos MESMO no tipo mais usado (Relatórios, 117 casos) —
+                # passa da janela de 5min em mais da metade das vezes,
+                # pagando reescrita cara à toa em vez de leitura barata.
+                # Mesmo ajuste já usado no Crivus (ver core/ia_cliente.py de
+                # lá) — aplicado aqui nos 4 pontos que montam `system`.
+                "cache_control": {"type": "ephemeral", "ttl": "1h"},
             }
         ],
         tools=[schema_relatorio],
@@ -917,8 +926,10 @@ def _montar_parametros_pedaco(texto_pedaco, indice, total, processo_detectado, i
                 # em todas as chamadas seguintes do mesmo processo. Cache é
                 # por modelo, então o pedaço (Haiku) e a redução (Sonnet)
                 # escrevem/leem caches separados entre si — cada um ainda
-                # aproveita cache dos outros pedaços do MESMO processo.
-                "cache_control": {"type": "ephemeral"},
+                # aproveita cache dos outros pedaços do MESMO processo. TTL
+                # 1h — ver comentário equivalente em contar_tokens_requisicao
+                # acima (achado real, 2026-09-22).
+                "cache_control": {"type": "ephemeral", "ttl": "1h"},
             }
         ],
         "tools": [schema_pedaco],
@@ -1005,7 +1016,9 @@ def _montar_parametros_reducao(resumo_texto, processo_detectado, instrucoes, tip
             {
                 "type": "text",
                 "text": instrucoes + _instrucao_formato(),
-                "cache_control": {"type": "ephemeral"},
+                # TTL 1h — ver comentário equivalente em
+                # contar_tokens_requisicao (achado real, 2026-09-22).
+                "cache_control": {"type": "ephemeral", "ttl": "1h"},
             }
         ],
         "tools": [schema_relatorio],
@@ -1187,7 +1200,11 @@ def montar_parametros_mensagem(caminho_pdf, processo_detectado, instrucoes, clie
                 "text": instrucoes + _instrucao_formato(),
                 # Marca esse bloco pra cache — é o mesmo texto em toda
                 # chamada, independente de qual processo está sendo lido.
-                "cache_control": {"type": "ephemeral"},
+                # TTL 1h — ver comentário equivalente em
+                # contar_tokens_requisicao (achado real, 2026-09-22). Esta é
+                # a chamada de geração de verdade (fluxo manual/Robô em
+                # tempo real), a mais afetada na prática.
+                "cache_control": {"type": "ephemeral", "ttl": "1h"},
             }
         ],
         "tools": [schema_relatorio],
