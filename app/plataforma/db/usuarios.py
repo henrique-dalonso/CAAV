@@ -491,6 +491,31 @@ def criar_usuario(
         return usuario
 
 
+def atualizar_dados_usuario(usuario_id, nome, nome_usuario, email):
+    """Edita nome/usuário/e-mail de um usuário já existente — Henrique,
+    diretoria, 2026-09-24: criou um usuário com o nome errado e percebeu que
+    não tinha como corrigir depois (só dava pra criar, nunca editar). Mesma
+    trava de unicidade de criar_usuario (nome_usuario/email), mas excluindo
+    o próprio usuário da checagem, senão ele nunca conseguiria salvar sem
+    mudar esses dois campos também."""
+    with obter_sessao() as sessao:
+        conflito = sessao.exec(
+            select(Usuario).where(
+                (Usuario.nome_usuario == nome_usuario) | (Usuario.email == email)
+            )
+        ).first()
+
+        if conflito and conflito.id != usuario_id:
+            raise ValueError("Já existe um usuário com esse nome de usuário ou e-mail.")
+
+        usuario = sessao.get(Usuario, usuario_id)
+        usuario.nome = nome
+        usuario.nome_usuario = nome_usuario
+        usuario.email = email
+        sessao.add(usuario)
+        sessao.commit()
+
+
 def definir_ferramentas(usuario_id, ferramenta_ids, ferramentas_manual_ids=None, ferramentas_lote_ids=None):
     ferramentas_manual_ids = set(ferramentas_manual_ids or [])
     ferramentas_lote_ids = set(ferramentas_lote_ids or [])

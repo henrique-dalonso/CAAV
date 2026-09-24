@@ -745,6 +745,13 @@
     border-color: var(--cor-acento);
 }
 
+/* Formulário de editar nome/usuário/e-mail tem 3 campos de texto em vez
+   de 2 de senha, e e-mail costuma ser mais comprido — 150px (herdado de
+   .admin-form-senha input) fica ilegível pra isso. */
+.admin-form-editar input {
+    width: 190px;
+}
+
 /* Custos e Ferramentas (admin, 2026-08-24) reaproveitam a mesma
    grade/cartão da home (.grade-ferramentas/.cartao-ferramenta, home.css)
    mas cada aba ganha identidade própria — Henrique: "não quero que

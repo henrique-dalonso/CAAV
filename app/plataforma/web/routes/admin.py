@@ -9,6 +9,7 @@ from app.plataforma.db.models import CARGO_COLABORADOR, CARGOS_VALIDOS, Usuario
 from app.plataforma.db.usuarios import (
     alternar_admin,
     alternar_ativo,
+    atualizar_dados_usuario,
     atualizar_senha,
     criar_usuario,
     definir_cargo,
@@ -209,6 +210,28 @@ def excluir_usuario_route(usuario_id: int, usuario: Usuario = Depends(exigir_adm
 def desbloquear_usuario_route(usuario_id: int):
     desbloquear_usuario(usuario_id)
     return _redirecionar("/admin/usuarios", sucesso="Usuário desbloqueado.")
+
+
+@router.post("/admin/usuarios/{usuario_id}/editar")
+def editar_usuario_route(
+    usuario_id: int,
+    nome: str = Form(...),
+    nome_usuario: str = Form(...),
+    email: str = Form(...),
+):
+    nome = nome.strip()
+    nome_usuario = nome_usuario.strip().lower()
+    email = email.strip().lower()
+
+    if not nome or not nome_usuario or not email:
+        return _redirecionar("/admin/usuarios", erro="Nome, usuário e e-mail não podem ficar em branco.")
+
+    try:
+        atualizar_dados_usuario(usuario_id, nome, nome_usuario, email)
+    except ValueError as erro:
+        return _redirecionar("/admin/usuarios", erro=str(erro))
+
+    return _redirecionar("/admin/usuarios", sucesso="Usuário atualizado.")
 
 
 @router.post("/admin/usuarios/{usuario_id}/redefinir-senha")

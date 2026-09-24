@@ -153,6 +153,62 @@ def test_redefinir_senha_com_confirmacao_diferente_nao_atualiza(cliente_admin_lo
     assert alvo_atualizado.senha_hash == hash_antes
 
 
+def test_editar_usuario_atualiza_nome_usuario_email(cliente_admin_logado):
+    alvo = buscar_usuario_por_nome_usuario(NOME_ALVO_TESTE)
+
+    resp = cliente_admin_logado.post(
+        f"/admin/usuarios/{alvo.id}/editar",
+        data={
+            "nome": "Teste Admin Alvo Corrigido",
+            "nome_usuario": NOME_ALVO_TESTE,
+            "email": "teste_admin_alvo@example.com",
+        },
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 303
+    assert "sucesso=" in resp.headers["location"]
+
+    alvo_atualizado = buscar_usuario_por_nome_usuario(NOME_ALVO_TESTE)
+    assert alvo_atualizado.nome == "Teste Admin Alvo Corrigido"
+
+
+def test_editar_usuario_com_usuario_ja_existente_nao_atualiza(cliente_admin_logado):
+    alvo = buscar_usuario_por_nome_usuario(NOME_ALVO_TESTE)
+
+    resp = cliente_admin_logado.post(
+        f"/admin/usuarios/{alvo.id}/editar",
+        data={
+            "nome": "Teste Admin Alvo",
+            "nome_usuario": NOME_ADMIN_TESTE,
+            "email": "teste_admin_alvo@example.com",
+        },
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 303
+    assert "erro=" in resp.headers["location"]
+
+    alvo_intacto = buscar_usuario_por_nome_usuario(NOME_ALVO_TESTE)
+    assert alvo_intacto is not None
+
+
+def test_editar_usuario_com_campo_em_branco_nao_atualiza(cliente_admin_logado):
+    alvo = buscar_usuario_por_nome_usuario(NOME_ALVO_TESTE)
+
+    resp = cliente_admin_logado.post(
+        f"/admin/usuarios/{alvo.id}/editar",
+        data={"nome": "  ", "nome_usuario": NOME_ALVO_TESTE, "email": "teste_admin_alvo@example.com"},
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 303
+    assert "erro=" in resp.headers["location"]
+
+    alvo_intacto = buscar_usuario_por_nome_usuario(NOME_ALVO_TESTE)
+    assert alvo_intacto.nome == "Teste Admin Alvo"
+
+
 def test_desbloquear_usuario_limpa_bloqueio_e_tentativas(cliente_admin_logado):
     alvo = buscar_usuario_por_nome_usuario(NOME_ALVO_TESTE)
 
