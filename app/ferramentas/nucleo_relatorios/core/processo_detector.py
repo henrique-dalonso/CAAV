@@ -55,7 +55,7 @@ def calcular_confianca(dominante, processos_nome):
     if not dominante:
         return {
             "nivel": "revisao",
-            "motivo": "Nenhum número de processo encontrado no conteúdo do PDF."
+            "motivo": "Número do processo não foi localizado dentro do PDF."
         }
 
     processo = dominante["processo"]
@@ -67,7 +67,7 @@ def calcular_confianca(dominante, processos_nome):
     if processos_nome and not encontrado_no_nome:
         return {
             "nivel": "revisao",
-            "motivo": "Número dominante do PDF diverge do número encontrado no nome do arquivo."
+            "motivo": "Número do processo localizado dentro do PDF é diferente do número no nome do arquivo."
         }
 
     if encontrado_no_nome and ocorrencias >= 2:
@@ -91,12 +91,12 @@ def calcular_confianca(dominante, processos_nome):
     if ocorrencias >= 2:
         return {
             "nivel": "media",
-            "motivo": "Número encontrado múltiplas vezes, mas sem dominância suficiente."
+            "motivo": "Número do processo localizado dentro do PDF, mas sem a frequência necessária de garantia."
         }
 
     return {
         "nivel": "revisao",
-        "motivo": "Número encontrado apenas uma vez no conteúdo do PDF."
+        "motivo": "Número do processo localizado uma única vez dentro do PDF."
     }
 
 

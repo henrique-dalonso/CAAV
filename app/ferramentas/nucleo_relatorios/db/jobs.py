@@ -85,6 +85,7 @@ def registrar_erro(
     solicitante_id=None,
     ferramenta_slug=FERRAMENTA_SLUG_PADRAO,
     tipo_relatorio=None,
+    erro_detalhe=None,
 ):
     with obter_sessao() as sessao:
         job = Job(
@@ -93,6 +94,7 @@ def registrar_erro(
             status="erro",
             tipo_erro=tipo_erro,
             erro_mensagem=str(erro_mensagem),
+            erro_detalhe=erro_detalhe,
             destino_pdf=str(destino_pdf) if destino_pdf else None,
             usuario_id=usuario_id,
             solicitante_id=solicitante_id,

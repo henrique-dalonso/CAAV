@@ -3,6 +3,13 @@ from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import func, select, update
 
+from app.ferramentas.nucleo_relatorios.core.erros import (
+    TEXTO_DUPLICADO_EM_ANDAMENTO,
+    TEXTO_DUPLICADO_RELATORIO,
+    TEXTO_FALHA_LEITURA,
+    TEXTO_NAO_ENCONTRADO,
+    motivo_liberacao_manual,
+)
 from app.ferramentas.nucleo_relatorios.db.models import FERRAMENTA_SLUG_PADRAO, TriagemManual
 from app.plataforma.db.session import obter_sessao
 from app.plataforma.web.eventos_sse import avisar_mudanca
@@ -36,10 +43,10 @@ STATUS_INCONSISTENCIA = {DUPLICADO_RELATORIO, DUPLICADO_EM_ANDAMENTO, NAO_ENCONT
 STATUS_EXIGE_PROCESSO_MANUAL = {NAO_ENCONTRADO, FALHA_LEITURA}
 
 MENSAGENS_INCONSISTENCIA = {
-    DUPLICADO_RELATORIO: "já existe um relatório gerado para esse processo",
-    DUPLICADO_EM_ANDAMENTO: "esse processo já está sendo processado por outro arquivo",
-    NAO_ENCONTRADO: "não foi possível identificar o número do processo",
-    FALHA_LEITURA: "não foi possível ler esse PDF",
+    DUPLICADO_RELATORIO: TEXTO_DUPLICADO_RELATORIO,
+    DUPLICADO_EM_ANDAMENTO: TEXTO_DUPLICADO_EM_ANDAMENTO,
+    NAO_ENCONTRADO: TEXTO_NAO_ENCONTRADO,
+    FALHA_LEITURA: TEXTO_FALHA_LEITURA,
 }
 
 
@@ -115,7 +122,7 @@ def atualizar_apos_triagem(
             registro.status = DUPLICADO_EM_ANDAMENTO
             registro.processo_detectado = processo_detectado
             registro.confianca_nivel = confianca_nivel
-            registro.confianca_motivo = "Esse número de processo já está sendo processado por outro arquivo."
+            registro.confianca_motivo = TEXTO_DUPLICADO_EM_ANDAMENTO
             registro.origem_duplicado = None
             registro.atualizado_em = datetime.now()
             sessao.add(registro)
@@ -168,7 +175,7 @@ def marcar_erro(registro_id, mensagem, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
         return registro
 
 
-def aprovar_manualmente(registro_id, processo_manual=None, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
+def aprovar_manualmente(registro_id, processo_manual=None, ferramenta_slug=FERRAMENTA_SLUG_PADRAO, nome_aprovador=None):
     """Ação "Prosseguir" do painel de Conferências manual — mesma ideia
     de checagem_fila.aprovar_manualmente: pula a trava automática,
     confiança sempre forçada pra "revisão" (nunca herda alta confiança
@@ -189,7 +196,7 @@ def aprovar_manualmente(registro_id, processo_manual=None, ferramenta_slug=FERRA
         valores = {
             "status": PROCESSANDO,
             "confianca_nivel": "revisao",
-            "confianca_motivo": "Liberado manualmente via Conferências, por cima de uma inconsistência da triagem.",
+            "confianca_motivo": motivo_liberacao_manual(nome_aprovador),
             "atualizado_em": datetime.now(),
         }
         if processo_manual:
@@ -218,7 +225,7 @@ def aprovar_manualmente(registro_id, processo_manual=None, ferramenta_slug=FERRA
             registro.status = DUPLICADO_EM_ANDAMENTO
             if processo_manual:
                 registro.processo_detectado = processo_manual
-            registro.confianca_motivo = "Esse número de processo já está sendo processado por outro arquivo."
+            registro.confianca_motivo = TEXTO_DUPLICADO_EM_ANDAMENTO
             registro.atualizado_em = datetime.now()
             sessao.add(registro)
             sessao.commit()

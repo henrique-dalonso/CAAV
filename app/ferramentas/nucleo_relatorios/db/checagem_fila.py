@@ -2,6 +2,12 @@ from datetime import datetime
 
 from sqlmodel import func, select, update
 
+from app.ferramentas.nucleo_relatorios.core.erros import (
+    TEXTO_DUPLICADO_EM_ANDAMENTO,
+    TEXTO_DUPLICADO_RELATORIO,
+    TEXTO_NAO_ENCONTRADO,
+    motivo_liberacao_manual,
+)
 from app.ferramentas.nucleo_relatorios.db.models import (
     FERRAMENTA_SLUG_PADRAO,
     ChecagemFila,
@@ -31,9 +37,9 @@ STATUS_INCONSISTENCIA = {DUPLICADO_RELATORIO, DUPLICADO_EM_ANDAMENTO, NAO_ENCONT
 # (web/notificacoes.py) quanto pelo painel de Conferências (fila.py), pra
 # nunca ter duas versões do mesmo texto flutuando pelo código.
 MENSAGENS_INCONSISTENCIA = {
-    DUPLICADO_RELATORIO: "já existe um relatório gerado para esse processo",
-    DUPLICADO_EM_ANDAMENTO: "esse processo já está sendo processado por outro arquivo na fila",
-    NAO_ENCONTRADO: "não foi possível identificar o número do processo",
+    DUPLICADO_RELATORIO: TEXTO_DUPLICADO_RELATORIO,
+    DUPLICADO_EM_ANDAMENTO: TEXTO_DUPLICADO_EM_ANDAMENTO,
+    NAO_ENCONTRADO: TEXTO_NAO_ENCONTRADO,
 }
 
 
@@ -380,7 +386,7 @@ def contar_inconsistencias_novas(desde, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
         return sessao.exec(consulta).one()
 
 
-def aprovar_manualmente(registro_id, processo_manual=None, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
+def aprovar_manualmente(registro_id, processo_manual=None, ferramenta_slug=FERRAMENTA_SLUG_PADRAO, nome_aprovador=None):
     """Ação "Prosseguir" do painel de Conferências — pula as travas
     automáticas e libera o arquivo pro Robô pegar no próximo ciclo,
     exatamente como um "aprovado" comum (robo_lote.py não precisa saber
@@ -409,7 +415,7 @@ def aprovar_manualmente(registro_id, processo_manual=None, ferramenta_slug=FERRA
         valores = {
             "status": APROVADO,
             "confianca_nivel": "revisao",
-            "confianca_motivo": "Liberado manualmente via Conferências, por cima de uma inconsistência da triagem.",
+            "confianca_motivo": motivo_liberacao_manual(nome_aprovador),
             "atualizado_em": datetime.now(),
         }
         if processo_manual:

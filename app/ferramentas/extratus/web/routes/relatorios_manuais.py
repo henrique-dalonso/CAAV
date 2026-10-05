@@ -4,6 +4,9 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, RedirectResponse
 
+from app.ferramentas.nucleo_relatorios.core.erros import (
+    MENSAGEM_PENDENCIA_RESOLVIDA,
+)
 from app.ferramentas.nucleo_relatorios.db.jobs import (
     excluir_job,
     listar_jobs_manuais,
@@ -120,7 +123,7 @@ def excluir_relatorio_route(job_id: int, usuario: Usuario = Depends(exigir_admin
     relatório de verdade (arquivo físico + PDF de origem + linha no
     banco) — coordenador com admin_ferramenta não conta, de propósito."""
     if not excluir_job(job_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO):
-        return _redirecionar(erro="Esse relatório não existe mais.")
+        return _redirecionar(erro=MENSAGEM_PENDENCIA_RESOLVIDA)
 
     return _redirecionar(sucesso="Relatório excluído permanentemente.")
 

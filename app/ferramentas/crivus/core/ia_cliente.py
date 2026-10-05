@@ -374,8 +374,7 @@ def avaliar_confiabilidade_teor(teor_publicacao):
 
     if not api_key:
         raise RuntimeError(
-            "ANTHROPIC_API_KEY não configurada no .env. Configure a chave "
-            "antes de usar o Crivus."
+            "Chave da API não configurada. Contate o suporte técnico."
         )
 
     cliente = anthropic.Anthropic(api_key=api_key)
@@ -399,8 +398,7 @@ def analisar_publicacao(teor_publicacao, anexos=None):
 
     if not api_key:
         raise RuntimeError(
-            "ANTHROPIC_API_KEY não configurada no .env. Configure a chave "
-            "antes de usar o Crivus."
+            "Chave da API não configurada. Contate o suporte técnico."
         )
 
     cliente = anthropic.Anthropic(api_key=api_key)

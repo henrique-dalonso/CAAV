@@ -3,6 +3,7 @@ import os
 import re
 from pathlib import Path
 
+from app.ferramentas.nucleo_relatorios.core.erros import ErroParaUsuario
 from app.ferramentas.nucleo_relatorios.core.pdf_isolado import executar_isolado
 from app.ferramentas.nucleo_relatorios.core.prompt_manager import carregar_instrucoes_relatorio
 from app.ferramentas.nucleo_relatorios.core.texto_manager import (
@@ -810,7 +811,9 @@ def extrair_dados_e_uso(resposta, via_batch=False):
     )
 
     if not bloco_ferramenta:
-        raise RuntimeError("Claude não devolveu os dados estruturados esperados.")
+        raise ErroParaUsuario(
+            "Os dados devolvidos pela IA não são satisfatórios, reenvie esse caso para processamento."
+        )
 
     dados = dict(bloco_ferramenta.input)
 
@@ -1123,27 +1126,11 @@ def montar_parametros_mensagem(caminho_pdf, processo_detectado, instrucoes, clie
 
     if parece_digitalizado(diagnostico["total_paginas"], diagnostico["paginas_sem_texto"]):
         if not cabe_no_limite_pdf_nativo(caminho_pdf):
-            tamanho_mb = caminho_pdf.stat().st_size / 1_000_000
-            paginas_embaralhadas = diagnostico.get("paginas_embaralhadas", 0)
-            # Henrique, 2026-08-26: achado num processo real — a mensagem
-            # antiga só falava "digitalizado", mesmo quando parte das
-            # páginas "sem texto" era na verdade texto EMBARALHADO por
-            # fonte com mapeamento quebrado (ver
-            # texto_manager._parece_texto_embaralhado), não digitalização
-            # nenhuma. Discriminar os dois aqui ajuda quem for revisar
-            # manualmente a entender o motivo de verdade, sem precisar
-            # investigar o PDF do zero.
-            detalhe_motivo = f"{diagnostico['paginas_sem_texto']} de {diagnostico['total_paginas']} páginas sem texto"
-            if paginas_embaralhadas:
-                detalhe_motivo += (
-                    f", sendo {paginas_embaralhadas} com texto embaralhado "
-                    "(fonte do PDF com mapeamento de caractere quebrado, não digitalização)"
-                )
-            raise RuntimeError(
-                f"'{caminho_pdf.name}' parece ser um PDF digitalizado ou com texto "
-                f"corrompido (sem camada de texto legível — {detalhe_motivo}) e também "
-                f"é grande demais ({tamanho_mb:.1f}MB) para ser enviado à IA como "
-                "imagem (limite da Anthropic é 32MB). Precisa de revisão manual."
+            raise ErroParaUsuario(
+                f'O arquivo "{caminho_pdf.name}" não possui texto legível em '
+                f"{diagnostico['paginas_sem_texto']} de {diagnostico['total_paginas']} páginas "
+                "e é grande demais para ser processado de maneira correta com segurança. "
+                "Recomenda-se revisão manual."
             )
 
         pdf_base64 = base64.standard_b64encode(caminho_pdf.read_bytes()).decode("utf-8")
@@ -1168,12 +1155,12 @@ def montar_parametros_mensagem(caminho_pdf, processo_detectado, instrucoes, clie
             tokens_reais = contar_tokens_requisicao(cliente, diagnostico["texto"], instrucoes, tipo=tipo)
 
             if tokens_reais > LIMITE_TOKENS_TEXTO_EXTRAIDO:
-                raise RuntimeError(
-                    f"'{caminho_pdf.name}' tem {diagnostico['total_paginas']} páginas "
-                    f"({tokens_reais} tokens reais, contados pela própria API) — "
-                    "processo grande demais para ser analisado em uma única chamada "
-                    "de IA hoje. Precisa da funcionalidade de divisão em partes "
-                    "(ainda não implementada no Robô) ou de revisão manual."
+                # Só o Robô chega aqui — o fluxo URGENTE divide em partes
+                # antes (gerar_relatorio_claude), por isso a orientação.
+                raise ErroParaUsuario(
+                    f'O arquivo "{caminho_pdf.name}" é grande demais para ser processado '
+                    f"({diagnostico['total_paginas']} páginas), peça a um coordenador para "
+                    "processar esse caso pela ferramenta URGENTE."
                 )
 
         conteudo_usuario = [
@@ -1234,10 +1221,7 @@ def gerar_relatorio_claude(caminho_pdf, processo_detectado, tipo=None):
     api_key = os.environ.get("ANTHROPIC_API_KEY")
 
     if not api_key:
-        raise RuntimeError(
-            "ANTHROPIC_API_KEY não configurada no .env. Configure a chave "
-            "antes de gerar relatórios."
-        )
+        raise ErroParaUsuario("Chave da API não configurada. Contate o suporte técnico.")
 
     cliente = anthropic.Anthropic(api_key=api_key)
 

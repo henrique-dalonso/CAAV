@@ -5,6 +5,15 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 
+from app.ferramentas.nucleo_relatorios.core.erros import (
+    MENSAGEM_PENDENCIA_RESOLVIDA,
+    MENSAGEM_PROCESSO_INVALIDO,
+    MOTIVO_CONTEUDO_INVALIDO,
+    MOTIVO_DUPLICADO_NA_FILA,
+    MOTIVO_EXTENSAO_INCORRETA,
+    montar_mensagem_recusados,
+    motivo_tamanho_excedido,
+)
 from app.ferramentas.emenda.core.config_manager import carregar_config
 from app.ferramentas.nucleo_relatorios.core.pdf_manager import listar_pdfs
 from app.ferramentas.nucleo_relatorios.core.processo_detector import PADRAO_CNJ as PADRAO_CNJ_TEXTO
@@ -221,17 +230,17 @@ async def enviar_pdfs(
         nome_seguro = Path(arquivo.filename).name
 
         if not nome_seguro.lower().endswith(".pdf"):
-            rejeitados.append(f'"{nome_seguro}" não é .pdf')
+            rejeitados.append((nome_seguro, MOTIVO_EXTENSAO_INCORRETA))
             continue
 
         conteudo = await arquivo.read()
 
         if len(conteudo) > TAMANHO_MAXIMO_UPLOAD:
-            rejeitados.append(f'"{nome_seguro}" passou de {TAMANHO_MAXIMO_UPLOAD // (1024 * 1024)} MB')
+            rejeitados.append((nome_seguro, motivo_tamanho_excedido(TAMANHO_MAXIMO_UPLOAD // (1024 * 1024))))
             continue
 
         if not conteudo.startswith(b"%PDF"):
-            rejeitados.append(f'"{nome_seguro}" não parece PDF válido')
+            rejeitados.append((nome_seguro, MOTIVO_CONTEUDO_INVALIDO))
             continue
 
         caminho_destino = pasta_entrada / nome_seguro
@@ -240,7 +249,7 @@ async def enviar_pdfs(
         # (pendente ou em processamento) — antes disso, um upload com nome
         # repetido apagava o arquivo anterior sem aviso nenhum.
         if caminho_destino.exists():
-            rejeitados.append(f'"{nome_seguro}" já existe na fila do Robô (não foi enviado de novo)')
+            rejeitados.append((nome_seguro, MOTIVO_DUPLICADO_NA_FILA))
             continue
 
         caminho_destino.write_bytes(conteudo)
@@ -258,11 +267,11 @@ async def enviar_pdfs(
     # trabalho puro descartado, refeito uma vez por arquivo do lote.
     # O fallback de formulário puro (sem JS) continua no redirect normal.
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
-        return JSONResponse({"enviados": enviados, "rejeitados": rejeitados})
+        return JSONResponse({"enviados": enviados, "rejeitados": [motivo for _, motivo in rejeitados]})
 
     if rejeitados:
         return _redirecionar(
-            erro=f"{enviados} enviado(s). Recusado(s): " + "; ".join(rejeitados)
+            erro=montar_mensagem_recusados(enviados, rejeitados)
         )
 
     return _redirecionar(sucesso=f"{enviados} PDF(s) enviado(s) pra fila do Robô.")
@@ -326,7 +335,7 @@ def aprovar_conferencia(
     registro = obter_registro(registro_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
 
     if not registro or registro.status not in STATUS_INCONSISTENCIA:
-        return _redirecionar(erro="Essa pendência de conferência não existe mais (o arquivo já saiu da fila).")
+        return _redirecionar(erro=MENSAGEM_PENDENCIA_RESOLVIDA)
 
     processo_informado = (processo or "").strip() or None
 
@@ -334,14 +343,17 @@ def aprovar_conferencia(
     # número ainda — sem digitar um válido, não libera (Henrique,
     # 2026-08-07: "não libera se a pessoa não inserir").
     if registro.status == NAO_ENCONTRADO and (not processo_informado or not PADRAO_CNJ.match(processo_informado)):
-        return _redirecionar(erro="Informe um número de processo válido (formato 0000000-00.0000.0.00.0000) pra liberar esse arquivo.")
+        return _redirecionar(erro=MENSAGEM_PROCESSO_INVALIDO)
 
     tipo_original = registro.status
     nome_arquivo = registro.nome_arquivo
 
-    aprovado = aprovar_manualmente(registro_id, processo_manual=processo_informado, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
+    aprovado = aprovar_manualmente(
+        registro_id, processo_manual=processo_informado, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO,
+        nome_aprovador=usuario.nome,
+    )
     if not aprovado:
-        return _redirecionar(erro="Essa pendência de conferência não existe mais (o arquivo já saiu da fila).")
+        return _redirecionar(erro=MENSAGEM_PENDENCIA_RESOLVIDA)
 
     registrar_decisao(nome_arquivo, tipo_original, "aprovado", usuario.id, processo_informado=processo_informado, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
 
@@ -359,7 +371,7 @@ def descartar_conferencia(
     registro = obter_registro(registro_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
 
     if not registro or registro.status not in STATUS_INCONSISTENCIA:
-        return _redirecionar(erro="Essa pendência de conferência não existe mais (o arquivo já saiu da fila).")
+        return _redirecionar(erro=MENSAGEM_PENDENCIA_RESOLVIDA)
 
     tipo_original = registro.status
     nome_arquivo = registro.nome_arquivo
@@ -398,7 +410,7 @@ def descartar_todas_conferencias(
         descartados += 1
 
     if descartados == 0:
-        return _redirecionar(erro="Não havia nada aguardando conferência pra descartar.")
+        return _redirecionar(erro=MENSAGEM_PENDENCIA_RESOLVIDA)
 
     return _redirecionar(sucesso=f"{descartados} arquivo(s) descartado(s) da fila.")
 

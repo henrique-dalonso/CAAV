@@ -163,38 +163,32 @@
 
             Array.prototype.forEach.call(lista, function (file) {
                 if (arquivos.length >= MAXIMO_ARQUIVOS) {
-                    recusados.push({ nome: file.name, motivo: "máximo de " + MAXIMO_ARQUIVOS + " arquivos por envio" });
+                    recusados.push({ nome: file.name, motivo: "o limite de " + MAXIMO_ARQUIVOS + " arquivos por envio foi atingido" });
                     return;
                 }
 
                 var nomeMinusculo = file.name.toLowerCase();
 
                 if (!nomeMinusculo.endsWith(".pdf")) {
-                    recusados.push({ nome: file.name, motivo: "não é um arquivo PDF" });
+                    recusados.push({ nome: file.name, motivo: "o arquivo não se trata de um PDF (extensão incorreta)" });
                     return;
                 }
 
                 if (file.size > LIMITE_TAMANHO_BYTES) {
-                    recusados.push({ nome: file.name, motivo: "maior que 100MB" });
+                    recusados.push({ nome: file.name, motivo: "o arquivo é grande demais (mais que 100MB)" });
                     return;
                 }
 
                 if (nomeJaSelecionado(file.name)) {
-                    recusados.push({ nome: file.name, motivo: "já foi selecionado" });
+                    recusados.push({ nome: file.name, motivo: "o arquivo já foi selecionado (duplicado)" });
                     return;
                 }
 
                 arquivos.push({ id: proximoId++, file: file });
             });
 
-            if (recusados.length === 1) {
-                window.mostrarBanner("\"" + recusados[0].nome + "\" não foi adicionado: " + recusados[0].motivo + ".", "erro");
-            } else if (recusados.length > 1) {
-                window.mostrarBannerDetalhado(
-                    recusados.length + " arquivos não foram adicionados — clique pra ver os motivos",
-                    recusados.map(function (r) { return { titulo: r.nome, detalhe: r.motivo }; }),
-                    "erro"
-                );
+            if (recusados.length > 0) {
+                window.mostrarBannerRecusados("Os seguintes arquivos não foram adicionados:", recusados);
             }
 
             sincronizarInputReal();

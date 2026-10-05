@@ -115,8 +115,7 @@ def _obter_cliente():
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
         raise RuntimeError(
-            "ANTHROPIC_API_KEY não configurada no .env. Configure a chave "
-            "antes de ligar o Processamento em Lote."
+            "Chave da API não configurada. Contate o suporte técnico."
         )
     return anthropic.Anthropic(api_key=api_key)
 

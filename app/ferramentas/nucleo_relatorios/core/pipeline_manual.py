@@ -7,6 +7,7 @@ from app.ferramentas.nucleo_relatorios.core.pipeline import (
     tratar_erro,
 )
 from app.ferramentas.nucleo_relatorios.core.app_logger import registrar_log
+from app.ferramentas.nucleo_relatorios.core.erros import TEXTO_DUPLICADO_EM_ANDAMENTO, TEXTO_DUPLICADO_RELATORIO
 from app.ferramentas.nucleo_relatorios.core.ia_cliente import gerar_relatorio_claude
 from app.ferramentas.nucleo_relatorios.db import triagem_manual as db_triagem
 from app.ferramentas.nucleo_relatorios.db.checagem_fila import existe_conflito_de_processo
@@ -30,13 +31,13 @@ async def processar_upload_manual(registro_id, config, tipo=None, ferramenta_slu
     await asyncio.to_thread(_triar_e_processar, registro_id, config, tipo, ferramenta_slug)
 
 
-async def retomar_apos_conferencia(registro_id, config, processo_manual=None, tipo=None, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
+async def retomar_apos_conferencia(registro_id, config, processo_manual=None, tipo=None, ferramenta_slug=FERRAMENTA_SLUG_PADRAO, nome_aprovador=None):
     """Ação "Aprovar/Prosseguir" do painel de Conferências manual — a
     própria aprovação já é o gatilho pra geração, sem esperar nada (mesma
     filosofia do resto deste fluxo: "a triagem que dá sinal verde",
     Henrique 2026-08-11). `config` — ver docstring de
     `processar_upload_manual` acima."""
-    await asyncio.to_thread(_retomar_apos_conferencia_sync, registro_id, config, processo_manual, tipo, ferramenta_slug)
+    await asyncio.to_thread(_retomar_apos_conferencia_sync, registro_id, config, processo_manual, tipo, ferramenta_slug, nome_aprovador)
 
 
 def _triar_e_processar(registro_id, config, tipo=None, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
@@ -85,7 +86,7 @@ def _triar_e_processar(registro_id, config, tipo=None, ferramenta_slug=FERRAMENT
         origem = "robô" if relatorio_existente.usuario_id is None else "manual"
         db_triagem.atualizar_apos_triagem(
             registro_id, db_triagem.DUPLICADO_RELATORIO, processo, nivel,
-            "Já existe um relatório gerado para esse número de processo.",
+            TEXTO_DUPLICADO_RELATORIO,
             origem_duplicado=origem,
             ferramenta_slug=ferramenta_slug,
         )
@@ -94,7 +95,7 @@ def _triar_e_processar(registro_id, config, tipo=None, ferramenta_slug=FERRAMENT
     if existe_conflito_de_processo(processo, exceto_nome_arquivo=registro.nome_arquivo, ferramenta_slug=ferramenta_slug):
         db_triagem.atualizar_apos_triagem(
             registro_id, db_triagem.DUPLICADO_EM_ANDAMENTO, processo, nivel,
-            "Esse número de processo já está sendo processado por outro arquivo.",
+            TEXTO_DUPLICADO_EM_ANDAMENTO,
             ferramenta_slug=ferramenta_slug,
         )
         return
@@ -108,8 +109,10 @@ def _triar_e_processar(registro_id, config, tipo=None, ferramenta_slug=FERRAMENT
     _gerar_e_finalizar(registro, {"nivel": nivel, "motivo": motivo}, config, tipo, ferramenta_slug)
 
 
-def _retomar_apos_conferencia_sync(registro_id, config, processo_manual, tipo=None, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
-    registro = db_triagem.aprovar_manualmente(registro_id, processo_manual, ferramenta_slug=ferramenta_slug)
+def _retomar_apos_conferencia_sync(registro_id, config, processo_manual, tipo=None, ferramenta_slug=FERRAMENTA_SLUG_PADRAO, nome_aprovador=None):
+    registro = db_triagem.aprovar_manualmente(
+        registro_id, processo_manual, ferramenta_slug=ferramenta_slug, nome_aprovador=nome_aprovador
+    )
 
     if not registro:
         return
@@ -132,11 +135,11 @@ def _gerar_e_finalizar(registro, confianca, config, tipo=None, ferramenta_slug=F
     try:
         dados_relatorio, uso_ia = gerar_relatorio_claude(registro.caminho_pdf, registro.processo_detectado, tipo=tipo)
     except Exception as erro:
-        tratar_erro(
+        resultado_erro = tratar_erro(
             registro.caminho_pdf, registro.processo_detectado, "erro_ia", erro,
             pasta_erros, registro.usuario_id, ferramenta_slug=ferramenta_slug,
         )
-        db_triagem.marcar_erro(registro.id, "Falha ao gerar o relatório.", ferramenta_slug=ferramenta_slug)
+        db_triagem.marcar_erro(registro.id, resultado_erro["erro"], ferramenta_slug=ferramenta_slug)
         return
 
     confianca = ajustar_confianca_pos_ia(confianca, uso_ia)

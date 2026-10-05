@@ -171,11 +171,15 @@ def test_triar_e_processar_falha_na_ia_marca_erro():
         pipeline_manual, "existe_conflito_de_processo", return_value=False,
     ), patch.object(
         pipeline_manual, "gerar_relatorio_claude", side_effect=RuntimeError("falha simulada"),
-    ), patch.object(pipeline_manual, "tratar_erro", return_value={"sucesso": False}):
+    ), patch.object(
+        pipeline_manual, "tratar_erro",
+        return_value={"sucesso": False, "erro": "Falha na comunicação com a IA. Reenvie esse caso para processamento."},
+    ):
         pipeline_manual._triar_e_processar(registro.id, {})
 
     atualizado = db_triagem.obter_registro(registro.id)
     assert atualizado.status == db_triagem.ERRO
+    assert atualizado.erro_mensagem == "Falha na comunicação com a IA. Reenvie esse caso para processamento."
 
     _limpar(registro.id)
 

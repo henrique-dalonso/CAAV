@@ -342,6 +342,16 @@ def test_aprovar_manualmente_libera_e_forca_revisao(limpar_checagem_teste):
     assert do_banco.status == APROVADO
 
 
+def test_aprovar_manualmente_registra_quem_liberou_no_motivo(limpar_checagem_teste):
+    nome = f"{PREFIXO_TESTE}conferencia_aprovar_nome.pdf"
+    registro = next(p for p in _sincronizar_so_de_teste({nome}) if p.nome_arquivo == nome)
+    atualizar_apos_checagem(registro.id, DUPLICADO_EM_ANDAMENTO, "789", "alta", "motivo original")
+
+    atualizado = aprovar_manualmente(registro.id, nome_aprovador="Fulano de Tal")
+
+    assert "liberado manualmente por Fulano de Tal" in atualizado.confianca_motivo
+
+
 def test_aprovar_manualmente_com_processo_informado_sobrescreve(limpar_checagem_teste):
     nome = f"{PREFIXO_TESTE}conferencia_processo_manual.pdf"
     registro = next(p for p in _sincronizar_so_de_teste({nome}) if p.nome_arquivo == nome)

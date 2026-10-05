@@ -187,7 +187,8 @@
 .dica-flutuante {
     position: fixed;
     max-width: 320px;
-    white-space: normal;
+    /* Quebra de linha vinda do texto (ex: detalhe técnico de um erro, só admin). */
+    white-space: pre-line;
     background: var(--cor-texto);
     color: var(--cor-cartao);
     font-size: 0.72rem;
@@ -652,6 +653,9 @@ html[data-theme="escuro"] .cartao-ferramenta[data-slug="extratus-aburesi"] .embl
     font-size: 0.85rem;
     margin-bottom: 1.25rem;
     animation: chacoalhar 0.4s ease;
+    /* Mensagem de várias linhas (ex: lista de arquivos recusados num
+       envio) quebra onde o servidor mandou quebrar. */
+    white-space: pre-line;
 }
 
 @keyframes chacoalhar {

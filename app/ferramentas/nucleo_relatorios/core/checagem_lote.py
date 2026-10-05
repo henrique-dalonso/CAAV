@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from app.ferramentas.nucleo_relatorios.core.app_logger import registrar_log
+from app.ferramentas.nucleo_relatorios.core.erros import TEXTO_DUPLICADO_EM_ANDAMENTO, TEXTO_DUPLICADO_RELATORIO
 from app.ferramentas.nucleo_relatorios.core.pdf_isolado import executar_isolado
 from app.ferramentas.nucleo_relatorios.core.pdf_manager import listar_pdfs
 from app.ferramentas.nucleo_relatorios.core.pipeline import tratar_erro
@@ -113,7 +114,7 @@ def _checar_um_arquivo(registro, pasta, pasta_erros, ferramenta_slug=FERRAMENTA_
     if existe_relatorio_gerado_para_processo(processo, ferramenta_slug=ferramenta_slug):
         atualizar_apos_checagem(
             registro.id, DUPLICADO_RELATORIO, processo, nivel,
-            "Já existe um relatório gerado para esse número de processo.",
+            TEXTO_DUPLICADO_RELATORIO,
             ferramenta_slug=ferramenta_slug,
         )
         return
@@ -121,7 +122,7 @@ def _checar_um_arquivo(registro, pasta, pasta_erros, ferramenta_slug=FERRAMENTA_
     if existe_conflito_de_processo(processo, exceto_nome_arquivo=registro.nome_arquivo, ferramenta_slug=ferramenta_slug):
         atualizar_apos_checagem(
             registro.id, DUPLICADO_EM_ANDAMENTO, processo, nivel,
-            "Esse número de processo já está sendo processado por outro arquivo na fila.",
+            TEXTO_DUPLICADO_EM_ANDAMENTO,
             ferramenta_slug=ferramenta_slug,
         )
         return

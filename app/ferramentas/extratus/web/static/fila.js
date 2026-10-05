@@ -283,17 +283,22 @@
                 var nomeMinusculo = file.name.toLowerCase();
 
                 if (!nomeMinusculo.endsWith(".pdf")) {
-                    recusados.push({ nome: file.name, motivo: "Não é um arquivo PDF" });
+                    recusados.push({ nome: file.name, motivo: "o arquivo não se trata de um PDF (extensão incorreta)" });
                     return;
                 }
 
                 if (file.size > LIMITE_TAMANHO_BYTES) {
-                    recusados.push({ nome: file.name, motivo: "Maior que 350MB" });
+                    recusados.push({ nome: file.name, motivo: "o arquivo é grande demais (mais que 350MB)" });
                     return;
                 }
 
-                if (nomesNaFila[file.name] || nomeJaSelecionado(novosArquivos, file.name)) {
-                    recusados.push({ nome: file.name, motivo: "Já está na fila ou já foi selecionado" });
+                if (nomesNaFila[file.name]) {
+                    recusados.push({ nome: file.name, motivo: "o arquivo já existe na fila do robô (duplicado)" });
+                    return;
+                }
+
+                if (nomeJaSelecionado(novosArquivos, file.name)) {
+                    recusados.push({ nome: file.name, motivo: "o arquivo já foi selecionado (duplicado)" });
                     return;
                 }
 
@@ -305,14 +310,8 @@
             // resumo vago ("duplicado ou grande demais?") não ajuda
             // ninguém a saber qual arquivo tinha qual problema, então
             // vira um toast clicável com a lista nome+motivo.
-            if (recusados.length === 1) {
-                window.mostrarBanner("\"" + recusados[0].nome + "\" não foi adicionado: " + recusados[0].motivo + ".", "erro");
-            } else if (recusados.length > 1) {
-                window.mostrarBannerDetalhado(
-                    recusados.length + " arquivos não foram adicionados — clique pra ver os motivos",
-                    recusados.map(function (r) { return { titulo: r.nome, detalhe: r.motivo }; }),
-                    "erro"
-                );
+            if (recusados.length > 0) {
+                window.mostrarBannerRecusados("Os seguintes arquivos não foram adicionados:", recusados);
             }
 
             if (novosArquivos.length !== arquivos.length) {
@@ -456,15 +455,10 @@
                 sincronizarInputReal();
                 renderizar();
 
-                if (falhas.length === 1) {
-                    window.mostrarBanner('"' + falhas[0].nome + '" não foi enviado: ' + falhas[0].motivo + ".", "erro");
-                } else {
-                    window.mostrarBannerDetalhado(
-                        enviadosOk + " de " + total + " enviados, " + falhas.length + " falharam — clique pra ver os motivos",
-                        falhas.map(function (f) { return { titulo: f.nome, detalhe: f.motivo }; }),
-                        "erro"
-                    );
-                }
+                window.mostrarBannerRecusados(
+                    enviadosOk + " arquivo(s) enviado(s). Os seguintes arquivos foram recusados:",
+                    falhas
+                );
             }
 
             function tratarResultado(item, sucesso, motivo) {
@@ -508,7 +502,7 @@
 
                 xhr.addEventListener("load", function () {
                     if (xhr.status < 200 || xhr.status >= 300) {
-                        tratarResultado(item, false, "erro " + xhr.status + " no servidor");
+                        tratarResultado(item, false, "falha de comunicação com o servidor (erro " + xhr.status + ")");
                         return;
                     }
 
@@ -517,16 +511,16 @@
                         if (resposta.enviados > 0) {
                             tratarResultado(item, true, null);
                         } else {
-                            var motivo = (resposta.rejeitados && resposta.rejeitados[0]) || "recusado pelo servidor";
+                            var motivo = (resposta.rejeitados && resposta.rejeitados[0]) || "o arquivo foi recusado pelo servidor";
                             tratarResultado(item, false, motivo);
                         }
                     } catch (erro) {
-                        tratarResultado(item, false, "resposta inesperada do servidor");
+                        tratarResultado(item, false, "o servidor devolveu uma resposta inesperada");
                     }
                 });
 
                 xhr.addEventListener("error", function () {
-                    tratarResultado(item, false, "falha de rede");
+                    tratarResultado(item, false, "falha de conexão com o servidor");
                 });
 
                 xhr.send(dados);

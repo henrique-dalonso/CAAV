@@ -7,6 +7,9 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import FileResponse, RedirectResponse, Response
 
+from app.ferramentas.nucleo_relatorios.core.erros import (
+    MENSAGEM_PENDENCIA_RESOLVIDA,
+)
 from app.ferramentas.nucleo_relatorios.db.checagem_fila import resolver_solicitantes
 from app.ferramentas.nucleo_relatorios.db.jobs import (
     excluir_job,
@@ -185,7 +188,7 @@ def excluir_relatorio_robo_route(job_id: int, usuario: Usuario = Depends(exigir_
     """Mesma regra do equivalente manual (relatorios_manuais.py): só
     admin da plataforma exclui de verdade."""
     if not excluir_job(job_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO):
-        return _redirecionar(erro="Esse relatório não existe mais.")
+        return _redirecionar(erro=MENSAGEM_PENDENCIA_RESOLVIDA)
 
     return _redirecionar(sucesso="Relatório excluído permanentemente.")
 
@@ -247,7 +250,7 @@ def excluir_lote_relatorios_robo(ids: list[int] = Form(...), usuario: Usuario = 
             excluidos += 1
 
     if excluidos == 0:
-        return _redirecionar(erro="Nenhum dos relatórios selecionados existe mais.")
+        return _redirecionar(erro=MENSAGEM_PENDENCIA_RESOLVIDA)
 
     mensagem = (
         "1 relatório excluído permanentemente."
@@ -264,7 +267,7 @@ def marcar_revisado_route(job_id: int, usuario: Usuario = Depends(exigir_acesso_
     (mesmo nível de acesso que já vale pra ver o acervo inteiro, sem
     trava extra por dono — igual ao X de "sucesso" do Robô acima)."""
     if not marcar_como_revisado(job_id, usuario.id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO):
-        return _redirecionar(erro="Esse relatório não existe mais, ou já não está em revisão.")
+        return _redirecionar(erro=MENSAGEM_PENDENCIA_RESOLVIDA)
 
     return _redirecionar(sucesso="Caso marcado como revisado.")
 

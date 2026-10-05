@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+from app.ferramentas.nucleo_relatorios.core.erros import ErroParaUsuario
 from app.ferramentas.nucleo_relatorios.core import ia_cliente
 from app.ferramentas.nucleo_relatorios.core.ia_cliente import (
     LIMITE_MB_ARQUIVO_PARA_PDF_NATIVO,
@@ -128,9 +129,11 @@ def test_montar_parametros_mensagem_grande_demais_de_verdade_leva_erro_com_conta
                 diagnostico=_diagnostico_texto(texto="x" * 500),
             )
             assert False, "deveria ter levantado RuntimeError"
-        except RuntimeError as erro:
-            assert str(LIMITE_TOKENS_TEXTO_EXTRAIDO + 1) in str(erro)
-            assert "divisão em partes" in str(erro)
+        except ErroParaUsuario as erro:
+            assert "gigante.pdf" in str(erro)
+            assert "grande demais" in str(erro)
+            assert "URGENTE" in str(erro)
+            assert "token" not in str(erro).lower()
 
 
 def test_contar_tokens_requisicao_usa_a_api_de_contagem_gratuita():

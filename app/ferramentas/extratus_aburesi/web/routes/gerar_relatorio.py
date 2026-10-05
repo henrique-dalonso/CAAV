@@ -7,6 +7,15 @@ from urllib.parse import quote
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, RedirectResponse
 
+from app.ferramentas.nucleo_relatorios.core.erros import (
+    MENSAGEM_LIMITE_ENVIOS,
+    MENSAGEM_PENDENCIA_RESOLVIDA,
+    MENSAGEM_PROCESSO_INVALIDO,
+    MOTIVO_CONTEUDO_INVALIDO,
+    MOTIVO_EXTENSAO_INCORRETA,
+    montar_mensagem_recusados,
+    motivo_tamanho_excedido,
+)
 from app.ferramentas.extratus_aburesi.core.config_manager import carregar_config
 from app.ferramentas.nucleo_relatorios.core.pipeline_manual import processar_upload_manual, retomar_apos_conferencia
 from app.ferramentas.nucleo_relatorios.core.processo_detector import PADRAO_CNJ as PADRAO_CNJ_TEXTO
@@ -206,8 +215,7 @@ async def enviar_pdfs(
     desde = datetime.now() - timedelta(minutes=JANELA_MINUTOS_LIMITE_UPLOAD)
     if contar_registros_recentes_do_usuario(usuario.id, desde, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO) >= LIMITE_ARQUIVOS_POR_JANELA:
         return _redirecionar(
-            erro=f"Muitos arquivos enviados em pouco tempo — aguarde alguns minutos antes de enviar mais PDFs "
-            f"(limite de {LIMITE_ARQUIVOS_POR_JANELA} a cada {JANELA_MINUTOS_LIMITE_UPLOAD} minutos)."
+            erro=MENSAGEM_LIMITE_ENVIOS
         )
 
     config = carregar_config()
@@ -221,19 +229,17 @@ async def enviar_pdfs(
         nome_seguro = Path(arquivo.filename).name
 
         if not nome_seguro.lower().endswith(".pdf"):
-            rejeitados.append(f'"{nome_seguro}" não é .pdf')
+            rejeitados.append((nome_seguro, MOTIVO_EXTENSAO_INCORRETA))
             continue
 
         conteudo = await arquivo.read()
 
         if len(conteudo) > TAMANHO_MAXIMO_UPLOAD:
-            rejeitados.append(
-                f'"{nome_seguro}" tem mais de {TAMANHO_MAXIMO_UPLOAD // (1024 * 1024)} MB'
-            )
+            rejeitados.append((nome_seguro, motivo_tamanho_excedido(TAMANHO_MAXIMO_UPLOAD // (1024 * 1024))))
             continue
 
         if not conteudo.startswith(b"%PDF"):
-            rejeitados.append(f'"{nome_seguro}" não parece ser um PDF válido')
+            rejeitados.append((nome_seguro, MOTIVO_CONTEUDO_INVALIDO))
             continue
 
         # Prefixo único por upload — a pasta é compartilhada no disco e
@@ -252,7 +258,7 @@ async def enviar_pdfs(
 
     if rejeitados:
         return _redirecionar(
-            erro=f"{len(enviados)} enviado(s). Recusado(s): " + "; ".join(rejeitados)
+            erro=montar_mensagem_recusados(len(enviados), rejeitados)
         )
 
     return _redirecionar(sucesso=f"{len(enviados)} PDF(s) enviado(s) — a triagem já começou.")
@@ -268,13 +274,13 @@ async def aprovar_conferencia(
     registro = obter_registro(registro_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
 
     if not registro or registro.usuario_id != usuario.id or registro.status not in STATUS_INCONSISTENCIA:
-        return _redirecionar(erro="Essa pendência de conferência não existe mais.")
+        return _redirecionar(erro=MENSAGEM_PENDENCIA_RESOLVIDA)
 
     processo_informado = (processo or "").strip() or None
 
     if registro.status in STATUS_EXIGE_PROCESSO_MANUAL and (not processo_informado or not PADRAO_CNJ.match(processo_informado)):
         return _redirecionar(
-            erro="Informe um número de processo válido (formato 0000000-00.0000.0.00.0000) pra liberar esse arquivo."
+            erro=MENSAGEM_PROCESSO_INVALIDO
         )
 
     tipo_original = registro.status
@@ -283,6 +289,7 @@ async def aprovar_conferencia(
     registrar_decisao(nome_arquivo, tipo_original, "aprovado", usuario.id, processo_informado=processo_informado, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
     background_tasks.add_task(
         retomar_apos_conferencia, registro_id, carregar_config(), processo_informado, TIPO_RELATORIO, FERRAMENTA_SLUG_NUCLEO,
+        usuario.nome,
     )
 
     return _redirecionar(sucesso=f'"{nome_arquivo}" liberado — gerando o relatório agora.')
@@ -296,7 +303,7 @@ def descartar_conferencia(
     registro = obter_registro(registro_id, ferramenta_slug=FERRAMENTA_SLUG_NUCLEO)
 
     if not registro or registro.usuario_id != usuario.id or registro.status not in STATUS_INCONSISTENCIA:
-        return _redirecionar(erro="Essa pendência de conferência não existe mais.")
+        return _redirecionar(erro=MENSAGEM_PENDENCIA_RESOLVIDA)
 
     tipo_original = registro.status
     nome_arquivo = registro.nome_arquivo

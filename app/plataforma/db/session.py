@@ -85,6 +85,8 @@ COLUNAS_PENDENTES = {
         # não-NULL, mesmo motivo.
         "condenacao_recomendacao": "VARCHAR",
         "condenacao_valor_total_geral": "REAL",
+        # Henrique, 2026-10-05 — ver docstring de Job.erro_detalhe.
+        "erro_detalhe": "VARCHAR",
     },
     "triagemmanual": {
         "origem_duplicado": "VARCHAR",

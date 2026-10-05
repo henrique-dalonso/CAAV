@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from app.ferramentas.nucleo_relatorios.core.app_logger import registrar_log
+from app.ferramentas.nucleo_relatorios.core.erros import separar_mensagem_e_detalhe
 from app.ferramentas.nucleo_relatorios.core.pdf_isolado import executar_isolado
 from app.ferramentas.nucleo_relatorios.core.processo_detector import analisar_pdf
 from app.ferramentas.nucleo_relatorios.core.ia_cliente import gerar_relatorio_claude
@@ -42,34 +43,47 @@ def ajustar_confianca_pos_ia(confianca, uso_ia):
     tanto por `processar_pdf` (fluxo síncrono/Robô) quanto por
     `core/pipeline_manual.py` (fluxo manual por gatilho), pra não haver
     dois lugares divergentes aplicando essa mesma regra."""
-    motivos_revisao = []
-    if uso_ia.get("dividido"):
-        motivos_revisao.append(
-            "processo grande demais para uma única chamada de IA — dividido em partes e sintetizado"
-        )
-    if uso_ia.get("paginas_excluidas_triagem"):
-        motivos_revisao.append(
-            f"{len(uso_ia['paginas_excluidas_triagem'])} página(s) removida(s) automaticamente da "
-            "análise (anexo de listagem de terceiros e/ou falha na extração de texto de página)"
-        )
-    if uso_ia.get("paginas_transcritas"):
-        # Henrique, diretoria, 2026-08-26: resgate de página sem texto
-        # confiável por transcrição de IA (ver
-        # ia_cliente.montar_diagnostico_com_triagem / transcricao_paginas.py)
-        # — caminho novo, ainda em validação, nunca cai em "alta confiança"
-        # automática sozinho.
-        motivos_revisao.append(
-            f"{len(uso_ia['paginas_transcritas'])} página(s) sem texto confiável tiveram o conteúdo "
-            "resgatado por transcrição de IA (caminho novo, ainda em validação)"
-        )
+    # Resgate por transcrição (Henrique, diretoria, 2026-08-26) é caminho
+    # ainda em validação — também nunca cai em "alta confiança" sozinho.
+    motivo = montar_motivo_revisao_pos_ia(
+        dividido=bool(uso_ia.get("dividido")),
+        paginas_removidas=len(uso_ia.get("paginas_excluidas_triagem") or []),
+        paginas_resgatadas=len(uso_ia.get("paginas_transcritas") or []),
+    )
 
-    if motivos_revisao:
-        return {
-            "nivel": "revisao",
-            "motivo": "Revisão manual recomendada: " + "; ".join(motivos_revisao) + ".",
-        }
+    if motivo:
+        return {"nivel": "revisao", "motivo": motivo}
 
     return confianca
+
+
+def montar_motivo_revisao_pos_ia(dividido, paginas_removidas, paginas_resgatadas):
+    """Texto do "?" de revisão (Henrique, 2026-10-05). Usado também pelo
+    Robô (robo_lote.py), pra os dois caminhos nunca divergirem. None quando
+    nenhum dos caminhos arriscados foi usado."""
+    medidas = []
+    if paginas_removidas:
+        medidas.append(
+            "1 página removida automaticamente" if paginas_removidas == 1
+            else f"{paginas_removidas} páginas removidas automaticamente"
+        )
+    if paginas_resgatadas:
+        medidas.append(
+            "1 página sem conteúdo seguro foi resgatada" if paginas_resgatadas == 1
+            else f"{paginas_resgatadas} páginas sem conteúdo seguro foram resgatadas"
+        )
+
+    if not dividido and not medidas:
+        return None
+
+    frases = []
+    if dividido:
+        frases.append("O processo foi dividido em partes por ser grande demais para uma única análise.")
+    if medidas:
+        frases.append("Medidas de barateamento foram aplicadas: " + " e ".join(medidas) + ".")
+    frases.append("Recomenda-se revisão manual.")
+
+    return " ".join(frases)
 
 
 def tratar_erro(
@@ -92,6 +106,8 @@ def tratar_erro(
     Robô (fluxo manual já usa `usuario_id`, que já É quem pediu)."""
     registrar_log(f"Erro ({tipo_erro}) ao processar {Path(pdf).name}: {erro}")
 
+    mensagem, detalhe = separar_mensagem_e_detalhe(erro, tipo_erro)
+
     destino_pdf = None
 
     try:
@@ -104,7 +120,8 @@ def tratar_erro(
         arquivo_pdf=Path(pdf).name,
         processo=processo,
         tipo_erro=tipo_erro,
-        erro_mensagem=erro,
+        erro_mensagem=mensagem,
+        erro_detalhe=detalhe,
         destino_pdf=destino_pdf,
         usuario_id=usuario_id,
         solicitante_id=solicitante_id,
@@ -115,7 +132,7 @@ def tratar_erro(
         "sucesso": False,
         "processo": processo,
         "tipo_erro": tipo_erro,
-        "erro": str(erro)
+        "erro": mensagem,
     }
 
 

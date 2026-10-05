@@ -5,6 +5,7 @@ from pathlib import Path
 import anthropic
 
 from app.ferramentas.nucleo_relatorios.core.app_logger import registrar_log
+from app.ferramentas.nucleo_relatorios.core.erros import ErroParaUsuario
 from app.ferramentas.nucleo_relatorios.core.ia_cliente import (
     extrair_dados_e_uso,
     montar_diagnostico_com_triagem,
@@ -14,6 +15,7 @@ from app.ferramentas.nucleo_relatorios.core.pdf_isolado import executar_isolado
 from app.ferramentas.nucleo_relatorios.core.pdf_manager import listar_pdfs
 from app.ferramentas.nucleo_relatorios.core.pipeline import (
     finalizar_processamento,
+    montar_motivo_revisao_pos_ia,
     tratar_erro,
 )
 from app.ferramentas.nucleo_relatorios.core.prompt_manager import carregar_instrucoes_relatorio
@@ -56,10 +58,7 @@ def _obter_cliente():
     api_key = os.environ.get("ANTHROPIC_API_KEY")
 
     if not api_key:
-        raise RuntimeError(
-            "ANTHROPIC_API_KEY não configurada no .env. Configure a chave "
-            "antes de ligar o robô com IA real."
-        )
+        raise ErroParaUsuario("Chave da API não configurada. Contate o suporte técnico.")
 
     return anthropic.Anthropic(api_key=api_key)
 
@@ -227,19 +226,13 @@ def _preparar_novo_lote(config, cliente, tipo=None, ferramenta_slug=FERRAMENTA_S
             )
             continue
 
-        if paginas_excluidas_triagem or paginas_transcritas:
-            motivos = []
-            if paginas_excluidas_triagem:
-                motivos.append(
-                    f"{len(paginas_excluidas_triagem)} página(s) removida(s) automaticamente da análise "
-                    "(anexo de listagem de terceiros e/ou falha na extração de texto de página)"
-                )
-            if paginas_transcritas:
-                motivos.append(
-                    f"{len(paginas_transcritas)} página(s) sem texto confiável tiveram o conteúdo "
-                    "resgatado por transcrição de IA (caminho novo, ainda em validação)"
-                )
-            confianca = {"nivel": "revisao", "motivo": "; ".join(motivos) + "."}
+        motivo_revisao = montar_motivo_revisao_pos_ia(
+            dividido=False,
+            paginas_removidas=len(paginas_excluidas_triagem or []),
+            paginas_resgatadas=len(paginas_transcritas or []),
+        )
+        if motivo_revisao:
+            confianca = {"nivel": "revisao", "motivo": motivo_revisao}
 
         itens_para_lote.append({
             "custom_id": uuid.uuid4().hex,

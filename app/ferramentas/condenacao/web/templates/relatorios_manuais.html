@@ -55,7 +55,9 @@
                 {% if job.status == "revisao" and job.motivo_confianca %}
                 <span class="motivo" data-dica="{{ job.motivo_confianca }}">{{ job.motivo_confianca }}</span>
                 {% elif job.status == "erro" and job.erro_mensagem %}
-                <span class="motivo" data-dica="{{ job.erro_mensagem }}">{{ job.tipo_erro | rotulo_erro }}</span>
+                <span class="motivo" data-dica="{{ job.erro_mensagem }}{% if usuario.eh_admin and job.erro_detalhe %}{{ "
+
+Detalhe técnico (só admin vê): " ~ job.erro_detalhe }}{% endif %}">{{ job.tipo_erro | rotulo_erro }}</span>
                 {% endif %}
                 {% if job.condenacao_valor_total_geral %}
                 <span class="motivo{% if job.condenacao_recomendacao == 'impugnar' %} motivo-prazo-vencido{% endif %}" data-dica="Valor total calculado automaticamente com índice oficial buscado ao vivo — ver análise completa no .docx">

@@ -178,7 +178,15 @@
         return pararContador;
     }
 
-    document.querySelectorAll(".banner-sucesso, .banner-erro").forEach(decorarBanner);
+    // Banner de várias linhas (ex: lista de arquivos recusados) não some
+    // sozinho — precisa de tempo pra ler, só o "x" fecha.
+    document.querySelectorAll(".banner-sucesso, .banner-erro").forEach(function (banner) {
+        var pararContador = decorarBanner(banner);
+
+        if (banner.textContent.indexOf("\n") !== -1) {
+            pararContador();
+        }
+    });
 
     // Toast dinâmico — pra avisos que precisam aparecer na hora, sem
     // recarregar a página (ex: "esse documento já foi anexado" na Fila).
@@ -289,6 +297,38 @@
                 alternar();
             }
         });
+    };
+
+    // Arquivos recusados num envio (Fila do Robô / URGENTE) — lista já
+    // aberta, um arquivo por linha, e só some no "x": quem enviou precisa
+    // ler o motivo de cada um. "itens" é [{ nome, motivo }].
+    window.mostrarBannerRecusados = function (resumo, itens) {
+        var banner = document.createElement("div");
+        banner.className = "banner-erro banner-toast banner-expansivel";
+        banner.setAttribute("role", "alert");
+
+        var linha = document.createElement("div");
+        linha.className = "banner-linha";
+
+        var texto = document.createElement("span");
+        texto.textContent = "⚠ " + resumo;
+        linha.appendChild(texto);
+        banner.appendChild(linha);
+
+        var lista = document.createElement("ul");
+        lista.className = "banner-detalhes";
+
+        itens.forEach(function (item) {
+            var li = document.createElement("li");
+            li.textContent = 'Arquivo "' + item.nome + '" → MOTIVO: ' + item.motivo + ".";
+            lista.appendChild(li);
+        });
+
+        banner.appendChild(lista);
+        obterCaixaToasts().appendChild(banner);
+
+        var pararContador = decorarBanner(banner);
+        pararContador();
     };
 
     // Clique em qualquer .truncavel (nome cortado, e-mail cortado, etc)

@@ -198,7 +198,9 @@
                     {% if job.status == "revisao" and job.motivo_confianca %}
                     <span class="detalhe-texto truncavel" data-dica="{{ job.motivo_confianca }}">{{ job.motivo_confianca }}</span>
                     {% elif job.status == "erro" and job.erro_mensagem %}
-                    <span class="detalhe-texto truncavel" data-dica="{{ job.erro_mensagem }}">[{{ job.tipo_erro }}] {{ job.erro_mensagem }}</span>
+                    <span class="detalhe-texto truncavel" data-dica="{{ job.erro_mensagem }}{% if job.erro_detalhe %}{{ "
+
+Detalhe técnico: " ~ job.erro_detalhe }}{% endif %}">[{{ job.tipo_erro }}] {{ job.erro_mensagem }}</span>
                     {% else %}
                     <span class="detalhe-texto">—</span>
                     {% endif %}

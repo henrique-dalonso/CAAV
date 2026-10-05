@@ -53,6 +53,9 @@ class Job(SQLModel, table=True):
 
     tipo_erro: Optional[str] = None
     erro_mensagem: Optional[str] = None
+    # Texto cru da exceção (inglês, nome de biblioteca etc.) — só aparece
+    # pra admin; erro_mensagem é sempre a frase pra tela (core/erros.py).
+    erro_detalhe: Optional[str] = None
 
     relatorio_path: Optional[str] = None
     destino_pdf: Optional[str] = None

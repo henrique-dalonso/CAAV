@@ -104,6 +104,9 @@
             {% set motivo_texto = "Marcado como revisado por " ~ nomes_por_id.get(job.revisado_por_id, "não identificado") %}
             {% else %}
             {% set motivo_texto = job.motivo_confianca if (job.status == "revisao" and job.motivo_confianca) else (job.erro_mensagem if (job.status == "erro" and job.erro_mensagem) else None) %}
+            {% if job.status == "erro" and job.erro_detalhe and usuario.eh_admin %}{% set motivo_texto = (motivo_texto or "") ~ "
+
+Detalhe técnico (só admin vê): " ~ job.erro_detalhe %}{% endif %}
             {% endif %}
             <div class="relatorio-status-coluna">
                 <span class="relatorio-status-selo">
