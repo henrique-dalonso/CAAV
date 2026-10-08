@@ -111,19 +111,22 @@ def registrar_erro(
         return job
 
 
-def listar_jobs(limite=100, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
+def listar_jobs(limite=None, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     with obter_sessao() as sessao:
         consulta = (
             select(Job)
             .where(Job.ferramenta_slug == ferramenta_slug)
             .order_by(Job.criado_em.desc())
-            .limit(limite)
         )
+        # Sem corte por padrão (Henrique, 2026-10-08: com limite de 100 o
+        # Robô gerou mais que isso em 2 dias e "sumiram" os antigos da tela).
+        if limite is not None:
+            consulta = consulta.limit(limite)
 
         return sessao.exec(consulta).all()
 
 
-def listar_jobs_manuais(limite=100, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
+def listar_jobs_manuais(limite=None, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Só os relatórios gerados manualmente (usuario_id preenchido) —
     usado pela tela "Relatórios". Os do Robô (usuario_id None) têm sua
     própria tela, "Relatórios do Robô" (Henrique, 2026-08-08: "na
@@ -136,13 +139,16 @@ def listar_jobs_manuais(limite=100, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
             select(Job)
             .where(Job.ferramenta_slug == ferramenta_slug, Job.usuario_id.is_not(None))
             .order_by(Job.criado_em.desc())
-            .limit(limite)
         )
+        # Sem corte por padrão (Henrique, 2026-10-08: com limite de 100 o
+        # Robô gerou mais que isso em 2 dias e "sumiram" os antigos da tela).
+        if limite is not None:
+            consulta = consulta.limit(limite)
 
         return sessao.exec(consulta).all()
 
 
-def listar_jobs_robo(limite=100, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
+def listar_jobs_robo(limite=None, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
     """Só os relatórios (prontos, em revisão ou com erro) gerados pelo
     Robô (usuario_id None) — alimenta "Relatórios do Robô"."""
     with obter_sessao() as sessao:
@@ -150,8 +156,11 @@ def listar_jobs_robo(limite=100, ferramenta_slug=FERRAMENTA_SLUG_PADRAO):
             select(Job)
             .where(Job.ferramenta_slug == ferramenta_slug, Job.usuario_id.is_(None))
             .order_by(Job.criado_em.desc())
-            .limit(limite)
         )
+        # Sem corte por padrão (Henrique, 2026-10-08: com limite de 100 o
+        # Robô gerou mais que isso em 2 dias e "sumiram" os antigos da tela).
+        if limite is not None:
+            consulta = consulta.limit(limite)
 
         return sessao.exec(consulta).all()
 
