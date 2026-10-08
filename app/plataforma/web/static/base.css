@@ -782,6 +782,99 @@ html[data-theme="escuro"] .cartao-ferramenta[data-slug="extratus-aburesi"] .embl
     to { opacity: 1; transform: translateX(0); }
 }
 
+/* Paginação de lista (window.criarPaginacao, base.js). */
+.fora-da-pagina {
+    display: none !important;
+}
+
+.paginacao-rodape {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--cor-borda);
+    font-size: 0.85rem;
+    color: var(--cor-texto-suave);
+}
+
+.paginacao-rodape[hidden] {
+    display: none;
+}
+
+.paginacao-exibir {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    white-space: nowrap;
+}
+
+.paginacao-exibir select {
+    padding: 0.35rem 0.5rem;
+    font-size: 0.85rem;
+    font-family: inherit;
+    color: var(--cor-texto);
+    background: var(--cor-fundo);
+    border: 1.5px solid var(--cor-borda);
+    border-radius: var(--raio-pequeno);
+    outline: none;
+}
+
+.paginacao-exibir select:focus {
+    border-color: var(--cor-acento);
+}
+
+.paginacao-exibir select option {
+    background-color: var(--cor-fundo);
+    color: var(--cor-texto);
+}
+
+.paginacao-paginas {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-left: auto;
+}
+
+.paginacao-paginas[hidden] {
+    display: none;
+}
+
+.paginacao-botao {
+    min-width: 2rem;
+    height: 2rem;
+    padding: 0 0.5rem;
+    font-family: inherit;
+    font-size: 0.85rem;
+    color: var(--cor-texto);
+    background: transparent;
+    border: 1.5px solid var(--cor-borda);
+    border-radius: var(--raio-pequeno);
+    cursor: pointer;
+}
+
+.paginacao-botao:hover:not(:disabled) {
+    border-color: var(--cor-acento);
+    color: var(--cor-acento);
+}
+
+.paginacao-botao:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.paginacao-botao-atual,
+.paginacao-botao-atual:hover:not(:disabled) {
+    background: var(--cor-acento);
+    border-color: var(--cor-acento);
+    color: #fff;
+    font-weight: 600;
+}
+
+.paginacao-reticencias {
+    padding: 0 0.25rem;
+}
+
 /* Toast expansível (window.mostrarBannerDetalhado, base.js). Estrutura:
    <div class="banner-erro banner-expansivel">
      <div class="banner-linha">texto + ações (contador/fechar)</div>

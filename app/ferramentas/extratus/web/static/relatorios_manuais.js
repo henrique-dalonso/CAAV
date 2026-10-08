@@ -13,11 +13,13 @@
 
     var statusAtivo = "todos";
 
+    var paginacao = window.criarPaginacao(document.querySelector(".lista-relatorios"), "relatorios-urgentes");
+
     function aplicarFiltros() {
         var termo = campoBusca.value.trim().toLowerCase();
         var somenteMeus = checkMeus && checkMeus.checked;
         var meuId = checkMeus ? checkMeus.dataset.usuarioId : null;
-        var visiveis = 0;
+        var filtrados = [];
 
         itens.forEach(function (item) {
             var passaStatus = statusAtivo === "todos" || item.dataset.status === statusAtivo;
@@ -32,9 +34,11 @@
             item.style.display = mostrar ? "" : "none";
 
             if (mostrar) {
-                visiveis += 1;
+                filtrados.push(item);
             }
         });
+
+        paginacao.aplicar(filtrados);
 
         if (avisoVazio) {
             // Henrique, 2026-09-02: "" não bastava — esse <p> nasce com o
@@ -42,7 +46,7 @@
             // devolve o controle pro `[hidden]` nativo do navegador, que
             // continua escondendo (achado real na tela de Relatórios do
             // Robô, mesmo bug aqui). "block" vence de vez.
-            avisoVazio.style.display = visiveis === 0 ? "block" : "none";
+            avisoVazio.style.display = filtrados.length === 0 ? "block" : "none";
         }
     }
 
@@ -123,6 +127,7 @@
     if (processoInicial) {
         var alvo = document.querySelector('.relatorio-item[data-processo="' + CSS.escape(processoInicial) + '"]');
         if (alvo) {
+            paginacao.mostrarItem(alvo);
             alvo.scrollIntoView({ behavior: "smooth", block: "center" });
             alvo.classList.add("relatorio-item-destacado");
             setTimeout(function () { alvo.classList.remove("relatorio-item-destacado"); }, 2400);

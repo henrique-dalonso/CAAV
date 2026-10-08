@@ -21,12 +21,15 @@
     // "em ordem de grau de fudido").
     var statusAtivo = "todos";
 
-    function aplicarFiltros() {
+    var paginacao = window.criarPaginacao(listaEl, "relatorios-robo");
+
+    // `manterPagina`: ver paginacao.atualizar (base.js).
+    function aplicarFiltros(manterPagina) {
         var termo = campoBusca.value.trim().toLowerCase();
         var dataDe = campoDataDe ? campoDataDe.value : "";
         var dataAte = campoDataAte ? campoDataAte.value : "";
         var solicitanteId = campoSolicitante ? campoSolicitante.value : "";
-        var visiveis = 0;
+        var filtrados = [];
 
         itens.forEach(function (item) {
             var passaStatus = statusAtivo === "todos" || item.dataset.status === statusAtivo;
@@ -49,20 +52,27 @@
             item.style.display = mostrar ? "" : "none";
 
             if (mostrar) {
-                visiveis += 1;
+                filtrados.push(item);
             }
         });
+
+        if (manterPagina === true) {
+            paginacao.atualizar(filtrados);
+        } else {
+            paginacao.aplicar(filtrados);
+        }
 
         if (avisoVazio) {
             // Mesmo motivo do "block" acima — este <p> também nasce com
             // `hidden`.
-            avisoVazio.style.display = visiveis === 0 ? "block" : "none";
+            avisoVazio.style.display = filtrados.length === 0 ? "block" : "none";
         }
     }
 
     campoBusca.addEventListener("input", function () {
         aplicarFiltros();
     });
+
 
     // Henrique, 2026-08-26: o calendário de cada campo se ajusta pelo
     // que já foi escolhido no outro — não faz sentido "Até" permitir uma
@@ -157,6 +167,7 @@
     if (processoInicial) {
         var alvo = document.querySelector('.relatorio-item[data-processo="' + CSS.escape(processoInicial) + '"]');
         if (alvo) {
+            paginacao.mostrarItem(alvo);
             alvo.scrollIntoView({ behavior: "smooth", block: "center" });
             alvo.classList.add("relatorio-item-destacado");
             setTimeout(function () { alvo.classList.remove("relatorio-item-destacado"); }, 2400);
@@ -238,6 +249,15 @@
             return listaEl.querySelectorAll(".relatorio-item-check");
         }
 
+        // "Selecionar todos" só marca o que está na tela (filtro + página
+        // aberta) — nunca um relatório escondido que a pessoa nem viu.
+        function obterChecksVisiveis() {
+            return Array.prototype.filter.call(obterChecksRobo(), function (c) {
+                var item = c.closest(".relatorio-item");
+                return item.style.display !== "none" && !item.classList.contains("fora-da-pagina");
+            });
+        }
+
         function idsMarcados() {
             return Array.prototype.filter.call(obterChecksRobo(), function (c) { return c.checked; })
                 .map(function (c) { return c.dataset.jobId; });
@@ -246,7 +266,8 @@
         function atualizarBotoesSelecaoRobo() {
             var checks = obterChecksRobo();
             var algumMarcado = Array.prototype.some.call(checks, function (c) { return c.checked; });
-            var todosMarcados = checks.length > 0 && Array.prototype.every.call(checks, function (c) { return c.checked; });
+            var visiveis = obterChecksVisiveis();
+            var todosMarcados = visiveis.length > 0 && visiveis.every(function (c) { return c.checked; });
 
             if (botaoBaixarSelecionados) { botaoBaixarSelecionados.disabled = !algumMarcado; }
             if (botaoExcluirSelecionados) { botaoExcluirSelecionados.disabled = !algumMarcado; }
@@ -279,7 +300,7 @@
 
         if (checkTodosRobo) {
             checkTodosRobo.addEventListener("change", function () {
-                obterChecksRobo().forEach(function (c) { c.checked = checkTodosRobo.checked; });
+                obterChecksVisiveis().forEach(function (c) { c.checked = checkTodosRobo.checked; });
                 atualizarBotoesSelecaoRobo();
             });
         }
@@ -331,7 +352,7 @@
     //    reaparecer pra continuar batendo com o resto da lista.
     document.addEventListener("linha-atualizada-sem-recarregar", function (evento) {
         itens = document.querySelectorAll(".relatorio-item");
-        aplicarFiltros();
+        aplicarFiltros(true);
 
         if (evento.detail.linhaNova && acoesSelecaoRobo && !acoesSelecaoRobo.hidden) {
             var checkboxNovo = evento.detail.linhaNova.querySelector(".relatorio-item-checkbox");

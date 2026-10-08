@@ -299,6 +299,153 @@
         });
     };
 
+    // Paginação de lista (Henrique, 2026-10-08: "Exibir X" com 10 a 1000 +
+    // setas e números de página no pé). A tela continua filtrando do jeito
+    // dela; depois chama paginacao.aplicar(itensQuePassaram) e só a página
+    // atual fica visível. Esconde por classe (.fora-da-pagina), não por
+    // style.display, pra "Baixar todos" continuar enxergando o filtro
+    // inteiro, não só a página aberta.
+    var OPCOES_POR_PAGINA = [10, 25, 50, 100, 250, 1000];
+    var POR_PAGINA_PADRAO = 25;
+
+    window.criarPaginacao = function (lista, chave) {
+        var porPagina = POR_PAGINA_PADRAO;
+        try {
+            var salvo = parseInt(localStorage.getItem("por_pagina:" + chave), 10);
+            if (OPCOES_POR_PAGINA.indexOf(salvo) !== -1) { porPagina = salvo; }
+        } catch (e) { /* sem storage: fica no padrão */ }
+
+        var pagina = 1;
+        var ultimosItens = [];
+
+        var rodape = document.createElement("div");
+        rodape.className = "paginacao-rodape";
+
+        var exibir = document.createElement("label");
+        exibir.className = "paginacao-exibir";
+        exibir.appendChild(document.createTextNode("Exibir "));
+        var seletor = document.createElement("select");
+        OPCOES_POR_PAGINA.forEach(function (n) {
+            var opcao = document.createElement("option");
+            opcao.value = n;
+            opcao.textContent = n;
+            seletor.appendChild(opcao);
+        });
+        seletor.value = porPagina;
+        exibir.appendChild(seletor);
+        exibir.appendChild(document.createTextNode(" por página"));
+
+        var contagem = document.createElement("span");
+        contagem.className = "paginacao-contagem";
+
+        var navegacao = document.createElement("nav");
+        navegacao.className = "paginacao-paginas";
+        navegacao.setAttribute("aria-label", "Páginas");
+
+        rodape.appendChild(exibir);
+        rodape.appendChild(contagem);
+        rodape.appendChild(navegacao);
+        lista.parentNode.insertBefore(rodape, lista.nextSibling);
+
+        function totalPaginas() {
+            return Math.max(1, Math.ceil(ultimosItens.length / porPagina));
+        }
+
+        // 1 … 4 5 [6] 7 8 … 30 — sempre a primeira, a última e 2 vizinhas.
+        function numerosVisiveis(total) {
+            var numeros = [];
+            for (var n = 1; n <= total; n++) {
+                if (n === 1 || n === total || Math.abs(n - pagina) <= 2) {
+                    if (numeros.length && n - numeros[numeros.length - 1] > 1) { numeros.push("…"); }
+                    numeros.push(n);
+                }
+            }
+            return numeros;
+        }
+
+        function botao(texto, alvo, rotulo, desabilitado, atual) {
+            var b = document.createElement("button");
+            b.type = "button";
+            b.className = "paginacao-botao" + (atual ? " paginacao-botao-atual" : "");
+            b.textContent = texto;
+            b.disabled = !!desabilitado;
+            if (rotulo) { b.setAttribute("aria-label", rotulo); }
+            if (atual) { b.setAttribute("aria-current", "page"); }
+            b.addEventListener("click", function () {
+                pagina = alvo;
+                desenhar();
+                lista.scrollIntoView({ behavior: "smooth", block: "start" });
+            });
+            return b;
+        }
+
+        function desenhar() {
+            var total = totalPaginas();
+            if (pagina > total) { pagina = total; }
+
+            var inicio = (pagina - 1) * porPagina;
+            var fim = inicio + porPagina;
+            var naPagina = new Set(ultimosItens.slice(inicio, fim));
+
+            Array.prototype.forEach.call(lista.children, function (item) {
+                item.classList.toggle("fora-da-pagina", !naPagina.has(item));
+            });
+
+            rodape.hidden = ultimosItens.length === 0;
+            contagem.textContent = ultimosItens.length
+                ? (inicio + 1) + "–" + Math.min(fim, ultimosItens.length) + " de " + ultimosItens.length
+                : "";
+
+            navegacao.innerHTML = "";
+            navegacao.hidden = total <= 1;
+            if (total <= 1) { return; }
+
+            navegacao.appendChild(botao("‹", pagina - 1, "Página anterior", pagina === 1));
+            numerosVisiveis(total).forEach(function (n) {
+                if (n === "…") {
+                    var reticencias = document.createElement("span");
+                    reticencias.className = "paginacao-reticencias";
+                    reticencias.textContent = "…";
+                    navegacao.appendChild(reticencias);
+                } else {
+                    navegacao.appendChild(botao(String(n), n, "Página " + n, false, n === pagina));
+                }
+            });
+            navegacao.appendChild(botao("›", pagina + 1, "Próxima página", pagina === total));
+        }
+
+        seletor.addEventListener("change", function () {
+            porPagina = parseInt(seletor.value, 10);
+            try { localStorage.setItem("por_pagina:" + chave, porPagina); } catch (e) { /* ok */ }
+            pagina = 1;
+            desenhar();
+        });
+
+        return {
+            // Filtro mudou: volta pra página 1 (os itens da página antiga
+            // podem nem existir mais no resultado novo).
+            aplicar: function (itensFiltrados) {
+                ultimosItens = itensFiltrados;
+                pagina = 1;
+                desenhar();
+            },
+            // Mesmo filtro, lista mudou por baixo (linha trocada/excluída
+            // sem recarregar): mantém a página onde a pessoa estava.
+            atualizar: function (itensFiltrados) {
+                ultimosItens = itensFiltrados;
+                desenhar();
+            },
+            // Deep-link (?processo=...): abre a página onde o item está.
+            mostrarItem: function (item) {
+                var indice = ultimosItens.indexOf(item);
+                if (indice !== -1) {
+                    pagina = Math.floor(indice / porPagina) + 1;
+                    desenhar();
+                }
+            }
+        };
+    };
+
     // Arquivos recusados num envio (Fila do Robô / URGENTE) — lista já
     // aberta, um arquivo por linha, e só some no "x": quem enviou precisa
     // ler o motivo de cada um. "itens" é [{ nome, motivo }].
